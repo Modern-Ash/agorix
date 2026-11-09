@@ -363,6 +363,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "clearPen":
       writeMapped(writer, nodeId, indent + "clear_pen()\n");
       return;
+    case "stamp":
+      writeMapped(writer, nodeId, indent + "stamp()\n");
+      return;
     case "setPenColor":
       writeMapped(
         writer,

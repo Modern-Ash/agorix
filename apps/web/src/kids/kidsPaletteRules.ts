@@ -25,6 +25,7 @@ export const BLOCK_NEEDS: Partial<Record<StudioBlockKind, PaletteNeed>> = {
   penUp: "pen",
   nextCostume: "costumes",
   clearPen: "pen",
+  stamp: "pen",
 };
 
 /** Blocks that satisfy a need when any character's program uses one of them. */

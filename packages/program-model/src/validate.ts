@@ -648,8 +648,9 @@ function validateStatement(
     case "penDown":
     case "penUp":
     case "clearPen":
+    case "stamp":
       state.usedExtensions.add("pen");
-      return { type: input.type as "penDown" | "penUp" | "clearPen" };
+      return { type: input.type as "penDown" | "penUp" | "clearPen" | "stamp" };
     case "setPenColor": {
       state.usedExtensions.add("pen");
       if (!(PEN_COLORS as readonly unknown[]).includes(input.color)) {

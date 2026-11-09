@@ -450,6 +450,7 @@ const COPY = {
     penColor: "Color del lápiz",
     penSize: "Grosor del lápiz",
     clearPen: "Borrar los trazos",
+    stamp: "Sellar",
     musicTitle: "Música",
     playNote: "Tocar nota",
     playDrum: "Tocar percusión",
@@ -750,6 +751,7 @@ const COPY = {
     penColor: "Pen color",
     penSize: "Pen size",
     clearPen: "Clear drawing lines",
+    stamp: "Stamp",
     musicTitle: "Music",
     playNote: "Play note",
     playDrum: "Play drum",
@@ -2745,6 +2747,8 @@ export function KidsStudioScreen({
         return copy.penUp;
       case "clearPen":
         return copy.clearPen;
+      case "stamp":
+        return copy.stamp;
       case "setPenColor":
         return `${copy.penColor}: ${copy.penColors[statement.color]}`;
       case "setPenSize":
@@ -4057,6 +4061,30 @@ export function KidsStudioScreen({
                 const copyScale = ((sprite?.size ?? 100) / 100) * 0.7;
                 return (
                   <Fragment key={item.id}>
+                    {(final?.world.pen?.stamps ?? []).map((stamp, index) => (
+                      <span
+                        key={`${item.id}-stamp-${index}`}
+                        className="kids-studio-stage-copy"
+                        data-rule="stamp"
+                        aria-hidden="true"
+                        style={{
+                          left: `${Math.max(4, Math.min(90, 8 + stamp.x / 4))}%`,
+                          top: `${Math.max(8, Math.min(82, 40 + stamp.y / 3))}%`,
+                          zIndex: 0,
+                        }}
+                      >
+                        <span
+                          className="kids-studio-stage-costume"
+                          style={{ transform: `scale(${(stamp.size / 100) * 0.7})` }}
+                        >
+                          <KidsSprite
+                            slot={{ kind: "gallery", id: characterId }}
+                            imageOverride={costumeArt}
+                            label=""
+                          />
+                        </span>
+                      </span>
+                    ))}
                     {(final?.world.copies ?? []).map((copy, index) => (
                       <span
                         key={`${item.id}-copy-${index}`}
@@ -6752,6 +6780,14 @@ export function KidsStudioScreen({
                       onClick={() => add({ type: "clearPen" })}
                     >
                       + {copy.clearPen}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="stamp"
+                      onClick={() => add({ type: "stamp" })}
+                    >
+                      + {copy.stamp}
                     </button>
                   </div>
                 ) : null}

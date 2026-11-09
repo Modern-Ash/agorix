@@ -108,6 +108,7 @@ describe("runtime operation allowlist", () => {
       "setY",
       "show",
       "showVariable",
+      "stamp",
       "stop",
       "stopSounds",
       "switchBackdrop",

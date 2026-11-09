@@ -371,6 +371,9 @@ function projectStatement(
     case "clearPen":
       write(writer, `${pad}pen.clear();\n`);
       return;
+    case "stamp":
+      write(writer, `${pad}pen.stamp();\n`);
+      return;
     case "setPenColor":
       write(writer, `${pad}pen.setColor(${JSON.stringify(statement.color)});\n`);
       return;

@@ -913,6 +913,27 @@ test("free scene keeps a word, says it and reopens with the word block", async (
   await expect(page.getByText(/Guardar palabra: Palabra "luna"/).first()).toBeVisible();
 });
 
+test("free scene stamps copies of the character while it moves", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  for (const name of ["+ Sellar", "+ Mover", "+ Sellar"]) {
+    await page.getByRole("button", { name, exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator('.kids-studio-stage-copy[data-rule="stamp"]')).toHaveCount(2);
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {

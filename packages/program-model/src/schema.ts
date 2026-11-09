@@ -445,6 +445,11 @@ export interface SetPenSizeStatement {
   readonly size: number;
 }
 
+/** Leaves a copy of the character on the stage, drawn where it is now (pen pack). */
+export interface StampStatement {
+  readonly type: "stamp";
+}
+
 export interface ClearPenStatement {
   readonly type: "clearPen";
 }
@@ -750,6 +755,7 @@ export type Statement =
   | SetVolumeStatement
   | ChangeVolumeStatement
   | BroadcastStatement
+  | StampStatement
   | SetVariableStatement
   | SetTextStatement
   | ChangeVariableStatement
