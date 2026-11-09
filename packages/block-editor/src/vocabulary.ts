@@ -425,6 +425,14 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "sensing_loudness",
+    label: "Loudness",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "loudness, from 0 to 100",
+    createDefaultBlock: (id) => ({ id, type: "sensing_loudness" }),
+  },
+  {
     type: "sensing_mouse_x",
     label: "Mouse X",
     section: "Check",

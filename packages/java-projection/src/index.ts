@@ -107,6 +107,7 @@ export const JAVA_SUPPORT_API = [
   "sizePercent",
   "timer",
   "keyDown",
+  "loudness",
   "mouseX",
   "mouseY",
   "mouseDown",
@@ -195,6 +196,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     boolean keyDown(String key) { return false; }
     double askChoice(String prompt) { return 0; }
     String askText(String prompt) { return ""; }
+    double loudness() { return 0; }
     double mouseX() { return 0; }
     double mouseY() { return 0; }
     boolean mouseDown() { return false; }
@@ -450,6 +452,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "timer()";
     case "keyDown":
       return `keyDown(${literal(expression.key)})`;
+    case "loudness":
+      return "loudness()";
     case "mouseX":
       return "mouseX()";
     case "mouseY":

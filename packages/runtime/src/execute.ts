@@ -117,6 +117,8 @@ export interface ExecutionOptions {
   readonly keysDown?: readonly string[];
   /** Stage pointer snapshot captured by the caller; never read from browser globals. */
   readonly pointer?: { readonly x: number; readonly y: number; readonly down: boolean };
+  /** Loudness 0 to 100 measured by the caller (a number, never sound); 0 when absent. */
+  readonly loudness?: number;
   /** Bundled prompt id to selected 1-based option index; absent means pause at that question. */
   readonly choices?: Readonly<Record<string, number>>;
   /** Bundled question id to the word the child typed; absent means pause at that question. */
@@ -381,6 +383,12 @@ function evaluateExpression(
         state.event === `key:${expression.key}` ||
         state.options.keysDown?.includes(expression.key) === true
       );
+    case "loudness": {
+      const level = state.options.loudness;
+      return level !== undefined && Number.isFinite(level)
+        ? Math.max(0, Math.min(100, Math.round(level)))
+        : 0;
+    }
     case "mouseX":
       return Math.max(
         0,
