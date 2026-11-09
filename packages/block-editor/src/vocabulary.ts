@@ -96,6 +96,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "event_on_loudness_over",
+    label: "When loud",
+    section: "Start",
+    placement: "trigger",
+    accessibleName: "when the loudness goes over a level",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "event_on_loudness_over",
+      fields: { level: 30 },
+    }),
+  },
+  {
     type: "event_on_timer_over",
     label: "When time passes",
     section: "Start",

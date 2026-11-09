@@ -609,6 +609,8 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
       return `whenBackdropSwitchesTo(${JSON.stringify(trigger.backdropId)})`;
     case "onTimerOver":
       return `whenTimerOver(${trigger.seconds})`;
+    case "onLoudnessOver":
+      return `whenLoudnessOver(${trigger.level})`;
     default: {
       const unknown = trigger as { type?: unknown };
       throw new UnsupportedNodeError(nodeId, String(unknown.type));

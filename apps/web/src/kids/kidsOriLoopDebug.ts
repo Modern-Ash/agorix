@@ -105,6 +105,10 @@ export function explainTrigger(trigger: Trigger, locale: Locale): string {
       return es
         ? `Este programa empieza cuando pasan ${trigger.seconds} segundos desde que tocás Jugar.`
         : `This program starts when ${trigger.seconds} seconds have passed since you press Play.`;
+    case "onLoudnessOver":
+      return es
+        ? `Este programa empieza cuando el volumen pasa de ${trigger.level}.`
+        : `This program starts when the loudness goes over ${trigger.level}.`;
     case "onBackdropSwitch":
       return es
         ? "Este programa empieza cuando cambia el fondo."

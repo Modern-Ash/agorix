@@ -51,7 +51,8 @@ export type RuntimeEvent =
   | { readonly type: "actorClicked"; readonly actorId: string }
   | { readonly type: "message"; readonly message: string; readonly senderActorId?: string }
   | { readonly type: "backdropSwitched"; readonly backdropId: string }
-  | { readonly type: "timerPassed"; readonly seconds: number };
+  | { readonly type: "timerPassed"; readonly seconds: number }
+  | { readonly type: "loudnessPassed"; readonly level: number };
 
 export interface MultiActorScriptActivation {
   readonly id: string;
@@ -270,6 +271,8 @@ function triggerMatchesEvent(
       return event.type === "backdropSwitched" && trigger.backdropId === event.backdropId;
     case "onTimerOver":
       return event.type === "timerPassed" && trigger.seconds === event.seconds;
+    case "onLoudnessOver":
+      return event.type === "loudnessPassed" && trigger.level === event.level;
   }
 }
 
@@ -291,6 +294,8 @@ export function cloneRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
       return { type: "backdropSwitched", backdropId: event.backdropId };
     case "timerPassed":
       return { type: "timerPassed", seconds: event.seconds };
+    case "loudnessPassed":
+      return { type: "loudnessPassed", level: event.level };
   }
 }
 
@@ -308,7 +313,17 @@ export function programEventForRuntimeEvent(event: RuntimeEvent): ProgramEvent {
       return `backdrop:${event.backdropId}`;
     case "timerPassed":
       return `timer:${event.seconds}`;
+    case "loudnessPassed":
+      return `loud:${event.level}`;
   }
+}
+
+/** The levels some script waits for with "when the loudness passes", each once. */
+export function loudnessLevelsOf(program: ProjectProgram): readonly number[] {
+  const levels = new Set<number>();
+  for (const script of program.scripts)
+    if (script.trigger.type === "onLoudnessOver") levels.add(script.trigger.level);
+  return [...levels].sort((a, b) => a - b);
 }
 
 /** The seconds some script waits for with "when the time passes", smallest first, each once. */
@@ -356,6 +371,8 @@ export function reasonForActivation(
       return `Backdrop ${JSON.stringify(event.backdropId)} was switched to`;
     case "timerPassed":
       return `${event.seconds} seconds passed`;
+    case "loudnessPassed":
+      return `Loudness went above ${event.level}`;
   }
 }
 

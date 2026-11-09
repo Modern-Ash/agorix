@@ -146,6 +146,8 @@ function triggerText(trigger: Trigger): string {
       return `when backdrop switches to ${JSON.stringify(trigger.backdropId)}\n`;
     case "onTimerOver":
       return `when ${trigger.seconds} seconds have passed\n`;
+    case "onLoudnessOver":
+      return `when loudness is over ${trigger.level}\n`;
   }
 }
 

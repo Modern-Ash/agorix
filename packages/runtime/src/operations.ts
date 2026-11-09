@@ -135,6 +135,7 @@ export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze([
   "onMessage",
   "onBackdropSwitch",
   "onTimerOver",
+  "onLoudnessOver",
 ] as const);
 
 export const RUNTIME_OPERATIONS = Object.freeze({

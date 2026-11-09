@@ -362,6 +362,8 @@ function handlerName(trigger: Trigger): string {
       return `onBackdrop${camel(trigger.backdropId) || "Backdrop"}`;
     case "onTimerOver":
       return `onTimerOver${camel(String(trigger.seconds)) || "Seconds"}`;
+    case "onLoudnessOver":
+      return `onLoudnessOver${camel(String(trigger.level)) || "Level"}`;
   }
 }
 

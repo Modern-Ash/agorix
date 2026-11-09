@@ -173,6 +173,7 @@ describe("runtime operation allowlist", () => {
       "onMessage",
       "onBackdropSwitch",
       "onTimerOver",
+      "onLoudnessOver",
     ]);
   });
 

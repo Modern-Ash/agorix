@@ -193,6 +193,7 @@ function checkedTrigger(trigger: Trigger): boolean {
     (trigger.type === "onMessage" &&
       STUDIO_MESSAGES.includes(trigger.message as (typeof STUDIO_MESSAGES)[number])) ||
     (trigger.type === "onTimerOver" && [1, 2, 3, 5, 10].includes(trigger.seconds)) ||
+    (trigger.type === "onLoudnessOver" && [10, 30, 50, 70].includes(trigger.level)) ||
     (trigger.type === "onBackdropSwitch" &&
       trigger.backdropId.startsWith("backdrop:") &&
       isGalleryBackdropId(trigger.backdropId.slice(9)))

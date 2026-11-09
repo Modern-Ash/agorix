@@ -31,6 +31,7 @@ export type BlockType =
   | "event_on_message"
   | "event_on_backdrop_switch"
   | "event_on_timer_over"
+  | "event_on_loudness_over"
   | "event_broadcast"
   | "motion_move"
   | "motion_go_to"
@@ -1504,6 +1505,8 @@ function triggerFromBlock(block: BlockNode, path: string): Trigger {
       return { type: "onBackdropSwitch", backdropId: stringField(block, "backdropId", path) };
     case "event_on_timer_over":
       return { type: "onTimerOver", seconds: numberField(block, "seconds", path) };
+    case "event_on_loudness_over":
+      return { type: "onLoudnessOver", level: numberField(block, "level", path) };
     default:
       return fail(
         "UNSUPPORTED_TRIGGER",
@@ -1530,6 +1533,8 @@ function triggerToBlock(trigger: Trigger, id: string): BlockNode {
       return { id, type: "event_on_backdrop_switch", fields: { backdropId: trigger.backdropId } };
     case "onTimerOver":
       return { id, type: "event_on_timer_over", fields: { seconds: trigger.seconds } };
+    case "onLoudnessOver":
+      return { id, type: "event_on_loudness_over", fields: { level: trigger.level } };
   }
 }
 

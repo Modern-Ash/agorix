@@ -394,6 +394,7 @@ const COPY = {
     onMessage: "Al recibir",
     onBackdropSwitch: "Al cambiar el fondo a",
     onTimerOver: "Al pasar los segundos",
+    onLoudnessOver: "Cuando el volumen pasa de",
     pressKey: "Pulsar tecla",
     variable: "Variable",
     list: "Lista",
@@ -707,6 +708,7 @@ const COPY = {
     onMessage: "When receiving",
     onBackdropSwitch: "When the backdrop changes to",
     onTimerOver: "When the seconds pass",
+    onLoudnessOver: "When the loudness goes over",
     pressKey: "Press key",
     variable: "Variable",
     list: "List",
@@ -973,7 +975,8 @@ type StudioEvent =
   | "onKeyPressed"
   | "onMessage"
   | "onBackdropSwitch"
-  | "onTimerOver";
+  | "onTimerOver"
+  | "onLoudnessOver";
 
 /**
  * How the picture follows the heading: all around (default), mirrored when it faces left, or not
@@ -1084,6 +1087,12 @@ function backdropOfStage(
 ): KidsGalleryBackdropId {
   const suffix = id?.replace(/^backdrop:/, "");
   return isGalleryBackdropId(suffix) ? suffix : fallback;
+}
+
+/** True when some block or hat of the program reads the microphone level. */
+function programReadsLoudness(program: unknown): boolean {
+  const text = JSON.stringify(program);
+  return text.includes('"type":"loudness"') || text.includes('"type":"onLoudnessOver"');
 }
 
 type ConditionPreset = "key" | "edge" | "touch" | "timer" | "mouse" | "size" | "loud";
@@ -1229,6 +1238,7 @@ export function KidsStudioScreen({
   const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
   const [limitHit, setLimitHit] = useState<"blocks" | "actors" | null>(null);
   const [eventSeconds, setEventSeconds] = useState(3);
+  const [eventLevel, setEventLevel] = useState(30);
   const [eventBackdrop, setEventBackdrop] = useState<KidsGalleryBackdropId>(
     KIDS_GALLERY_BACKDROPS[0]!.id,
   );
@@ -2285,7 +2295,9 @@ export function KidsStudioScreen({
             ? ({ type, backdropId: `backdrop:${eventBackdrop}` } as const)
             : type === "onTimerOver"
               ? ({ type, seconds: eventSeconds } as const)
-              : ({ type } as const);
+              : type === "onLoudnessOver"
+                ? ({ type, level: eventLevel } as const)
+                : ({ type } as const);
     persist(setStudioTrigger(history, activeActorId, trigger));
   }
 
@@ -3292,11 +3304,14 @@ export function KidsStudioScreen({
           choices: choiceAnswers.current,
           answers: textAnswers.current,
           paceSeconds: LIVE_PACE_SECONDS,
-          loudness: () => levelMeter.current?.read() ?? 0,
+          // Only a program that reads loudness, with the adult's switch on, gets a level source.
+          ...(levelAllowed && programReadsLoudness(history.current)
+            ? { loudness: () => levelMeter.current?.read() ?? 0 }
+            : {}),
         });
         live.fire({ type: "start" });
         // The microphone opens only for a program that reads loudness, after the adult's switch.
-        if (levelAllowed && JSON.stringify(history.current).includes('"type":"loudness"')) {
+        if (levelAllowed && programReadsLoudness(history.current)) {
           void startLevelMeter().then((meter) => {
             if (meter === null) return;
             if (liveRef.current !== live || !live.running) {
@@ -5176,6 +5191,9 @@ export function KidsStudioScreen({
                       <option value="onMessage">{copy.onMessage}</option>
                       <option value="onBackdropSwitch">{copy.onBackdropSwitch}</option>
                       <option value="onTimerOver">{copy.onTimerOver}</option>
+                      {levelAllowed || script?.trigger.type === "onLoudnessOver" ? (
+                        <option value="onLoudnessOver">{copy.onLoudnessOver}</option>
+                      ) : null}
                     </select>
                   </label>
                   {script?.trigger.type === "onKeyPressed" ? (
@@ -5194,6 +5212,31 @@ export function KidsStudioScreen({
                         {STUDIO_KEYS.map((key) => (
                           <option key={key} value={key}>
                             {key}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {script?.trigger.type === "onLoudnessOver" ? (
+                    <label>
+                      {copy.onLoudnessOver}{" "}
+                      <select
+                        data-testid="event-level"
+                        value={script.trigger.level}
+                        onChange={(event) => {
+                          const level = Number(event.target.value);
+                          setEventLevel(level);
+                          persist(
+                            setStudioTrigger(history, activeActorId, {
+                              type: "onLoudnessOver",
+                              level,
+                            }),
+                          );
+                        }}
+                      >
+                        {[10, 30, 50, 70].map((level) => (
+                          <option key={level} value={level}>
+                            {level}
                           </option>
                         ))}
                       </select>
@@ -5280,11 +5323,13 @@ export function KidsStudioScreen({
                         ? `${copy.onKey} ${script.trigger.key}`
                         : script?.trigger.type === "onMessage"
                           ? `${copy.onMessage} ${script.trigger.message}`
-                          : script?.trigger.type === "onTimerOver"
-                            ? `${copy.onTimerOver} ${script.trigger.seconds}`
-                            : script?.trigger.type === "onBackdropSwitch"
-                              ? `${copy.onBackdropSwitch} ${galleryBackdropName(backdropOfStage(script.trigger.backdropId, backdropId), locale)}`
-                              : copy.onPlay}
+                          : script?.trigger.type === "onLoudnessOver"
+                            ? `${copy.onLoudnessOver} ${script.trigger.level}`
+                            : script?.trigger.type === "onTimerOver"
+                              ? `${copy.onTimerOver} ${script.trigger.seconds}`
+                              : script?.trigger.type === "onBackdropSwitch"
+                                ? `${copy.onBackdropSwitch} ${galleryBackdropName(backdropOfStage(script.trigger.backdropId, backdropId), locale)}`
+                                : copy.onPlay}
                   </div>
                   {script?.trigger.type === "onActorClicked" ? (
                     <p className="kids-note">{copy.tapHint}</p>

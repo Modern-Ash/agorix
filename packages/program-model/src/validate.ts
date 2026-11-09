@@ -1090,6 +1090,16 @@ function validateTrigger(input: unknown, path: string): Trigger {
           "event message",
         ),
       };
+    case "onLoudnessOver": {
+      if (typeof input.level !== "number") {
+        fail("MISSING_FIELD", `${path}.level`, "expected a number", input.level);
+      }
+      checkBounds(input.level, 1, 99, `${path}.level`);
+      if (!Number.isInteger(input.level)) {
+        fail("INVALID_FIELD_TYPE", `${path}.level`, "expected a whole number", input.level);
+      }
+      return { type: "onLoudnessOver", level: input.level };
+    }
     case "onTimerOver": {
       if (typeof input.seconds !== "number") {
         fail("MISSING_FIELD", `${path}.seconds`, "expected a number", input.seconds);
