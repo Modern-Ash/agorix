@@ -109,6 +109,10 @@ export function explainTrigger(trigger: Trigger, locale: Locale): string {
       return es
         ? `Este programa empieza cuando el volumen pasa de ${trigger.level}.`
         : `This program starts when the loudness goes over ${trigger.level}.`;
+    case "onCloneStart":
+      return es
+        ? "Este programa empieza cuando nace una copia del personaje."
+        : "This program starts when a copy of the character is born.";
     case "onBackdropSwitch":
       return es
         ? "Este programa empieza cuando cambia el fondo."

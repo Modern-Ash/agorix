@@ -31,6 +31,7 @@ export interface OriStudioDecision {
 }
 
 const SCRIPT_ID = /^studio-actor-([1-9][0-9]?)-([a-z]+)$/;
+const CLONE_SCRIPT_ID = /^studio-actor-[1-9][0-9]?-[a-z]+-clone$/;
 const MAX_OUTPUT_CHARS = 4096;
 const MAX_SCRIPTS = 12;
 const MAX_STATEMENTS = 60;
@@ -42,12 +43,14 @@ function actorIdForScript(id: string): string {
 function target(context: OriStudioContext) {
   if (context.locale !== "es" && context.locale !== "en") throw new Error("invalid locale");
   const program = validateProgram(context.program);
+  // A character's copy script (issue #1311) is never the one Ori edits; it only has to be there.
+  const characters = program.scripts.filter((script) => !CLONE_SCRIPT_ID.test(script.id));
   if (
-    program.scripts.length < 1 ||
-    program.scripts.length > MAX_SCRIPTS ||
+    characters.length < 1 ||
+    characters.length > MAX_SCRIPTS ||
     (program.variables?.length ?? 0) > 3 ||
     (program.lists?.length ?? 0) > 3 ||
-    program.scripts.some((script, index) => {
+    characters.some((script, index) => {
       const match = SCRIPT_ID.exec(script.id);
       return (
         !match ||

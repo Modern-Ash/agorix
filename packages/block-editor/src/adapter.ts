@@ -53,6 +53,8 @@ export type BlockType =
   | "looks_change_effect"
   | "looks_clear_effects"
   | "control_reset_timer"
+  | "control_delete_this_clone"
+  | "event_on_clone_start"
   | "pen_down"
   | "pen_up"
   | "pen_set_color"
@@ -664,6 +666,8 @@ function statementFromBlock(
       return { type: "clearEffects" };
     case "control_reset_timer":
       return { type: "resetTimer" };
+    case "control_delete_this_clone":
+      return { type: "deleteThisClone" };
     case "pen_down":
       return { type: "penDown" };
     case "pen_up":
@@ -1222,6 +1226,8 @@ function statementToBlock(
       return { id, type: "looks_clear_effects" };
     case "resetTimer":
       return { id, type: "control_reset_timer" };
+    case "deleteThisClone":
+      return { id, type: "control_delete_this_clone" };
     case "penDown":
       return { id, type: "pen_down" };
     case "penUp":
@@ -1505,6 +1511,8 @@ function triggerFromBlock(block: BlockNode, path: string): Trigger {
       return { type: "onBackdropSwitch", backdropId: stringField(block, "backdropId", path) };
     case "event_on_timer_over":
       return { type: "onTimerOver", seconds: numberField(block, "seconds", path) };
+    case "event_on_clone_start":
+      return { type: "onCloneStart" };
     case "event_on_loudness_over":
       return { type: "onLoudnessOver", level: numberField(block, "level", path) };
     default:
@@ -1533,6 +1541,8 @@ function triggerToBlock(trigger: Trigger, id: string): BlockNode {
       return { id, type: "event_on_backdrop_switch", fields: { backdropId: trigger.backdropId } };
     case "onTimerOver":
       return { id, type: "event_on_timer_over", fields: { seconds: trigger.seconds } };
+    case "onCloneStart":
+      return { id, type: "event_on_clone_start" };
     case "onLoudnessOver":
       return { id, type: "event_on_loudness_over", fields: { level: trigger.level } };
   }

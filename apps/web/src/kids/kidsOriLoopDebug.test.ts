@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { acceptProposal } from "@agorix/proposals";
 import { createEditorHistory } from "@agorix/block-editor";
 import { runMultiActorProgram } from "@agorix/runtime";
-import type { Statement } from "@agorix/program-model";
 import {
   appendStudioStatement,
   createStudioProgram,
@@ -18,7 +17,7 @@ import {
 
 const NOVA = "actor:studio-1-nova";
 
-function programWith(...statements: Statement[]) {
+function programWith(...statements: Parameters<typeof appendStudioStatement>[2][]) {
   let history = createEditorHistory(createStudioProgram("nova"));
   for (const statement of statements) history = appendStudioStatement(history, NOVA, statement);
   return validateStudioProgram(history.current);

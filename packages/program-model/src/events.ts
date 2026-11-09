@@ -18,6 +18,8 @@ export function eventForTrigger(trigger: Trigger): ProgramEvent {
       return `timer:${trigger.seconds}`;
     case "onLoudnessOver":
       return `loud:${trigger.level}`;
+    case "onCloneStart":
+      return "clone";
   }
 }
 

@@ -71,6 +71,7 @@ describe("block-editor", () => {
       "When actor clicked",
       "When message received",
       "When backdrop switches",
+      "When I start as a clone",
       "When loud",
       "When time passes",
       "Broadcast message",
@@ -95,6 +96,7 @@ describe("block-editor", () => {
       "Ask a bundled choice",
       "Ask for a word",
       "Wait until ___",
+      "Delete this clone",
       "Reset timer",
       "Touching the goal?",
       "Touching character?",
@@ -135,7 +137,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(68);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(70);
   });
 
   it("creates safe defaults for every required POC block", () => {
@@ -709,6 +711,7 @@ describe("green-flag hat in the block editor", () => {
       "When actor clicked",
       "When message received",
       "When backdrop switches",
+      "When I start as a clone",
       "When loud",
       "When time passes",
     ]);

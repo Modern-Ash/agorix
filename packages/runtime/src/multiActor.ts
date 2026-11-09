@@ -273,6 +273,9 @@ function triggerMatchesEvent(
       return event.type === "timerPassed" && trigger.seconds === event.seconds;
     case "onLoudnessOver":
       return event.type === "loudnessPassed" && trigger.level === event.level;
+    case "onCloneStart":
+      // Copies are not started yet; no event begins this script.
+      return false;
   }
 }
 

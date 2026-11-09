@@ -52,6 +52,7 @@ export const JAVA_SUPPORT_API = [
   "changeEffect",
   "clearEffects",
   "resetTimer",
+  "deleteThisClone",
   "say",
   "sayFor",
   "think",
@@ -141,6 +142,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void changeEffect(String effect, double delta) {}
     void clearEffects() {}
     void resetTimer() {}
+    void deleteThisClone() {}
     void say(String text) {}
     void sayFor(String text, double seconds) {}
     void think(String text) {}
@@ -362,6 +364,8 @@ function handlerName(trigger: Trigger): string {
       return `onBackdrop${camel(trigger.backdropId) || "Backdrop"}`;
     case "onTimerOver":
       return `onTimerOver${camel(String(trigger.seconds)) || "Seconds"}`;
+    case "onCloneStart":
+      return "onCloneStart";
     case "onLoudnessOver":
       return `onLoudnessOver${camel(String(trigger.level)) || "Level"}`;
   }
@@ -598,6 +602,8 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       return line("clearEffects()");
     case "resetTimer":
       return line("resetTimer()");
+    case "deleteThisClone":
+      return line("deleteThisClone()");
     case "say":
     case "think": {
       const message =
@@ -880,6 +886,7 @@ export const javaLanguagePack: LanguagePack = {
     "changeEffect",
     "clearEffects",
     "resetTimer",
+    "deleteThisClone",
     "say",
     "think",
     "show",

@@ -69,6 +69,7 @@ describe("runtime operation allowlist", () => {
       "clearEffects",
       "clearPen",
       "createCopies",
+      "deleteThisClone",
       "forever",
       "glideTo",
       "goTo",
@@ -174,6 +175,7 @@ describe("runtime operation allowlist", () => {
       "onBackdropSwitch",
       "onTimerOver",
       "onLoudnessOver",
+      "onCloneStart",
     ]);
   });
 

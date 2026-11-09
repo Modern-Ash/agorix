@@ -717,6 +717,10 @@ function* executeStatement(
     case "resetTimer":
       state.timerOrigin = state.virtualSeconds;
       break;
+    case "deleteThisClone":
+      // Copies with their own script arrive with the runtime slice; until then this is not a copy.
+      addNote(state, `deleteThisClone: not a clone:${path}`);
+      break;
     case "penDown":
       state.world = penDownWorld(state.world);
       break;
@@ -1157,6 +1161,7 @@ function assertTrigger(trigger: Trigger, path: string): void {
     case "onBackdropSwitch":
     case "onTimerOver":
     case "onLoudnessOver":
+    case "onCloneStart":
       return;
     default: {
       const unknown = trigger as { type?: unknown };
