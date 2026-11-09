@@ -117,6 +117,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
   setPenColor: { es: "Elegir el color del lápiz", en: "Choose the pen colour" },
   setPenSize: { es: "Elegir qué tan gruesa es la línea", en: "Choose how thick the line is" },
   clearPen: { es: "Borrar todo lo dibujado", en: "Erase everything drawn" },
+  stamp: {
+    es: "Dejar una copia del personaje en el lugar donde está",
+    en: "Leave a copy of the character where it is",
+  },
   playNote: { es: "Tocar una nota musical", en: "Play a musical note" },
   playDrum: { es: "Tocar un tambor", en: "Play a drum" },
   setInstrument: { es: "Elegir el instrumento", en: "Choose the instrument" },
@@ -363,6 +367,7 @@ export const TIP_RULES: readonly TipRule[] = [
   { match: named(/^\+ (Color del lápiz|Pen color)/), tip: BLOCK_TIPS["setPenColor"]! },
   { match: named(/^\+ (Grosor del lápiz|Pen size)/), tip: BLOCK_TIPS["setPenSize"]! },
   { match: named(/^\+ (Borrar los trazos|Clear drawing)/), tip: BLOCK_TIPS["clearPen"]! },
+  { match: named(/^\+ (Sellar|Stamp)/), tip: BLOCK_TIPS["stamp"]! },
   { match: named(/^\+ (Tocar nota|Play note)/), tip: BLOCK_TIPS["playNote"]! },
   { match: named(/^\+ (Tocar percusión|Play drum)/), tip: BLOCK_TIPS["playDrum"]! },
   { match: named(/^\+ (Instrumento|Instrument)/), tip: BLOCK_TIPS["setInstrument"]! },

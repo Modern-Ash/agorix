@@ -432,6 +432,15 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "pen_clear" }),
   },
   {
+    type: "pen_stamp",
+    label: "Stamp",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "stamp",
+    legacy: true,
+    createDefaultBlock: (id) => ({ id, type: "pen_stamp" }),
+  },
+  {
     type: "pen_set_color",
     label: "Pen color [C]",
     section: "Looks",

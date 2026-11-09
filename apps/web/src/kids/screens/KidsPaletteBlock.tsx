@@ -44,6 +44,7 @@ const GLYPH: Partial<Record<string, string>> = {
   goTo: "⌖",
   goToTarget: "🎲",
   createCopies: "👯",
+  stamp: "🖨️",
   nextCostume: "👗",
   setRotationStyle: "🔄",
   setX: "⇤",

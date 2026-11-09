@@ -111,6 +111,7 @@ export type StudioStatement = Extract<
       | "setPenColor"
       | "setPenSize"
       | "clearPen"
+      | "stamp"
       | "playNote"
       | "playDrum"
       | "setInstrument"
@@ -453,7 +454,12 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       (STUDIO_EFFECT_DELTAS as readonly number[]).includes(statement.delta)
     );
   if (statement.type === "clearEffects") return true;
-  if (statement.type === "penDown" || statement.type === "penUp" || statement.type === "clearPen")
+  if (
+    statement.type === "penDown" ||
+    statement.type === "penUp" ||
+    statement.type === "clearPen" ||
+    statement.type === "stamp"
+  )
     return true;
   if (statement.type === "setPenColor")
     return (PEN_COLORS as readonly string[]).includes(statement.color);
@@ -785,7 +791,7 @@ export function appendStudioStatement(
   const script = scripts[index]!;
   scripts[index] = { ...script, statements: [...script.statements, statement] };
   // A pen or music block makes the project declare its extension (ADR 0011).
-  const pack = ["penDown", "penUp", "setPenColor", "setPenSize", "clearPen"].includes(
+  const pack = ["penDown", "penUp", "setPenColor", "setPenSize", "clearPen", "stamp"].includes(
     statement.type,
   )
     ? ("pen" as const)

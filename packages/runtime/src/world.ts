@@ -71,11 +71,22 @@ export interface PenSegment {
 }
 
 /** Present only after a pen block ran, so every other world is unchanged (ADR 0011). */
+/** Most stamps a world keeps; past that, a new stamp is skipped. */
+export const PEN_STAMPS_MAX = 30;
+
+export interface PenStamp {
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
+}
+
 export interface PenState {
   readonly down: boolean;
   readonly color: PenColor;
   readonly size: number;
   readonly segments: readonly PenSegment[];
+  /** Copies of the character left on the stage by the stamp block. */
+  readonly stamps?: readonly PenStamp[];
 }
 
 /** Present only after a music block ran, so every other world is unchanged (ADR 0011). */
@@ -220,6 +231,15 @@ function normalizePen(input: Partial<PenState> | undefined): PenState | undefine
       color: item.color,
       size: item.size,
     })),
+    ...(input.stamps === undefined || input.stamps.length === 0
+      ? {}
+      : {
+          stamps: input.stamps.slice(0, PEN_STAMPS_MAX).map((item) => ({
+            x: normalizeCoordinate(item.x),
+            y: normalizeCoordinate(item.y),
+            size: normalizeCoordinate(item.size),
+          })),
+        }),
   };
 }
 
@@ -463,7 +483,20 @@ export function setPenSizeWorld(world: WorldState, size: number): WorldState {
 }
 
 export function clearPenWorld(world: WorldState): WorldState {
-  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { segments: [] });
+  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { segments: [], stamps: [] });
+}
+
+/** Leave a copy of the character where it is; the world is unchanged once the stamps are full. */
+export function stampWorld(world: WorldState): WorldState {
+  const pen = normalizePen(world.pen ?? {})!;
+  const stamps = pen.stamps ?? [];
+  if (stamps.length >= PEN_STAMPS_MAX) return world;
+  return withPen(
+    { ...world, pen },
+    {
+      stamps: [...stamps, { x: world.sprite.x, y: world.sprite.y, size: world.sprite.size ?? 100 }],
+    },
+  );
 }
 
 /**

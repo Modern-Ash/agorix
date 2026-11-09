@@ -83,6 +83,7 @@ export const JAVA_SUPPORT_API = [
   "setPenColor",
   "setPenSize",
   "clearPen",
+  "stamp",
   "playNote",
   "playDrum",
   "setInstrument",
@@ -162,6 +163,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void setPenColor(String color) {}
     void setPenSize(double size) {}
     void clearPen() {}
+    void stamp() {}
     void playNote(double note, double beats) {}
     void playDrum(String drum, double beats) {}
     void setInstrument(String instrument) {}
@@ -618,6 +620,8 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       return line("penUp()");
     case "clearPen":
       return line("clearPen()");
+    case "stamp":
+      return line("stamp()");
     case "setPenColor":
       return line(`setPenColor(${literal(node.color)})`);
     case "setPenSize":
@@ -837,6 +841,7 @@ export const javaLanguagePack: LanguagePack = {
     "setPenColor",
     "setPenSize",
     "clearPen",
+    "stamp",
     "playNote",
     "playDrum",
     "setInstrument",

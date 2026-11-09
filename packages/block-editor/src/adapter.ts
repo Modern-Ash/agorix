@@ -58,6 +58,7 @@ export type BlockType =
   | "music_set_pitch"
   | "music_set_pan"
   | "pen_clear"
+  | "pen_stamp"
   | "procedures_call"
   | "procedures_param"
   | "looks_say"
@@ -586,6 +587,8 @@ function statementFromBlock(
       return { type: "penUp" };
     case "pen_clear":
       return { type: "clearPen" };
+    case "pen_stamp":
+      return { type: "stamp" };
     case "pen_set_color":
       return { type: "setPenColor", color: stringField(block, "color", path) as PenColor };
     case "pen_set_size":
@@ -1075,6 +1078,8 @@ function statementToBlock(
       return { id, type: "pen_up" };
     case "clearPen":
       return { id, type: "pen_clear" };
+    case "stamp":
+      return { id, type: "pen_stamp" };
     case "setPenColor":
       return { id, type: "pen_set_color", fields: { color: statement.color } };
     case "setPenSize":

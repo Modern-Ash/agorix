@@ -60,6 +60,7 @@ import {
   setPenColorWorld,
   setPenSizeWorld,
   clearPenWorld,
+  stampWorld,
   drawPenTrail,
   clearBubbleWorld,
   setRotationStyleWorld,
@@ -666,6 +667,9 @@ function* executeStatement(
       break;
     case "clearPen":
       state.world = clearPenWorld(state.world);
+      break;
+    case "stamp":
+      state.world = stampWorld(state.world);
       break;
     case "goToLayer":
       // The stage order belongs to the multi-actor run; for one sprite this is only a step.

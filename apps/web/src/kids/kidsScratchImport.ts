@@ -557,6 +557,9 @@ class Converter {
       case "pen_clear":
         this.usesPen = true;
         return { type: "clearPen" };
+      case "pen_stamp":
+        this.usesPen = true;
+        return { type: "stamp" };
       case "data_setvariableto":
       case "data_changevariableby": {
         const name = block.fields["VARIABLE"]?.[0];
