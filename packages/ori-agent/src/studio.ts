@@ -392,9 +392,20 @@ function closedIdeaBlock(statement: Statement): boolean {
   }
 }
 
-function allowedForIntent(statement: Statement, script: Script): boolean {
+/** Whether the character the idea is for has the script its copies start with. */
+function hasCopyScript(selected: { program: ProjectProgram; script: Script }): boolean {
+  return selected.program.scripts.some((script) => script.id === `${selected.script.id}-clone`);
+}
+
+function allowedForIntent(statement: Statement, script: Script, copyScript: boolean): boolean {
   return (
     allowed(statement, script) ||
+    // Copies that run the character's own copy script: only when it has one (issue #1311).
+    (statement.type === "createCopies" &&
+      statement.withScript === true &&
+      copyScript &&
+      ((statement.rule === "fall" && statement.count === 5) ||
+        (statement.rule === "spread" && statement.count === 3))) ||
     closedIdeaBlock(statement) ||
     (statement.type === "playSound" && IDEA_SOUND_IDS.includes(statement.soundId)) ||
     (statement.type === "playNote" &&
@@ -517,9 +528,18 @@ const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
 };
 
 /** The blocks of an idea; the greeting is the only one whose words change with the language. */
-function intentBlocks(intent: OriStudioIntent, locale: "es" | "en"): readonly Statement[] {
+function intentBlocks(
+  intent: OriStudioIntent,
+  locale: "es" | "en",
+  copyScript: boolean,
+): readonly Statement[] {
   if (intent === "greet")
     return GREETINGS[locale].map((text) => ({ type: "say" as const, text, seconds: 2 }));
+  // Rain and a crowd: when the character has a copy script, each copy lives by it.
+  if (copyScript && (intent === "rain" || intent === "crowd"))
+    return INTENT_BLOCKS[intent].map((statement) =>
+      statement.type === "createCopies" ? { ...statement, withScript: true as const } : statement,
+    );
   return INTENT_BLOCKS[intent];
 }
 
@@ -533,7 +553,7 @@ export function proposeOriStudioIntent(
 ): ProgramProposal {
   const selected = target(context);
   if (!isOriStudioIntent(intent)) throw new Error("unknown intent");
-  const statements = intentBlocks(intent, context.locale);
+  const statements = intentBlocks(intent, context.locale, hasCopyScript(selected));
   const first = selected.script.statements.length;
   if (first + statements.length > MAX_STATEMENTS) throw new Error("not enough room");
   const proposal = createProgramProposal({
@@ -578,7 +598,7 @@ export function validateOriStudioIntentProposal(
       (operation) =>
         operation.type !== "appendStatement" ||
         operation.scriptIndex !== selected.index ||
-        !allowedForIntent(operation.statement, selected.script),
+        !allowedForIntent(operation.statement, selected.script, hasCopyScript(selected)),
     ) ||
     proposal.affectedActorIds?.join() !== context.actorId ||
     proposal.affectedScriptIds?.join() !== selected.script.id ||

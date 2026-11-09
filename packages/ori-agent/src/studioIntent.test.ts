@@ -166,3 +166,52 @@ describe("Studio goal to blocks", () => {
     });
   });
 });
+
+// Issue #1311: when the character has a script for its copies, rain and a crowd use it.
+describe("Studio rain and crowd with a copy script", () => {
+  const withCopyScript: ProjectProgram = {
+    ...program,
+    scripts: [
+      ...program.scripts,
+      {
+        id: "studio-actor-1-nova-clone",
+        trigger: { type: "onCloneStart" },
+        statements: [{ type: "move", steps: 20 }],
+      },
+    ],
+  };
+  const scripted = { ...context, program: withCopyScript };
+
+  it("proposes copies that run the copy script, and the child still reviews them", () => {
+    for (const intent of ["rain", "crowd"] as const) {
+      const proposal = proposeOriStudioIntent(scripted, intent);
+      const copies = proposal.operations.flatMap((operation) =>
+        operation.type === "appendStatement" && operation.statement.type === "createCopies"
+          ? [operation.statement]
+          : [],
+      );
+      expect(copies).toHaveLength(1);
+      expect(copies[0]!.withScript).toBe(true);
+      const review = validateOriStudioIntentProposal(scripted, proposal);
+      // Nothing changed until accepted; once accepted, the program still validates.
+      expect(withCopyScript.scripts[0]!.statements).toHaveLength(1);
+      expect(acceptProposal(withCopyScript, review).program.scripts[0]!.statements).toHaveLength(
+        1 + proposal.operations.length,
+      );
+    }
+  });
+
+  it("keeps plain copies without a copy script, and refuses scripted copies there", () => {
+    const plain = proposeOriStudioIntent(context, "rain");
+    expect(
+      plain.operations.some(
+        (operation) =>
+          operation.type === "appendStatement" &&
+          operation.statement.type === "createCopies" &&
+          operation.statement.withScript === true,
+      ),
+    ).toBe(false);
+    const forged = proposeOriStudioIntent(scripted, "rain");
+    expect(() => validateOriStudioIntentProposal(context, forged)).toThrow();
+  });
+});

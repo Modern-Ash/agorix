@@ -152,3 +152,87 @@ describe("Scratch import", () => {
     });
   });
 });
+
+describe("Scratch clones (#1311)", () => {
+  /** A sprite that makes clones of itself, and the script each clone runs. */
+  function cloneProject(withHat: boolean, deleteOutside = false) {
+    return {
+      targets: [
+        { isStage: true, name: "Stage", variables: {}, blocks: {} },
+        {
+          isStage: false,
+          name: "Rain",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          blocks: {
+            flag: block("event_whenflagclicked", { next: "make", topLevel: true }),
+            make: block("control_create_clone_of", {
+              next: deleteOutside ? "gone" : null,
+              inputs: { CLONE_OPTION: [1, "who"] },
+            }),
+            who: block("control_create_clone_of_menu", {
+              fields: { CLONE_OPTION: ["_myself_", null] },
+              shadow: true,
+            }),
+            gone: block("control_delete_this_clone"),
+            ...(withHat
+              ? {
+                  hat: block("control_start_as_clone", { next: "fall", topLevel: true }),
+                  fall: block("motion_movesteps", { next: "edge", inputs: { STEPS: lit(10) } }),
+                  edge: block("control_delete_this_clone"),
+                }
+              : {}),
+          },
+        },
+      ],
+    };
+  }
+
+  it("brings the clone hat across as the character's copy script, and copies keep running it", () => {
+    const result = convertScratchProject(cloneProject(true));
+    expect(result.program.scripts.map((script) => script.id)).toEqual([
+      "studio-actor-1-nova",
+      "studio-actor-1-nova-clone",
+    ]);
+    expect(result.program.scripts[0]!.statements[0]).toMatchObject({
+      type: "createCopies",
+      withScript: true,
+    });
+    expect(result.program.scripts[1]!.trigger.type).toBe("onCloneStart");
+    expect(result.program.scripts[1]!.statements.map((item) => item.type)).toEqual([
+      "move",
+      "deleteThisClone",
+    ]);
+    // Nothing about clones is reported as left behind.
+    expect(result.report.dropped.map((item) => item.what).join(" ")).not.toMatch(/clone/);
+    // And the result runs: copies are born, run it and end.
+    const creative = creativeForStudio(result.program, "forest", "es");
+    const run = runMultiActorProgram(result.program, creative);
+    expect(run.activations.filter((item) => item.scriptId.endsWith("-clone"))).toHaveLength(3);
+    expect(run.actors).toHaveLength(1);
+  });
+
+  it("makes plain copies when the sprite has no clone hat, as before", () => {
+    const result = convertScratchProject(cloneProject(false));
+    expect(result.program.scripts).toHaveLength(1);
+    expect(result.program.scripts[0]!.statements[0]).toEqual({
+      type: "createCopies",
+      count: 3,
+      rule: "spread",
+    });
+    expect(result.report.dropped.map((item) => item.what).join(" ")).toMatch(/plain copies/);
+  });
+
+  it("leaves a delete this clone outside a clone script behind, and says so", () => {
+    const result = convertScratchProject(cloneProject(true, true));
+    expect(result.program.scripts[0]!.statements.map((item) => item.type)).toEqual([
+      "createCopies",
+    ]);
+    expect(result.report.dropped.map((item) => item.what)).toContain(
+      "control_delete_this_clone (outside a clone script)",
+    );
+  });
+});

@@ -17,7 +17,12 @@ import {
   STUDIO_TURN_AMOUNTS,
   STUDIO_WAIT_SECONDS,
 } from "./kidsStudioChoices.js";
-import { STUDIO_EDGE_CONDITION, studioActorId, validateStudioProgram } from "./kidsStudioModel.js";
+import {
+  STUDIO_EDGE_CONDITION,
+  cloneScriptId,
+  studioActorId,
+  validateStudioProgram,
+} from "./kidsStudioModel.js";
 
 /**
  * Brings a Scratch 3 project (`project.json` of an `.sb3`) into the Kids free scene. Scratch is
@@ -97,6 +102,10 @@ function parseBlock(raw: unknown): ScratchBlock | undefined {
 }
 
 class Converter {
+  /** The sprite being read has a "when I start as a clone" script, so its clones keep behaving. */
+  spriteHasCloneHat = false;
+  /** The stack being read is that script, where "delete this clone" means something. */
+  inCloneScript = false;
   adjusted = 0;
   readonly dropped = new Map<string, number>();
   readonly variableIds = new Map<string, string>();
@@ -396,13 +405,20 @@ class Converter {
           style: style === "left-right" ? "leftRight" : style === "don't rotate" ? "none" : "all",
         };
       }
-      case "control_create_clone_of":
-        // Scratch's clones run scripts of their own; here the closest thing is a few copies.
+      case "control_create_clone_of": {
         this.adjusted += 1;
+        // A clone of itself, in a sprite that has the clone hat, keeps running that script.
+        if (this.menu(block, "CLONE_OPTION") === "_myself_" && this.spriteHasCloneHat)
+          return { type: "createCopies", count: 3, rule: "spread", withScript: true };
         this.drop(
           "control_create_clone_of (clones with scripts of their own: made as plain copies)",
         );
         return { type: "createCopies", count: 3, rule: "spread" };
+      }
+      case "control_delete_this_clone":
+        if (this.inCloneScript) return { type: "deleteThisClone" };
+        this.drop("control_delete_this_clone (outside a clone script)");
+        return undefined;
       case "motion_ifonedgebounce":
         return { type: "bounceOnEdge" };
       case "motion_goto": {
@@ -648,6 +664,8 @@ class Converter {
   }
 }
 
+const CLONE_HAT = "control_start_as_clone";
+
 const HAT_ORDER = [
   "event_whenflagclicked",
   "event_whenkeypressed",
@@ -712,6 +730,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   for (const name of names.slice(3)) converter.drop(`variable "${name}" (more than three)`);
 
   const scripts: Script[] = [];
+  const cloneScripts: Script[] = [];
   const positions: Record<string, { x: number; y: number; direction: number; size: number }> = {};
   const baseline: ProjectProgram = {
     schema: SCHEMA_VERSION,
@@ -726,6 +745,11 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
       if (block !== undefined) blocks.set(id, block);
     }
     converter.blocks = blocks;
+    const cloneHat = [...blocks.values()].find(
+      (block) => block.topLevel && block.opcode === CLONE_HAT,
+    );
+    converter.spriteHasCloneHat = cloneHat !== undefined;
+    converter.inCloneScript = false;
     const supported = [...blocks.entries()]
       .filter(([, block]) => block.topLevel && HAT_ORDER.includes(block.opcode))
       .sort((a, b) => HAT_ORDER.indexOf(a[1].opcode) - HAT_ORDER.indexOf(b[1].opcode));
@@ -740,7 +764,18 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
       imported = 1;
       break;
     }
-    // The scene gives each character one script; every other stack is left behind and counted.
+    // A character may also have the script its copies start with: the first clone hat's stack.
+    if (cloneHat !== undefined) {
+      converter.inCloneScript = true;
+      cloneScripts.push({
+        id: cloneScriptId(index + 1, character.id),
+        trigger: { type: "onCloneStart" },
+        statements: converter.stack(cloneHat.next),
+      });
+      converter.inCloneScript = false;
+      imported += 1;
+    }
+    // The scene gives each character one script (and a copy script); the rest is left behind.
     const stacks = [...blocks.values()].filter((block) => block.topLevel).length;
     for (let i = 0; i < stacks - imported; i += 1) converter.drop("another script of the sprite");
     const id = `studio-actor-${index + 1}-${character.id}`;
@@ -767,10 +802,12 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   const withData: ProjectProgram = {
     ...baseline,
     ...(variables.length > 0 ? { variables } : {}),
-    scripts: scripts.map((script) => ({ ...script, statements: [] })),
+    scripts: [...scripts, ...cloneScripts].map((script) => ({ ...script, statements: [] })),
   };
   const draft: ProjectProgram = converter.usesPen ? { ...withData, extensions: ["pen"] } : withData;
-  const legal = scripts.map((script, position) => legalize(script, draft, position, converter));
+  const legal = [...scripts, ...cloneScripts].map((script, position) =>
+    legalize(script, draft, position, converter),
+  );
   const program = validateStudioProgram({ ...draft, scripts: legal });
   const kept = legal.reduce((sum, script) => sum + script.statements.length, 0);
 
