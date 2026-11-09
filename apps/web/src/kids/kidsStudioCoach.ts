@@ -45,6 +45,8 @@ export function directionBetween(from: Point, to: Point): Direction {
 
 export interface ActorFacts {
   readonly steps: number;
+  /** How many copies of this actor are on the stage when the run ends. */
+  readonly copies: number;
   readonly start: Point;
   readonly end: Point;
   readonly direction: Direction;
@@ -152,6 +154,7 @@ export function factsOfRun(run: MultiActorRunResult, actorId: string): ActorFact
   const last = entries.at(-1);
   return {
     steps: entries.length,
+    copies: run.actors.find((entry) => entry.id === actorId)?.world.copies?.length ?? 0,
     start: { x: Math.round(start.x), y: Math.round(start.y) },
     end: { x: Math.round(end.x), y: Math.round(end.y) },
     direction: directionBetween(start, end),
@@ -229,6 +232,77 @@ export function judgePrediction(
         : `You thought ${name} would go ${label[predicted]}, but it went ${label[facts.direction]}.`,
   };
 }
+
+/** What a child can be asked to guess as a number, when the program has a block that makes one. */
+export type QuantityKind = "copies" | "steps";
+
+/** A number worth guessing: how many copies, or how many blocks run when something repeats. */
+export function quantityKindFor(statementTypes: readonly string[]): QuantityKind | null {
+  if (statementTypes.includes("createCopies")) return "copies";
+  if (statementTypes.includes("repeat") && !statementTypes.includes("forever")) return "steps";
+  return null;
+}
+
+export const QUANTITY_MAX = 99;
+
+/** The guess against what the run did. The number comes from the run, never from a model. */
+export function judgeQuantity(
+  kind: QuantityKind,
+  predicted: number,
+  facts: ActorFacts,
+  name: string,
+  locale: Locale,
+): { readonly match: boolean; readonly text: string } {
+  const actual = kind === "copies" ? facts.copies : facts.steps;
+  const match = predicted === actual;
+  const es = locale === "es";
+  const what =
+    kind === "copies"
+      ? es
+        ? `copias de ${name}`
+        : `copies of ${name}`
+      : es
+        ? "bloques ejecutados"
+        : "blocks run";
+  return {
+    match,
+    text: match
+      ? es
+        ? `Pensaste ${predicted} ${what} y fueron ${actual}.`
+        : `You thought ${predicted} ${what} and it was ${actual}.`
+      : es
+        ? `Pensaste ${predicted} ${what}, pero fueron ${actual}.`
+        : `You thought ${predicted} ${what}, but it was ${actual}.`,
+  };
+}
+
+export type RunChange = "place" | "steps" | "copies" | "same";
+export const RUN_CHANGES: readonly RunChange[] = ["place", "steps", "copies", "same"];
+
+/** What differs between two runs of one character; all that apply, or `same` when nothing does. */
+export function changesBetween(before: ActorFacts, after: ActorFacts): readonly RunChange[] {
+  const changes: RunChange[] = [];
+  if (Math.abs(before.end.x - after.end.x) >= 1 || Math.abs(before.end.y - after.end.y) >= 1)
+    changes.push("place");
+  if (before.steps !== after.steps) changes.push("steps");
+  if (before.copies !== after.copies) changes.push("copies");
+  return changes.length > 0 ? changes : ["same"];
+}
+
+export const RUN_CHANGE_LABEL: Record<Locale, Record<RunChange, string>> = {
+  es: {
+    place: "Terminó en otro lugar",
+    steps: "Se ejecutaron otros bloques",
+    copies: "Hay otra cantidad de copias",
+    same: "Salió igual",
+  },
+  en: {
+    place: "It ended somewhere else",
+    steps: "A different number of blocks ran",
+    copies: "There are a different number of copies",
+    same: "It came out the same",
+  },
+};
 
 export type Reflection =
   | { readonly kind: "expected"; readonly question: string }

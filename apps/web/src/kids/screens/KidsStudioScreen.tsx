@@ -103,12 +103,21 @@ import {
 import {
   factsOfRun,
   judgePrediction,
+  judgeQuantity,
+  quantityKindFor,
+  type ActorFacts,
+  type QuantityKind,
   previewCandidate,
   reflectionFor,
   type CandidatePreview,
   type Direction,
 } from "../kidsStudioCoach.js";
-import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioCoach.js";
+import {
+  StudioCoach,
+  StudioIntentPicker,
+  StudioPrediction,
+  StudioQuantity,
+} from "./KidsStudioCoach.js";
 import { KidsPaletteBlock, PaletteRulesContext } from "./KidsPaletteBlock.js";
 import { needHint, paletteFacts, unmetNeed } from "../kidsPaletteRules.js";
 import { editableFields, parseFieldValue } from "../kidsBlockProperties.js";
@@ -1342,6 +1351,9 @@ export function KidsStudioScreen({
     ? sensorTargetId
     : otherActors[0]?.id;
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
+  const quantityKindForScript = quantityKindFor(
+    script?.statements.map((statement) => statement.type) ?? [],
+  );
   const scriptIndexOfActor = script === undefined ? -1 : history.current.scripts.indexOf(script);
   const selectedVariableId = history.current.variables?.some((item) => item.id === variableId)
     ? variableId
@@ -1403,6 +1415,16 @@ export function KidsStudioScreen({
   } | null>(null);
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
+  const [quantityGuess, setQuantityGuess] = useState<number | null>(null);
+  const [quantityForRun, setQuantityForRun] = useState<{
+    readonly kind: QuantityKind;
+    readonly guess: number;
+  } | null>(null);
+  // Facts of the last two runs of a character, to ask what changed after the child edits.
+  const runFacts = useRef<{
+    previous: { actorId: string; facts: ActorFacts; programJson: string } | null;
+    current: { actorId: string; facts: ActorFacts; programJson: string } | null;
+  }>({ previous: null, current: null });
   const [runCount, setRunCount] = useState(0);
   // What the runtime has shown about this child's concepts sets Ori's pace (issue #611).
   const pacedPolicy = useMemo(
@@ -3011,6 +3033,25 @@ export function KidsStudioScreen({
       // The child's guess is about where the actor ends up; match is what the evidence keeps.
       recordKidsPrediction("yes", judged.match ? "success" : "short");
     }
+    const quantityKind = quantityKindForScript;
+    if (quantityGuess !== null && quantityKind && actor) {
+      const judged = judgeQuantity(
+        quantityKind,
+        quantityGuess,
+        factsOfRun(result, activeActorId),
+        actor.name,
+        locale,
+      );
+      recordKidsPrediction("yes", judged.match ? "success" : "short");
+    }
+    runFacts.current = {
+      previous: runFacts.current.current,
+      current: {
+        actorId: activeActorId,
+        facts: factsOfRun(result, activeActorId),
+        programJson: JSON.stringify(history.current),
+      },
+    };
     setRunCount((count) => count + 1);
   }
 
@@ -3099,6 +3140,11 @@ export function KidsStudioScreen({
         setPlaying(true);
       }
       setPredictedForRun(prediction);
+      setQuantityForRun(
+        quantityGuess !== null && quantityKindForScript
+          ? { kind: quantityKindForScript, guess: quantityGuess }
+          : null,
+      );
       setEvents([{ type: "start" }]);
       setError(false);
     } catch {
@@ -4265,6 +4311,15 @@ export function KidsStudioScreen({
                 value={prediction}
                 onChange={setPrediction}
               />
+              {quantityKindForScript ? (
+                <StudioQuantity
+                  locale={locale}
+                  name={actor?.name ?? ""}
+                  kind={quantityKindForScript}
+                  value={quantityGuess}
+                  onChange={setQuantityGuess}
+                />
+              ) : null}
               <p className="kids-note">
                 {copy.facts}:{" "}
                 {run
@@ -4435,6 +4490,16 @@ export function KidsStudioScreen({
                 name={actor.name}
                 facts={factsOfRun(run, activeActorId)}
                 predicted={predictedForRun}
+                quantity={quantityForRun}
+                before={
+                  runFacts.current.previous &&
+                  runFacts.current.current &&
+                  runFacts.current.previous.actorId === activeActorId &&
+                  runFacts.current.current.actorId === activeActorId &&
+                  runFacts.current.previous.programJson !== runFacts.current.current.programJson
+                    ? runFacts.current.previous.facts
+                    : null
+                }
                 onExplained={() => {
                   recordKidsReflection("verification");
                   recordMastery({
