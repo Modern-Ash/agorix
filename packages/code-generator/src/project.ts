@@ -172,6 +172,8 @@ function formatExpression(
       return "sprite.direction";
     case "yPosition":
       return "sprite.y";
+    case "sizePercent":
+      return "sprite.size";
     case "timer":
       return "timer()";
     case "keyDown":

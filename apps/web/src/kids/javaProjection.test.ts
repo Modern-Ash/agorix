@@ -201,7 +201,11 @@ const statements: Statement[] = [
         then: [
           {
             type: "if",
-            condition: { type: "greaterThan", left: { type: "xPosition" }, right: num(0) },
+            condition: {
+              type: "and",
+              left: { type: "greaterThan", left: { type: "xPosition" }, right: num(0) },
+              right: { type: "greaterThan", left: { type: "sizePercent" }, right: num(100) },
+            },
             then: [{ type: "show" }],
           },
         ],

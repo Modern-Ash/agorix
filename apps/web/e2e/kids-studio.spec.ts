@@ -858,6 +858,30 @@ test("free scene checks a guess about how many copies and asks what changed afte
   await expect(page.getByTestId("coach-change-reply")).toContainText("Eso es");
 });
 
+test("free scene builds a condition on the character's size", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByLabel("Cambiar tamaño").selectOption("50");
+  await page.getByRole("button", { name: "+ Cambiar tamaño" }).click();
+  await page.getByLabel("Primera condición").selectOption("size");
+  await page.getByLabel("Unir con").selectOption("none");
+  await page.getByTestId("compound-if").click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-studio-stage-actor, .kids-studio-stage").first()).toBeVisible();
+  await expect(page.getByText(/Si \(tamaño > 100\)/).last()).toBeVisible();
+});
+
 test("free scene keeps a word, says it and reopens with the word block", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");

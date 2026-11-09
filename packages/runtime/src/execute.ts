@@ -366,6 +366,8 @@ function evaluateExpression(
       return state.world.sprite.heading;
     case "yPosition":
       return state.world.sprite.y;
+    case "sizePercent":
+      return state.world.sprite.size ?? 100;
     case "timer":
       return state.virtualSeconds;
     case "keyDown":

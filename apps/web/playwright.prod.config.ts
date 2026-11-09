@@ -13,5 +13,7 @@ export default defineConfig({
   retries: 1,
   timeout: 45_000,
   reporter: [["list"]],
-  use: { baseURL },
+  // A flake that passes on its retry leaves nothing behind, so keep the trace of every failed
+  // attempt (the first run of a flaky test included) to find the cause the next time.
+  use: { baseURL, trace: "retain-on-failure" },
 });

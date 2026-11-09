@@ -160,6 +160,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "x_position",
         "direction",
         "y_position",
+        "size_percent",
         "say",
         "say_for",
         "think",
@@ -711,6 +712,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "direction()";
     case "yPosition":
       return "y_position()";
+    case "sizePercent":
+      return "size_percent()";
     case "timer":
       return "timer()";
     case "keyDown":
@@ -994,6 +997,7 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "x_position",
   "direction",
   "y_position",
+  "size_percent",
   "say",
   "say_for",
   "think",

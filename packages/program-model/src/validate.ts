@@ -372,6 +372,8 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "direction" };
     case "yPosition":
       return { type: "yPosition" };
+    case "sizePercent":
+      return { type: "sizePercent" };
     case "timer":
       return { type: "timer" };
     case "mouseX":

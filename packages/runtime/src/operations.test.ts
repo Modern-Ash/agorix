@@ -146,6 +146,7 @@ describe("runtime operation allowlist", () => {
       "param",
       "random",
       "randomInteger",
+      "sizePercent",
       "subtract",
       "textContains",
       "textLength",

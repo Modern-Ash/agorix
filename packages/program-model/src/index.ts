@@ -48,6 +48,7 @@ export type {
   ProcedureParam,
   ProcedureParamId,
   ParamExpression,
+  SizePercentExpression,
   TimerExpression,
   ExtensionId,
   PenColor,

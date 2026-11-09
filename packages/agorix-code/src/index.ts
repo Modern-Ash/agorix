@@ -620,6 +620,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "direction";
     case "yPosition":
       return "y position";
+    case "sizePercent":
+      return "size";
     case "timer":
       return "timer";
     case "keyDown":

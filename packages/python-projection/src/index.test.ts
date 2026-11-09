@@ -99,6 +99,7 @@ describe("Python projection", () => {
         "x_position",
         "direction",
         "y_position",
+        "size_percent",
         "say",
         "say_for",
         "think",

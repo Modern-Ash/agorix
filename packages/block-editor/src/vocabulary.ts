@@ -353,6 +353,14 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "sensing_y_position" }),
   },
   {
+    type: "looks_size",
+    label: "Size",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "size",
+    createDefaultBlock: (id) => ({ id, type: "looks_size" }),
+  },
+  {
     type: "sensing_timer",
     label: "Timer",
     section: "Check",
