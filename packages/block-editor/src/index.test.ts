@@ -102,6 +102,7 @@ describe("block-editor", () => {
       "Mouse X",
       "Mouse Y",
       "Mouse is down",
+      "[A] contains [B]",
       "[N] + [N]",
       "[N] - [N]",
       "[N] * [N]",
@@ -116,12 +117,18 @@ describe("block-editor", () => {
       "[N]",
       "true/false",
       "score",
+      "word",
+      "word variable",
+      "join [A] [B]",
+      "length of [A]",
+      "letter [N] of [A]",
+      "Set word to [A]",
       "Set score to [N]",
       "Change score by [N]",
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(54);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(61);
   });
 
   it("creates safe defaults for every required POC block", () => {

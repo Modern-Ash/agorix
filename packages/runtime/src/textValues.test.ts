@@ -5,7 +5,9 @@ import {
   type ProjectProgram,
   type Statement,
 } from "@agorix/program-model";
-import { runProgram } from "./index.js";
+import { createWorldState, runProgram as run } from "./index.js";
+
+const runProgram = (program: ProjectProgram) => run(program, createWorldState());
 
 const text = (value: string): Expression => ({ type: "textLiteral", value });
 const program = (statements: Statement[], initialValue = ""): ProjectProgram => ({

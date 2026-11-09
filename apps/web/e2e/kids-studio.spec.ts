@@ -858,6 +858,37 @@ test("free scene checks a guess about how many copies and asks what changed afte
   await expect(page.getByTestId("coach-change-reply")).toContainText("Eso es");
 });
 
+test("free scene keeps a word, says it and reopens with the word block", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByLabel("Nombre", { exact: true }).fill("Palabra");
+  await page.getByRole("button", { name: "+ Crear palabra" }).click();
+  await page.getByLabel("Escribí la palabra").fill("luna");
+  await page.getByRole("button", { name: "+ Guardar palabra" }).click();
+  await page.getByRole("button", { name: "+ Decir la palabra" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Palabra: luna").first()).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.getByText(/Guardar palabra: Palabra "luna"/).first()).toBeVisible();
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {
