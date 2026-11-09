@@ -37,6 +37,8 @@ const INTENT_LABEL: Record<Locale, Record<OriStudioIntent, string>> = {
     follow: "Ir hacia el ratón",
     greet: "Saludar",
     rain: "Lluvia de copias",
+    rainFalls: "Lluvia que cae y desaparece",
+    crowdJumps: "Multitud que salta y desaparece",
     crowd: "Hacer una multitud",
   },
   en: {
@@ -56,6 +58,8 @@ const INTENT_LABEL: Record<Locale, Record<OriStudioIntent, string>> = {
     follow: "Go toward the mouse",
     greet: "Say hello",
     rain: "Make it rain copies",
+    rainFalls: "Rain that falls and disappears",
+    crowdJumps: "A crowd that jumps and disappears",
     crowd: "Make a crowd",
   },
 };

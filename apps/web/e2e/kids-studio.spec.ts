@@ -731,6 +731,32 @@ test("an idea that plays with how the character looks, like jumping, can be used
   await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
 });
 
+test("an idea that brings the script of its copies shows it whole, adds it only when used, and the copies run it", async ({
+  page,
+}) => {
+  await openStudio(page, "9-12");
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
+  await page.getByRole("button", { name: "Lluvia que cae y desaparece" }).click();
+  await expect(page.getByTestId("intent-card")).toContainText("Ori propone 6 bloques");
+  // Both the blocks for the character and the whole copy script are ghosts, nothing is added yet.
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(2);
+  await expect(page.getByTestId("ori-ghost-copy-block")).toHaveCount(4);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await expect(page.getByTestId("copy-script-add")).toBeVisible();
+  await page.getByTestId("intent-card").getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.getByTestId("ori-ghost-copy-block")).toHaveCount(0);
+  const panel = page.getByRole("region", { name: "Guion de las copias" });
+  await expect(panel.getByTestId("copy-script-blocks").locator("li")).toHaveCount(4);
+  await expect(page.locator(".kids-program-block").first()).toContainText("con su guion");
+  // It is offered only to a character without a copy script.
+  await expect(page.getByRole("button", { name: "Lluvia que cae y desaparece" })).toHaveCount(0);
+  // One undo takes the whole idea back.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.getByTestId("copy-script-blocks")).toHaveCount(0);
+  await expect(page.getByTestId("copy-script-add")).toBeVisible();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+});
+
 test("Ori checks a prediction and explains the run from its trace, by age band", async ({
   page,
 }) => {

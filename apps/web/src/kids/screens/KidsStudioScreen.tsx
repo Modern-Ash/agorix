@@ -87,6 +87,7 @@ import {
 } from "@agorix/proposals";
 import {
   ORI_STUDIO_INTENTS,
+  oriIdeaCopyScript,
   oriIntentsWithin,
   proposeOriStudioIntent,
   validateOriStudioIntentProposal,
@@ -310,6 +311,7 @@ const COPY = {
     copiesCount: "Cuántas copias",
     copiesRule: "Cómo se ponen",
     copiesWithScript: "con su guion",
+    copyScriptByOri: "Guion de las copias que propone Ori",
     goToRandom: "Ir a un lugar al azar",
     goToMouse: "Ir al puntero",
     messageAndWait: "Enviar mensaje y esperar",
@@ -625,6 +627,7 @@ const COPY = {
     copiesCount: "How many copies",
     copiesRule: "How they are placed",
     copiesWithScript: "with their script",
+    copyScriptByOri: "Copy script Ori suggests",
     goToRandom: "Go to a random spot",
     goToMouse: "Go to the pointer",
     messageAndWait: "Broadcast message and wait",
@@ -1532,6 +1535,8 @@ export function KidsStudioScreen({
   const [intentPlan, setIntentPlan] = useState<{
     readonly intent: OriStudioIntent;
     readonly statements: readonly Statement[];
+    /** The script Ori would add for the copies; shown whole before anything is accepted. */
+    readonly copyScript: readonly Statement[];
     readonly preview: CandidatePreview | null;
     /** Ori's idea applied to a copy, only to listen to it: the child's program is untouched. */
     readonly candidate: ProjectProgram;
@@ -3127,6 +3132,9 @@ export function KidsStudioScreen({
         candidate: review.candidateProgram,
         statements: proposal.operations.flatMap((operation) =>
           operation.type === "appendStatement" ? [operation.statement] : [],
+        ),
+        copyScript: proposal.operations.flatMap((operation) =>
+          operation.type === "addScript" ? operation.script.statements : [],
         ),
         preview: previewCandidate(
           history.current,
@@ -5611,6 +5619,23 @@ export function KidsStudioScreen({
                   </ol>
                   {script?.statements.length === 0 ? (
                     <p className="kids-note">{copy.noBlocks}</p>
+                  ) : null}
+                  {intentPlan && intentPlan.copyScript.length > 0 ? (
+                    <section aria-label={copy.copyScriptByOri} data-testid="ori-copy-script">
+                      <h3>{copy.copyScriptByOri}</h3>
+                      <ol>
+                        {intentPlan.copyScript.map((statement, index) => (
+                          <li
+                            key={`copy-ghost-${index}`}
+                            className="kids-ghost-block"
+                            data-testid="ori-ghost-copy-block"
+                          >
+                            <span>{blockLabel(statement)}</span>
+                            <small>{copy.ghostNote}</small>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
                   ) : null}
                   <KidsCopyScript
                     history={history}
@@ -8196,7 +8221,10 @@ export function KidsStudioScreen({
                           ageBand ? bandProfile(ageBand).oriMaxBlocks : 8,
                         ),
                       }).includes(intent) &&
-                      (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)),
+                      (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)) &&
+                      // The ideas that bring their own copy script are for a character without one.
+                      (oriIdeaCopyScript(intent) === undefined ||
+                        !hasStudioCloneScript(history.current, activeActorId)),
                   )}
                   disabled={oriBusy}
                   onPick={startIntent}
@@ -8205,8 +8233,8 @@ export function KidsStudioScreen({
                   <div className="kids-ori-proposal" data-testid="intent-card">
                     <p>
                       {locale === "es"
-                        ? `Ori propone ${intentPlan.statements.length} bloques para lo que querés lograr.`
-                        : `Ori suggests ${intentPlan.statements.length} blocks for your goal.`}
+                        ? `Ori propone ${intentPlan.statements.length + intentPlan.copyScript.length} bloques para lo que querés lograr.`
+                        : `Ori suggests ${intentPlan.statements.length + intentPlan.copyScript.length} blocks for your goal.`}
                     </p>
                     {intentPlan.preview ? (
                       <p className="kids-note" data-testid="ori-evidence">
