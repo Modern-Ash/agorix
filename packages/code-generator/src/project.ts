@@ -383,6 +383,9 @@ function projectStatement(
     case "setPenSize":
       write(writer, `${pad}pen.setSize(${statement.size});\n`);
       return;
+    case "setPenTransparency":
+      write(writer, `${pad}pen.setTransparency(${statement.percent});\n`);
+      return;
     case "playNote":
       write(writer, `${pad}music.playNote(${statement.note}, ${statement.beats});\n`);
       return;

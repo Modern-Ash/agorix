@@ -71,6 +71,7 @@ const FAMILY: Record<string, string> = {
   penUp: "pen",
   setPenColor: "pen",
   setPenSize: "pen",
+  setPenTransparency: "pen",
   clearPen: "pen",
   stamp: "pen",
   playNote: "music",

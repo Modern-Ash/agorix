@@ -4,12 +4,14 @@ import {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_TRANSPARENCIES,
   SCHEMA_VERSION,
 } from "./schema.js";
 import { isChoicePromptId } from "./choiceCatalog.js";
 import type {
   ExtensionId,
   PenColor,
+  PenTransparency,
   Expression,
   MathFunction,
   ProgramList,
@@ -659,6 +661,18 @@ function validateStatement(
         fail("INVALID_FIELD_TYPE", `${path}.color`, "expected a pen colour", input.color);
       }
       return { type: "setPenColor", color: input.color as PenColor };
+    }
+    case "setPenTransparency": {
+      state.usedExtensions.add("pen");
+      if (!(PEN_TRANSPARENCIES as readonly unknown[]).includes(input.percent)) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.percent`,
+          "expected 0, 25, 50 or 75 percent",
+          input.percent,
+        );
+      }
+      return { type: "setPenTransparency", percent: input.percent as PenTransparency };
     }
     case "setPenSize": {
       state.usedExtensions.add("pen");

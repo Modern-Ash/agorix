@@ -120,6 +120,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
   penUp: { es: "Subir el lápiz: deja de dibujar", en: "Pen up: stops drawing" },
   setPenColor: { es: "Elegir el color del lápiz", en: "Choose the pen colour" },
   setPenSize: { es: "Elegir qué tan gruesa es la línea", en: "Choose how thick the line is" },
+  setPenTransparency: {
+    es: "Elegir qué tan transparente es la línea",
+    en: "Choose how see-through the line is",
+  },
   clearPen: { es: "Borrar todo lo dibujado", en: "Erase everything drawn" },
   stamp: {
     es: "Dejar una copia del personaje en el lugar donde está",
@@ -371,6 +375,10 @@ export const TIP_RULES: readonly TipRule[] = [
   { match: named(/^\+ (Subir el lápiz|Pen up)/), tip: BLOCK_TIPS["penUp"]! },
   { match: named(/^\+ (Color del lápiz|Pen color)/), tip: BLOCK_TIPS["setPenColor"]! },
   { match: named(/^\+ (Grosor del lápiz|Pen size)/), tip: BLOCK_TIPS["setPenSize"]! },
+  {
+    match: named(/^\+ (Transparencia del lápiz|Pen transparency)/),
+    tip: BLOCK_TIPS["setPenTransparency"]!,
+  },
   { match: named(/^\+ (Borrar los trazos|Clear drawing)/), tip: BLOCK_TIPS["clearPen"]! },
   { match: named(/^\+ (Sellar|Stamp)/), tip: BLOCK_TIPS["stamp"]! },
   { match: named(/^\+ (Tocar nota|Play note)/), tip: BLOCK_TIPS["playNote"]! },

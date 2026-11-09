@@ -7,6 +7,7 @@ import {
   MUSIC_PITCH_MAX,
   MUSIC_TEMPO_MAX,
   MUSIC_TEMPO_MIN,
+  PEN_TRANSPARENCIES,
   SPRITE_SIZE_MAX,
   SPRITE_SIZE_MIN,
   TEXT_VALUE_MAX_LENGTH,
@@ -75,6 +76,7 @@ export interface PenSegment {
   readonly y2: number;
   readonly color: PenColor;
   readonly size: number;
+  readonly transparency?: number;
 }
 
 /** Present only after a pen block ran, so every other world is unchanged (ADR 0011). */
@@ -89,6 +91,8 @@ export interface PenStamp {
 
 export interface PenState {
   readonly down: boolean;
+  /** Percent see-through; absent (and treated as 0) until a block sets it. */
+  readonly transparency?: number;
   readonly color: PenColor;
   readonly size: number;
   readonly segments: readonly PenSegment[];
@@ -241,6 +245,10 @@ function normalizePen(input: Partial<PenState> | undefined): PenState | undefine
   if (!(PEN_COLORS as readonly string[]).includes(color)) {
     throw new RangeError(`unknown pen colour: ${color}`);
   }
+  const transparency = input.transparency ?? 0;
+  if (!(PEN_TRANSPARENCIES as readonly number[]).includes(transparency)) {
+    throw new RangeError(`pen transparency out of range: ${transparency}`);
+  }
   const size = input.size ?? 4;
   if (!Number.isInteger(size) || size < 1 || size > PEN_SIZE_MAX) {
     throw new RangeError(`pen size out of range: ${size}`);
@@ -249,6 +257,7 @@ function normalizePen(input: Partial<PenState> | undefined): PenState | undefine
     down: input.down ?? false,
     color,
     size,
+    ...(transparency === 0 ? {} : { transparency }),
     segments: (input.segments ?? []).slice(0, PEN_SEGMENTS_MAX).map((item) => ({
       x1: normalizeCoordinate(item.x1),
       y1: normalizeCoordinate(item.y1),
@@ -256,6 +265,9 @@ function normalizePen(input: Partial<PenState> | undefined): PenState | undefine
       y2: normalizeCoordinate(item.y2),
       color: item.color,
       size: item.size,
+      ...(item.transparency === undefined || item.transparency === 0
+        ? {}
+        : { transparency: item.transparency }),
     })),
     ...(input.stamps === undefined || input.stamps.length === 0
       ? {}
@@ -485,7 +497,18 @@ function withPen(world: WorldState, change: Partial<PenState>): WorldState {
 
 function dot(world: WorldState, pen: PenState): readonly PenSegment[] {
   const { x, y } = world.sprite;
-  return [...pen.segments, { x1: x, y1: y, x2: x, y2: y, color: pen.color, size: pen.size }];
+  return [
+    ...pen.segments,
+    {
+      x1: x,
+      y1: y,
+      x2: x,
+      y2: y,
+      color: pen.color,
+      size: pen.size,
+      ...(pen.transparency === undefined ? {} : { transparency: pen.transparency }),
+    },
+  ];
 }
 
 /** Put the pen down; it leaves a dot where the sprite is. */
@@ -508,6 +531,10 @@ export function setPenColorWorld(world: WorldState, color: PenColor): WorldState
 
 export function setPenSizeWorld(world: WorldState, size: number): WorldState {
   return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { size });
+}
+
+export function setPenTransparencyWorld(world: WorldState, percent: number): WorldState {
+  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { transparency: percent });
 }
 
 export function clearPenWorld(world: WorldState): WorldState {
@@ -546,6 +573,7 @@ export function drawPenTrail(
     y2: after.sprite.y,
     color: pen.color,
     size: pen.size,
+    ...(pen.transparency === undefined ? {} : { transparency: pen.transparency }),
   };
   return {
     world: createWorldState({ ...after, pen: { ...pen, segments: [...pen.segments, segment] } }),

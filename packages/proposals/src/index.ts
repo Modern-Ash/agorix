@@ -317,6 +317,7 @@ const PACK_OF_STATEMENT: Readonly<Record<string, ExtensionId>> = {
   penUp: "pen",
   setPenColor: "pen",
   setPenSize: "pen",
+  setPenTransparency: "pen",
   clearPen: "pen",
   stamp: "pen",
   playNote: "music",

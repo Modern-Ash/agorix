@@ -130,10 +130,12 @@ import {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_TRANSPARENCIES,
   type MusicBeats,
   type MusicDrum,
   type MusicInstrument,
   type PenColor,
+  type PenTransparency,
   type ChoicePromptId,
 } from "@agorix/program-model";
 import type {
@@ -454,6 +456,7 @@ const COPY = {
     penUp: "Subir el lápiz",
     penColor: "Color del lápiz",
     penSize: "Grosor del lápiz",
+    penTransparency: "Transparencia del lápiz",
     clearPen: "Borrar los trazos",
     stamp: "Sellar",
     musicTitle: "Música",
@@ -761,6 +764,7 @@ const COPY = {
     penUp: "Pen up",
     penColor: "Pen color",
     penSize: "Pen size",
+    penTransparency: "Pen transparency",
     clearPen: "Clear drawing lines",
     stamp: "Stamp",
     musicTitle: "Music",
@@ -1226,6 +1230,7 @@ export function KidsStudioScreen({
   const pointerRef = useRef({ x: 0, y: 0, down: false });
   const [penColor, setPenColor] = useState<PenColor>("dark");
   const [penSize, setPenSize] = useState(8);
+  const [penTransparency, setPenTransparency] = useState<PenTransparency>(50);
   const penEnabled = useKidsFlag("extensionPen");
   const musicEnabled = useKidsFlag("extensionMusic");
   const categoryLabel: Record<StudioCategory, string> = {
@@ -2783,6 +2788,8 @@ export function KidsStudioScreen({
         return `${copy.penColor}: ${copy.penColors[statement.color]}`;
       case "setPenSize":
         return `${copy.penSize}: ${statement.size}`;
+      case "setPenTransparency":
+        return `${copy.penTransparency}: ${statement.percent}%`;
       case "playNote":
         return `${copy.playNote}: ${noteName(statement.note, locale)} · ${statement.beats} ${copy.beatsLabel}`;
       case "playDrum":
@@ -4062,6 +4069,7 @@ export function KidsStudioScreen({
                         y2={stageY(segment.y2)}
                         stroke={PEN_HEX[segment.color]}
                         strokeWidth={segment.size / 2}
+                        strokeOpacity={1 - (segment.transparency ?? 0) / 100}
                         strokeLinecap="round"
                         vectorEffect="non-scaling-stroke"
                       />
@@ -6842,6 +6850,29 @@ export function KidsStudioScreen({
                       onClick={() => add({ type: "setPenSize", size: penSize })}
                     >
                       + {copy.penSize}
+                    </button>
+                    <label>
+                      {copy.penTransparency}{" "}
+                      <select
+                        value={penTransparency}
+                        onChange={(event) =>
+                          setPenTransparency(Number(event.target.value) as PenTransparency)
+                        }
+                      >
+                        {PEN_TRANSPARENCIES.map((percent) => (
+                          <option key={percent} value={percent}>
+                            {percent}%
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setPenTransparency"
+                      onClick={() => add({ type: "setPenTransparency", percent: penTransparency })}
+                    >
+                      + {copy.penTransparency}
                     </button>
                     <button
                       type="button"
