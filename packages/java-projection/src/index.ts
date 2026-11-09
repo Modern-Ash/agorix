@@ -96,6 +96,7 @@ export const JAVA_SUPPORT_API = [
   "xPosition",
   "direction",
   "yPosition",
+  "sizePercent",
   "timer",
   "keyDown",
   "mouseX",
@@ -174,6 +175,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     double xPosition() { return 0; }
     double direction() { return 0; }
     double yPosition() { return 0; }
+    double sizePercent() { return 100; }
     double timer() { return 0; }
     boolean keyDown(String key) { return false; }
     double askChoice(String prompt) { return 0; }
@@ -408,6 +410,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "direction()";
     case "yPosition":
       return "yPosition()";
+    case "sizePercent":
+      return "sizePercent()";
     case "timer":
       return "timer()";
     case "keyDown":

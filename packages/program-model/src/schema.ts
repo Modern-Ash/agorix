@@ -49,6 +49,11 @@ export interface XPositionExpression {
   readonly type: "xPosition";
 }
 
+/** The character's size in percent, 100 when it was never changed. */
+export interface SizePercentExpression {
+  readonly type: "sizePercent";
+}
+
 /** Virtual seconds this script has waited so far in the current run; never a wall clock. */
 export interface TimerExpression {
   readonly type: "timer";
@@ -215,6 +220,7 @@ export type Expression =
   | DistanceToActorExpression
   | XPositionExpression
   | DirectionExpression
+  | SizePercentExpression
   | TimerExpression
   | KeyDownExpression
   | MouseXExpression
