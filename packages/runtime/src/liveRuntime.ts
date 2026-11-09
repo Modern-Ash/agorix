@@ -88,6 +88,11 @@ export interface LiveRuntimeOptions {
   readonly answers?: Readonly<Record<string, string>>;
   readonly maxSeconds?: number;
   readonly maxEntries?: number;
+  /**
+   * Least virtual seconds each statement takes, so a child sees one block at a time like
+   * Scratch's paused play. Default: one tick. The trace and the program are unchanged by it.
+   */
+  readonly paceSeconds?: number;
 }
 
 export interface LiveRuntime {
@@ -376,7 +381,7 @@ export function createLiveRuntime(
         actors: snapshotActors(actors),
       });
     activation.lastAt = result.at;
-    activation.wakeAt = now + occupied;
+    activation.wakeAt = now + Math.max(occupied, options.paceSeconds ?? 0);
     return mapped;
   }
 
@@ -530,7 +535,7 @@ export function createReplayRuntime(
   programInput: ProjectProgram,
   creativeInput: ProjectCreativeState,
   log: LiveInputLog,
-  options: Pick<LiveRuntimeOptions, "goal" | "maxSeconds" | "maxEntries"> = {},
+  options: Pick<LiveRuntimeOptions, "goal" | "maxSeconds" | "maxEntries" | "paceSeconds"> = {},
 ): LiveRuntime {
   let keys: readonly string[] = [];
   let pointer = { x: 0, y: 0, down: false };
@@ -590,7 +595,7 @@ export function replayLiveRuntime(
   programInput: ProjectProgram,
   creativeInput: ProjectCreativeState,
   log: LiveInputLog,
-  options: Pick<LiveRuntimeOptions, "goal" | "maxSeconds" | "maxEntries"> = {},
+  options: Pick<LiveRuntimeOptions, "goal" | "maxSeconds" | "maxEntries" | "paceSeconds"> = {},
 ): LiveRuntime {
   const replay = createReplayRuntime(programInput, creativeInput, log, options);
   replay.advance(log.ticks * LIVE_TICK_SECONDS + 1e-6);

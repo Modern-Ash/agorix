@@ -799,6 +799,10 @@ test("free scene grows and shrinks a character and keeps the size blocks after r
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Cambiar tamaño: +50%").first()).toBeVisible();
+  const costume = page.locator(".kids-studio-stage-costume").first();
+  await expect
+    .poll(async () => costume.evaluate((el) => (el as HTMLElement).style.transform))
+    .toContain("scale(1.25)");
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page

@@ -6699,7 +6699,7 @@ button.kids-band-chip {
    so a glide takes exactly its seconds. */
 @media (prefers-reduced-motion: no-preference) {
   .kids-studio-stage-costume[data-live="true"] {
-    transition: transform 120ms ease-out;
+    transition: transform 250ms ease-out;
   }
 }
 
