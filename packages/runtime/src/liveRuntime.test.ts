@@ -36,6 +36,31 @@ describe("live runtime", () => {
     expect(live.result().actors[0]!.world.sprite).toEqual(batch.actors[0]!.world.sprite);
   });
 
+  it("paces one block at a time and ends with the same world as the fast run", () => {
+    const p = program([
+      {
+        id: "s1",
+        trigger: flag,
+        statements: [
+          { type: "changeSize", delta: 25 },
+          { type: "changeSize", delta: -25 },
+          { type: "move", steps: 10 },
+        ],
+      },
+    ]);
+    const fast = createLiveRuntime(p);
+    fast.fire({ type: "start" });
+    run(fast, 2);
+    const slow = createLiveRuntime(p, undefined, { paceSeconds: 0.25 });
+    slow.fire({ type: "start" });
+    run(slow, 0.3);
+    expect(slow.result().trace).toHaveLength(2);
+    expect(slow.running).toBe(true);
+    run(slow, 1);
+    expect(slow.running).toBe(false);
+    expect(slow.result().actors[0]!.world.sprite).toEqual(fast.result().actors[0]!.world.sprite);
+  });
+
   it("makes a wait last its seconds and keeps a forever loop going until the session ends", () => {
     const p = program([
       {

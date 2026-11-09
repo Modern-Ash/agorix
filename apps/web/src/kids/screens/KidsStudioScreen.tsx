@@ -1142,6 +1142,8 @@ const SHORTCUT_LABEL: Record<"es" | "en", Record<string, string>> = {
 const MOVING = new Set(["move", "goTo", "glideTo", "bounceOnEdge"]);
 /** The runtime carries a glide tick by tick; each tick eases over a couple of ticks on screen. */
 const LIVE_STEP_SECONDS = 0.07;
+/** One block at a time, like Scratch's paused play: each block takes this long on the stage. */
+const LIVE_PACE_SECONDS = 0.25;
 
 /** Seconds a forever loop runs before Ori offers help with a loop that does not end. */
 const LIVE_FOREVER_NOTICE_SECONDS = 1.5;
@@ -2148,7 +2150,9 @@ export function KidsStudioScreen({
       last = now;
       for (const entry of produced) {
         presentLiveEntry(entry);
-        if (MOVING.has(entry.statementType)) motionRef.current[entry.actorId] = LIVE_STEP_SECONDS;
+        if (MOVING.has(entry.statementType))
+          motionRef.current[entry.actorId] =
+            entry.statementType === "glideTo" ? LIVE_STEP_SECONDS : LIVE_PACE_SECONDS;
         if (entry.statementType === "forever") sawForever = true;
       }
       if (produced.length > 0 || !live.running) setRun(live.result());
@@ -3256,6 +3260,7 @@ export function KidsStudioScreen({
           pointer: () => pointerRef.current,
           choices: choiceAnswers.current,
           answers: textAnswers.current,
+          paceSeconds: LIVE_PACE_SECONDS,
         });
         live.fire({ type: "start" });
         stopKidsSounds();
@@ -3287,7 +3292,9 @@ export function KidsStudioScreen({
     if (!lastLive) return;
     try {
       stopLive();
-      const again = createReplayRuntime(lastLive.program, lastLive.creative, lastLive.log);
+      const again = createReplayRuntime(lastLive.program, lastLive.creative, lastLive.log, {
+        paceSeconds: LIVE_PACE_SECONDS,
+      });
       stopKidsSounds();
       stopKidsMusic();
       liveRef.current = again;
