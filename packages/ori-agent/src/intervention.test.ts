@@ -9,7 +9,7 @@ import {
   simulateOriIntervention,
   validateOriInterventionPolicy,
 } from "./intervention.js";
-import { ORI_STUDIO_INTENTS, proposeOriStudioIntent } from "./studio.js";
+import { ORI_STUDIO_INTENTS, oriProposalBlocks, proposeOriStudioIntent } from "./studio.js";
 
 describe("Ori intervention policy", () => {
   it("keeps the defaults inside their own limits and offers nothing on entry", () => {
@@ -48,7 +48,7 @@ describe("Ori intervention policy", () => {
     };
     const context = { actorId: "actor:studio-1-nova", locale: "es" as const, program };
     for (const intent of ORI_STUDIO_INTENTS) {
-      expect(proposeOriStudioIntent(context, intent).operations).toHaveLength(
+      expect(oriProposalBlocks(proposeOriStudioIntent(context, intent))).toBe(
         oriIntentSize(intent),
       );
     }

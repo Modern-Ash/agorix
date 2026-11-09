@@ -37,6 +37,8 @@ export function operationEditable(operation: ProposalOperation): EditableValue |
     case "appendStatement":
     case "replaceStatement":
       return editableOfStatement(operation.statement);
+    case "addScript":
+      return undefined;
     case "replaceStatementField":
       return { field: operation.field, value: operation.value };
     case "removeStatement":
@@ -123,6 +125,10 @@ export function resolveOperationTargets(
   const placeholder = undefined;
   const live: (string | undefined)[][] = lists.map((list) => [...list]);
   return proposal.operations.map((operation) => {
+    if (operation.type === "addScript") {
+      live.push(operation.script.statements.map(() => placeholder));
+      return undefined;
+    }
     if (operation.type === "appendStatement") {
       live[operation.scriptIndex]?.push(placeholder);
       return undefined;

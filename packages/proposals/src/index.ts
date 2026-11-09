@@ -1,11 +1,13 @@
 import { projectProgram, type ProjectionResult, type TextRange } from "@agorix/code-generator";
 import {
   PROCEDURE_PARAMS_MAX,
+  SCHEMA_VERSION,
   validateProgram,
   type Expression,
   type ExtensionId,
   type ProcedureParamId,
   type ProjectProgram,
+  type Script,
   type Statement,
 } from "@agorix/program-model";
 import { detectRepeatPattern } from "./repeatPattern.js";
@@ -53,6 +55,14 @@ export interface ProposalExpectedRuntimeEvidence {
 }
 
 export type ProposalOperation =
+  | {
+      /**
+       * Adds a whole script after the project's others. Only a copy script (the one a character's
+       * copies start with) may be added this way; the preview shows every block of it (#1311).
+       */
+      readonly type: "addScript";
+      readonly script: Script;
+    }
   | {
       readonly type: "appendStatement";
       readonly scriptIndex: number;
@@ -696,6 +706,12 @@ function applyProposalOperations(
   const mutable = structuredClone(acceptedProgram) as MutableProjectProgram;
   for (const operation of proposal.operations) {
     switch (operation.type) {
+      case "addScript": {
+        mutable.scripts.push(
+          structuredClone(operation.script) as MutableProjectProgram["scripts"][number],
+        );
+        break;
+      }
       case "appendStatement": {
         const script = mutable.scripts[operation.scriptIndex];
         if (script === undefined) {
@@ -1055,6 +1071,10 @@ function nodeIdsForOperation(
   operation: ProposalOperation,
 ): readonly string[] {
   switch (operation.type) {
+    case "addScript":
+      return operation.script.statements.map(
+        (_statement, index) => `scripts[${program.scripts.length}]/statements[${index}]`,
+      );
     case "appendStatement": {
       const script = program.scripts[operation.scriptIndex];
       return script === undefined
@@ -1072,6 +1092,8 @@ function nodeIdsForOperation(
 
 function assetIdsForOperation(operation: ProposalOperation): readonly string[] {
   switch (operation.type) {
+    case "addScript":
+      return operation.script.statements.flatMap(assetIdsForStatement);
     case "appendStatement":
     case "replaceStatement":
       return assetIdsForStatement(operation.statement);
@@ -1103,6 +1125,8 @@ function assetIdsForStatement(statement: Statement): readonly string[] {
 
 function variableIdsForOperation(operation: ProposalOperation): readonly string[] {
   switch (operation.type) {
+    case "addScript":
+      return operation.script.statements.flatMap(variableIdsForStatement);
     case "appendStatement":
     case "replaceStatement":
       return variableIdsForStatement(operation.statement);
@@ -1192,6 +1216,8 @@ function scriptForOperation(
   operation: ProposalOperation,
 ): ProjectProgram["scripts"][number] | undefined {
   switch (operation.type) {
+    case "addScript":
+      return operation.script;
     case "appendStatement":
       return program.scripts[operation.scriptIndex];
     case "replaceStatement":
@@ -1247,6 +1273,19 @@ function assertSource(source: ProposalSource): void {
 function assertOperation(operation: ProposalOperation, path: string): void {
   assertPlainObject(operation, path);
   switch (operation.type) {
+    case "addScript": {
+      assertAllowedKeys(operation, path, ["type", "script"]);
+      assertPlainObject(operation.script, `${path}.script`);
+      // Only the script a character's copies start with: a hat that starts nothing else.
+      if (operation.script.trigger?.type !== "onCloneStart") {
+        fail("INVALID_PROPOSAL", `${path}.script.trigger`, "expected a copy script");
+      }
+      if (operation.script.statements.length > 20) {
+        fail("INVALID_PROPOSAL", `${path}.script.statements`, "expected at most 20 blocks");
+      }
+      validateProgram({ schema: SCHEMA_VERSION, scripts: [operation.script] });
+      return;
+    }
     case "appendStatement":
       assertAllowedKeys(operation, path, ["type", "scriptIndex", "statement"]);
       assertNonNegativeInteger(operation.scriptIndex, `${path}.scriptIndex`);

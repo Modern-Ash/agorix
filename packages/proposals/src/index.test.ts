@@ -1058,3 +1058,44 @@ describe("proposal evidence view", () => {
     expect(view.proved).toBeUndefined();
   });
 });
+
+describe("adding a copy script (#1311)", () => {
+  const copyScript = {
+    id: "main-clone",
+    trigger: { type: "onCloneStart" },
+    statements: [{ type: "move", steps: 20 }, { type: "deleteThisClone" }],
+  } as const;
+  const make = (script: unknown) =>
+    createProgramProposal({
+      id: "add-copy-script",
+      baseProgram: acceptedProgram,
+      source: { kind: "learning-companion", capability: "builder" },
+      purpose: "Copies that live by their own script",
+      rationale: "Look at the blocks and decide.",
+      affectedScriptIds: ["main-clone"],
+      affectedNodeIds: ["scripts[1]/statements[0]", "scripts[1]/statements[1]"],
+      operations: [{ type: "addScript", script: script as never }],
+    });
+
+  it("appends the script, shows every block of it, and changes nothing until accepted", () => {
+    const proposal = make(copyScript);
+    const review = createProposalReview(acceptedProgram, proposal);
+    expect(acceptedProgram.scripts).toHaveLength(1);
+    expect(review.candidateProgram.scripts.map((script) => script.id)).toEqual([
+      "main",
+      "main-clone",
+    ]);
+    expect(review.proposedProjection.code).toContain("delete");
+    expect(acceptProposal(acceptedProgram, review).program.scripts).toHaveLength(2);
+  });
+
+  it("refuses any added script that is not a copy script, and a script that clashes", () => {
+    expect(() => make({ ...copyScript, trigger: { type: "greenFlag" } })).toThrow();
+    expect(() =>
+      createProposalReview(acceptedProgram, make({ ...copyScript, id: "main" })),
+    ).toThrow();
+    expect(() =>
+      make({ ...copyScript, statements: Array.from({ length: 21 }, () => ({ type: "show" })) }),
+    ).toThrow();
+  });
+});

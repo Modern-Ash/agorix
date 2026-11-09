@@ -343,6 +343,8 @@ export const ORI_STUDIO_INTENTS = [
   "greet",
   "rain",
   "crowd",
+  "rainFalls",
+  "crowdJumps",
 ] as const;
 export type OriStudioIntent = (typeof ORI_STUDIO_INTENTS)[number];
 
@@ -523,9 +525,61 @@ const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
     { type: "createCopies", count: 3, rule: "spread" },
     { type: "wait", seconds: 1 },
   ],
+  // Copies that live by a script Ori adds with them (issue #1311).
+  rainFalls: [
+    { type: "createCopies", count: 5, rule: "fall", withScript: true },
+    { type: "wait", seconds: 1 },
+  ],
+  crowdJumps: [
+    { type: "createCopies", count: 3, rule: "spread", withScript: true },
+    { type: "wait", seconds: 1 },
+  ],
   // Filled in by `intentBlocks`: the words depend on the language.
   greet: [],
 };
+
+/**
+ * The script the copies of a character start with, for the ideas that add it. Every block is one a
+ * child can make by hand; the last one ends the copy.
+ */
+const COPY_SCRIPTS: Readonly<Partial<Record<OriStudioIntent, readonly Statement[]>>> = {
+  rainFalls: [
+    { type: "changeY", dy: 80 },
+    { type: "wait", seconds: 1 },
+    { type: "changeY", dy: 80 },
+    { type: "deleteThisClone" },
+  ],
+  crowdJumps: [
+    { type: "changeY", dy: -80 },
+    { type: "wait", seconds: 0.5 },
+    { type: "changeY", dy: 80 },
+    { type: "wait", seconds: 1 },
+    { type: "deleteThisClone" },
+  ],
+};
+
+/** Every block a proposal brings: the appended ones and those of a script it adds. */
+export function oriProposalBlocks(proposal: ProgramProposal): number {
+  return proposal.operations.reduce(
+    (sum, operation) =>
+      sum + (operation.type === "addScript" ? operation.script.statements.length : 1),
+    0,
+  );
+}
+
+/** The script an idea adds with its copies, or none. */
+export function oriIdeaCopyScript(intent: OriStudioIntent): readonly Statement[] | undefined {
+  return COPY_SCRIPTS[intent];
+}
+
+/** Blocks a copy script Ori adds may hold: the few a child sees in a falling or jumping copy. */
+function closedCopyScriptBlock(statement: Statement): boolean {
+  return (
+    (statement.type === "changeY" && (statement.dy === 80 || statement.dy === -80)) ||
+    (statement.type === "wait" && (statement.seconds === 0.5 || statement.seconds === 1)) ||
+    statement.type === "deleteThisClone"
+  );
+}
 
 /** The blocks of an idea; the greeting is the only one whose words change with the language. */
 function intentBlocks(
@@ -553,9 +607,21 @@ export function proposeOriStudioIntent(
 ): ProgramProposal {
   const selected = target(context);
   if (!isOriStudioIntent(intent)) throw new Error("unknown intent");
+  const adds = COPY_SCRIPTS[intent];
+  // An idea that brings its own copy script is only for a character that has none yet.
+  if (adds !== undefined && hasCopyScript(selected)) throw new Error("copy script already exists");
   const statements = intentBlocks(intent, context.locale, hasCopyScript(selected));
   const first = selected.script.statements.length;
   if (first + statements.length > MAX_STATEMENTS) throw new Error("not enough room");
+  const newScriptIndex = selected.program.scripts.length;
+  const copyScript =
+    adds === undefined
+      ? undefined
+      : {
+          id: `${selected.script.id}-clone`,
+          trigger: { type: "onCloneStart" as const },
+          statements: [...adds],
+        };
   const proposal = createProgramProposal({
     id: `ori-studio-intent-${intent}-${selected.index}-${first}`,
     baseProgram: selected.program,
@@ -567,15 +633,24 @@ export function proposeOriStudioIntent(
         ? "Mirá los bloques y decidí si querés usarlos."
         : "Look at the blocks and decide whether to use them.",
     affectedActorIds: [context.actorId],
-    affectedScriptIds: [selected.script.id],
-    affectedNodeIds: statements.map(
-      (_statement, offset) => `scripts[${selected.index}]/statements[${first + offset}]`,
-    ),
-    operations: statements.map((statement) => ({
-      type: "appendStatement" as const,
-      scriptIndex: selected.index,
-      statement,
-    })),
+    affectedScriptIds:
+      copyScript === undefined ? [selected.script.id] : [selected.script.id, copyScript.id],
+    affectedNodeIds: [
+      ...(copyScript?.statements ?? []).map(
+        (_statement, offset) => `scripts[${newScriptIndex}]/statements[${offset}]`,
+      ),
+      ...statements.map(
+        (_statement, offset) => `scripts[${selected.index}]/statements[${first + offset}]`,
+      ),
+    ],
+    operations: [
+      ...(copyScript === undefined ? [] : [{ type: "addScript" as const, script: copyScript }]),
+      ...statements.map((statement) => ({
+        type: "appendStatement" as const,
+        scriptIndex: selected.index,
+        statement,
+      })),
+    ],
   });
   validateOriStudioIntentProposal(context, proposal);
   return proposal;
@@ -589,29 +664,56 @@ export function validateOriStudioIntentProposal(
   const selected = target(context);
   const proposal = validateProgramProposal(raw as ProgramProposal);
   const first = selected.script.statements.length;
+  // At most one added script, first, and only the copy script of this character.
+  const [head, ...rest] = proposal.operations;
+  const added = head?.type === "addScript" ? head.script : undefined;
+  const appends = added === undefined ? proposal.operations : rest;
+  const copyScript = hasCopyScript(selected) || added !== undefined;
+  const newScriptIndex = selected.program.scripts.length;
   if (
     proposal.source.kind !== "learning-companion" ||
     proposal.source.capability !== "builder" ||
     proposal.operations.length < 1 ||
     proposal.operations.length > 8 ||
-    proposal.operations.some(
+    (added !== undefined &&
+      (hasCopyScript(selected) ||
+        added.id !== `${selected.script.id}-clone` ||
+        added.trigger.type !== "onCloneStart" ||
+        (added.procedures?.length ?? 0) > 0 ||
+        added.statements.length < 1 ||
+        added.statements.length > 6 ||
+        !added.statements.every(closedCopyScriptBlock))) ||
+    appends.some(
       (operation) =>
         operation.type !== "appendStatement" ||
         operation.scriptIndex !== selected.index ||
-        !allowedForIntent(operation.statement, selected.script, hasCopyScript(selected)),
+        !allowedForIntent(operation.statement, selected.script, copyScript),
     ) ||
     proposal.affectedActorIds?.join() !== context.actorId ||
-    proposal.affectedScriptIds?.join() !== selected.script.id ||
+    proposal.affectedScriptIds?.join() !==
+      (added === undefined ? selected.script.id : [selected.script.id, added.id].join()) ||
     proposal.affectedNodeIds.join() !==
-      proposal.operations
-        .map((_operation, offset) => `scripts[${selected.index}]/statements[${first + offset}]`)
-        .join()
+      [
+        ...(added?.statements ?? []).map(
+          (_statement, offset) => `scripts[${newScriptIndex}]/statements[${offset}]`,
+        ),
+        ...appends.map(
+          (_operation, offset) => `scripts[${selected.index}]/statements[${first + offset}]`,
+        ),
+      ].join()
   )
     throw new Error("proposal outside studio allow-list");
   return createProposalReview(selected.program, proposal, {
-    actors: selected.program.scripts.map((script) => ({
-      id: actorIdForScript(script.id),
-      scripts: [script.id],
-    })),
+    actors: selected.program.scripts.flatMap((script) =>
+      CLONE_SCRIPT_ID.test(script.id)
+        ? []
+        : [
+            {
+              id: actorIdForScript(script.id),
+              // A character owns its script and, if it will have one, its copy script.
+              scripts: [script.id, `${script.id}-clone`],
+            },
+          ],
+    ),
   });
 }

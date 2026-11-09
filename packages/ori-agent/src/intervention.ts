@@ -74,6 +74,9 @@ const INTENT_SIZES: Readonly<Record<OriStudioIntent, number>> = {
   greet: 2,
   rain: 2,
   crowd: 2,
+  // The copy script they add counts: four or five blocks, and the two that make the copies.
+  rainFalls: 6,
+  crowdJumps: 7,
 };
 
 export function oriIntentSize(intent: OriStudioIntent): number {

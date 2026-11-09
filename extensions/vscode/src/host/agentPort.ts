@@ -183,6 +183,8 @@ function describeOperation(operation: ProposalOperation): {
   label: string;
 } {
   switch (operation.type) {
+    case "addScript":
+      return { kind: "add", label: "Add the script the copies start with" };
     case "appendStatement":
       return { kind: "add", label: `Add ${describeStatement(operation.statement)}` };
     case "replaceStatement":

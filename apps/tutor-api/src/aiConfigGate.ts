@@ -8,6 +8,7 @@ import {
   ORI_STUDIO_INTENTS,
   oriIntentSize,
   oriIntentsWithin,
+  oriProposalBlocks,
   proposeOriStudioIntent,
   runOriChat,
   validateOriInterventionPolicy,
@@ -83,7 +84,7 @@ function intentsAreValid(): boolean {
     return ORI_STUDIO_INTENTS.every((intent) => {
       const proposal = proposeOriStudioIntent(context, intent);
       validateOriStudioIntentProposal(context, proposal);
-      return proposal.operations.length === oriIntentSize(intent);
+      return oriProposalBlocks(proposal) === oriIntentSize(intent);
     });
   } catch {
     return false;

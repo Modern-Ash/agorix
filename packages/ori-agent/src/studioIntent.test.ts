@@ -28,7 +28,7 @@ describe("Studio goal to blocks", () => {
       expect(program.scripts[0]?.statements).toHaveLength(1);
       const review = validateOriStudioIntentProposal(context, proposal);
       expect(review.candidateProgram.scripts[0]?.statements).toHaveLength(
-        1 + proposal.operations.length,
+        1 + proposal.operations.filter((operation) => operation.type === "appendStatement").length,
       );
     }
   });
@@ -213,5 +213,71 @@ describe("Studio rain and crowd with a copy script", () => {
     ).toBe(false);
     const forged = proposeOriStudioIntent(scripted, "rain");
     expect(() => validateOriStudioIntentProposal(context, forged)).toThrow();
+  });
+});
+
+// Issue #1311: an idea that brings its own copy script, shown whole, accepted or refused as one.
+describe("Studio ideas that add the copy script", () => {
+  for (const intent of ["rainFalls", "crowdJumps"] as const) {
+    it(`${intent} adds the script and the copies together, and only changes anything when accepted`, () => {
+      const proposal = proposeOriStudioIntent(context, intent);
+      expect(proposal.operations[0]!.type).toBe("addScript");
+      expect(proposal.affectedScriptIds).toEqual([
+        "studio-actor-1-nova",
+        "studio-actor-1-nova-clone",
+      ]);
+      const review = validateOriStudioIntentProposal(context, proposal);
+      // The preview already holds the new script; the project does not.
+      expect(program.scripts).toHaveLength(1);
+      expect(review.candidateProgram.scripts.map((script) => script.id)).toEqual([
+        "studio-actor-1-nova",
+        "studio-actor-1-nova-clone",
+      ]);
+      const accepted = acceptProposal(program, review).program;
+      expect(accepted.scripts[1]!.trigger.type).toBe("onCloneStart");
+      expect(accepted.scripts[1]!.statements.at(-1)).toEqual({ type: "deleteThisClone" });
+      expect(
+        accepted.scripts[0]!.statements.some(
+          (statement) => statement.type === "createCopies" && statement.withScript === true,
+        ),
+      ).toBe(true);
+    });
+  }
+
+  it("is not offered to a character that already has a copy script", () => {
+    const has: ProjectProgram = {
+      ...program,
+      scripts: [
+        ...program.scripts,
+        {
+          id: "studio-actor-1-nova-clone",
+          trigger: { type: "onCloneStart" },
+          statements: [{ type: "deleteThisClone" }],
+        },
+      ],
+    };
+    expect(() => proposeOriStudioIntent({ ...context, program: has }, "rainFalls")).toThrow();
+  });
+
+  it("refuses a script that is not the character's copy script or holds blocks outside the closed set", () => {
+    const proposal = proposeOriStudioIntent(context, "rainFalls");
+    const [added, ...rest] = proposal.operations;
+    const forge = (script: unknown) => ({
+      ...proposal,
+      operations: [{ type: "addScript", script }, ...rest],
+    });
+    const good = (added as unknown as { script: { statements: unknown[] } }).script;
+    expect(() =>
+      validateOriStudioIntentProposal(context, forge({ ...good, id: "studio-actor-2-mika-clone" })),
+    ).toThrow();
+    expect(() =>
+      validateOriStudioIntentProposal(
+        context,
+        forge({ ...good, statements: [{ type: "move", steps: 200 }, { type: "deleteThisClone" }] }),
+      ),
+    ).toThrow();
+    expect(() =>
+      validateOriStudioIntentProposal(context, forge({ ...good, trigger: { type: "greenFlag" } })),
+    ).toThrow();
   });
 });
