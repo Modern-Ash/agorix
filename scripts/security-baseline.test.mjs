@@ -364,6 +364,29 @@ describe("security baseline checker", () => {
       expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
     });
 
+    it("lets the level meter reach the microphone with a marker, and no other module", () => {
+      const marker = "// agora-allowlist-file: the one microphone level meter, issue 1304\n";
+      write(
+        "apps/web/src/kids/kidsLevelMeter.ts",
+        `${marker}const s = await navigator.mediaDevices.getUserMedia({ audio: true });\n`,
+      );
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(false);
+      write(
+        "apps/web/src/kids/kidsLevelMeter.ts",
+        "const s = await navigator.mediaDevices.getUserMedia({ audio: true });\n",
+      );
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
+      write(
+        "apps/web/src/kids/kidsLevelMeter.ts",
+        `${marker}const s = await navigator.mediaDevices.getUserMedia({ audio: true });\n`,
+      );
+      write(
+        "apps/web/src/kids/kidsOther.ts",
+        `${marker}const s = await navigator.mediaDevices.getUserMedia({ audio: true });\n`,
+      );
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
+    });
+
     it("refuses the recorder module itself when it has no attributed marker", () => {
       write("apps/web/src/kids/kidsRecorder.ts", "const r = new MediaRecorder(stream);\n");
       expect(rulesIn().inRule("no-prohibited-features")).toBe(true);

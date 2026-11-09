@@ -196,6 +196,8 @@ class Converter {
         return { type: "sizePercent" };
       case "sensing_timer":
         return { type: "timer" };
+      case "sensing_loudness":
+        return { type: "loudness" };
       case "sensing_mousex":
         return { type: "mouseX" };
       case "sensing_mousey":

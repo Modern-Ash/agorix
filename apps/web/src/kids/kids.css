@@ -6791,3 +6791,13 @@ button.kids-band-chip {
   height: 3.5rem;
   pointer-events: none;
 }
+
+/* The microphone is open for the loudness value: always visible while it is. */
+.kids-studio-listening {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fff4cc;
+  color: #5c3b00;
+  font-weight: 700;
+}

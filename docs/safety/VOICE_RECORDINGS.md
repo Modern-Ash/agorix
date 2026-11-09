@@ -57,3 +57,26 @@ it (a voice). The rules below are enforced by code and by tests, not by habit. R
   WAV; browsers that cannot record from the page say so and offer nothing else.
 - Sharing a project (export, groups) does not include audio unless the adult exports it on purpose
   through the existing adult-approved export.
+
+## Microphone level while a program plays (issue #1304)
+
+A program can read how loud it is (the `loudness` value, a whole number from 0 to 100), so a child can
+make a character react to a clap or a shout. This is a second, narrower use of the microphone, with
+its own rules; it is not recording.
+
+- **Its own adult switch**, in the grown-ups area, off by default, stored on this device
+  (`agorix.kids.microphoneLevel.v1`). It is separate from the recording switch: allowing recordings
+  does not allow measuring, and the other way round. Off, `loudness` is always 0 and the microphone is
+  never asked for.
+- **Only while it is needed.** The microphone opens when a child presses Play on a program that uses
+  `loudness`, and is released (`track.stop()` on every track, audio context closed) the moment play
+  ends. A visible "listening" marker is on screen the whole time. The browser's own permission prompt
+  is the second gate and a refusal just means `loudness` stays 0.
+- **Only a number.** The meter reduces each block of audio to one whole number and drops the audio at
+  once: no samples are kept, no recording is made, no file, no storage, no network. The only thing
+  that reaches the program, the run log or a replay is that number, so a replay needs no microphone.
+  A test reads the module's source and refuses any network, storage, recording or file API.
+- **Ori never sees it.** Findings and provider input carry kinds and counts, never the level.
+- **Enforcement.** `scripts/security-baseline.mjs` allows user media in exactly two files,
+  `kidsRecorder.ts` and `kidsLevelMeter.ts`, each with an attributed marker; anywhere else is a finding
+  no marker can suppress.
