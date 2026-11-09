@@ -830,6 +830,34 @@ test("free scene makes copies of a character and shows them while playing", asyn
   await expect(page.locator(".kids-studio-stage-copy")).toHaveCount(5);
 });
 
+test("free scene checks a guess about how many copies and asks what changed after an edit", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Crear copias" }).click();
+  await page.getByLabel(/Cuántas copias de .* va a haber/).fill("3");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("coach-quantity")).toHaveAttribute("data-verdict", "match");
+  await expect(page.getByTestId("coach-change")).toHaveCount(0);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("coach-change")).toBeVisible();
+  await page.getByRole("button", { name: "Se ejecutaron otros bloques" }).click();
+  await expect(page.getByTestId("coach-change-reply")).toContainText("Eso es");
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {

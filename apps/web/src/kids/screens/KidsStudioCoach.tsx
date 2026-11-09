@@ -7,6 +7,13 @@ import {
   blockName,
   explainRun,
   judgePrediction,
+  judgeQuantity,
+  changesBetween,
+  RUN_CHANGES,
+  RUN_CHANGE_LABEL,
+  QUANTITY_MAX,
+  type QuantityKind,
+  type RunChange,
   type ActorFacts,
   type Direction,
   type Reflection,
@@ -121,12 +128,57 @@ export function StudioPrediction({
   );
 }
 
+/** Before playing: an optional guess about a number the program will make. */
+export function StudioQuantity({
+  locale,
+  name,
+  kind,
+  value,
+  onChange,
+}: {
+  readonly locale: Locale;
+  readonly name: string;
+  readonly kind: QuantityKind;
+  readonly value: number | null;
+  readonly onChange: (next: number | null) => void;
+}) {
+  const es = locale === "es";
+  const question =
+    kind === "copies"
+      ? es
+        ? `¿Cuántas copias de ${name} va a haber? (opcional)`
+        : `How many copies of ${name} will there be? (optional)`
+      : es
+        ? "¿Cuántos bloques se van a ejecutar? (opcional)"
+        : "How many blocks will run? (optional)";
+  return (
+    <label className="kids-studio-prediction kids-studio-quantity">
+      <span>{question}</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={QUANTITY_MAX}
+        value={value ?? ""}
+        onChange={(event) => {
+          const raw = event.target.value;
+          if (raw === "") return onChange(null);
+          const next = Math.round(Number(raw));
+          onChange(Number.isFinite(next) ? Math.max(0, Math.min(QUANTITY_MAX, next)) : null);
+        }}
+      />
+    </label>
+  );
+}
+
 /** After playing: what the run really did, the guess checked against it, and one question. */
 export function StudioCoach({
   locale,
   name,
   facts,
   predicted,
+  quantity,
+  before,
   reflection,
   onExplained,
 }: {
@@ -134,6 +186,10 @@ export function StudioCoach({
   readonly name: string;
   readonly facts: ActorFacts;
   readonly predicted: Direction | null;
+  /** The number the child guessed before the run, when the program made one to guess. */
+  readonly quantity?: { readonly kind: QuantityKind; readonly guess: number } | null | undefined;
+  /** Facts of the previous run of this character after the program changed, to ask what changed. */
+  readonly before?: ActorFacts | null | undefined;
   readonly reflection: Reflection | null;
   /** Called once when the child's guess or answer matched what the run really did. */
   readonly onExplained?: (() => void) | undefined;
@@ -141,6 +197,12 @@ export function StudioCoach({
   const es = locale === "es";
   const [answer, setAnswer] = useState<string | number | boolean | null>(null);
   const judged = predicted ? judgePrediction(predicted, facts, name, locale) : null;
+  const judgedQuantity = quantity
+    ? judgeQuantity(quantity.kind, quantity.guess, facts, name, locale)
+    : null;
+  const changes = before ? changesBetween(before, facts) : null;
+  const [changeAnswer, setChangeAnswer] = useState<RunChange | null>(null);
+  const changeRight = changes !== null && changeAnswer !== null && changes.includes(changeAnswer);
   const told = useRef(false);
   const correct =
     reflection === null || answer === null
@@ -152,10 +214,10 @@ export function StudioCoach({
           : false;
   // The "did you expect it?" question is the child's own word, so only the checks count as evidence.
   useEffect(() => {
-    if (told.current || !(judged?.match || correct)) return;
+    if (told.current || !(judged?.match || judgedQuantity?.match || correct || changeRight)) return;
     told.current = true;
     onExplained?.();
-  }, [judged?.match, correct, onExplained]);
+  }, [judged?.match, judgedQuantity?.match, correct, changeRight, onExplained]);
   const reply = (() => {
     if (reflection === null || answer === null) return null;
     if (reflection.kind === "expected")
@@ -200,6 +262,51 @@ export function StudioCoach({
           <span aria-hidden="true">{judged.match ? "✓ " : "↔ "}</span>
           {judged.text}
         </p>
+      ) : null}
+      {judgedQuantity ? (
+        <p
+          role="status"
+          className="kids-studio-verdict"
+          data-testid="coach-quantity"
+          data-verdict={judgedQuantity.match ? "match" : "differs"}
+        >
+          <span aria-hidden="true">{judgedQuantity.match ? "✓ " : "↔ "}</span>
+          {judgedQuantity.text}
+        </p>
+      ) : null}
+      {changes ? (
+        <div
+          role="group"
+          aria-label={es ? "Qué cambió" : "What changed"}
+          data-testid="coach-change"
+        >
+          <strong>
+            {es
+              ? "Cambiaste el programa. ¿Qué salió distinto esta vez?"
+              : "You changed the program. What came out different this time?"}
+          </strong>
+          {RUN_CHANGES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="kids-button"
+              onClick={() => setChangeAnswer(option)}
+            >
+              {RUN_CHANGE_LABEL[locale][option]}
+            </button>
+          ))}
+          {changeAnswer ? (
+            <p role="status" data-testid="coach-change-reply">
+              {changeRight
+                ? es
+                  ? "Eso es: lo viste en la corrida."
+                  : "That's it: you can see it in the run."
+                : es
+                  ? `Mirá el paso a paso: lo que cambió fue "${changes.map((c) => RUN_CHANGE_LABEL.es[c]).join('" y "')}".`
+                  : `Look at the steps: what changed was "${changes.map((c) => RUN_CHANGE_LABEL.en[c]).join('" and "')}".`}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {reflection ? (
         <div role="group" aria-label={reflection.question}>

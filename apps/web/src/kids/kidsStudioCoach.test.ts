@@ -7,6 +7,9 @@ import {
   explainRun,
   factsOfRun,
   judgePrediction,
+  judgeQuantity,
+  changesBetween,
+  quantityKindFor,
   reflectionFor,
 } from "./kidsStudioCoach.js";
 import {
@@ -123,5 +126,37 @@ describe("prediction and reflection", () => {
 
   it("asks nothing when nothing ran", () => {
     expect(reflectionFor("6-8", factsOfRun(run([]), nova), [], "Nova", "es")).toBeNull();
+  });
+});
+
+describe("guessing a number", () => {
+  it("asks for copies, or for blocks run when something repeats, and never for a forever", () => {
+    expect(quantityKindFor(["move", "createCopies"])).toBe("copies");
+    expect(quantityKindFor(["repeat", "move"])).toBe("steps");
+    expect(quantityKindFor(["repeat", "forever"])).toBeNull();
+    expect(quantityKindFor(["move"])).toBeNull();
+  });
+  it("checks the guess against the run's own copies", () => {
+    const facts = factsOfRun(run([{ type: "createCopies", count: 3, rule: "spread" }]), nova);
+    expect(facts.copies).toBe(3);
+    expect(judgeQuantity("copies", 3, facts, "Nova", "es").match).toBe(true);
+    expect(judgeQuantity("copies", 5, facts, "Nova", "en").text).toContain("but it was 3");
+  });
+});
+
+describe("what changed between two runs", () => {
+  const first = factsOfRun(run([{ type: "move", steps: 20 }]), nova);
+  it("names every difference the runs show", () => {
+    const second = factsOfRun(
+      run([
+        { type: "move", steps: 40 },
+        { type: "createCopies", count: 2, rule: "spread" },
+      ]),
+      nova,
+    );
+    expect(changesBetween(first, second)).toEqual(["place", "steps", "copies"]);
+  });
+  it("says same only when nothing differs", () => {
+    expect(changesBetween(first, first)).toEqual(["same"]);
   });
 });
