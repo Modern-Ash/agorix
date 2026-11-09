@@ -217,6 +217,8 @@ function triggerText(trigger: Trigger): string {
       return `def on_backdrop_${safeEventName(trigger.backdropId)}():\n`;
     case "onTimerOver":
       return `def on_timer_over_${safeEventName(String(trigger.seconds))}():\n`;
+    case "onLoudnessOver":
+      return `def on_loudness_over_${safeEventName(String(trigger.level))}():\n`;
   }
 }
 

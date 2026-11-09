@@ -285,6 +285,11 @@ const everything: ProjectProgram = {
       trigger: { type: "onTimerOver", seconds: 3 },
       statements: [{ type: "say", text: "tiempo" }],
     },
+    {
+      id: "lo",
+      trigger: { type: "onLoudnessOver", level: 30 },
+      statements: [{ type: "say", text: "ruido" }],
+    },
     { id: "o", trigger: { type: "onStart" }, statements: [{ type: "show" }] },
   ],
 };

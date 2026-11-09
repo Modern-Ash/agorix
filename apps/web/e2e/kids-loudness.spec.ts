@@ -82,3 +82,24 @@ test("with the switch, a program that reads loudness shows it is listening and l
     ),
   ).toEqual(["ended"]);
 });
+
+test("a character starts when the microphone gets loud, and only with the switch", async ({
+  page,
+}) => {
+  await openScene(page, true);
+  await page.getByLabel("Cuando").selectOption("onLoudnessOver");
+  await page.getByTestId("event-level").selectOption("10");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await expect(page.locator(".kids-start-block")).toContainText("Cuando el volumen pasa de 10");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("studio-listening")).toBeVisible();
+  // The fake microphone beeps; the hat starts the script when it does.
+  await expect(page.getByText("1 bloque ejecutado")).toBeVisible({ timeout: 20_000 });
+  await page.locator(".kids-stop-button").click();
+  await expect(page.getByTestId("studio-listening")).toHaveCount(0);
+});
+
+test("without the switch the loudness event is not offered", async ({ page }) => {
+  await openScene(page, false);
+  await expect(page.getByLabel("Cuando").locator('option[value="onLoudnessOver"]')).toHaveCount(0);
+});

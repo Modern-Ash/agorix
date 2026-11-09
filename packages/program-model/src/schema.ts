@@ -840,6 +840,12 @@ export interface OnTimerOverTrigger {
   readonly seconds: number;
 }
 
+/** Starts the script when the loudness (0 to 100) goes above this level (Scratch: when loudness > N). */
+export interface OnLoudnessOverTrigger {
+  readonly type: "onLoudnessOver";
+  readonly level: number;
+}
+
 export type Trigger =
   | OnStartTrigger
   | GreenFlagTrigger
@@ -847,7 +853,8 @@ export type Trigger =
   | OnActorClickedTrigger
   | OnMessageTrigger
   | OnBackdropSwitchTrigger
-  | OnTimerOverTrigger;
+  | OnTimerOverTrigger
+  | OnLoudnessOverTrigger;
 
 export type ProgramEvent =
   | "greenFlag"
@@ -855,7 +862,8 @@ export type ProgramEvent =
   | `key:${string}`
   | `message:${string}`
   | `backdrop:${string}`
-  | `timer:${number}`;
+  | `timer:${number}`
+  | `loud:${number}`;
 
 // --- Script / ProjectProgram ------------------------------------------------
 

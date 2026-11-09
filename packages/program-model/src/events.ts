@@ -16,6 +16,8 @@ export function eventForTrigger(trigger: Trigger): ProgramEvent {
       return `backdrop:${trigger.backdropId}`;
     case "onTimerOver":
       return `timer:${trigger.seconds}`;
+    case "onLoudnessOver":
+      return `loud:${trigger.level}`;
   }
 }
 

@@ -17,6 +17,7 @@ import {
   snapshotActors,
   stageForCreative,
   timerSecondsOf,
+  loudnessLevelsOf,
   statementAtNodeId,
   type MultiActorFrame,
   type MultiActorRunResult,
@@ -171,6 +172,9 @@ export function createLiveRuntime(
   // When "start" was dispatched, and the timer hats still waiting for their seconds.
   let startedAt: number | undefined;
   const waitingTimers = new Set(timerSecondsOf(program));
+  // Loudness hats fire each time the level goes from at-or-under their level to over it.
+  const loudHats = options.loudness === undefined ? [] : loudnessLevelsOf(program);
+  const loudAbove = new Set<number>();
   let accumulated = 0;
   let halted = false;
   let steps = 0;
@@ -458,6 +462,13 @@ export function createLiveRuntime(
           waitingTimers.delete(seconds);
           dispatch({ type: "timerPassed", seconds });
         }
+    if (startedAt !== undefined && !halted)
+      for (const level of loudHats) {
+        const over = sampledLoudness > level;
+        if (over && !loudAbove.has(level)) dispatch({ type: "loudnessPassed", level });
+        if (over) loudAbove.add(level);
+        else loudAbove.delete(level);
+      }
     advanceGlides();
     for (const activation of [...active]) {
       if (!activation.alive || halted || activation.wakeAt > now + 1e-9) continue;
@@ -514,6 +525,7 @@ export function createLiveRuntime(
         (active.length > 0 ||
           pending.length > 0 ||
           (startedAt !== undefined && waitingTimers.size > 0) ||
+          (startedAt !== undefined && loudHats.length > 0) ||
           actors.some((actor) => copiesMoving(actor.world)))
       );
     },

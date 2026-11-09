@@ -117,6 +117,7 @@ export const SCENE_TRIGGERS = [
   "onMessage",
   "onBackdropSwitch",
   "onTimerOver",
+  "onLoudnessOver",
 ] as const satisfies readonly TriggerKind[];
 
 export const TRIGGERS_NOT_IN_SCENE = {

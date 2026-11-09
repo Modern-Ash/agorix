@@ -1034,6 +1034,8 @@ function eventText(event: RuntimeEvent): string {
       return `backdrop:${event.backdropId}`;
     case "timerPassed":
       return `timer:${event.seconds}`;
+    case "loudnessPassed":
+      return `loud:${event.level}`;
   }
 }
 
