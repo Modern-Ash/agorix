@@ -135,6 +135,36 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
         : young
           ? "Two programs of the character push it in different directions, so it stays in the same place."
           : "Two programs of this character move it in opposite directions and cancel out: it ends where it began.";
+    case "repeatedBlocks": {
+      const period = finding.counts["period"] ?? 1;
+      const times = finding.counts["times"] ?? 3;
+      return es
+        ? young
+          ? period === 1
+            ? `Escribiste el mismo bloque ${times} veces seguidas. Con «Repetir» alcanza uno solo.`
+            : `Escribiste los mismos ${period} bloques ${times} veces seguidas. «Repetir» los hace por vos.`
+          : period === 1
+            ? `Hay un bloque escrito ${times} veces seguidas: un «Repetir» hace lo mismo con menos bloques.`
+            : `Hay un grupo de ${period} bloques escrito ${times} veces seguidas: un «Repetir» lo deja con una sola copia.`
+        : young
+          ? period === 1
+            ? `You wrote the same block ${times} times in a row. One “Repeat” is enough.`
+            : `You wrote the same ${period} blocks ${times} times in a row. “Repeat” does it for you.`
+          : period === 1
+            ? `A block is written ${times} times in a row: a “Repeat” does the same with fewer blocks.`
+            : `A group of ${period} blocks is written ${times} times in a row: a “Repeat” leaves a single copy.`;
+    }
+    case "repeatedApart": {
+      const period = finding.counts["period"] ?? 2;
+      const times = finding.counts["times"] ?? 3;
+      return es
+        ? young
+          ? `Estos ${period} bloques vuelven una y otra vez. Podés hacer un bloque propio en «Mis bloques».`
+          : `Un grupo de ${period} bloques aparece ${times} veces en tu programa. Un bloque propio, en «Mis bloques», lo deja escrito una sola vez.`
+        : young
+          ? `These ${period} blocks keep coming back. You can make a block of your own in “My blocks”.`
+          : `A group of ${period} blocks appears ${times} times in your program. A block of your own, in “My blocks”, writes it once.`;
+    }
     case "loopNeverEnds": {
       const passes = finding.counts["passes"] ?? 0;
       return es

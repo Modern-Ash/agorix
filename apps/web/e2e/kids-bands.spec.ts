@@ -50,7 +50,7 @@ for (const profile of BANDS) {
     await clickCreateScene(page);
     await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
     const picker = page.getByRole("group", { name: "¿Qué querés lograr?" });
-    await expect(picker.getByRole("button")).toHaveCount(profile.studioBlocks === 6 ? 12 : 15);
+    await expect(picker.getByRole("button")).toHaveCount(profile.studioBlocks === 6 ? 14 : 17);
     await expect(picker.getByRole("button", { name: "Hacer un cuadrado" })).toHaveCount(
       profile.studioBlocks === 6 ? 0 : 1,
     );

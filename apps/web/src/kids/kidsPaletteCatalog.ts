@@ -24,6 +24,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   move: "motion",
   goTo: "motion",
   goToTarget: "motion",
+  createCopies: "looks",
   setRotationStyle: "motion",
   setX: "motion",
   setY: "motion",

@@ -175,6 +175,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           "\n",
       );
       return;
+    case "createCopies":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "make " + statement.count + " copies (" + statement.rule + ")\n",
+      );
+      return;
     case "goToTarget":
       writeMapped(
         writer,

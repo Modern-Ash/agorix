@@ -268,6 +268,20 @@ export interface GoToStatement {
 
 export type GoToTarget = "random" | "mouse";
 
+/** How the copies of a character arrange themselves: in a row, falling from the top, or trailing it. */
+export type CopyRule = "spread" | "fall" | "follow";
+
+/**
+ * Copies of the character that exist only while the program runs: a crowd, falling stars, a tail.
+ * They are drawn like the character, run no program of their own and cannot be sensed, so
+ * nothing else has to name them. A run keeps at most 20 live copies; past that, none are added.
+ */
+export interface CreateCopiesStatement {
+  readonly type: "createCopies";
+  readonly count: number;
+  readonly rule: CopyRule;
+}
+
 /** How the character's picture follows its heading: Scratch's three rotation styles. */
 export type RotationStyle = "all" | "leftRight" | "none";
 
@@ -635,6 +649,7 @@ export type Statement =
   | MoveStatement
   | GoToStatement
   | GoToTargetStatement
+  | CreateCopiesStatement
   | SetRotationStyleStatement
   | SetXStatement
   | SetYStatement

@@ -411,4 +411,52 @@ describe("run evidence findings", () => {
       });
     });
   });
+
+  describe("the same blocks written out again and again", () => {
+    const move = { type: "move", steps: 40 } as const;
+    const turn = { type: "turn", degrees: 90 } as const;
+    const say = { type: "say", text: "Hola" } as const;
+    const kinds = (statements: Script["statements"]) =>
+      diagnose([{ id: "a", trigger: flag, statements }]).filter(
+        (item) => item.kind === "repeatedBlocks" || item.kind === "repeatedApart",
+      );
+
+    it("finds one block written three times in a row, and where it starts", () => {
+      const [found] = kinds([say, move, move, move]);
+      expect(found).toMatchObject({
+        kind: "repeatedBlocks",
+        nodeIds: ["scripts[0]/statements[1]"],
+        counts: { period: 1, times: 3 },
+      });
+    });
+
+    it("finds a group of two or three blocks written out in a row", () => {
+      const [two] = kinds([move, turn, move, turn, move, turn]);
+      expect(two).toMatchObject({ kind: "repeatedBlocks", counts: { period: 2, times: 3 } });
+      const [three] = kinds([move, turn, say, move, turn, say, move, turn, say]);
+      expect(three).toMatchObject({ counts: { period: 3, times: 3 } });
+    });
+
+    it("finds a group that comes back apart, which a repeat cannot hold", () => {
+      const [found] = kinds([move, turn, say, move, turn, say, say, move, turn]);
+      expect(found).toMatchObject({ kind: "repeatedApart", counts: { period: 2, times: 3 } });
+    });
+
+    it("stays quiet for two copies, for different values and for a loop already there", () => {
+      expect(kinds([move, move])).toEqual([]);
+      expect(
+        kinds([move, { type: "move", steps: 80 }, move, { type: "move", steps: 120 }]),
+      ).toEqual([]);
+      expect(kinds([{ type: "repeat", count: 3, body: [move] }])).toEqual([]);
+    });
+
+    it("is a weak finding that a failure outranks", () => {
+      const findings = diagnose([
+        { id: "a", trigger: flag, statements: [move, move, move] },
+        { id: "b", trigger: { type: "onMessage", message: "hola" }, statements: [say] },
+      ]);
+      expect(findings[0]!.kind).toBe("neverStarted");
+      expect(findings.some((item) => item.kind === "repeatedBlocks")).toBe(true);
+    });
+  });
 });

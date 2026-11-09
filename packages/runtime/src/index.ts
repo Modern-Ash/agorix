@@ -47,6 +47,13 @@ export {
   type LiveRuntime,
   type LiveRuntimeOptions,
 } from "./liveRuntime.js";
+export {
+  COPIES_CAP,
+  advanceCopiesWorld,
+  createCopiesWorld,
+  settleCopiesWorld,
+  type CopyState,
+} from "./copies.js";
 export { RuntimeExecutionError } from "./errors.js";
 export {
   assertAllowedRuntimeOperation,

@@ -252,3 +252,35 @@ test("a failing server shows a short note and keeps the button", async ({ page }
   await expect(page.getByTestId("ori-rephrase-failed")).toBeVisible();
   await expect(page.getByRole("button", { name: "Decímelo de otra forma" })).toBeVisible();
 });
+
+test("Ori notices the same block written three times and offers one Repetir, only if accepted", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  for (let i = 0; i < 3; i += 1)
+    await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("button", { name: /Ori vio algo/ }).click();
+  await expect(page.locator(".kids-ori-noticed-panel")).toContainText("3 veces seguidas");
+  await expect(page.getByTestId("ori-fix-diff")).toContainText("Repetir 3 veces");
+  // Nothing changed yet.
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await page.getByRole("button", { name: "Usar este cambio" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await expect(page.locator(".kids-program-block").first()).toContainText("Repetir");
+  // Undo takes it back as one step.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+});

@@ -291,6 +291,12 @@ function projectStatement(
     case "setRotationStyle":
       write(writer, `${pad}sprite.setRotationStyle(${JSON.stringify(statement.style)});\n`);
       return;
+    case "createCopies":
+      write(
+        writer,
+        `${pad}sprite.createCopies(${statement.count}, ${JSON.stringify(statement.rule)});\n`,
+      );
+      return;
     case "goToTarget":
       write(
         writer,

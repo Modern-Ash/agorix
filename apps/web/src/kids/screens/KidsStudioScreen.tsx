@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -277,6 +278,12 @@ const COPY = {
     rotationAll: "Toda la vuelta",
     rotationLeftRight: "Izquierda y derecha",
     rotationNone: "Sin girar",
+    createCopies: "Crear copias",
+    copiesSpread: "En fila",
+    copiesFall: "Cayendo desde arriba",
+    copiesFollow: "Siguiéndome",
+    copiesCount: "Cuántas copias",
+    copiesRule: "Cómo se ponen",
     goToRandom: "Ir a un lugar al azar",
     goToMouse: "Ir al puntero",
     messageAndWait: "Enviar mensaje y esperar",
@@ -563,6 +570,12 @@ const COPY = {
     rotationAll: "All around",
     rotationLeftRight: "Left and right",
     rotationNone: "Don't rotate",
+    createCopies: "Make copies",
+    copiesSpread: "In a row",
+    copiesFall: "Falling from the top",
+    copiesFollow: "Following me",
+    copiesCount: "How many copies",
+    copiesRule: "How they are placed",
     goToRandom: "Go to a random spot",
     goToMouse: "Go to the pointer",
     messageAndWait: "Broadcast message and wait",
@@ -1115,6 +1128,8 @@ export function KidsStudioScreen({
   const [waitSeconds, setWaitSeconds] = useState(1);
   const [shiftAmount, setShiftAmount] = useState<number>(40);
   const [rotationStyle, setRotationStyle] = useState<"all" | "leftRight" | "none">("all");
+  const [copiesCount, setCopiesCount] = useState(3);
+  const [copiesRule, setCopiesRule] = useState<"spread" | "fall" | "follow">("spread");
   const [stopScope, setStopScope] = useState<"script" | "actor" | "scene">("script");
   const [choicePromptId, setChoicePromptId] = useState<ChoicePromptId>("path");
   const [volume, setVolume] = useState(100);
@@ -2564,6 +2579,14 @@ export function KidsStudioScreen({
               ? copy.rotationLeftRight
               : copy.rotationNone
         }`;
+      case "createCopies":
+        return `${copy.createCopies}: ${statement.count} · ${
+          statement.rule === "spread"
+            ? copy.copiesSpread
+            : statement.rule === "fall"
+              ? copy.copiesFall
+              : copy.copiesFollow
+        }`;
       case "goToTarget":
         return statement.target === "random" ? copy.goToRandom : copy.goToMouse;
       case "setX":
@@ -3933,80 +3956,111 @@ export function KidsStudioScreen({
                     )?.source
                   : undefined;
                 if (sprite?.visible === false) return null;
+                const copyScale = ((sprite?.size ?? 100) / 100) * 0.7;
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="kids-studio-stage-actor"
-                    style={{
-                      left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
-                      top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
-                      zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
-                      ...(playing && dragPreview?.id !== item.id
-                        ? {
-                            transition: `left ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear, top ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear`,
-                          }
-                        : {}),
-                    }}
-                    aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
-                    aria-describedby="kids-actor-hint-text"
-                    aria-pressed={activeActorId === item.id}
-                    onPointerEnter={(event) => {
-                      if (event.pointerType !== "touch") setActorHint("mouse");
-                    }}
-                    onPointerLeave={() => setActorHint(null)}
-                    onFocus={(event) => {
-                      if (event.currentTarget.matches(":focus-visible")) setActorHint("keyboard");
-                    }}
-                    onBlur={() => setActorHint(null)}
-                    onClick={(event) => {
-                      if (suppressStageClick.current) {
-                        suppressStageClick.current = false;
-                        return;
-                      }
-                      // Double tap (mouse or finger), or Enter / Space on the character that is
-                      // already selected, opens its panel; one tap only selects, as before.
-                      const now = performance.now();
-                      const last = lastActorTap.current;
-                      const again =
-                        (last?.id === item.id && now - last.at < 380) ||
-                        (event.detail === 0 && activeActorId === item.id);
-                      if (again) {
-                        lastActorTap.current = null;
-                        openInspector("actor");
-                        return;
-                      }
-                      lastActorTap.current = { id: item.id, at: now };
-                      tapActor(item.id);
-                    }}
-                    onPointerDown={(event) => beginDrag(event, item.id, item.x, item.y)}
-                    onPointerMove={moveDrag}
-                    onPointerUp={endDrag}
-                    onPointerCancel={() => {
-                      dragStart.current = null;
-                      setDragPreview(null);
-                    }}
-                  >
-                    <span
-                      className="kids-studio-stage-costume"
-                      data-live={playing ? "true" : undefined}
+                  <Fragment key={item.id}>
+                    {(final?.world.copies ?? []).map((copy, index) => (
+                      <span
+                        key={`${item.id}-copy-${index}`}
+                        className="kids-studio-stage-copy"
+                        data-rule={copy.rule}
+                        aria-hidden="true"
+                        style={{
+                          left: `${Math.max(4, Math.min(90, 8 + copy.x / 4))}%`,
+                          top: `${Math.max(8, Math.min(82, 40 + copy.y / 3))}%`,
+                          zIndex: shownStage?.actorOrder?.indexOf(item.id) ?? 0,
+                          ...(playing
+                            ? {
+                                transition: `left ${LIVE_STEP_SECONDS}s linear, top ${LIVE_STEP_SECONDS}s linear`,
+                              }
+                            : {}),
+                        }}
+                      >
+                        <span
+                          className="kids-studio-stage-costume"
+                          style={{ transform: `scale(${copyScale})` }}
+                        >
+                          <KidsSprite
+                            slot={{ kind: "gallery", id: characterId }}
+                            imageOverride={costumeArt}
+                            label=""
+                          />
+                        </span>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      className="kids-studio-stage-actor"
                       style={{
-                        transform: `scale(${(sprite?.size ?? 100) / 100})${costumeTurn(sprite)}`,
+                        left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
+                        top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
+                        zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
+                        ...(playing && dragPreview?.id !== item.id
+                          ? {
+                              transition: `left ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear, top ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear`,
+                            }
+                          : {}),
+                      }}
+                      aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
+                      aria-describedby="kids-actor-hint-text"
+                      aria-pressed={activeActorId === item.id}
+                      onPointerEnter={(event) => {
+                        if (event.pointerType !== "touch") setActorHint("mouse");
+                      }}
+                      onPointerLeave={() => setActorHint(null)}
+                      onFocus={(event) => {
+                        if (event.currentTarget.matches(":focus-visible")) setActorHint("keyboard");
+                      }}
+                      onBlur={() => setActorHint(null)}
+                      onClick={(event) => {
+                        if (suppressStageClick.current) {
+                          suppressStageClick.current = false;
+                          return;
+                        }
+                        // Double tap (mouse or finger), or Enter / Space on the character that is
+                        // already selected, opens its panel; one tap only selects, as before.
+                        const now = performance.now();
+                        const last = lastActorTap.current;
+                        const again =
+                          (last?.id === item.id && now - last.at < 380) ||
+                          (event.detail === 0 && activeActorId === item.id);
+                        if (again) {
+                          lastActorTap.current = null;
+                          openInspector("actor");
+                          return;
+                        }
+                        lastActorTap.current = { id: item.id, at: now };
+                        tapActor(item.id);
+                      }}
+                      onPointerDown={(event) => beginDrag(event, item.id, item.x, item.y)}
+                      onPointerMove={moveDrag}
+                      onPointerUp={endDrag}
+                      onPointerCancel={() => {
+                        dragStart.current = null;
+                        setDragPreview(null);
                       }}
                     >
-                      <KidsSprite
-                        slot={{ kind: "gallery", id: characterId }}
-                        imageOverride={costumeArt}
-                        label={item.name}
-                      />
-                    </span>
-                    {sprite?.bubble ? (
-                      <span className="kids-studio-bubble">
-                        {sprite.bubble.kind === "think" ? "☁ " : ""}
-                        {sprite.bubble.text}
+                      <span
+                        className="kids-studio-stage-costume"
+                        data-live={playing ? "true" : undefined}
+                        style={{
+                          transform: `scale(${(sprite?.size ?? 100) / 100})${costumeTurn(sprite)}`,
+                        }}
+                      >
+                        <KidsSprite
+                          slot={{ kind: "gallery", id: characterId }}
+                          imageOverride={costumeArt}
+                          label={item.name}
+                        />
                       </span>
-                    ) : null}
-                  </button>
+                      {sprite?.bubble ? (
+                        <span className="kids-studio-bubble">
+                          {sprite.bubble.kind === "think" ? "☁ " : ""}
+                          {sprite.bubble.text}
+                        </span>
+                      ) : null}
+                    </button>
+                  </Fragment>
                 );
               })}
               <span id="kids-actor-hint-text" className="kids-visually-hidden">
@@ -5660,6 +5714,40 @@ export function KidsStudioScreen({
                         {galleryCharacterName(item.id, locale)}
                       </option>
                     ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.createCopies,
+                      block: "createCopies",
+                      onAdd: () =>
+                        add({ type: "createCopies", count: copiesCount, rule: copiesRule }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.copiesCount}
+                    value={copiesCount}
+                    onChange={(event) => setCopiesCount(Number(event.target.value))}
+                  >
+                    {[2, 3, 5].map((count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label={copy.copiesRule}
+                    value={copiesRule}
+                    onChange={(event) =>
+                      setCopiesRule(event.target.value as "spread" | "fall" | "follow")
+                    }
+                  >
+                    <option value="spread">{copy.copiesSpread}</option>
+                    <option value="fall">{copy.copiesFall}</option>
+                    <option value="follow">{copy.copiesFollow}</option>
                   </select>
                 </KidsPaletteBlock>
                 <KidsPaletteBlock

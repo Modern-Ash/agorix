@@ -39,6 +39,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     es: "Elegir cómo se ve al girar: toda la vuelta o solo de lado",
     en: "Choose how it looks when it turns",
   },
+  createCopies: {
+    es: "Hacer copias del personaje que aparecen al jugar",
+    en: "Make copies of the character that appear when you play",
+  },
   goToTarget: {
     es: "Ir a un lugar al azar o hacia el puntero",
     en: "Jump to a random spot or to the pointer",

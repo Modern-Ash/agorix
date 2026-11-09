@@ -10,6 +10,7 @@ import type {
   StopStatement,
   Trigger,
 } from "@agorix/program-model";
+import { COPIES_CAP, createCopiesWorld } from "./copies.js";
 import {
   CHOICE_CATALOG,
   MOVE_STEPS_MAX,
@@ -567,6 +568,13 @@ function* executeStatement(
     case "setRotationStyle":
       state.world = setRotationStyleWorld(state.world, statement.style);
       break;
+    case "createCopies": {
+      const before = state.world.copies?.length ?? 0;
+      state.world = createCopiesWorld(state.world, statement.count, statement.rule);
+      if ((state.world.copies?.length ?? 0) - before < statement.count)
+        addNote(state, `createCopies: limit of ${COPIES_CAP} copies`);
+      break;
+    }
     case "goToTarget": {
       if (statement.target === "random") {
         // Inside the same bounds the stage shows; the seeded stream keeps a run reproducible.
