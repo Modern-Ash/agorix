@@ -494,6 +494,8 @@ function checked(
     );
   if (statement.type === "createCopies")
     return (
+      // Copies with a script of their own come with the Studio's clone palette (#1311).
+      statement.withScript !== true &&
       [2, 3, 5].includes(statement.count) &&
       (statement.rule === "spread" || statement.rule === "fall" || statement.rule === "follow")
     );

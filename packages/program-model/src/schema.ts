@@ -339,6 +339,11 @@ export interface CreateCopiesStatement {
   readonly type: "createCopies";
   readonly count: number;
   readonly rule: CopyRule;
+  /**
+   * Each copy also runs the character's "when I start as a clone" script, as a character of its
+   * own for the run (Scratch: create clone of myself). The rule only decides where it starts.
+   */
+  readonly withScript?: boolean;
 }
 
 /** How the character's picture follows its heading: Scratch's three rotation styles. */

@@ -208,7 +208,14 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + "make " + statement.count + " copies (" + statement.rule + ")\n",
+        indent +
+          "make " +
+          statement.count +
+          " copies (" +
+          statement.rule +
+          ")" +
+          (statement.withScript === true ? " that run their own script" : "") +
+          "\n",
       );
       return;
     case "goToTarget":

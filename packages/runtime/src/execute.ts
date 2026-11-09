@@ -119,6 +119,8 @@ export interface ExecutionOptions {
   readonly pointer?: { readonly x: number; readonly y: number; readonly down: boolean };
   /** Loudness 0 to 100 measured by the caller (a number, never sound); 0 when absent. */
   readonly loudness?: number;
+  /** True when this activation runs as a copy born from "copies that run their own script". */
+  readonly isClone?: boolean;
   /** Bundled prompt id to selected 1-based option index; absent means pause at that question. */
   readonly choices?: Readonly<Record<string, number>>;
   /** Bundled question id to the word the child typed; absent means pause at that question. */
@@ -633,6 +635,8 @@ function* executeStatement(
       state.world = setRotationStyleWorld(state.world, statement.style);
       break;
     case "createCopies": {
+      // Copies with a script are new characters: the scheduler adds them, this only records it.
+      if (statement.withScript === true) break;
       const before = state.world.copies?.length ?? 0;
       state.world = createCopiesWorld(state.world, statement.count, statement.rule);
       if ((state.world.copies?.length ?? 0) - before < statement.count)
@@ -718,8 +722,8 @@ function* executeStatement(
       state.timerOrigin = state.virtualSeconds;
       break;
     case "deleteThisClone":
-      // Copies with their own script arrive with the runtime slice; until then this is not a copy.
-      addNote(state, `deleteThisClone: not a clone:${path}`);
+      // The scheduler removes the copy; on a character that is not a copy this does nothing.
+      if (state.options.isClone !== true) addNote(state, `deleteThisClone: not a clone:${path}`);
       break;
     case "penDown":
       state.world = penDownWorld(state.world);
@@ -1073,6 +1077,9 @@ function* executeStatement(
   if ((statement.type === "say" || statement.type === "think") && statement.seconds !== undefined)
     state.world = clearBubbleWorld(state.world);
   if (statement.type === "stop") throw new ExecutionHalt("stopped", statement.scope);
+  // A copy that deletes itself ends its script here, as a script stop (the scheduler removes it).
+  if (statement.type === "deleteThisClone" && state.options.isClone === true)
+    throw new ExecutionHalt("stopped", "script");
   if (choicePending) throw new ExecutionHalt("stopped", "scene");
   if (waitUntilTimedOut) throw new ExecutionHalt("stopped");
   if (statement.type === "forever") {

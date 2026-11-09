@@ -16,6 +16,7 @@ import {
   type RunOutcome,
 } from "./execute.js";
 import { COPIES_CAP, liveCopies, settleCopiesWorld } from "./copies.js";
+import { copyRoom, isCloneId, liveClones, makeClones } from "./clones.js";
 import { cloneWorldState, createWorldState, type WorldState } from "./world.js";
 
 export interface MultiActorRuntimeActor {
@@ -52,7 +53,8 @@ export type RuntimeEvent =
   | { readonly type: "message"; readonly message: string; readonly senderActorId?: string }
   | { readonly type: "backdropSwitched"; readonly backdropId: string }
   | { readonly type: "timerPassed"; readonly seconds: number }
-  | { readonly type: "loudnessPassed"; readonly level: number };
+  | { readonly type: "loudnessPassed"; readonly level: number }
+  | { readonly type: "cloneStarted"; readonly actorId: string };
 
 export interface MultiActorScriptActivation {
   readonly id: string;
@@ -274,8 +276,8 @@ function triggerMatchesEvent(
     case "onLoudnessOver":
       return event.type === "loudnessPassed" && trigger.level === event.level;
     case "onCloneStart":
-      // Copies are not started yet; no event begins this script.
-      return false;
+      // Only the copy the event names starts it, the moment the copy exists.
+      return event.type === "cloneStarted" && event.actorId === actor.id;
   }
 }
 
@@ -299,6 +301,8 @@ export function cloneRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
       return { type: "timerPassed", seconds: event.seconds };
     case "loudnessPassed":
       return { type: "loudnessPassed", level: event.level };
+    case "cloneStarted":
+      return { type: "cloneStarted", actorId: event.actorId };
   }
 }
 
@@ -318,6 +322,8 @@ export function programEventForRuntimeEvent(event: RuntimeEvent): ProgramEvent {
       return `timer:${event.seconds}`;
     case "loudnessPassed":
       return `loud:${event.level}`;
+    case "cloneStarted":
+      return "clone";
   }
 }
 
@@ -376,6 +382,8 @@ export function reasonForActivation(
       return `${event.seconds} seconds passed`;
     case "loudnessPassed":
       return `Loudness went above ${event.level}`;
+    case "cloneStarted":
+      return `A copy of ${actor.name} started`;
   }
 }
 
@@ -477,14 +485,17 @@ export function runMultiActorProgram(
   const queue = initialEvents(options.events, program);
   const stoppedActors = new Set<string>();
   let randomState = options.randomSeed;
+  let cloneCounter = 0;
 
   eventLoop: while (queue.length > 0) {
     const event = queue.shift();
     if (event === undefined) {
       continue;
     }
-    for (const actor of actors) {
-      if (stoppedActors.has(actor.id)) continue;
+    // A copy born during this event hears the next ones, not this one.
+    for (const actor of [...actors]) {
+      if (stoppedActors.has(actor.id) || !actors.includes(actor)) continue;
+      let deleted = false;
       for (const [scriptIndex, script] of scriptsForActor(validatedProgram, actor, event)) {
         if (stepsUsed >= maxSteps) {
           outcome = "budget-exceeded";
@@ -503,6 +514,7 @@ export function runMultiActorProgram(
         const result = runProgram(singleScriptProgram(validatedProgram, script), actor.world, {
           maxSteps: maxSteps - stepsUsed,
           event: programEventForRuntimeEvent(event),
+          ...(isCloneId(actor.id) ? { isClone: true } : {}),
           sensorActors: actors
             .filter((other) => other.id !== actor.id)
             .map((other) => ({
@@ -519,9 +531,13 @@ export function runMultiActorProgram(
           ...(options.answers === undefined ? {} : { answers: options.answers }),
         });
         randomState = result.randomState;
+        const lastType = result.trace.at(-1)?.statementType;
+        deleted = isCloneId(actor.id) && lastType === "deleteThisClone";
         if (result.outcome === "budget-exceeded") outcome = "budget-exceeded";
-        else if (result.outcome === "stopped" && outcome === "completed") outcome = "stopped";
+        else if (result.outcome === "stopped" && outcome === "completed" && !deleted)
+          outcome = "stopped";
         for (const entry of result.trace) {
+          let note = entry.note;
           const nodeId = remapNodeId(entry.nodeId, scriptIndex);
           actor.world = cloneWorldState(entry.worldAfter);
           if (entry.worldAfter.backdropId !== undefined) {
@@ -539,6 +555,25 @@ export function runMultiActorProgram(
             const statement = statementAtNodeId(script, entry.nodeId);
             if (statement?.type === "switchBackdrop")
               queue.push({ type: "backdropSwitched", backdropId: statement.backdropId });
+          }
+          if (entry.statementType === "createCopies") {
+            const statement = statementAtNodeId(script, entry.nodeId);
+            if (statement?.type === "createCopies" && statement.withScript === true) {
+              const made = makeClones(
+                validatedProgram,
+                actor,
+                Math.min(statement.count, copyRoom(actors)),
+                statement.rule,
+                () => (cloneCounter += 1),
+              );
+              if (made.length < statement.count)
+                note = `createCopies: limit of ${COPIES_CAP} copies`;
+              for (const clone of made) {
+                actors.push(clone);
+                stage.actorOrder = [...stage.actorOrder, clone.id];
+                queue.push({ type: "cloneStarted", actorId: clone.id });
+              }
+            }
           }
           if (entry.statementType === "broadcast") {
             const statement = statementAtNodeId(script, entry.nodeId);
@@ -560,7 +595,7 @@ export function runMultiActorProgram(
             path: nodeId,
             statementType: entry.statementType,
             ...(entry.stopScope === undefined ? {} : { stopScope: entry.stopScope }),
-            ...(entry.note === undefined ? {} : { note: entry.note }),
+            ...(note === undefined ? {} : { note }),
             ...(entry.conditionResult === undefined
               ? {}
               : { conditionResult: entry.conditionResult }),
@@ -582,7 +617,7 @@ export function runMultiActorProgram(
         }
         actor.world = cloneWorldState(result.world);
         // A run keeps at most COPIES_CAP live copies; the character that just made them gives up the extra.
-        const over = liveCopies(actors.map((item) => item.world)) - COPIES_CAP;
+        const over = liveCopies(actors.map((item) => item.world)) + liveClones(actors) - COPIES_CAP;
         if (over > 0 && actor.world.copies !== undefined)
           actor.world = createWorldState({
             ...actor.world,
@@ -590,6 +625,12 @@ export function runMultiActorProgram(
           });
         stepsUsed += result.stepsUsed;
         if (result.outcome === "budget-exceeded") break eventLoop;
+        if (deleted) {
+          // A copy that ends itself leaves the stage; the frames already show it there.
+          actors.splice(actors.indexOf(actor), 1);
+          stage.actorOrder = stage.actorOrder.filter((id) => id !== actor.id);
+          break;
+        }
         if (result.outcome === "stopped") {
           if (result.stopScope === "script") continue;
           if (result.stopScope === "actor") {

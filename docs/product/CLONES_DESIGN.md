@@ -67,3 +67,8 @@ Size B built and merged (#1298): `createCopies` statement, deterministic runtime
 ## Update (owner, 2026-11-09)
 
 The owner approved **size A** (a copy with its own script, the clone hat). Its design and increments are in [SCRATCH_PARITY_DESIGNS.md](SCRATCH_PARITY_DESIGNS.md).
+
+## Status of size A
+
+- Increment 1 (#1334): the copy hat, `deleteThisClone`, the Studio's second script rule.
+- Increment 2: runtime. `createCopies` gains `withScript`; each copy is a run-only character `<character>#N` (counter of the run, so replay is exact) that starts the character's copy script at the place the rule gives it, runs through the same stepper (batch and live), hears later events like its parent, and leaves on `deleteThisClone`. The cap of 20 is shared with plain copies. A copy starts with its parent's variables and keeps its own (not shared), as in Scratch's "for this sprite only". Not yet in the Studio palette or the stage (increment 3).

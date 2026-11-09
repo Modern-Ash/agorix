@@ -36,6 +36,7 @@ export const JAVA_SUPPORT_API = [
   "nextCostume",
   "setRotationStyle",
   "createCopies",
+  "createCopiesWithScript",
   "goToRandom",
   "goToMouse",
   "setX",
@@ -126,6 +127,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void nextCostume(String[] costumes) {}
     void setRotationStyle(String style) {}
     void createCopies(int count, String rule) {}
+    void createCopiesWithScript(int count, String rule) {}
     void goToRandom() {}
     void goToMouse() {}
     void setX(double x) {}
@@ -569,7 +571,11 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
     case "setRotationStyle":
       return line(`setRotationStyle(${literal(node.style)})`);
     case "createCopies":
-      return line(`createCopies(${node.count}, ${literal(node.rule)})`);
+      return line(
+        node.withScript === true
+          ? `createCopiesWithScript(${node.count}, ${literal(node.rule)})`
+          : `createCopies(${node.count}, ${literal(node.rule)})`,
+      );
     case "goToTarget":
       return line(node.target === "random" ? "goToRandom()" : "goToMouse()");
     case "setX":

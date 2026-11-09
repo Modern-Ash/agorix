@@ -553,7 +553,20 @@ function validateStatement(
           input.rule,
         );
       }
-      return { type: "createCopies", count: input.count as number, rule: input.rule };
+      if (input.withScript !== undefined && typeof input.withScript !== "boolean") {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.withScript`,
+          "expected true or false",
+          input.withScript,
+        );
+      }
+      return {
+        type: "createCopies",
+        count: input.count as number,
+        rule: input.rule,
+        ...(input.withScript === true ? { withScript: true as const } : {}),
+      };
     case "setRotationStyle":
       if (input.style !== "all" && input.style !== "leftRight" && input.style !== "none") {
         fail(

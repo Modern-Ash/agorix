@@ -624,6 +624,7 @@ function statementFromBlock(
         type: "createCopies",
         count: numberField(block, "count", path),
         rule: stringField(block, "rule", path) as "spread" | "fall" | "follow",
+        ...(block.fields?.["withScript"] === true ? { withScript: true as const } : {}),
       };
     case "motion_go_to_target":
       return {
@@ -1185,7 +1186,11 @@ function statementToBlock(
       return {
         id,
         type: "looks_create_copies",
-        fields: { count: statement.count, rule: statement.rule },
+        fields: {
+          count: statement.count,
+          rule: statement.rule,
+          ...(statement.withScript === true ? { withScript: true } : {}),
+        },
       };
     case "goToTarget":
       return { id, type: "motion_go_to_target", fields: { target: statement.target } };
