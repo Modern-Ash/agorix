@@ -27,6 +27,7 @@ import {
   type RuntimeEvent,
 } from "./multiActor.js";
 import { COPIES_CAP, advanceCopiesWorld, copiesMoving, liveCopies } from "./copies.js";
+import { copyRoom, isCloneId, liveClones, makeClones } from "./clones.js";
 import { cloneWorldState, createWorldState, drawPenTrail, type WorldState } from "./world.js";
 
 /** Scratch-like frame rate: each live script runs at most one statement per tick. */
@@ -165,6 +166,7 @@ export function createLiveRuntime(
   const active: Activation[] = [];
   const pending: { readonly event: RuntimeEvent; readonly token?: number }[] = [];
   let nextToken = 1;
+  let cloneCounter = 0;
   const stopped = new Set<string>();
   let outcome: MultiActorRunResult["outcome"] = "completed";
   let randomState = options.randomSeed;
@@ -223,6 +225,7 @@ export function createLiveRuntime(
       maxSteps: Number.MAX_SAFE_INTEGER,
       maxVirtualSeconds: maxSeconds,
       event: programEventForRuntimeEvent(event),
+      ...(isCloneId(actor.id) ? { isClone: true } : {}),
       ...(options.randomSeed === undefined ? {} : { randomSeed: options.randomSeed }),
       get sensorActors() {
         return sensors(actor);
@@ -266,8 +269,8 @@ export function createLiveRuntime(
 
   function dispatch(event: RuntimeEvent, token?: number) {
     if (event.type === "start" && startedAt === undefined) startedAt = now;
-    for (const actor of actors) {
-      if (stopped.has(actor.id)) continue;
+    for (const actor of [...actors]) {
+      if (stopped.has(actor.id) || !actors.includes(actor)) continue;
       for (const [index] of scriptsForActor(program, actor, event))
         start(actor, index, event, token);
     }
@@ -280,7 +283,7 @@ export function createLiveRuntime(
 
   /** A run keeps at most COPIES_CAP live copies; the character that just made them gives up the extra. */
   function capCopies(actor: RuntimeActorMutable, all: readonly RuntimeActorMutable[]) {
-    const over = liveCopies(all.map((item) => item.world)) - COPIES_CAP;
+    const over = liveCopies(all.map((item) => item.world)) + liveClones(all) - COPIES_CAP;
     const copies = actor.world.copies;
     if (over > 0 && copies !== undefined)
       actor.world = createWorldState({
@@ -339,11 +342,32 @@ export function createLiveRuntime(
         if (token !== undefined) activation.waitingFor = token;
       }
     }
+    let cloneNote: string | undefined;
+    if (raw.statementType === "createCopies") {
+      const statement = statementAtNodeId(single, raw.nodeId);
+      if (statement?.type === "createCopies" && statement.withScript === true) {
+        const made = makeClones(
+          program,
+          actor,
+          Math.min(statement.count, copyRoom(actors)),
+          statement.rule,
+          () => (cloneCounter += 1),
+        );
+        if (made.length < statement.count)
+          cloneNote = `createCopies: limit of ${COPIES_CAP} copies`;
+        for (const clone of made) {
+          actors.push(clone);
+          stage.actorOrder = [...stage.actorOrder, clone.id];
+          pending.push({ event: { type: "cloneStarted", actorId: clone.id } });
+        }
+      }
+    }
     steps += 1;
     // A wait or glide lasts its seconds; a note or drum lasts its beats ("play until done").
     const occupied =
       Math.round((Math.max(0, result.at - activation.lastAt) + (raw.audio?.seconds ?? 0)) * 1000) /
       1000;
+    const note = raw.note ?? cloneNote;
     const mapped: MultiActorTraceEntry = {
       step: steps,
       activationId: activation.id,
@@ -354,7 +378,7 @@ export function createLiveRuntime(
       path: nodeId,
       statementType: raw.statementType,
       ...(raw.stopScope === undefined ? {} : { stopScope: raw.stopScope }),
-      ...(raw.note === undefined ? {} : { note: raw.note }),
+      ...(note === undefined ? {} : { note }),
       ...(raw.soundId === undefined ? {} : { soundId: raw.soundId }),
       ...(raw.audio === undefined ? {} : { audio: raw.audio }),
       ...(raw.conditionResult === undefined ? {} : { conditionResult: raw.conditionResult }),
@@ -394,6 +418,12 @@ export function createLiveRuntime(
         stage: cloneRuntimeStage(stage),
         actors: snapshotActors(actors),
       });
+    // A copy that deletes itself leaves now, after the frame that shows it there.
+    if (raw.statementType === "deleteThisClone" && isCloneId(actor.id)) {
+      for (const other of active) if (other.actor.id === actor.id) other.alive = false;
+      actors.splice(actors.indexOf(actor), 1);
+      stage.actorOrder = stage.actorOrder.filter((id) => id !== actor.id);
+    }
     activation.lastAt = result.at;
     activation.wakeAt = now + Math.max(occupied, options.paceSeconds ?? 0);
     return mapped;

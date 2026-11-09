@@ -293,7 +293,11 @@ const everything: ProjectProgram = {
     {
       id: "cl",
       trigger: { type: "onCloneStart" },
-      statements: [{ type: "move", steps: 10 }, { type: "deleteThisClone" }],
+      statements: [
+        { type: "createCopies", count: 2, rule: "spread", withScript: true },
+        { type: "move", steps: 10 },
+        { type: "deleteThisClone" },
+      ],
     },
     { id: "o", trigger: { type: "onStart" }, statements: [{ type: "show" }] },
   ],

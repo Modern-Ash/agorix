@@ -377,8 +377,9 @@ function closedIdeaBlock(statement: Statement): boolean {
       return statement.target === "random" || statement.target === "mouse";
     case "createCopies":
       return (
-        (statement.rule === "fall" && statement.count === 5) ||
-        (statement.rule === "spread" && statement.count === 3)
+        statement.withScript !== true &&
+        ((statement.rule === "fall" && statement.count === 5) ||
+          (statement.rule === "spread" && statement.count === 3))
       );
     case "say":
       return (

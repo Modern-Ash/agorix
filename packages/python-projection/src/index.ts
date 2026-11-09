@@ -280,7 +280,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + "create_copies(" + statement.count + ", " + JSON.stringify(statement.rule) + ")\n",
+        indent +
+          "create_copies(" +
+          statement.count +
+          ", " +
+          JSON.stringify(statement.rule) +
+          (statement.withScript === true ? ", with_script=True" : "") +
+          ")\n",
       );
       return;
     case "goToTarget":

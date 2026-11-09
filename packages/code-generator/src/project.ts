@@ -310,7 +310,7 @@ function projectStatement(
     case "createCopies":
       write(
         writer,
-        `${pad}sprite.createCopies(${statement.count}, ${JSON.stringify(statement.rule)});\n`,
+        `${pad}sprite.createCopies(${statement.count}, ${JSON.stringify(statement.rule)}${statement.withScript === true ? ", { withScript: true }" : ""});\n`,
       );
       return;
     case "goToTarget":

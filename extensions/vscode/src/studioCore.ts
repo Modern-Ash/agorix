@@ -1036,6 +1036,8 @@ function eventText(event: RuntimeEvent): string {
       return `timer:${event.seconds}`;
     case "loudnessPassed":
       return `loud:${event.level}`;
+    case "cloneStarted":
+      return `clone:${event.actorId}`;
   }
 }
 
