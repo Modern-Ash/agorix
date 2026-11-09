@@ -71,6 +71,7 @@ describe("block-editor", () => {
       "When actor clicked",
       "When message received",
       "When backdrop switches",
+      "When time passes",
       "Broadcast message",
       "Move [N] steps",
       "Go to [X, Y]",
@@ -131,7 +132,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(64);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(65);
   });
 
   it("creates safe defaults for every required POC block", () => {
@@ -705,6 +706,7 @@ describe("green-flag hat in the block editor", () => {
       "When actor clicked",
       "When message received",
       "When backdrop switches",
+      "When time passes",
     ]);
     expect(getBlockDefinition("event_on_start")?.legacy).toBe(true);
     expect(canPlaceBlock("event_green_flag", "trigger")).toBe(true);

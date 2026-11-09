@@ -388,6 +388,7 @@ const COPY = {
     onKey: "Al pulsar",
     onMessage: "Al recibir",
     onBackdropSwitch: "Al cambiar el fondo a",
+    onTimerOver: "Al pasar los segundos",
     pressKey: "Pulsar tecla",
     variable: "Variable",
     list: "Lista",
@@ -696,6 +697,7 @@ const COPY = {
     onKey: "When key pressed",
     onMessage: "When receiving",
     onBackdropSwitch: "When the backdrop changes to",
+    onTimerOver: "When the seconds pass",
     pressKey: "Press key",
     variable: "Variable",
     list: "List",
@@ -953,7 +955,12 @@ const stageX = (x: number) => Math.max(4, Math.min(90, 8 + x / 4));
 const stageY = (y: number) => Math.max(8, Math.min(82, 40 + y / 3));
 
 type StudioEvent =
-  "greenFlag" | "onActorClicked" | "onKeyPressed" | "onMessage" | "onBackdropSwitch";
+  | "greenFlag"
+  | "onActorClicked"
+  | "onKeyPressed"
+  | "onMessage"
+  | "onBackdropSwitch"
+  | "onTimerOver";
 
 /**
  * How the picture follows the heading: all around (default), mirrored when it faces left, or not
@@ -1197,6 +1204,7 @@ export function KidsStudioScreen({
   const [volumeChange, setVolumeChange] = useState(-10);
   const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
   const [limitHit, setLimitHit] = useState<"blocks" | "actors" | null>(null);
+  const [eventSeconds, setEventSeconds] = useState(3);
   const [eventBackdrop, setEventBackdrop] = useState<KidsGalleryBackdropId>(
     KIDS_GALLERY_BACKDROPS[0]!.id,
   );
@@ -2224,7 +2232,9 @@ export function KidsStudioScreen({
           ? ({ type, message: eventMessage } as const)
           : type === "onBackdropSwitch"
             ? ({ type, backdropId: `backdrop:${eventBackdrop}` } as const)
-            : ({ type } as const);
+            : type === "onTimerOver"
+              ? ({ type, seconds: eventSeconds } as const)
+              : ({ type } as const);
     persist(setStudioTrigger(history, activeActorId, trigger));
   }
 
@@ -5038,6 +5048,7 @@ export function KidsStudioScreen({
                       <option value="onKeyPressed">{copy.onKey}</option>
                       <option value="onMessage">{copy.onMessage}</option>
                       <option value="onBackdropSwitch">{copy.onBackdropSwitch}</option>
+                      <option value="onTimerOver">{copy.onTimerOver}</option>
                     </select>
                   </label>
                   {script?.trigger.type === "onKeyPressed" ? (
@@ -5056,6 +5067,31 @@ export function KidsStudioScreen({
                         {STUDIO_KEYS.map((key) => (
                           <option key={key} value={key}>
                             {key}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {script?.trigger.type === "onTimerOver" ? (
+                    <label>
+                      {copy.onTimerOver}{" "}
+                      <select
+                        data-testid="event-seconds"
+                        value={script.trigger.seconds}
+                        onChange={(event) => {
+                          const seconds = Number(event.target.value);
+                          setEventSeconds(seconds);
+                          persist(
+                            setStudioTrigger(history, activeActorId, {
+                              type: "onTimerOver",
+                              seconds,
+                            }),
+                          );
+                        }}
+                      >
+                        {[1, 2, 3, 5, 10].map((seconds) => (
+                          <option key={seconds} value={seconds}>
+                            {seconds}
                           </option>
                         ))}
                       </select>
@@ -5117,9 +5153,11 @@ export function KidsStudioScreen({
                         ? `${copy.onKey} ${script.trigger.key}`
                         : script?.trigger.type === "onMessage"
                           ? `${copy.onMessage} ${script.trigger.message}`
-                          : script?.trigger.type === "onBackdropSwitch"
-                            ? `${copy.onBackdropSwitch} ${galleryBackdropName(backdropOfStage(script.trigger.backdropId, backdropId), locale)}`
-                            : copy.onPlay}
+                          : script?.trigger.type === "onTimerOver"
+                            ? `${copy.onTimerOver} ${script.trigger.seconds}`
+                            : script?.trigger.type === "onBackdropSwitch"
+                              ? `${copy.onBackdropSwitch} ${galleryBackdropName(backdropOfStage(script.trigger.backdropId, backdropId), locale)}`
+                              : copy.onPlay}
                   </div>
                   {script?.trigger.type === "onActorClicked" ? (
                     <p className="kids-note">{copy.tapHint}</p>

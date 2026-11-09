@@ -1061,6 +1061,34 @@ test("a character on the stage fills its ring instead of shrinking to one text l
   expect(box.width).toBeGreaterThan(ring.width * 0.6);
 });
 
+test("free scene starts a character after some seconds of the run", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByLabel("Cuando").selectOption("onTimerOver");
+  await expect(page.locator(".kids-start-block")).toContainText("Al pasar los segundos 3");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByTestId("event-seconds").selectOption("5");
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-start-block")).toContainText("Al pasar los segundos 5");
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {

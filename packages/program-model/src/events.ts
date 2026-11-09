@@ -14,6 +14,8 @@ export function eventForTrigger(trigger: Trigger): ProgramEvent {
       return `message:${trigger.message}`;
     case "onBackdropSwitch":
       return `backdrop:${trigger.backdropId}`;
+    case "onTimerOver":
+      return `timer:${trigger.seconds}`;
   }
 }
 
