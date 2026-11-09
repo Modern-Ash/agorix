@@ -167,6 +167,7 @@ describe("runtime operation allowlist", () => {
       "onKeyPressed",
       "onActorClicked",
       "onMessage",
+      "onBackdropSwitch",
     ]);
   });
 

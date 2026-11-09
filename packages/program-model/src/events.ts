@@ -12,6 +12,8 @@ export function eventForTrigger(trigger: Trigger): ProgramEvent {
       return `key:${trigger.key}`;
     case "onMessage":
       return `message:${trigger.message}`;
+    case "onBackdropSwitch":
+      return `backdrop:${trigger.backdropId}`;
   }
 }
 

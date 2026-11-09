@@ -459,4 +459,31 @@ describe("run evidence findings", () => {
       expect(findings.some((item) => item.kind === "repeatedBlocks")).toBe(true);
     });
   });
+
+  it("names a backdrop hat that never started, and is surer when nothing switches to it", () => {
+    const scripts: Script[] = [
+      { id: "a", trigger: flag, statements: [{ type: "move", steps: 20 }] },
+      {
+        id: "b",
+        trigger: { type: "onBackdropSwitch", backdropId: "backdrop:space" },
+        statements: [{ type: "hide" }],
+      },
+    ];
+    const p = program(scripts);
+    const c: ProjectCreativeState = {
+      ...creative(scripts),
+      assets: [{ id: "backdrop:space", kind: "backdrop", name: "Space", source: "builtin:space" }],
+    };
+    const [finding] = diagnoseRun({ program: p, creative: c, run: runMultiActorProgram(p, c) });
+    expect(finding).toMatchObject({
+      kind: "neverStarted",
+      event: { type: "backdrop", name: "backdrop:space" },
+    });
+    expect(finding!.confidence).toBe(0.8);
+    expect(toProviderFinding(finding!)).toEqual({
+      kind: "neverStarted",
+      counts: {},
+      eventType: "backdrop",
+    });
+  });
 });

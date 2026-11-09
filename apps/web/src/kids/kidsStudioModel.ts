@@ -187,7 +187,10 @@ function checkedTrigger(trigger: Trigger): boolean {
     (trigger.type === "onKeyPressed" &&
       STUDIO_KEYS.includes(trigger.key as (typeof STUDIO_KEYS)[number])) ||
     (trigger.type === "onMessage" &&
-      STUDIO_MESSAGES.includes(trigger.message as (typeof STUDIO_MESSAGES)[number]))
+      STUDIO_MESSAGES.includes(trigger.message as (typeof STUDIO_MESSAGES)[number])) ||
+    (trigger.type === "onBackdropSwitch" &&
+      trigger.backdropId.startsWith("backdrop:") &&
+      isGalleryBackdropId(trigger.backdropId.slice(9)))
   );
 }
 

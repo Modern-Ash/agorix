@@ -213,6 +213,8 @@ function triggerText(trigger: Trigger): string {
       return `def on_key_pressed_${safeEventName(trigger.key)}():\n`;
     case "onMessage":
       return `def on_message_${safeEventName(trigger.message)}():\n`;
+    case "onBackdropSwitch":
+      return `def on_backdrop_${safeEventName(trigger.backdropId)}():\n`;
   }
 }
 

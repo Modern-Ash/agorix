@@ -101,6 +101,10 @@ export function explainTrigger(trigger: Trigger, locale: Locale): string {
       return es
         ? `Este programa empieza cuando llega el mensaje «${trigger.message}».`
         : `This program starts when the message “${trigger.message}” arrives.`;
+    case "onBackdropSwitch":
+      return es
+        ? "Este programa empieza cuando cambia el fondo."
+        : "This program starts when the backdrop changes.";
   }
 }
 

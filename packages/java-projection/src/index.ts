@@ -350,6 +350,8 @@ function handlerName(trigger: Trigger): string {
       return `onKeyPressed${camel(trigger.key) || "Key"}`;
     case "onMessage":
       return `onMessage${camel(trigger.message) || "Message"}`;
+    case "onBackdropSwitch":
+      return `onBackdrop${camel(trigger.backdropId) || "Backdrop"}`;
   }
 }
 

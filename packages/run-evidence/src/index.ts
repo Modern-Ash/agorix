@@ -29,7 +29,7 @@ export type LoopKindFound = "forever" | "repeatUntil" | "waitUntil";
 
 /** The event a script waits for, as a closed shape. `name` is a key or message name. */
 export interface FindingEvent {
-  readonly type: "key" | "click" | "message";
+  readonly type: "key" | "click" | "message" | "backdrop";
   readonly name?: string;
   /** For a message: how many scripts send it (0 means nothing ever sends it). */
   readonly senders?: number;
@@ -129,6 +129,7 @@ function eventOf(script: Script): FindingEvent | undefined {
   if (trigger.type === "onKeyPressed") return { type: "key", name: trigger.key };
   if (trigger.type === "onActorClicked") return { type: "click" };
   if (trigger.type === "onMessage") return { type: "message", name: trigger.message };
+  if (trigger.type === "onBackdropSwitch") return { type: "backdrop", name: trigger.backdropId };
   return undefined;
 }
 
@@ -216,6 +217,13 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
         senders.set(statement.message, (senders.get(statement.message) ?? 0) + 1);
     }),
   );
+  // Which backdrops some block switches to, so a hat waiting for another one can be told apart.
+  const switchedTo = new Set<string>();
+  program.scripts.forEach((script, index) =>
+    walk(script.statements, `scripts[${index}]`, (statement) => {
+      if (statement.type === "switchBackdrop") switchedTo.add(statement.backdropId);
+    }),
+  );
   const receivers = new Set<string>();
   for (const script of program.scripts)
     if (script.trigger.type === "onMessage") receivers.add(script.trigger.message);
@@ -239,7 +247,16 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
           : false;
       // A message nobody sends is a mistake worth saying; one whose sender did not run is likely;
       // a key or a tap is only something the learner has not done yet.
-      const confidence = event.type === "message" ? (sends === 0 ? 0.9 : ranSend ? 0.3 : 0.7) : 0.5;
+      const confidence =
+        event.type === "message"
+          ? sends === 0
+            ? 0.9
+            : ranSend
+              ? 0.3
+              : 0.7
+          : event.type === "backdrop" && !switchedTo.has(event.name ?? "")
+            ? 0.8
+            : 0.5;
       out.push({
         id: `neverStarted:${script.id}`,
         kind: "neverStarted",

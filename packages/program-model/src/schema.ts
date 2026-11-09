@@ -795,14 +795,22 @@ export interface OnMessageTrigger {
   readonly message: string;
 }
 
+/** Starts the script each time the backdrop is switched to this one (Scratch: when backdrop switches to). */
+export interface OnBackdropSwitchTrigger {
+  readonly type: "onBackdropSwitch";
+  readonly backdropId: string;
+}
+
 export type Trigger =
   | OnStartTrigger
   | GreenFlagTrigger
   | OnKeyPressedTrigger
   | OnActorClickedTrigger
-  | OnMessageTrigger;
+  | OnMessageTrigger
+  | OnBackdropSwitchTrigger;
 
-export type ProgramEvent = "greenFlag" | "actorClicked" | `key:${string}` | `message:${string}`;
+export type ProgramEvent =
+  "greenFlag" | "actorClicked" | `key:${string}` | `message:${string}` | `backdrop:${string}`;
 
 // --- Script / ProjectProgram ------------------------------------------------
 
