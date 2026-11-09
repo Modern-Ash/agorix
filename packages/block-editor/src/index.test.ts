@@ -97,6 +97,7 @@ describe("block-editor", () => {
       "Distance to character",
       "Horizontal position",
       "Vertical position",
+      "Size",
       "Timer",
       "Key [K] is down",
       "Mouse X",
@@ -121,7 +122,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(54);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(55);
   });
 
   it("creates safe defaults for every required POC block", () => {
