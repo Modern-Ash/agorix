@@ -38,7 +38,10 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     text: "",
     mapping: {},
     diagnostics: [],
-    variableLabels: variableDisplayNamesFor(validated.variables),
+    variableLabels: variableDisplayNamesFor([
+      ...(validated.variables ?? []),
+      ...(validated.textVariables ?? []),
+    ]),
     listLabels: variableDisplayNamesFor(validated.lists),
   };
   for (const variable of validated.variables ?? []) {
@@ -59,6 +62,20 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
       );
     }
   }
+  for (const text of validated.textVariables ?? []) {
+    writeMapped(
+      writer,
+      "textVariables/" + text.id,
+      "text " + variableName(writer, text.id) + " = " + JSON.stringify(text.initialValue) + "\n",
+    );
+    if (text.visible) {
+      writeMapped(
+        writer,
+        "textVariables/" + text.id,
+        "show " + variableName(writer, text.id) + "\n",
+      );
+    }
+  }
   for (const list of validated.lists ?? []) {
     writeMapped(
       writer,
@@ -73,7 +90,11 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
       writeMapped(writer, "lists/" + list.id, "show " + listName(writer, list.id) + "\n");
     }
   }
-  if ((validated.variables?.length ?? 0) > 0 || (validated.lists?.length ?? 0) > 0) {
+  if (
+    (validated.variables?.length ?? 0) > 0 ||
+    (validated.lists?.length ?? 0) > 0 ||
+    (validated.textVariables?.length ?? 0) > 0
+  ) {
     writer.text += "\n";
   }
   validated.scripts.forEach((script, scriptIndex) => {
@@ -457,6 +478,18 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent + "change volume by " + formatNumber(statement.delta) + "\n",
       );
       return;
+    case "setText":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "set " +
+          variableName(writer, statement.variableId) +
+          " to " +
+          expressionText(writer, statement.value, nodeId + "/value") +
+          "\n",
+      );
+      return;
     case "setVariable":
       writeMapped(
         writer,
@@ -602,7 +635,35 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
     case "numericLiteral":
       return formatNumber(expression.value);
     case "variable":
+    case "textVariable":
       return variableName(writer, expression.variableId);
+    case "textLiteral":
+      return JSON.stringify(expression.value);
+    case "join":
+      return (
+        "join(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        ", " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "textLength":
+      return "length of " + expressionText(writer, expression.value, nodeId + "/value");
+    case "letterOf":
+      return (
+        "letter " +
+        expressionText(writer, expression.index, nodeId + "/index") +
+        " of " +
+        expressionText(writer, expression.value, nodeId + "/value")
+      );
+    case "textContains":
+      return (
+        "(" +
+        expressionText(writer, expression.text, nodeId + "/text") +
+        " contains " +
+        expressionText(writer, expression.part, nodeId + "/part") +
+        ")"
+      );
     case "add":
       return (
         "(" +

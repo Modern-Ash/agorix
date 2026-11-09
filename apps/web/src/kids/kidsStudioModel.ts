@@ -94,6 +94,7 @@ export type StudioStatement = Extract<
       | "wait"
       | "broadcast"
       | "setVariable"
+      | "setText"
       | "changeVariable"
       | "showVariable"
       | "hideVariable"
@@ -206,6 +207,33 @@ function checkedDecimal(value: number): boolean {
   );
 }
 
+/** A word in the scene: short, so a bubble or a watcher can show it. */
+export const STUDIO_WORD_MAX_LENGTH = 20;
+
+function checkedText(value: Expression, program: ProjectProgram, depth = 0): boolean {
+  if (depth > 2) return false;
+  if (value.type === "textLiteral")
+    return value.value.length <= STUDIO_WORD_MAX_LENGTH && !/\p{Cc}/u.test(value.value);
+  if (value.type === "textVariable")
+    return program.textVariables?.some((item) => item.id === value.variableId) === true;
+  if (value.type === "join")
+    return (
+      (checkedText(value.left, program, depth + 1) ||
+        checkedNumber(value.left, program, depth + 1)) &&
+      (checkedText(value.right, program, depth + 1) ||
+        checkedNumber(value.right, program, depth + 1))
+    );
+  if (value.type === "letterOf")
+    return (
+      value.index.type === "numericLiteral" &&
+      Number.isInteger(value.index.value) &&
+      value.index.value >= 1 &&
+      value.index.value <= STUDIO_WORD_MAX_LENGTH &&
+      checkedText(value.value, program, depth + 1)
+    );
+  return false;
+}
+
 function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, arity = 0): boolean {
   if (depth > 2) return false;
   if (value.type === "param") return arity > 0 && paramInScope(value.paramId, arity);
@@ -224,6 +252,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
       const target = actorOfScript(script.id);
       return target !== null && studioActorId(target.index, target.characterId) === value.actorId;
     });
+  if (value.type === "textLength") return checkedText(value.value, program, depth + 1);
   if (value.type === "variable")
     return program.variables?.some((item) => item.id === value.variableId) === true;
   if (value.type === "listLength")
@@ -276,6 +305,8 @@ function checkedCondition(
   if (value.type === "keyDown")
     return STUDIO_KEYS.includes(value.key as (typeof STUDIO_KEYS)[number]);
   if (value.type === "mouseDown") return true;
+  if (value.type === "textContains")
+    return checkedText(value.text, program) && checkedText(value.part, program);
   if (value.type === "touchingStageEdge")
     return (
       value.minX === STUDIO_EDGE_CONDITION.minX &&
@@ -505,7 +536,9 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       statement.text.length <= STUDIO_BUBBLE_MAX_LENGTH &&
       (statement.seconds === undefined ||
         (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds)) &&
-      (statement.append === undefined || checkedNumber(statement.append, program))
+      (statement.append === undefined ||
+        checkedNumber(statement.append, program) ||
+        checkedText(statement.append, program))
     );
   if (statement.type === "show" || statement.type === "hide") return true;
   if (statement.type === "changeSize")
@@ -528,6 +561,11 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
         0,
         arity,
       )
+    );
+  if (statement.type === "setText")
+    return (
+      program.textVariables?.some((item) => item.id === statement.variableId) === true &&
+      checkedText(statement.value, program)
     );
   if (statement.type === "showVariable" || statement.type === "hideVariable")
     return program.variables?.some((item) => item.id === statement.variableId) === true;
@@ -602,6 +640,14 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
     program.scripts.length > MAX_STUDIO_ACTORS ||
     (program.variables?.length ?? 0) > 3 ||
     (program.lists?.length ?? 0) > 3 ||
+    (program.textVariables?.length ?? 0) > 3 ||
+    program.textVariables?.some(
+      (item, index) =>
+        item.id !== `studio-text-${index + 1}` ||
+        !DATA_NAME.test(item.name) ||
+        item.initialValue !== "" ||
+        !item.visible,
+    ) ||
     program.variables?.some(
       (item, index) =>
         item.id !== `studio-var-${index + 1}` ||
@@ -1697,6 +1743,31 @@ export function addStudioVariable(history: EditorHistory, name: string): EditorH
   return recordCanonicalTransaction(history, {
     label: "add studio variable",
     after: validateStudioProgram({ ...program, variables }),
+  }).history;
+}
+
+export function addStudioText(history: EditorHistory, name: string): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  if (
+    !DATA_NAME.test(name) ||
+    (program.textVariables?.length ?? 0) >= 3 ||
+    program.textVariables?.some(
+      (item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+    )
+  )
+    throw new RangeError("invalid studio text variable");
+  const textVariables = [
+    ...(program.textVariables ?? []),
+    {
+      id: `studio-text-${(program.textVariables?.length ?? 0) + 1}`,
+      name,
+      initialValue: "",
+      visible: true,
+    },
+  ];
+  return recordCanonicalTransaction(history, {
+    label: "add studio text variable",
+    after: validateStudioProgram({ ...program, textVariables }),
   }).history;
 }
 

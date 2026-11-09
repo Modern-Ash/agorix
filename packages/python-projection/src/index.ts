@@ -39,10 +39,18 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     text: "",
     mapping: {},
     diagnostics: [],
-    variableNames: variableNamesFor(validated.variables),
+    variableNames: variableNamesFor([
+      ...(validated.variables ?? []),
+      ...(validated.textVariables ?? []),
+    ]),
     listNames: variableNamesFor(
       validated.lists,
-      new Set(variableNamesFor(validated.variables).values()),
+      new Set(
+        variableNamesFor([
+          ...(validated.variables ?? []),
+          ...(validated.textVariables ?? []),
+        ]).values(),
+      ),
     ),
   };
   for (const variable of validated.variables ?? []) {
@@ -56,6 +64,20 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         writer,
         "variables/" + variable.id,
         "show_variable(" + JSON.stringify(variableIdentifier(writer, variable.id)) + ")\n",
+      );
+    }
+  }
+  for (const text of validated.textVariables ?? []) {
+    writeMapped(
+      writer,
+      "textVariables/" + text.id,
+      variableIdentifier(writer, text.id) + " = " + JSON.stringify(text.initialValue) + "\n",
+    );
+    if (text.visible) {
+      writeMapped(
+        writer,
+        "textVariables/" + text.id,
+        "show_variable(" + JSON.stringify(variableIdentifier(writer, text.id)) + ")\n",
       );
     }
   }
@@ -76,7 +98,11 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
       );
     }
   }
-  if ((validated.variables?.length ?? 0) > 0 || (validated.lists?.length ?? 0) > 0) {
+  if (
+    (validated.variables?.length ?? 0) > 0 ||
+    (validated.lists?.length ?? 0) > 0 ||
+    (validated.textVariables?.length ?? 0) > 0
+  ) {
     writer.text += "\n";
   }
   validated.scripts.forEach((script, scriptIndex) => {
@@ -163,6 +189,10 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "list_add",
         "list_remove_at",
         "list_item",
+        "join_text",
+        "text_length",
+        "letter_of",
+        "contains_text",
         "show_list",
         "wait",
       ],
@@ -530,6 +560,7 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent + "change_volume(" + formatNumber(statement.delta) + ")\n",
       );
       return;
+    case "setText":
     case "setVariable":
       writeMapped(
         writer,
@@ -695,7 +726,36 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
     case "numericLiteral":
       return formatNumber(expression.value);
     case "variable":
+    case "textVariable":
       return variableIdentifier(writer, expression.variableId);
+    case "textLiteral":
+      return JSON.stringify(expression.value);
+    case "join":
+      return (
+        "join_text(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        ", " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "textLength":
+      return "text_length(" + expressionText(writer, expression.value, nodeId + "/value") + ")";
+    case "letterOf":
+      return (
+        "letter_of(" +
+        expressionText(writer, expression.index, nodeId + "/index") +
+        ", " +
+        expressionText(writer, expression.value, nodeId + "/value") +
+        ")"
+      );
+    case "textContains":
+      return (
+        "contains_text(" +
+        expressionText(writer, expression.text, nodeId + "/text") +
+        ", " +
+        expressionText(writer, expression.part, nodeId + "/part") +
+        ")"
+      );
     case "add":
       return (
         "(" +
@@ -855,7 +915,11 @@ function assignedVariableIdentifiers(
   const seen = new Set<string>();
   const visit = (list: readonly Statement[]): void => {
     for (const statement of list) {
-      if (statement.type === "setVariable" || statement.type === "changeVariable") {
+      if (
+        statement.type === "setVariable" ||
+        statement.type === "setText" ||
+        statement.type === "changeVariable"
+      ) {
         if (!writer.variableNames.has(statement.variableId)) {
           continue;
         }
@@ -955,6 +1019,10 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "list_add",
   "list_remove_at",
   "list_item",
+  "join_text",
+  "text_length",
+  "letter_of",
+  "contains_text",
   "show_list",
   "wait",
   "range",

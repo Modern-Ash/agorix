@@ -14,6 +14,7 @@ import type {
   MathFunction,
   ProgramList,
   ProgramVariable,
+  ProgramTextVariable,
   ProjectProgram,
   Procedure,
   ProcedureParam,
@@ -37,6 +38,7 @@ import {
   EVENT_MESSAGE_MAX_LENGTH,
   MAX_PROGRAM_NODES,
   LOOKS_TEXT_MAX_LENGTH,
+  TEXT_VALUE_MAX_LENGTH,
   MOVE_STEPS_MAX,
   MOVE_STEPS_MIN,
   LIST_MAX_ITEMS,
@@ -169,6 +171,7 @@ interface ValidationState {
   nodeCount: number;
   seenIds: Map<string, string>; // id -> first path where it was seen
   variableIds: Set<string>;
+  textVariableIds: Set<string>;
   listIds: Set<string>;
   /** Custom blocks of the script being validated. */
   procedureIds: Set<string>;
@@ -211,6 +214,28 @@ function assertKnownVariableId(value: unknown, path: string, state: ValidationSt
   }
   if (!state.variableIds.has(value)) {
     fail("INVALID_REFERENCE", path, `unknown variable id ${JSON.stringify(value)}`, value);
+  }
+  return value;
+}
+
+function assertKnownTextVariableId(value: unknown, path: string, state: ValidationState): string {
+  if (typeof value !== "string" || value.length === 0) {
+    fail("MISSING_FIELD", path, "expected a non-empty text variable id", value);
+  }
+  if (!state.textVariableIds.has(value)) {
+    fail("INVALID_REFERENCE", path, `unknown text variable id ${JSON.stringify(value)}`, value);
+  }
+  return value;
+}
+
+function checkTextValue(value: unknown, path: string): string {
+  if (typeof value !== "string" || value.length > TEXT_VALUE_MAX_LENGTH) {
+    fail(
+      "INVALID_FIELD_TYPE",
+      path,
+      `expected text of at most ${TEXT_VALUE_MAX_LENGTH} characters`,
+      value,
+    );
   }
   return value;
 }
@@ -375,6 +400,33 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       checkBounds(input.value, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX, `${path}.value`);
       return { type: "numericLiteral", value: input.value };
     }
+    case "textLiteral":
+      return { type: "textLiteral", value: checkTextValue(input.value, `${path}.value`) };
+    case "textVariable":
+      return {
+        type: "textVariable",
+        variableId: assertKnownTextVariableId(input.variableId, `${path}.variableId`, state),
+      };
+    case "join":
+      return {
+        type: "join",
+        left: validateExpression(input.left, `${path}.left`, state),
+        right: validateExpression(input.right, `${path}.right`, state),
+      };
+    case "textLength":
+      return { type: "textLength", value: validateExpression(input.value, `${path}.value`, state) };
+    case "letterOf":
+      return {
+        type: "letterOf",
+        index: validateExpression(input.index, `${path}.index`, state),
+        value: validateExpression(input.value, `${path}.value`, state),
+      };
+    case "textContains":
+      return {
+        type: "textContains",
+        text: validateExpression(input.text, `${path}.text`, state),
+        part: validateExpression(input.part, `${path}.part`, state),
+      };
     case "variable":
       return {
         type: "variable",
@@ -818,6 +870,12 @@ function validateStatement(
         variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
         value: validateExpression(input.value, `${path}.value`, state),
       };
+    case "setText":
+      return {
+        type: "setText",
+        variableId: assertKnownTextVariableId(input.variableId, `${path}.variableId`, state),
+        value: validateExpression(input.value, `${path}.value`, state),
+      };
     case "changeVariable":
       return {
         type: "changeVariable",
@@ -1039,6 +1097,32 @@ function validateVariable(input: unknown, path: string, state: ValidationState):
   return { id: input.id, name, initialValue: input.initialValue, visible: input.visible };
 }
 
+function validateTextVariable(
+  input: unknown,
+  path: string,
+  state: ValidationState,
+): ProgramTextVariable {
+  if (!isPlainObject(input)) {
+    fail("INVALID_FIELD_TYPE", path, "expected an object", input);
+  }
+  if (typeof input.id !== "string" || input.id.length === 0) {
+    fail("MISSING_FIELD", `${path}.id`, "expected a non-empty string", input.id);
+  }
+  recordId(state, input.id, `${path}.id`);
+  state.textVariableIds.add(input.id);
+  const name = checkLimitedText(
+    input.name,
+    `${path}.name`,
+    VARIABLE_NAME_MAX_LENGTH,
+    "text variable name",
+  );
+  const initialValue = checkTextValue(input.initialValue, `${path}.initialValue`);
+  if (typeof input.visible !== "boolean") {
+    fail("MISSING_FIELD", `${path}.visible`, "expected a boolean", input.visible);
+  }
+  return { id: input.id, name, initialValue, visible: input.visible };
+}
+
 function validateList(input: unknown, path: string, state: ValidationState): ProgramList {
   if (!isPlainObject(input)) {
     fail("INVALID_FIELD_TYPE", path, "expected an object", input);
@@ -1245,6 +1329,7 @@ export function validateProgram(input: unknown): ProjectProgram {
     nodeCount: 0,
     seenIds: new Map(),
     variableIds: new Set(),
+    textVariableIds: new Set(),
     listIds: new Set(),
     procedureIds: new Set(),
     procedureArity: new Map(),
@@ -1261,6 +1346,14 @@ export function validateProgram(input: unknown): ProjectProgram {
             validateVariable(item, `$.variables[${index}]`, state),
           )
         : fail("INVALID_FIELD_TYPE", "$.variables", "expected an array", input.variables);
+  const textVariables =
+    input.textVariables === undefined
+      ? undefined
+      : Array.isArray(input.textVariables)
+        ? input.textVariables.map((item, index) =>
+            validateTextVariable(item, `$.textVariables[${index}]`, state),
+          )
+        : fail("INVALID_FIELD_TYPE", "$.textVariables", "expected an array", input.textVariables);
   const lists =
     input.lists === undefined
       ? undefined
@@ -1275,6 +1368,7 @@ export function validateProgram(input: unknown): ProjectProgram {
     schema: SCHEMA_VERSION,
     ...(variables === undefined ? {} : { variables }),
     ...(lists === undefined ? {} : { lists }),
+    ...(textVariables === undefined ? {} : { textVariables }),
     ...(extensions === undefined ? {} : { extensions }),
     scripts,
   };

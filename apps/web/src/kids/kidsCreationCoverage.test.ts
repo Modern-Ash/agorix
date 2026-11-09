@@ -63,6 +63,11 @@ const CONDITION_SAMPLES: Readonly<Record<string, Expression>> = {
   or: { type: "or", left: key, right: key },
   not: { type: "not", value: key },
   touchingGoal: { type: "touchingGoal" },
+  textContains: {
+    type: "textContains",
+    text: { type: "textLiteral", value: "sol" },
+    part: { type: "textLiteral", value: "o" },
+  },
 };
 
 const TRIGGER_SAMPLES: Readonly<Record<string, Trigger>> = {

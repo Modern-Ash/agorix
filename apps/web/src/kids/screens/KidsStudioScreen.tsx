@@ -166,6 +166,8 @@ import { noteName, playKidsMusic, playKidsMusicEntry, stopKidsMusic } from "../k
 import {
   addStudioActor,
   addStudioList,
+  addStudioText,
+  STUDIO_WORD_MAX_LENGTH,
   addStudioProcedureNumber,
   addStudioVariable,
   bindStudioProcedureBlock,
@@ -384,6 +386,13 @@ const COPY = {
     list: "Lista",
     newVariable: "Crear variable",
     newList: "Crear lista",
+    newWord: "Crear palabra",
+    wordVariable: "Palabra",
+    wordValue: "Escribí la palabra",
+    setWord: "Guardar palabra",
+    sayWord: "Decir la palabra",
+    ifWordHas: "Si la palabra tiene la letra",
+    wordLetter: "Letra",
     setVariable: "Fijar valor",
     changeVariable: "Cambiar valor",
     showVariable: "Mostrar variable",
@@ -676,6 +685,13 @@ const COPY = {
     list: "List",
     newVariable: "Create variable",
     newList: "Create list",
+    newWord: "Create word",
+    wordVariable: "Word",
+    wordValue: "Type the word",
+    setWord: "Save word",
+    sayWord: "Say the word",
+    ifWordHas: "If the word has the letter",
+    wordLetter: "Letter",
     setVariable: "Set value",
     changeVariable: "Change value",
     showVariable: "Show variable",
@@ -934,6 +950,17 @@ function expressionLabel(
   program: ProjectProgram,
   locale: Locale = "es",
 ): string {
+  if (value.type === "textLiteral") return `"${value.value}"`;
+  if (value.type === "textVariable")
+    return program.textVariables?.find((item) => item.id === value.variableId)?.name ?? "?";
+  if (value.type === "join")
+    return `${expressionLabel(value.left, program, locale)} + ${expressionLabel(value.right, program, locale)}`;
+  if (value.type === "textLength")
+    return `${locale === "es" ? "letras de" : "length of"} ${expressionLabel(value.value, program, locale)}`;
+  if (value.type === "letterOf")
+    return `${locale === "es" ? "letra" : "letter"} ${expressionLabel(value.index, program, locale)} ${locale === "es" ? "de" : "of"} ${expressionLabel(value.value, program, locale)}`;
+  if (value.type === "textContains")
+    return `${expressionLabel(value.text, program, locale)} ${locale === "es" ? "tiene" : "has"} ${expressionLabel(value.part, program, locale)}`;
   if (value.type === "xPosition") return "X";
   if (value.type === "yPosition") return "Y";
   if (value.type === "direction") return locale === "es" ? "dirección" : "direction";
@@ -1195,6 +1222,9 @@ export function KidsStudioScreen({
   const [musicPitch, setMusicPitch] = useState(0);
   const [musicPan, setMusicPan] = useState(0);
   const [dataName, setDataName] = useState("");
+  const [textVarId, setTextVarId] = useState("studio-text-1");
+  const [wordValue, setWordValue] = useState("");
+  const [wordLetter, setWordLetter] = useState("a");
   const [dataValue, setDataValue] = useState(1);
   const [mathFn, setMathFn] = useState<"abs" | "round" | "floor" | "ceiling">("round");
   const [variableId, setVariableId] = useState("studio-var-1");
@@ -1355,6 +1385,11 @@ export function KidsStudioScreen({
     script?.statements.map((statement) => statement.type) ?? [],
   );
   const scriptIndexOfActor = script === undefined ? -1 : history.current.scripts.indexOf(script);
+  const selectedTextId = history.current.textVariables?.some((item) => item.id === textVarId)
+    ? textVarId
+    : (history.current.textVariables?.[0]?.id ?? textVarId);
+  const selectedTextName =
+    history.current.textVariables?.find((item) => item.id === selectedTextId)?.name ?? "";
   const selectedVariableId = history.current.variables?.some((item) => item.id === variableId)
     ? variableId
     : (history.current.variables?.[0]?.id ?? variableId);
@@ -2160,14 +2195,20 @@ export function KidsStudioScreen({
     persist(setStudioTrigger(history, activeActorId, trigger));
   }
 
-  function createData(kind: "variable" | "list") {
+  function createData(kind: "variable" | "list" | "word") {
     try {
       const name = dataName.trim();
       const next =
-        kind === "variable" ? addStudioVariable(history, name) : addStudioList(history, name);
+        kind === "variable"
+          ? addStudioVariable(history, name)
+          : kind === "word"
+            ? addStudioText(history, name)
+            : addStudioList(history, name);
       persist(next);
       setDataName("");
       if (kind === "variable") setVariableId(`studio-var-${next.current.variables?.length ?? 1}`);
+      else if (kind === "word")
+        setTextVarId(`studio-text-${next.current.textVariables?.length ?? 1}`);
       else setListId(`studio-list-${next.current.lists?.length ?? 1}`);
     } catch {
       setError(true);
@@ -2673,6 +2714,8 @@ export function KidsStudioScreen({
       case "setVariable":
       case "changeVariable":
         return `${statement.type === "setVariable" ? copy.setVariable : copy.changeVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"} ${expressionLabel(statement.type === "setVariable" ? statement.value : statement.delta, history.current)}`;
+      case "setText":
+        return `${copy.setWord}: ${history.current.textVariables?.find((item) => item.id === statement.variableId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
       case "showVariable":
       case "hideVariable":
         return `${statement.type === "showVariable" ? copy.showVariable : copy.hideVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"}`;
@@ -4530,7 +4573,9 @@ export function KidsStudioScreen({
                 {copy.volume}: {shownWorld?.sounds?.volume ?? 100}%
               </p>
             ) : null}
-            {history.current.variables?.length || history.current.lists?.length ? (
+            {history.current.variables?.length ||
+            history.current.lists?.length ||
+            history.current.textVariables?.length ? (
               <div className="kids-studio-watchers" aria-label={copy.watchers}>
                 <h3>{copy.watchers}</h3>
                 {history.current.variables
@@ -4540,6 +4585,16 @@ export function KidsStudioScreen({
                       {item.name}: {shownWorld?.variables?.[item.id]?.value ?? item.initialValue}
                     </p>
                   ))}
+                {history.current.textVariables?.map((item) => (
+                  <p key={item.id}>
+                    {item.name}:{" "}
+                    {(shownActors?.find((entry) => entry.id === activeActorId)?.world.texts?.[
+                      item.id
+                    ]?.value ??
+                      item.initialValue) ||
+                      "—"}
+                  </p>
+                ))}
                 {history.current.lists?.map((item) => (
                   <p key={item.id}>
                     {item.name}:{" "}
@@ -6950,6 +7005,98 @@ export function KidsStudioScreen({
                 >
                   + {copy.newList}
                 </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!dataName.trim() || (history.current.textVariables?.length ?? 0) >= 3}
+                  onClick={() => createData("word")}
+                >
+                  + {copy.newWord}
+                </button>
+                {history.current.textVariables?.length ? (
+                  <>
+                    <label>
+                      {copy.wordVariable}{" "}
+                      <select
+                        value={
+                          history.current.textVariables.some((item) => item.id === textVarId)
+                            ? textVarId
+                            : history.current.textVariables[0]!.id
+                        }
+                        onChange={(event) => setTextVarId(event.target.value)}
+                      >
+                        {history.current.textVariables.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {copy.wordValue}{" "}
+                      <input
+                        type="text"
+                        maxLength={STUDIO_WORD_MAX_LENGTH}
+                        value={wordValue}
+                        onChange={(event) => setWordValue(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setText"
+                      onClick={() =>
+                        add({
+                          type: "setText",
+                          variableId: selectedTextId,
+                          value: { type: "textLiteral", value: wordValue },
+                        })
+                      }
+                    >
+                      + {copy.setWord}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "say",
+                          text: selectedTextName,
+                          append: { type: "textVariable", variableId: selectedTextId },
+                        })
+                      }
+                    >
+                      + {copy.sayWord}
+                    </button>
+                    <label>
+                      {copy.wordLetter}{" "}
+                      <input
+                        type="text"
+                        maxLength={1}
+                        value={wordLetter}
+                        onChange={(event) => setWordLetter(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={wordLetter.length !== 1}
+                      onClick={() =>
+                        add({
+                          type: "if",
+                          condition: {
+                            type: "textContains",
+                            text: { type: "textVariable", variableId: selectedTextId },
+                            part: { type: "textLiteral", value: wordLetter },
+                          },
+                          then: [{ type: "move", steps: 40 }],
+                        })
+                      }
+                    >
+                      + {copy.ifWordHas}
+                    </button>
+                  </>
+                ) : null}
                 <label>
                   {copy.number}{" "}
                   <input

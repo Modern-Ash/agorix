@@ -57,6 +57,30 @@ const statements: Statement[] = [
   { type: "say", text: 'Hola "mundo"' },
   { type: "think", text: "Mmm" },
   { type: "say", text: "Con tiempo", seconds: 2 },
+  { type: "setText", variableId: "t", value: { type: "textLiteral", value: "hola" } },
+  {
+    type: "setText",
+    variableId: "t",
+    value: {
+      type: "join",
+      left: { type: "textVariable", variableId: "t" },
+      right: { type: "letterOf", index: num(1), value: { type: "textLiteral", value: "sol" } },
+    },
+  },
+  {
+    type: "say",
+    text: "Letras: ",
+    append: { type: "textLength", value: { type: "textVariable", variableId: "t" } },
+  },
+  {
+    type: "if",
+    condition: {
+      type: "textContains",
+      text: { type: "textVariable", variableId: "t" },
+      part: { type: "textLiteral", value: "o" },
+    },
+    then: [{ type: "show" }],
+  },
   { type: "say", text: "Puntos: ", append: { type: "variable", variableId: "v" } },
   { type: "think", text: "x = ", append: { type: "xPosition" }, seconds: 1 },
   { type: "think", text: "Con tiempo", seconds: 1 },
@@ -192,6 +216,7 @@ const everything: ProjectProgram = {
   extensions: ["pen", "music"],
   variables: [{ id: "v", name: "Puntos", initialValue: 0, visible: true }],
   lists: [{ id: "l", name: "Tesoros", initialItems: [1, 2.5], visible: true }],
+  textVariables: [{ id: "t", name: "Palabra", initialValue: "", visible: true }],
   scripts: [
     {
       id: "main",
@@ -320,9 +345,9 @@ describe("Java projection corpus", () => {
   });
 
   it("keeps the support API list in step with the stub it compiles against", () => {
-    const declared = [...JAVA_SUPPORT_STUB.matchAll(/^\s+(?:void|double|boolean) (\w+)\(/gm)].map(
-      (match) => match[1],
-    );
+    const declared = [
+      ...JAVA_SUPPORT_STUB.matchAll(/^\s+(?:void|double|boolean|String) (\w+)\(/gm),
+    ].map((match) => match[1]);
     expect([...declared].sort()).toEqual([...JAVA_SUPPORT_API].sort());
   });
 

@@ -366,6 +366,7 @@ export function singleScriptProgram(program: ProjectProgram, script: Script): Pr
     schema: program.schema,
     ...(program.variables === undefined ? {} : { variables: program.variables }),
     ...(program.lists === undefined ? {} : { lists: program.lists }),
+    ...(program.textVariables === undefined ? {} : { textVariables: program.textVariables }),
     ...(program.extensions === undefined ? {} : { extensions: program.extensions }),
     scripts: [script],
   };

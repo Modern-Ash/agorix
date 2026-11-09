@@ -9,6 +9,7 @@ import {
   type ProcedureParam,
   type ProcedureParamId,
   type ProgramList,
+  type ProgramTextVariable,
   type ExtensionId,
   type MusicBeats,
   type MusicDrum,
@@ -109,6 +110,13 @@ export type BlockType =
   | "operator_random"
   | "operator_random_integer"
   | "variables_value"
+  | "text_literal"
+  | "text_variable"
+  | "text_join"
+  | "text_length"
+  | "text_letter_of"
+  | "text_contains"
+  | "text_set"
   | "variables_set"
   | "variables_change"
   | "variables_show"
@@ -166,6 +174,7 @@ export interface BlockScript {
 export interface BlockWorkspaceSnapshot {
   readonly variables?: readonly ProgramVariable[];
   readonly lists?: readonly ProgramList[];
+  readonly textVariables?: readonly ProgramTextVariable[];
   readonly extensions?: readonly ExtensionId[];
   readonly scripts: readonly BlockScript[];
 }
@@ -390,6 +399,68 @@ function expressionFromBlock(
       return { type: "numericLiteral", value: numberField(block, "value", path) };
     case "variables_value":
       return { type: "variable", variableId: stringField(block, "variableId", path) };
+    case "text_literal":
+      return { type: "textLiteral", value: stringField(block, "value", path) };
+    case "text_variable":
+      return { type: "textVariable", variableId: stringField(block, "variableId", path) };
+    case "text_join":
+      return {
+        type: "join",
+        left: expressionFromBlock(
+          requiredInput(block, "left", path),
+          `${nodeId}/left`,
+          `${path}.inputs.left`,
+          mapping,
+        ),
+        right: expressionFromBlock(
+          requiredInput(block, "right", path),
+          `${nodeId}/right`,
+          `${path}.inputs.right`,
+          mapping,
+        ),
+      };
+    case "text_length":
+      return {
+        type: "textLength",
+        value: expressionFromBlock(
+          requiredInput(block, "value", path),
+          `${nodeId}/value`,
+          `${path}.inputs.value`,
+          mapping,
+        ),
+      };
+    case "text_letter_of":
+      return {
+        type: "letterOf",
+        index: expressionFromBlock(
+          requiredInput(block, "index", path),
+          `${nodeId}/index`,
+          `${path}.inputs.index`,
+          mapping,
+        ),
+        value: expressionFromBlock(
+          requiredInput(block, "value", path),
+          `${nodeId}/value`,
+          `${path}.inputs.value`,
+          mapping,
+        ),
+      };
+    case "text_contains":
+      return {
+        type: "textContains",
+        text: expressionFromBlock(
+          requiredInput(block, "left", path),
+          `${nodeId}/text`,
+          `${path}.inputs.left`,
+          mapping,
+        ),
+        part: expressionFromBlock(
+          requiredInput(block, "right", path),
+          `${nodeId}/part`,
+          `${path}.inputs.right`,
+          mapping,
+        ),
+      };
     case "lists_item":
       return {
         type: "listItem",
@@ -702,6 +773,17 @@ function statementFromBlock(
         message: stringField(block, "message", path),
         ...(block.fields?.["wait"] === true ? { wait: true as const } : {}),
       };
+    case "text_set":
+      return {
+        type: "setText",
+        variableId: stringField(block, "variableId", path),
+        value: expressionFromBlock(
+          requiredInput(block, "value", path),
+          `${nodeId}/value`,
+          `${path}.inputs.value`,
+          mapping,
+        ),
+      };
     case "variables_set":
       return {
         type: "setVariable",
@@ -899,6 +981,43 @@ function expressionToBlock(
       return { id, type: "literal_number", fields: { value: expression.value } };
     case "variable":
       return { id, type: "variables_value", fields: { variableId: expression.variableId } };
+    case "textLiteral":
+      return { id, type: "text_literal", fields: { value: expression.value } };
+    case "textVariable":
+      return { id, type: "text_variable", fields: { variableId: expression.variableId } };
+    case "join":
+      return {
+        id,
+        type: "text_join",
+        inputs: {
+          left: expressionToBlock(expression.left, `${nodeId}/left`, mapping),
+          right: expressionToBlock(expression.right, `${nodeId}/right`, mapping),
+        },
+      };
+    case "textLength":
+      return {
+        id,
+        type: "text_length",
+        inputs: { value: expressionToBlock(expression.value, `${nodeId}/value`, mapping) },
+      };
+    case "letterOf":
+      return {
+        id,
+        type: "text_letter_of",
+        inputs: {
+          index: expressionToBlock(expression.index, `${nodeId}/index`, mapping),
+          value: expressionToBlock(expression.value, `${nodeId}/value`, mapping),
+        },
+      };
+    case "textContains":
+      return {
+        id,
+        type: "text_contains",
+        inputs: {
+          left: expressionToBlock(expression.text, `${nodeId}/text`, mapping),
+          right: expressionToBlock(expression.part, `${nodeId}/part`, mapping),
+        },
+      };
     case "listItem":
       return {
         id,
@@ -1175,6 +1294,13 @@ function statementToBlock(
           ...(statement.wait === true ? { wait: true } : {}),
         },
       };
+    case "setText":
+      return {
+        id,
+        type: "text_set",
+        fields: { variableId: statement.variableId },
+        inputs: { value: expressionToBlock(statement.value, `${nodeId}/value`, mapping) },
+      };
     case "setVariable":
       return {
         id,
@@ -1363,6 +1489,7 @@ export function workspaceToProgram(workspace: BlockWorkspaceSnapshot): Workspace
     schema: SCHEMA_VERSION,
     ...(workspace.variables === undefined ? {} : { variables: workspace.variables }),
     ...(workspace.lists === undefined ? {} : { lists: workspace.lists }),
+    ...(workspace.textVariables === undefined ? {} : { textVariables: workspace.textVariables }),
     ...(workspace.extensions === undefined ? {} : { extensions: workspace.extensions }),
     scripts: workspace.scripts.map((script, index) => scriptFromBlocks(script, index, mapping)),
   });
@@ -1375,6 +1502,7 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
   const workspace: BlockWorkspaceSnapshot = {
     ...(validated.variables === undefined ? {} : { variables: validated.variables }),
     ...(validated.lists === undefined ? {} : { lists: validated.lists }),
+    ...(validated.textVariables === undefined ? {} : { textVariables: validated.textVariables }),
     ...(validated.extensions === undefined ? {} : { extensions: validated.extensions }),
     scripts: validated.scripts.map((script, index) => {
       const scriptId = `scripts[${index}]`;

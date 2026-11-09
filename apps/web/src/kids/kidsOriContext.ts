@@ -78,6 +78,7 @@ const FAMILY: Record<string, string> = {
   setPitch: "music",
   setPan: "music",
   setVariable: "variables",
+  setText: "variables",
   changeVariable: "variables",
   showVariable: "variables",
   hideVariable: "variables",

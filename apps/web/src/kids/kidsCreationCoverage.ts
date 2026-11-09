@@ -55,6 +55,7 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "variable",
   "listLength",
   "listItem",
+  "textLength",
   "randomInteger",
   "random",
   "mathFunction",
@@ -66,6 +67,14 @@ export const SCENE_NUMBER_EXPRESSIONS = [
 ] as const satisfies readonly ExpressionKind[];
 
 /** Conditions of `if` and `repeatUntil`: `checkedCondition` in `kidsStudioModel.ts` accepts these. */
+/** Words a child can build with: `checkedText` in `kidsStudioModel.ts` accepts these. */
+export const SCENE_TEXT_EXPRESSIONS = [
+  "textLiteral",
+  "textVariable",
+  "join",
+  "letterOf",
+] as const satisfies readonly ExpressionKind[];
+
 export const SCENE_CONDITION_EXPRESSIONS = [
   "keyDown",
   "mouseDown",
@@ -79,6 +88,7 @@ export const SCENE_CONDITION_EXPRESSIONS = [
   "and",
   "or",
   "not",
+  "textContains",
 ] as const satisfies readonly ExpressionKind[];
 
 export const EXPRESSIONS_NOT_IN_SCENE = {
@@ -90,6 +100,7 @@ type UndecidedExpression = Exclude<
   ExpressionKind,
   | (typeof SCENE_NUMBER_EXPRESSIONS)[number]
   | (typeof SCENE_CONDITION_EXPRESSIONS)[number]
+  | (typeof SCENE_TEXT_EXPRESSIONS)[number]
   | keyof typeof EXPRESSIONS_NOT_IN_SCENE
 >;
 export const EVERY_ENGINE_EXPRESSION_IS_DECIDED: [UndecidedExpression] extends [never]
