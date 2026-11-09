@@ -100,6 +100,7 @@ describe("block-editor", () => {
       "Reset timer",
       "Touching the goal?",
       "Touching character?",
+      "Touching color?",
       "Touching stage edge?",
       "Distance to character",
       "Horizontal position",
@@ -137,7 +138,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(70);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(71);
   });
 
   it("creates safe defaults for every required POC block", () => {

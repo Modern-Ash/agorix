@@ -1,4 +1,4 @@
-import type { ProjectProgram, Statement } from "./schema.js";
+import { PEN_COLORS, type PenColor, type ProjectProgram, type Statement } from "./schema.js";
 import { ProgramValidationError } from "./validate.js";
 
 export type ProjectAssetKind = "costume" | "backdrop" | "sound";
@@ -30,10 +30,24 @@ export interface ProjectStage {
   readonly actorOrder?: readonly string[];
 }
 
+/** A stretch of a backdrop that is one colour of the closed pen palette, in stage coordinates. */
+export interface ColorZone {
+  readonly color: PenColor;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface ProjectCreativeState {
   readonly actors?: readonly ProjectActor[];
   readonly stage?: ProjectStage;
   readonly assets?: readonly ProjectAsset[];
+  /**
+   * Where each backdrop is which colour, by backdrop id, so "touching a colour" is decided on the
+   * scene model and not on pixels. A backdrop without an entry has no colours.
+   */
+  readonly colorZones?: Readonly<Record<string, readonly ColorZone[]>>;
 }
 
 interface CreativeValidationState {
@@ -51,7 +65,9 @@ const MAX_TAGS = 16;
 const MAX_STAGE_DIMENSION = 4096;
 const MAX_ACTOR_SIZE = 400;
 const STABLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
-const CREATIVE_KEYS = ["actors", "stage", "assets"] as const;
+const CREATIVE_KEYS = ["actors", "stage", "assets", "colorZones"] as const;
+const MAX_ZONE_BACKDROPS = 32;
+const MAX_ZONES = 8;
 const ASSET_KEYS = ["id", "kind", "name", "source", "tags"] as const;
 const ACTOR_KEYS = [
   "id",
@@ -342,6 +358,42 @@ function validateStatementAssetRefs(
   }
 }
 
+function validateColorZones(input: unknown): Readonly<Record<string, readonly ColorZone[]>> {
+  if (!isPlainObject(input)) fail("$.colorZones", "expected an object", input);
+  const entries = Object.entries(input);
+  if (entries.length > MAX_ZONE_BACKDROPS)
+    fail("$.colorZones", `expected at most ${MAX_ZONE_BACKDROPS} backdrops`, input);
+  const out: Record<string, readonly ColorZone[]> = {};
+  for (const [backdropId, zones] of entries) {
+    const path = `$.colorZones[${JSON.stringify(backdropId)}]`;
+    if (!STABLE_ID_PATTERN.test(backdropId)) fail(path, "expected a backdrop id", backdropId);
+    if (!Array.isArray(zones) || zones.length > MAX_ZONES)
+      fail(path, `expected an array with at most ${MAX_ZONES} zones`, zones);
+    out[backdropId] = zones.map((zone, index): ColorZone => {
+      const at = `${path}[${index}]`;
+      if (!isPlainObject(zone)) fail(at, "expected an object", zone);
+      assertAllowedKeys(zone, ["color", "x", "y", "width", "height"], at);
+      if (!(PEN_COLORS as readonly unknown[]).includes(zone.color))
+        fail(`${at}.color`, "expected a colour from the closed list", zone.color);
+      for (const key of ["x", "y", "width", "height"] as const) {
+        const value = zone[key];
+        if (typeof value !== "number" || !Number.isFinite(value) || Math.abs(value) > 1000)
+          fail(`${at}.${key}`, "expected a number within the stage", value);
+      }
+      if ((zone.width as number) < 0 || (zone.height as number) < 0)
+        fail(at, "expected a size that is not negative", zone);
+      return {
+        color: zone.color as PenColor,
+        x: zone.x as number,
+        y: zone.y as number,
+        width: zone.width as number,
+        height: zone.height as number,
+      };
+    });
+  }
+  return out;
+}
+
 export function validateProjectCreativeState(
   input: unknown,
   program: ProjectProgram,
@@ -375,6 +427,8 @@ export function validateProjectCreativeState(
         : fail("$.actors", `expected an array with at most ${MAX_ACTORS} entries`, rawActors);
   const stage =
     input.stage === undefined ? undefined : validateStage(input.stage, "$.stage", state);
+  const colorZones =
+    input.colorZones === undefined ? undefined : validateColorZones(input.colorZones);
   for (const [index, script] of program.scripts.entries()) {
     if (
       script.trigger.type === "onBackdropSwitch" &&
@@ -398,5 +452,6 @@ export function validateProjectCreativeState(
     ...(actors === undefined ? {} : { actors }),
     ...(stage === undefined ? {} : { stage }),
     ...(assets === undefined ? {} : { assets }),
+    ...(colorZones === undefined ? {} : { colorZones }),
   };
 }

@@ -143,7 +143,11 @@ const statements: Statement[] = [
     condition: {
       type: "or",
       left: { type: "touchingGoal" },
-      right: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+      right: {
+        type: "or",
+        left: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+        right: { type: "touchingColor", color: "green" },
+      },
     },
     body: [{ type: "move", steps: 20 }],
   },

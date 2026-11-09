@@ -106,3 +106,9 @@ Independent and parallelisable: the text slices already merged make sensors easy
 ## Constraints that stay
 
 The runtime stays deterministic and the trace stays the evidence; a project with every new capability runs with no AI and no credentials; nothing a child draws, records or types leaves the device; Ori only proposes, and every proposal is validated and reviewed like any other.
+
+## Status: sensors (#1304)
+
+Done: reset timer (#1323), typed answer (#1329), microphone volume and its hat (#1332, #1333), and touching a colour over a **backdrop's colour zones**: the expression `touchingColor { color }` (closed pen palette), with each bundled backdrop's sky and ground as zones in the creative state (`colorZones`, validated and bounded), so the runtime answers on the scene model and never reads pixels. A backdrop without zones (every imported one) answers false. The Studio offers it as a condition ("está sobre el color …"); the Scratch importer maps `sensing_touchingcolor` to the nearest pen colour by hue.
+
+Not done: touching the pen trail or a stamped copy. Each character's pen lives in its own world, so reading another character's trail needs the scheduler to share trails first; it is left for its own slice.

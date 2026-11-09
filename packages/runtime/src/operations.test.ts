@@ -160,6 +160,7 @@ describe("runtime operation allowlist", () => {
       "textVariable",
       "timer",
       "touchingActor",
+      "touchingColor",
       "touchingGoal",
       "touchingStageEdge",
       "variable",

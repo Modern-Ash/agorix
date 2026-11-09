@@ -348,6 +348,16 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "touchingGoal" };
     case "touchingActor":
       return { type: "touchingActor", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "touchingColor":
+      if (!(PEN_COLORS as readonly unknown[]).includes(input.color)) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.color`,
+          "expected a colour from the closed list",
+          input.color,
+        );
+      }
+      return { type: "touchingColor", color: input.color as PenColor };
     case "touchingStageEdge": {
       for (const field of ["minX", "maxX", "minY", "maxY"] as const) {
         if (typeof input[field] !== "number")

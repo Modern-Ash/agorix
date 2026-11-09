@@ -81,6 +81,7 @@ export const SCENE_CONDITION_EXPRESSIONS = [
   "keyDown",
   "mouseDown",
   "touchingStageEdge",
+  "touchingColor",
   "touchingActor",
   "greaterThan",
   "lessThan",

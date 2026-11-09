@@ -17,6 +17,7 @@ import {
   STUDIO_TURN_AMOUNTS,
   STUDIO_WAIT_SECONDS,
 } from "./kidsStudioChoices.js";
+import { penColorOfHex } from "./kidsBackdropZones.js";
 import {
   STUDIO_EDGE_CONDITION,
   cloneScriptId,
@@ -255,6 +256,14 @@ class Converter {
       }
       case "sensing_mousedown":
         return { type: "mouseDown" };
+      case "sensing_touchingcolor": {
+        // Scratch picks a colour with a swatch (a hex value); the scene knows the pen palette.
+        const hex = this.literal(block, "COLOR");
+        const color = hex === undefined ? undefined : penColorOfHex(hex);
+        if (color === undefined) return undefined;
+        this.adjusted += 1;
+        return { type: "touchingColor", color };
+      }
       case "sensing_touchingobject": {
         const target = this.menu(block, "TOUCHINGOBJECTMENU");
         if (target === "_edge_") return { ...STUDIO_EDGE_CONDITION };

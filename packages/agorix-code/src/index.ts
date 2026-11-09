@@ -649,6 +649,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "touching goal";
     case "touchingActor":
       return "touching " + JSON.stringify(expression.actorId);
+    case "touchingColor":
+      return "touching color " + expression.color;
     case "touchingStageEdge":
       return `touching edge ${formatNumber(expression.minX)}..${formatNumber(expression.maxX)}, ${formatNumber(expression.minY)}..${formatNumber(expression.maxY)}`;
     case "distanceToActor":

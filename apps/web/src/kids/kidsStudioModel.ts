@@ -50,6 +50,7 @@ import {
   type KidsGalleryBackdropId,
   type KidsGalleryCharacterId,
 } from "./kidsGallery.js";
+import { BACKDROP_COLOR_ZONES } from "./kidsBackdropZones.js";
 import { KIDS_SOUNDS, isKidsSoundId } from "./kidsSoundLibrary.js";
 import { validKidsImageDataUrl } from "./kidsImages.js";
 
@@ -321,6 +322,8 @@ function checkedCondition(
   if (value.type === "keyDown")
     return STUDIO_KEYS.includes(value.key as (typeof STUDIO_KEYS)[number]);
   if (value.type === "mouseDown") return true;
+  if (value.type === "touchingColor")
+    return (PEN_COLORS as readonly string[]).includes(value.color);
   if (value.type === "textContains")
     return checkedText(value.text, program) && checkedText(value.part, program);
   if (value.type === "touchingStageEdge")
@@ -876,6 +879,7 @@ export function creativeForStudio(
     {
       assets,
       actors,
+      colorZones: BACKDROP_COLOR_ZONES,
       stage: {
         backdropId: customAssets.some(
           (asset) => asset.kind === "backdrop" && asset.id === art.stageBackdropId,

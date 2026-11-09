@@ -52,6 +52,7 @@ const CONDITION_SAMPLES: Readonly<Record<string, Expression>> = {
   keyDown: key,
   mouseDown: { type: "mouseDown" },
   touchingStageEdge: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+  touchingColor: { type: "touchingColor", color: "green" },
   touchingActor: { type: "touchingActor", actorId: "actor:studio-1-nova" },
   greaterThan: { type: "greaterThan", left: num(1), right: num(0) },
   lessThan: { type: "lessThan", left: num(1), right: num(2) },

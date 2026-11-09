@@ -101,6 +101,7 @@ export const JAVA_SUPPORT_API = [
   "setPan",
   "touchingGoal",
   "touchingActor",
+  "touchingColor",
   "touchingStageEdge",
   "distanceToActor",
   "xPosition",
@@ -190,6 +191,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void setPan(double pan) {}
     boolean touchingGoal() { return false; }
     boolean touchingActor(String actor) { return false; }
+    boolean touchingColor(String color) { return false; }
     boolean touchingStageEdge(double minX, double maxX, double minY, double maxY) { return false; }
     double distanceToActor(String actor) { return 0; }
     double xPosition() { return 0; }
@@ -380,6 +382,7 @@ function kindOf(expression: Expression): Kind {
   switch (expression.type) {
     case "touchingGoal":
     case "touchingActor":
+    case "touchingColor":
     case "touchingStageEdge":
     case "keyDown":
     case "mouseDown":
@@ -444,6 +447,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "touchingGoal()";
     case "touchingActor":
       return `touchingActor(${literal(expression.actorId)})`;
+    case "touchingColor":
+      return `touchingColor(${literal(expression.color)})`;
     case "touchingStageEdge":
       return `touchingStageEdge(${number(expression.minX)}, ${number(expression.maxX)}, ${number(expression.minY)}, ${number(expression.maxY)})`;
     case "distanceToActor":

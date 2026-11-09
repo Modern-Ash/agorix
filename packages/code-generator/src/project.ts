@@ -162,6 +162,8 @@ function formatExpression(
       return "sprite.touchingGoal()";
     case "touchingActor":
       return `sprite.touchingActor(${JSON.stringify(expression.actorId)})`;
+    case "touchingColor":
+      return `sprite.touchingColor(${JSON.stringify(expression.color)})`;
     case "touchingStageEdge":
       return `sprite.touchingStageEdge(${formatNumber(expression.minX)}, ${formatNumber(expression.maxX)}, ${formatNumber(expression.minY)}, ${formatNumber(expression.maxY)})`;
     case "distanceToActor":

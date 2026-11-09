@@ -364,6 +364,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "sensing_touching_color",
+    label: "Touching color?",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "touching a color",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "sensing_touching_color",
+      fields: { color: "green" },
+    }),
+  },
+  {
     type: "sensing_touching_stage_edge",
     label: "Touching stage edge?",
     section: "Check",
