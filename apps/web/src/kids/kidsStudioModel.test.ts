@@ -10,6 +10,8 @@ import { projectProgram } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
 import { runMultiActorProgram } from "@agorix/runtime";
 import {
+  MAX_STUDIO_BLOCKS,
+  studioBlocksUsed,
   addStudioActor,
   STUDIO_EDGE_CONDITION,
   appendStudioStatement,
@@ -987,5 +989,22 @@ describe("Kids creative studio", () => {
       { type: "changeEffect", effect: "ghost", delta: 40 },
     ] as const)
       expect(() => appendStudioStatement(history, nova, bad as never)).toThrow();
+  });
+});
+
+describe("how full a character is", () => {
+  it("counts nested blocks and stops adding at the limit", () => {
+    const actor = "actor:studio-1-nova";
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = appendStudioStatement(history, actor, {
+      type: "repeat",
+      count: 2,
+      body: [{ type: "move", steps: 20 }],
+    });
+    expect(studioBlocksUsed(history.current, actor)).toBe(2);
+    for (let i = 2; i < MAX_STUDIO_BLOCKS; i += 1)
+      history = appendStudioStatement(history, actor, { type: "move", steps: 20 });
+    expect(studioBlocksUsed(history.current, actor)).toBe(MAX_STUDIO_BLOCKS);
+    expect(() => appendStudioStatement(history, actor, { type: "move", steps: 20 })).toThrow();
   });
 });
