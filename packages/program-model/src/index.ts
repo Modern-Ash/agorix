@@ -79,6 +79,8 @@ export type {
   PointTowardsStatement,
   BounceOnEdgeStatement,
   GoToTargetStatement,
+  CreateCopiesStatement,
+  CopyRule,
   NextCostumeStatement,
   SetRotationStyleStatement,
   RotationStyle,

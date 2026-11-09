@@ -392,6 +392,13 @@ class Converter {
           style: style === "left-right" ? "leftRight" : style === "don't rotate" ? "none" : "all",
         };
       }
+      case "control_create_clone_of":
+        // Scratch's clones run scripts of their own; here the closest thing is a few copies.
+        this.adjusted += 1;
+        this.drop(
+          "control_create_clone_of (clones with scripts of their own: made as plain copies)",
+        );
+        return { type: "createCopies", count: 3, rule: "spread" };
       case "motion_ifonedgebounce":
         return { type: "bounceOnEdge" };
       case "motion_goto": {

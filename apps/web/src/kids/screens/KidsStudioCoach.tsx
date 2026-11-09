@@ -29,6 +29,8 @@ const INTENT_LABEL: Record<Locale, Record<OriStudioIntent, string>> = {
     wander: "Ir a lugares al azar",
     follow: "Ir hacia el ratón",
     greet: "Saludar",
+    rain: "Lluvia de copias",
+    crowd: "Hacer una multitud",
   },
   en: {
     ahead: "Go a long way",
@@ -46,6 +48,8 @@ const INTENT_LABEL: Record<Locale, Record<OriStudioIntent, string>> = {
     wander: "Go to random spots",
     follow: "Go toward the mouse",
     greet: "Say hello",
+    rain: "Make it rain copies",
+    crowd: "Make a crowd",
   },
 };
 

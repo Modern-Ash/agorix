@@ -98,6 +98,16 @@ export interface WorldState {
   readonly sounds?: SoundState;
   readonly pen?: PenState;
   readonly music?: MusicState;
+  /** Present only after copies were made, so every other world is unchanged. */
+  readonly copies?: readonly CopyStateShape[];
+}
+
+/** A copy as the world holds it; `copies.ts` moves and places them. */
+export interface CopyStateShape {
+  readonly x: number;
+  readonly y: number;
+  readonly rule: "spread" | "fall" | "follow";
+  readonly slot: number;
 }
 
 export interface WorldStateInput {
@@ -109,6 +119,7 @@ export interface WorldStateInput {
   readonly sounds?: Partial<SoundState>;
   readonly pen?: Partial<PenState>;
   readonly music?: Partial<MusicState>;
+  readonly copies?: readonly CopyStateShape[];
 }
 
 const COORDINATE_SCALE = 1_000_000_000;
@@ -173,6 +184,18 @@ function clampVolume(value: number): number {
     throw new RangeError(`volume must be finite: ${value}`);
   }
   return Math.min(100, Math.max(0, normalizeCoordinate(value)));
+}
+
+function normalizeCopies(
+  input: readonly CopyStateShape[] | undefined,
+): readonly CopyStateShape[] | undefined {
+  if (input === undefined || input.length === 0) return undefined;
+  return input.slice(0, 20).map((copy) => ({
+    x: normalizeCoordinate(copy.x),
+    y: normalizeCoordinate(copy.y),
+    rule: copy.rule,
+    slot: Math.max(0, Math.min(9, Math.trunc(copy.slot))),
+  }));
 }
 
 function normalizePen(input: Partial<PenState> | undefined): PenState | undefined {
@@ -288,6 +311,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
   const sounds = normalizeSounds(input.sounds);
   const pen = normalizePen(input.pen);
   const music = normalizeMusic(input.music);
+  const copies = normalizeCopies(input.copies);
   return {
     sprite: {
       x: normalizeCoordinate(input.sprite?.x ?? 0),
@@ -319,6 +343,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
     ...(sounds === undefined ? {} : { sounds }),
     ...(pen === undefined ? {} : { pen }),
     ...(music === undefined ? {} : { music }),
+    ...(copies === undefined ? {} : { copies }),
   };
 }
 

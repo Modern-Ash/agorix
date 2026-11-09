@@ -61,6 +61,7 @@ export type StudioStatement = Extract<
       | "move"
       | "goTo"
       | "goToTarget"
+      | "createCopies"
       | "setRotationStyle"
       | "setX"
       | "setY"
@@ -410,6 +411,11 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "setRotationStyle")
     return (
       statement.style === "all" || statement.style === "leftRight" || statement.style === "none"
+    );
+  if (statement.type === "createCopies")
+    return (
+      [2, 3, 5].includes(statement.count) &&
+      (statement.rule === "spread" || statement.rule === "fall" || statement.rule === "follow")
     );
   if (statement.type === "goToTarget")
     return statement.target === "random" || statement.target === "mouse";

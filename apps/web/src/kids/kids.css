@@ -6775,3 +6775,13 @@ button.kids-band-chip {
 .kids-ori-code dd {
   margin: 0;
 }
+
+/* Copies of a character that exist only while the program runs: drawn like it, never interactive. */
+.kids-studio-stage-copy {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  pointer-events: none;
+}

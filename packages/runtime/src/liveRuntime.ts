@@ -24,6 +24,7 @@ import {
   type RuntimeActorMutable,
   type RuntimeEvent,
 } from "./multiActor.js";
+import { COPIES_CAP, advanceCopiesWorld, copiesMoving, liveCopies } from "./copies.js";
 import { cloneWorldState, createWorldState, drawPenTrail, type WorldState } from "./world.js";
 
 /** Scratch-like frame rate: each live script runs at most one statement per tick. */
@@ -242,6 +243,17 @@ export function createLiveRuntime(
     for (const activation of active) activation.alive = false;
   }
 
+  /** A run keeps at most COPIES_CAP live copies; the character that just made them gives up the extra. */
+  function capCopies(actor: RuntimeActorMutable, all: readonly RuntimeActorMutable[]) {
+    const over = liveCopies(all.map((item) => item.world)) - COPIES_CAP;
+    const copies = actor.world.copies;
+    if (over > 0 && copies !== undefined)
+      actor.world = createWorldState({
+        ...actor.world,
+        copies: copies.slice(0, Math.max(0, copies.length - over)),
+      });
+  }
+
   function stepActivation(activation: Activation): MultiActorTraceEntry | undefined {
     const { actor, stepper } = activation;
     stepper.world = actor.world;
@@ -249,6 +261,7 @@ export function createLiveRuntime(
     const result = stepper.step();
     actor.world = cloneWorldState(stepper.world);
     randomState = stepper.randomState;
+    capCopies(actor, actors);
     if (result.kind === "done") {
       activation.alive = false;
       if (result.outcome === "budget-exceeded") {
@@ -411,6 +424,8 @@ export function createLiveRuntime(
         endAll();
       }
     }
+    // Time passes for the copies too: falling ones fall, following ones close in.
+    for (const actor of actors) actor.world = advanceCopiesWorld(actor.world, LIVE_TICK_SECONDS);
     for (let i = active.length - 1; i >= 0; i -= 1) if (!active[i]!.alive) active.splice(i, 1);
     if (now >= maxSeconds && active.length > 0) {
       outcome = "budget-exceeded";
@@ -440,7 +455,13 @@ export function createLiveRuntime(
       return produced;
     },
     get running() {
-      return !halted && (active.length > 0 || pending.length > 0);
+      // Copies still falling or catching up keep the run going until they are where they end.
+      return (
+        !halted &&
+        (active.length > 0 ||
+          pending.length > 0 ||
+          actors.some((actor) => copiesMoving(actor.world)))
+      );
     },
     get now() {
       return now;

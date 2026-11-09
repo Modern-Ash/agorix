@@ -338,6 +338,8 @@ export const ORI_STUDIO_INTENTS = [
   "wander",
   "follow",
   "greet",
+  "rain",
+  "crowd",
 ] as const;
 export type OriStudioIntent = (typeof ORI_STUDIO_INTENTS)[number];
 
@@ -370,6 +372,11 @@ function closedIdeaBlock(statement: Statement): boolean {
       return true;
     case "goToTarget":
       return statement.target === "random" || statement.target === "mouse";
+    case "createCopies":
+      return (
+        (statement.rule === "fall" && statement.count === 5) ||
+        (statement.rule === "spread" && statement.count === 3)
+      );
     case "say":
       return (
         statement.seconds === 2 &&
@@ -492,6 +499,14 @@ const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
     { type: "goToTarget", target: "mouse" },
     { type: "wait", seconds: 0.5 },
     { type: "goToTarget", target: "mouse" },
+  ],
+  rain: [
+    { type: "createCopies", count: 5, rule: "fall" },
+    { type: "wait", seconds: 1 },
+  ],
+  crowd: [
+    { type: "createCopies", count: 3, rule: "spread" },
+    { type: "wait", seconds: 1 },
   ],
   // Filled in by `intentBlocks`: the words depend on the language.
   greet: [],
