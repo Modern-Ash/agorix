@@ -119,6 +119,8 @@ export interface ExecutionOptions {
   readonly pointer?: { readonly x: number; readonly y: number; readonly down: boolean };
   /** Bundled prompt id to selected 1-based option index; absent means pause at that question. */
   readonly choices?: Readonly<Record<string, number>>;
+  /** Bundled question id to the word the child typed; absent means pause at that question. */
+  readonly answers?: Readonly<Record<string, string>>;
   /** Other actors at activation start; never includes the running actor. */
   readonly sensorActors?: readonly {
     readonly id: string;
@@ -848,6 +850,20 @@ function* executeStatement(
       }
       break;
     }
+    case "askText": {
+      const typed = state.options.answers?.[statement.promptId];
+      if (typeof typed !== "string") {
+        choicePending = true;
+      } else {
+        // Letters, digits and spaces only, as many as a text value holds; never an error for the child.
+        const clean = typed
+          .replace(/[^\p{L}\p{N} ]/gu, "")
+          .trim()
+          .slice(0, TEXT_VALUE_MAX_LENGTH);
+        state.world = setTextWorld(state.world, statement.variableId, clean);
+      }
+      break;
+    }
     case "playNote":
     case "playDrum":
       audio = audioPlayback(
@@ -1015,6 +1031,9 @@ function* executeStatement(
     ...(waitUntilTimedOut ? { note: "waitUntil: stopped after 10 virtual seconds" } : {}),
     ...(choicePending && statement.type === "askChoice"
       ? { note: `askChoice: awaiting ${statement.promptId}` }
+      : {}),
+    ...(choicePending && statement.type === "askText"
+      ? { note: `askText: awaiting ${statement.promptId}` }
       : {}),
     ...(statement.type === "stop" ? { stopScope: statement.scope } : {}),
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),

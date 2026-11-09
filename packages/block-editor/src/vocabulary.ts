@@ -288,6 +288,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "control_ask_text",
+    label: "Ask for a word",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "ask for a typed word",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "control_ask_text",
+      fields: { promptId: "word", variableId: "word" },
+    }),
+  },
+  {
     type: "control_wait_until",
     label: "Wait until ___",
     section: "Repeat & Decide",

@@ -85,6 +85,7 @@ export type BlockType =
   | "control_wait"
   | "control_stop"
   | "control_ask_choice"
+  | "control_ask_text"
   | "control_if"
   | "sensing_touching_goal"
   | "sensing_touching_actor"
@@ -758,6 +759,16 @@ function statementFromBlock(
         throw new Error(`Invalid stop scope at ${path}`);
       return { type: "stop", scope };
     }
+    case "control_ask_text":
+      return {
+        type: "askText",
+        promptId: stringField(
+          block,
+          "promptId",
+          path,
+        ) as import("@agorix/program-model").AskTextPromptId,
+        variableId: stringField(block, "variableId", path),
+      };
     case "control_ask_choice":
       return {
         type: "askChoice",
@@ -1300,6 +1311,12 @@ function statementToBlock(
       return { id, type: "sound_stop" };
     case "stop":
       return { id, type: "control_stop", fields: { scope: statement.scope } };
+    case "askText":
+      return {
+        id,
+        type: "control_ask_text",
+        fields: { promptId: statement.promptId, variableId: statement.variableId },
+      };
     case "askChoice":
       return {
         id,

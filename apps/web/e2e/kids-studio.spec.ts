@@ -1061,6 +1061,33 @@ test("a character on the stage fills its ring instead of shrinking to one text l
   expect(box.width).toBeGreaterThan(ring.width * 0.6);
 });
 
+test("free scene asks for a typed word, waits for it and says it", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByLabel("Nombre", { exact: true }).fill("Palabra");
+  await page.getByRole("button", { name: "+ Crear palabra" }).click();
+  await page.getByRole("button", { name: "+ Preguntar una palabra" }).click();
+  await page.getByRole("button", { name: "+ Decir la palabra" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  const form = page.getByRole("form", { name: "Preguntar una palabra" });
+  await expect(form).toBeVisible();
+  await form.getByRole("textbox").fill("Luna");
+  await form.getByRole("button", { name: "Responder" }).click();
+  await expect(page.getByText("Palabra: Luna").first()).toBeVisible();
+  await expect(form).toHaveCount(0);
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {

@@ -90,6 +90,7 @@ const FAMILY: Record<string, string> = {
   listInsertAt: "variables",
   listReplaceAt: "variables",
   askChoice: "control",
+  askText: "control",
 };
 
 const FAMILY_LABEL: Record<string, { es: string; en: string }> = {

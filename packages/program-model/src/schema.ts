@@ -606,6 +606,13 @@ export interface AskChoiceStatement {
   readonly variableId: string;
 }
 
+/** Pauses for a word the child types; it is kept in a text variable and never leaves the device. */
+export interface AskTextStatement {
+  readonly type: "askText";
+  readonly promptId: import("./askTextCatalog.js").AskTextPromptId;
+  readonly variableId: string;
+}
+
 export interface SetVolumeStatement {
   readonly type: "setVolume";
   readonly volume: number;
@@ -767,6 +774,7 @@ export type Statement =
   | StopSoundsStatement
   | StopStatement
   | AskChoiceStatement
+  | AskTextStatement
   | SetVolumeStatement
   | ChangeVolumeStatement
   | BroadcastStatement

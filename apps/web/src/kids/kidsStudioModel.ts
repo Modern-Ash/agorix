@@ -85,6 +85,7 @@ export type StudioStatement = Extract<
       | "stopSounds"
       | "stop"
       | "askChoice"
+      | "askText"
       | "setVolume"
       | "changeVolume"
       | "say"
@@ -552,6 +553,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     return isKidsSoundId(statement.soundId) && statement.soundId !== "kids:custom";
   if (statement.type === "stopSounds") return true;
   if (statement.type === "stop") return ["script", "actor", "scene"].includes(statement.scope);
+  if (statement.type === "askText")
+    return program.textVariables?.some((item) => item.id === statement.variableId) === true;
   if (statement.type === "askChoice")
     return program.variables?.some((item) => item.id === statement.variableId) === true;
   if (statement.type === "setVolume") return inStudioRange(statement.volume, STUDIO_VOLUME_RANGE);

@@ -96,6 +96,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     es: "Parar este programa, el personaje o toda la escena",
     en: "Stop this program, the character or the whole scene",
   },
+  askText: {
+    es: "Preguntar algo y guardar la palabra que escribas",
+    en: "Ask something and keep the word you type",
+  },
   askChoice: {
     es: "Hacer una pregunta con opciones para elegir",
     en: "Ask a question with choices",
@@ -370,6 +374,7 @@ export const TIP_RULES: readonly TipRule[] = [
   { match: named(/^\+ (Esperar hasta|Wait until)/), tip: BLOCK_TIPS["waitUntil"]! },
   { match: named(/^\+ (Detener|Stop)$/), tip: BLOCK_TIPS["stop"]! },
   { match: named(/^\+ (Preguntar con opciones|Ask with choices)/), tip: BLOCK_TIPS["askChoice"]! },
+  { match: named(/^\+ (Preguntar una palabra|Ask for a word)/), tip: BLOCK_TIPS["askText"]! },
   { match: named(/^\+ (Enviar mensaje|Broadcast message)/), tip: BLOCK_TIPS["broadcast"]! },
   { match: named(/^\+ (Bajar el lápiz|Pen down)/), tip: BLOCK_TIPS["penDown"]! },
   { match: named(/^\+ (Subir el lápiz|Pen up)/), tip: BLOCK_TIPS["penUp"]! },
