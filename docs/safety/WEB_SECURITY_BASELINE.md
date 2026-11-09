@@ -76,9 +76,10 @@ Denied in first-party source: geolocation, user media and `MediaRecorder`, outbo
 `sendBeacon`, direct messaging, social-graph mutation, and public publishing. There is no public
 sharing, chat, DM or precise-location requirement in the POC.
 
-The single exception is supervised voice recording (issue #622, `VOICE_RECORDINGS.md`): user media is
-allowed in `apps/web/src/kids/kidsRecorder.ts` only, which carries an attributed file marker; the same
-code anywhere else is a finding no marker can suppress. The browser policy opens `microphone` to this
+The only exceptions are supervised voice recording (issue #622, `VOICE_RECORDINGS.md`) and the
+microphone level meter (issue #1304, same document): user media is allowed in
+`apps/web/src/kids/kidsRecorder.ts` and `apps/web/src/kids/kidsLevelMeter.ts` only, each carrying an
+attributed file marker; the same code anywhere else is a finding no marker can suppress. The browser policy opens `microphone` to this
 origin only (`microphone=(self)`).
 
 ### 7. Governed external links (`external-links`)

@@ -25,6 +25,7 @@ import type { KidsText } from "../useKidsText.js";
 import type { AdultTab } from "../kidsAdultTabs.js";
 import { AdultTabList, AdultTabPanel } from "./AdultTabs.js";
 import { microphoneAllowed, setMicrophoneAllowed } from "../kidsRecorder.js";
+import { microphoneLevelAllowed, setMicrophoneLevelAllowed } from "../kidsLevelMeter.js";
 
 interface Props {
   readonly t: KidsText;
@@ -218,6 +219,7 @@ export function ParentsScreen({
   const [health, setHealth] = useState<AdultAiHealth | null>(null);
   const [customizeMode, setCustomizeMode] = useState<"images" | "sounds">("images");
   const [micAllowed, setMicAllowed] = useState(() => microphoneAllowed());
+  const [levelAllowed, setLevelAllowed] = useState(() => microphoneLevelAllowed());
   const copy = COPY[locale];
   const ageBandsEnabled = useKidsFlag("ageBands");
   const customImagesEnabled = useKidsFlag("customImages");
@@ -598,6 +600,29 @@ export function ParentsScreen({
                       {locale === "es"
                         ? "Permitir grabaciones en este dispositivo"
                         : "Allow recordings on this device"}
+                    </small>
+                  </span>
+                  <i aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="kids-adult-switch"
+                  role="switch"
+                  aria-checked={levelAllowed}
+                  onClick={() => {
+                    const next = !levelAllowed;
+                    setMicrophoneLevelAllowed(next);
+                    setLevelAllowed(next);
+                  }}
+                >
+                  <span>
+                    <strong>
+                      {locale === "es" ? "Volumen del micrófono" : "Microphone volume"}
+                    </strong>
+                    <small>
+                      {locale === "es"
+                        ? "Deja que un programa lea qué tan fuerte hay ruido mientras juega. Solo un número, nunca el sonido."
+                        : "Lets a program read how loud it is while it plays. Only a number, never the sound."}
                     </small>
                   </span>
                   <i aria-hidden="true" />

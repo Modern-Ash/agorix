@@ -110,9 +110,18 @@ const EXECUTION_SINK_SCOPE = { include: FIRST_PARTY_SOURCE_GLOBS, exclude: ["scr
  * a finding that no marker can suppress.
  */
 export const USER_MEDIA_MODULE = "apps/web/src/kids/kidsRecorder.ts";
-/** The module and the two files that test it, each with an attributed file marker. */
+/**
+ * The second and last module allowed to reach the microphone: the level meter that gives a running
+ * program its "loudness" number (issue #1304). It keeps no sound, only one number, and has its own
+ * adult switch.
+ */
+export const LEVEL_METER_MODULE = "apps/web/src/kids/kidsLevelMeter.ts";
+/** The two modules and the files that test them, each with an attributed file marker. */
 export const USER_MEDIA_FILES = Object.freeze([
   USER_MEDIA_MODULE,
+  LEVEL_METER_MODULE,
+  "apps/web/src/kids/kidsLevelMeter.test.ts",
+  "apps/web/e2e/kids-loudness.spec.ts",
   "apps/web/src/kids/kidsRecorder.test.ts",
   "apps/web/e2e/kids-recording.spec.ts",
 ]);
@@ -519,7 +528,7 @@ function checkProhibitedFeatures({ files, read }) {
               index + 1,
               USER_MEDIA_FILES.includes(file)
                 ? "prohibited POC feature user-media without an attributed file marker"
-                : `prohibited POC feature user-media outside ${USER_MEDIA_MODULE}`,
+                : `prohibited POC feature user-media outside ${USER_MEDIA_MODULE} and ${LEVEL_METER_MODULE}`,
             ),
           );
         }
