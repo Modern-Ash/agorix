@@ -1032,6 +1032,8 @@ function eventText(event: RuntimeEvent): string {
         : `message:${event.message} from ${event.senderActorId}`;
     case "backdropSwitched":
       return `backdrop:${event.backdropId}`;
+    case "timerPassed":
+      return `timer:${event.seconds}`;
   }
 }
 

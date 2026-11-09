@@ -170,6 +170,7 @@ describe("runtime operation allowlist", () => {
       "onActorClicked",
       "onMessage",
       "onBackdropSwitch",
+      "onTimerOver",
     ]);
   });
 

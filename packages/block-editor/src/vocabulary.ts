@@ -96,6 +96,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "event_on_timer_over",
+    label: "When time passes",
+    section: "Start",
+    placement: "trigger",
+    accessibleName: "when seconds have passed",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "event_on_timer_over",
+      fields: { seconds: 3 },
+    }),
+  },
+  {
     type: "event_broadcast",
     label: "Broadcast message",
     section: "Start",

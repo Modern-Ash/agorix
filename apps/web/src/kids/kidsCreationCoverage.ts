@@ -115,6 +115,7 @@ export const SCENE_TRIGGERS = [
   "onKeyPressed",
   "onMessage",
   "onBackdropSwitch",
+  "onTimerOver",
 ] as const satisfies readonly TriggerKind[];
 
 export const TRIGGERS_NOT_IN_SCENE = {
