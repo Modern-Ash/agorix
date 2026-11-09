@@ -499,6 +499,11 @@ export interface SetPanStatement {
 export const EXTENSION_IDS = ["pen", "music"] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];
 
+/** Starts this script's timer again from zero (Scratch: reset timer). */
+export interface ResetTimerStatement {
+  readonly type: "resetTimer";
+}
+
 export interface ClearEffectsStatement {
   readonly type: "clearEffects";
 }
@@ -726,6 +731,7 @@ export type Statement =
   | SetEffectStatement
   | ChangeEffectStatement
   | ClearEffectsStatement
+  | ResetTimerStatement
   | PenDownStatement
   | PenUpStatement
   | SetPenColorStatement

@@ -76,6 +76,7 @@ export type StudioStatement = Extract<
       | "setEffect"
       | "changeEffect"
       | "clearEffects"
+      | "resetTimer"
       | "switchCostume"
       | "nextCostume"
       | "switchBackdrop"
@@ -499,7 +500,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       ["color", "ghost", "brightness"].includes(statement.effect) &&
       (STUDIO_EFFECT_DELTAS as readonly number[]).includes(statement.delta)
     );
-  if (statement.type === "clearEffects") return true;
+  if (statement.type === "clearEffects" || statement.type === "resetTimer") return true;
   if (
     statement.type === "penDown" ||
     statement.type === "penUp" ||

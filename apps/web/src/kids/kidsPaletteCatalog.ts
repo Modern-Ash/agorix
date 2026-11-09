@@ -49,6 +49,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   repeatUntil: "logic",
   forever: "logic",
   waitUntil: "logic",
+  resetTimer: "logic",
   if: "logic",
   broadcast: "logic",
   callProcedure: "myBlocks",

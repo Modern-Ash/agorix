@@ -211,6 +211,8 @@ interface MutableRunState {
   randomState: number;
   /** Virtual seconds waited so far; a clock for ordering, never a timer. */
   virtualSeconds: number;
+  /** The virtual second the script's `timer` counts from; "reset timer" moves it up to now. */
+  timerOrigin: number;
   /** The script being run, so a call can find its own custom blocks. */
   script?: Script;
   scriptIndex: number;
@@ -370,7 +372,7 @@ function evaluateExpression(
     case "sizePercent":
       return state.world.sprite.size ?? 100;
     case "timer":
-      return state.virtualSeconds;
+      return Math.round((state.virtualSeconds - state.timerOrigin) * 1000) / 1000;
     case "keyDown":
       return (
         state.event === `key:${expression.key}` ||
@@ -700,6 +702,9 @@ function* executeStatement(
       break;
     case "clearEffects":
       state.world = clearEffectsWorld(state.world);
+      break;
+    case "resetTimer":
+      state.timerOrigin = state.virtualSeconds;
       break;
     case "penDown":
       state.world = penDownWorld(state.world);
@@ -1148,6 +1153,7 @@ export function runProgram(
     observations: [],
     randomState: normalizeRandomSeed(options.randomSeed),
     virtualSeconds: 0,
+    timerOrigin: 0,
     scriptIndex: 0,
     callDepth: 0,
     paramFrames: [],
@@ -1275,6 +1281,7 @@ export function createScriptStepper(
     observations: [],
     randomState: normalizeRandomSeed(options.randomSeed),
     virtualSeconds: 0,
+    timerOrigin: 0,
     script,
     scriptIndex: 0,
     callDepth: 0,

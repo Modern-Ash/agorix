@@ -645,6 +645,8 @@ function validateStatement(
     }
     case "clearEffects":
       return { type: "clearEffects" };
+    case "resetTimer":
+      return { type: "resetTimer" };
     case "penDown":
     case "penUp":
     case "clearPen":

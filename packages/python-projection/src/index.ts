@@ -356,6 +356,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "clearEffects":
       writeMapped(writer, nodeId, indent + "clear_effects()\n");
       return;
+    case "resetTimer":
+      writeMapped(writer, nodeId, indent + "reset_timer()\n");
+      return;
     case "penDown":
       writeMapped(writer, nodeId, indent + "pen_down()\n");
       return;
