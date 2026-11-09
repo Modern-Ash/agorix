@@ -13,6 +13,8 @@ export const LOOKS_TEXT_MAX_LENGTH = 140;
 export const EVENT_KEY_MAX_LENGTH = 40;
 export const EVENT_MESSAGE_MAX_LENGTH = 80;
 export const VARIABLE_NAME_MAX_LENGTH = 40;
+/** A word or short phrase a text value holds; text from a child, so it stays short. */
+export const TEXT_VALUE_MAX_LENGTH = 40;
 
 export const SPRITE_SIZE_MIN = 1;
 export const SPRITE_SIZE_MAX = 400;

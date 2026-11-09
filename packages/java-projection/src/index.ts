@@ -78,6 +78,10 @@ export const JAVA_SUPPORT_API = [
   "listInsertAt",
   "listReplaceAt",
   "listItem",
+  "joinText",
+  "letterOf",
+  "containsText",
+  "numberOf",
   "penDown",
   "penUp",
   "setPenColor",
@@ -157,6 +161,10 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void listInsertAt(java.util.List<Double> list, double index, double value) {}
     void listReplaceAt(java.util.List<Double> list, double index, double value) {}
     double listItem(java.util.List<Double> list, double index) { return 0; }
+    String joinText(String left, String right) { return left + right; }
+    String letterOf(double index, String text) { return ""; }
+    boolean containsText(String text, String part) { return false; }
+    double numberOf(String text) { return 0; }
     void penDown() {}
     void penUp() {}
     void setPenColor(String color) {}
@@ -197,7 +205,7 @@ interface Writer {
   paramNames: ReadonlyMap<string, string> | undefined;
 }
 
-type Kind = "number" | "boolean";
+type Kind = "number" | "boolean" | "text";
 
 const INDENT = "    ";
 
@@ -362,7 +370,13 @@ function kindOf(expression: Expression): Kind {
     case "and":
     case "or":
     case "not":
+    case "textContains":
       return "boolean";
+    case "textLiteral":
+    case "textVariable":
+    case "join":
+    case "letterOf":
+      return "text";
     default:
       return "number";
   }
@@ -370,12 +384,20 @@ function kindOf(expression: Expression): Kind {
 
 function asNumber(writer: Writer, expression: Expression, nodeId: string): string {
   const text = expressionText(writer, expression, nodeId);
-  return kindOf(expression) === "boolean" ? `(${text} ? 1 : 0)` : text;
+  const kind = kindOf(expression);
+  return kind === "boolean" ? `(${text} ? 1 : 0)` : kind === "text" ? `numberOf(${text})` : text;
 }
 
 function asBoolean(writer: Writer, expression: Expression, nodeId: string): string {
   const text = expressionText(writer, expression, nodeId);
-  return kindOf(expression) === "boolean" ? text : `(${text} != 0)`;
+  const kind = kindOf(expression);
+  return kind === "boolean" ? text : kind === "text" ? `(!${text}.isEmpty())` : `(${text} != 0)`;
+}
+
+/** Words as Java text: a number or a true/false value is written out as digits or words. */
+function asText(writer: Writer, expression: Expression, nodeId: string): string {
+  const text = expressionText(writer, expression, nodeId);
+  return kindOf(expression) === "text" ? text : `String.valueOf(${text})`;
 }
 
 function paramText(writer: Writer, id: string): string {
@@ -426,6 +448,18 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return expression.value ? "true" : "false";
     case "numericLiteral":
       return number(expression.value);
+    case "textLiteral":
+      return literal(expression.value);
+    case "textVariable":
+      return variableName(writer, expression.variableId);
+    case "join":
+      return `joinText(${asText(writer, expression.left, `${nodeId}/left`)}, ${asText(writer, expression.right, `${nodeId}/right`)})`;
+    case "textLength":
+      return `((double) ${asText(writer, expression.value, `${nodeId}/value`)}.length())`;
+    case "letterOf":
+      return `letterOf(${asNumber(writer, expression.index, `${nodeId}/index`)}, ${asText(writer, expression.value, `${nodeId}/value`)})`;
+    case "textContains":
+      return `containsText(${asText(writer, expression.text, `${nodeId}/text`)}, ${asText(writer, expression.part, `${nodeId}/part`)})`;
     case "variable":
       return variableName(writer, expression.variableId);
     case "param":
@@ -549,7 +583,7 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       const message =
         node.append === undefined
           ? literal(node.text)
-          : `${literal(node.text)} + (${num(node.append, "append")})`;
+          : `${literal(node.text)} + (${asText(writer, node.append, `${nodeId}/append`)})`;
       return line(
         node.seconds === undefined
           ? `${node.type}(${message})`
@@ -591,6 +625,10 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
         node.wait === true
           ? `broadcastAndWait(${literal(node.message)})`
           : `broadcast(${literal(node.message)})`,
+      );
+    case "setText":
+      return line(
+        `${variableName(writer, node.variableId)} = ${asText(writer, node.value, `${nodeId}/value`)}`,
       );
     case "setVariable":
       return line(`${variableName(writer, node.variableId)} = ${num(node.value, "value")}`);
@@ -696,16 +734,16 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
 /** Display-only Java view. The canonical program remains the runtime authority. */
 export function projectJava(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
-  const variableNames = namesFor(
-    validated.variables,
+  const allNames = namesFor(
+    [...(validated.variables ?? []), ...(validated.textVariables ?? [])],
     new Set(Array.from({ length: 10 }, (_item, depth) => `i${depth}`)),
   );
   const writer: Writer = {
     text: "class AgorixProgram extends Sprite {\n",
     mapping: {},
     diagnostics: [],
-    variableNames,
-    listNames: namesFor(validated.lists, new Set(variableNames.values())),
+    variableNames: allNames,
+    listNames: namesFor(validated.lists, new Set(allNames.values())),
     procedureNames: new Map(),
     paramNames: undefined,
   };
@@ -714,6 +752,13 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
       writer,
       `variables/${variable.id}`,
       `${INDENT}double ${variableName(writer, variable.id)} = ${number(variable.initialValue)};\n`,
+    );
+  }
+  for (const text of validated.textVariables ?? []) {
+    mapped(
+      writer,
+      `textVariables/${text.id}`,
+      `${INDENT}String ${variableName(writer, text.id)} = ${literal(text.initialValue)};\n`,
     );
   }
   for (const list of validated.lists ?? []) {
@@ -825,6 +870,7 @@ export const javaLanguagePack: LanguagePack = {
     "changeVolume",
     "broadcast",
     "setVariable",
+    "setText",
     "changeVariable",
     "showVariable",
     "hideVariable",

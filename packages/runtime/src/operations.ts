@@ -63,6 +63,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "changeVolume",
   "broadcast",
   "setVariable",
+  "setText",
   "changeVariable",
   "showVariable",
   "hideVariable",
@@ -94,6 +95,12 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "booleanLiteral",
   "numericLiteral",
   "variable",
+  "textLiteral",
+  "textVariable",
+  "join",
+  "textLength",
+  "letterOf",
+  "textContains",
   "add",
   "subtract",
   "multiply",
@@ -179,6 +186,21 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
       assertExpressionAllowed(expression.left, `${path}.left`);
       assertExpressionAllowed(expression.right, `${path}.right`);
       return;
+    case "join":
+      assertExpressionAllowed(expression.left, `${path}.left`);
+      assertExpressionAllowed(expression.right, `${path}.right`);
+      return;
+    case "textLength":
+      assertExpressionAllowed(expression.value, `${path}.value`);
+      return;
+    case "letterOf":
+      assertExpressionAllowed(expression.index, `${path}.index`);
+      assertExpressionAllowed(expression.value, `${path}.value`);
+      return;
+    case "textContains":
+      assertExpressionAllowed(expression.text, `${path}.text`);
+      assertExpressionAllowed(expression.part, `${path}.part`);
+      return;
     case "mathFunction":
     case "not":
       assertExpressionAllowed(expression.value, `${path}.value`);
@@ -207,6 +229,8 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
     case "booleanLiteral":
     case "numericLiteral":
     case "variable":
+    case "textLiteral":
+    case "textVariable":
     case "listLength":
     case "param":
       return;
@@ -233,6 +257,8 @@ function assertStatementsAllowed(statements: readonly Statement[], path: string)
         assertStatementsAllowed(statement.else, `${statementPath}.else`);
       }
     } else if (statement.type === "setVariable") {
+      assertExpressionAllowed(statement.value, `${statementPath}.value`);
+    } else if (statement.type === "setText") {
       assertExpressionAllowed(statement.value, `${statementPath}.value`);
     } else if (statement.type === "changeVariable") {
       assertExpressionAllowed(statement.delta, `${statementPath}.delta`);
