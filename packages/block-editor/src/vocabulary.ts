@@ -96,6 +96,14 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "event_on_clone_start",
+    label: "When I start as a clone",
+    section: "Start",
+    placement: "trigger",
+    accessibleName: "when I start as a clone",
+    createDefaultBlock: (id) => ({ id, type: "event_on_clone_start" }),
+  },
+  {
     type: "event_on_loudness_over",
     label: "When loud",
     section: "Start",
@@ -407,6 +415,14 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     placement: "expression",
     accessibleName: "size",
     createDefaultBlock: (id) => ({ id, type: "looks_size" }),
+  },
+  {
+    type: "control_delete_this_clone",
+    label: "Delete this clone",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "delete this clone",
+    createDefaultBlock: (id) => ({ id, type: "control_delete_this_clone" }),
   },
   {
     type: "control_reset_timer",

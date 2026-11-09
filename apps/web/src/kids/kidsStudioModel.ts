@@ -36,6 +36,7 @@ import {
   type ProcedureParam,
   type ProcedureParamId,
   type Expression,
+  type Script,
   type Statement,
   type Trigger,
 } from "@agorix/program-model";
@@ -53,6 +54,8 @@ import { KIDS_SOUNDS, isKidsSoundId } from "./kidsSoundLibrary.js";
 import { validKidsImageDataUrl } from "./kidsImages.js";
 
 const SCRIPT = /^studio-actor-([1-9][0-9]?)-([a-z]+)$/;
+/** The second script of a character: the one each of its copies starts with (issue #1311). */
+const CLONE_SCRIPT = /^studio-actor-([1-9][0-9]?)-([a-z]+)-clone$/;
 export const MAX_STUDIO_ACTORS = 12;
 
 export type StudioStatement = Extract<
@@ -438,6 +441,21 @@ function scriptId(index: number, characterId: KidsGalleryCharacterId): string {
   return `studio-actor-${index}-${characterId}`;
 }
 
+export function cloneScriptId(index: number, characterId: KidsGalleryCharacterId): string {
+  return `studio-actor-${index}-${characterId}-clone`;
+}
+
+/** The character a copy script belongs to; null for any other script id. */
+export function cloneActorOfScript(
+  id: string,
+): { index: number; characterId: KidsGalleryCharacterId } | null {
+  const match = CLONE_SCRIPT.exec(id);
+  if (!match || !isGalleryCharacterId(match[2])) return null;
+  const index = Number(match[1]);
+  if (index > 99) return null;
+  return { index, characterId: match[2] };
+}
+
 export function actorOfScript(
   id: string,
 ): { index: number; characterId: KidsGalleryCharacterId } | null {
@@ -448,7 +466,14 @@ export function actorOfScript(
   return { index, characterId: match[2] };
 }
 
-function checked(statement: Statement, program: ProjectProgram, depth = 0, arity = 0): boolean {
+function checked(
+  statement: Statement,
+  program: ProjectProgram,
+  depth = 0,
+  arity = 0,
+  inClone = false,
+): boolean {
+  if (statement.type === "deleteThisClone") return inClone;
   if (statement.type === "move")
     return (
       paramInScope(statement.stepsFrom, arity) &&
@@ -625,7 +650,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       (STUDIO_REPEAT_COUNTS as readonly number[]).includes(statement.count) &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
-      statement.body.every((item) => checked(item, program, depth + 1, arity))
+      statement.body.every((item) => checked(item, program, depth + 1, arity, inClone))
     );
   if (statement.type === "callProcedure")
     return (
@@ -638,14 +663,14 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       checkedCondition(statement.condition, program, arity) &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
-      statement.body.every((item) => checked(item, program, depth + 1, arity))
+      statement.body.every((item) => checked(item, program, depth + 1, arity, inClone))
     );
   if (statement.type === "forever")
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
-      statement.body.every((item) => checked(item, program, depth + 1, arity))
+      statement.body.every((item) => checked(item, program, depth + 1, arity, inClone))
     );
   if (statement.type === "waitUntil") return checkedCondition(statement.condition, program, arity);
   if (statement.type === "if") {
@@ -654,11 +679,11 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       checkedCondition(statement.condition, program, arity) &&
       statement.then.length >= 1 &&
       statement.then.length <= MAX_STUDIO_BODY &&
-      statement.then.every((item) => checked(item, program, depth + 1, arity)) &&
+      statement.then.every((item) => checked(item, program, depth + 1, arity, inClone)) &&
       (statement.else === undefined ||
         (statement.else.length >= 1 &&
           statement.else.length <= MAX_STUDIO_BODY &&
-          statement.else.every((item) => checked(item, program, depth + 1, arity))))
+          statement.else.every((item) => checked(item, program, depth + 1, arity, inClone))))
     );
   }
   return false;
@@ -669,8 +694,8 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
   if (
     (program.extensions !== undefined &&
       !program.extensions.every((id) => id === "pen" || id === "music")) ||
-    program.scripts.length < 1 ||
-    program.scripts.length > MAX_STUDIO_ACTORS ||
+    mainScripts(program).length < 1 ||
+    mainScripts(program).length > MAX_STUDIO_ACTORS ||
     (program.variables?.length ?? 0) > 3 ||
     (program.lists?.length ?? 0) > 3 ||
     (program.textVariables?.length ?? 0) > 3 ||
@@ -695,7 +720,7 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
         item.initialItems.length !== 0 ||
         !item.visible,
     ) ||
-    program.scripts.some((script, position) => {
+    mainScripts(program).some((script, position) => {
       const actor = actorOfScript(script.id);
       return (
         !actor ||
@@ -707,10 +732,46 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
           MAX_STUDIO_BLOCKS ||
         script.statements.some((statement) => !checked(statement, program))
       );
-    })
+    }) ||
+    !validCloneScripts(program)
   )
     throw new RangeError("program is outside Kids studio");
   return program;
+}
+
+/** The scripts of the characters themselves, without the scripts their copies start with. */
+export function mainScripts(program: ProjectProgram): readonly Script[] {
+  return program.scripts.filter((script) => cloneActorOfScript(script.id) === null);
+}
+
+/**
+ * A character may have one more script, the one each copy starts with: after every character's
+ * own script, one at most per character, started by "when I start as a clone", with no custom
+ * blocks of its own, and the only place "delete this clone" means something.
+ */
+function validCloneScripts(program: ProjectProgram): boolean {
+  const mains = mainScripts(program);
+  const clones = program.scripts.slice(mains.length);
+  if (mains.some((script, index) => program.scripts[index] !== script)) return false;
+  const seen = new Set<number>();
+  return clones.every((script) => {
+    const target = cloneActorOfScript(script.id);
+    const main = target === null ? undefined : actorOfScript(mains[target.index - 1]?.id ?? "");
+    if (
+      target === null ||
+      main === null ||
+      main === undefined ||
+      main.characterId !== target.characterId ||
+      seen.has(target.index) ||
+      script.trigger.type !== "onCloneStart" ||
+      (script.procedures?.length ?? 0) > 0 ||
+      statementCount(script.statements) > MAX_STUDIO_BLOCKS ||
+      !script.statements.every((statement) => checked(statement, program, 0, 0, true))
+    )
+      return false;
+    seen.add(target.index);
+    return true;
+  });
 }
 
 export function createStudioProgram(characterId: KidsGalleryCharacterId): ProjectProgram {
@@ -762,7 +823,7 @@ export function creativeForStudio(
     })),
     ...customAssets,
   ];
-  const actors = program.scripts.map((script, position) => {
+  const actors = mainScripts(program).map((script, position) => {
     const actor = actorOfScript(script.id)!;
     const id = studioActorId(actor.index, actor.characterId);
     const saved = positions[id];
@@ -831,17 +892,18 @@ export function addStudioActor(
   characterId: KidsGalleryCharacterId,
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
-  if (!isGalleryCharacterId(characterId) || program.scripts.length >= MAX_STUDIO_ACTORS)
+  if (!isGalleryCharacterId(characterId) || mainScripts(program).length >= MAX_STUDIO_ACTORS)
     throw new RangeError("studio actor limit or unknown character");
   const next = validateStudioProgram({
     ...program,
     scripts: [
-      ...program.scripts,
+      ...mainScripts(program),
       {
-        id: scriptId(program.scripts.length + 1, characterId),
+        id: scriptId(mainScripts(program).length + 1, characterId),
         trigger: { type: "greenFlag" },
         statements: [],
       },
+      ...program.scripts.filter((script) => cloneActorOfScript(script.id) !== null),
     ],
   });
   return recordCanonicalTransaction(history, { label: "add studio actor", after: next }).history;

@@ -335,6 +335,8 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Clear effects";
     case "resetTimer":
       return "Reset timer";
+    case "deleteThisClone":
+      return "Delete this clone";
     case "glideTo":
       return "Glide";
     case "callProcedure":

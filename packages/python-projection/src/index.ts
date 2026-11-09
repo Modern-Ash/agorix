@@ -217,6 +217,8 @@ function triggerText(trigger: Trigger): string {
       return `def on_backdrop_${safeEventName(trigger.backdropId)}():\n`;
     case "onTimerOver":
       return `def on_timer_over_${safeEventName(String(trigger.seconds))}():\n`;
+    case "onCloneStart":
+      return "def on_clone_start():\n";
     case "onLoudnessOver":
       return `def on_loudness_over_${safeEventName(String(trigger.level))}():\n`;
   }
@@ -362,6 +364,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "resetTimer":
       writeMapped(writer, nodeId, indent + "reset_timer()\n");
+      return;
+    case "deleteThisClone":
+      writeMapped(writer, nodeId, indent + "delete_this_clone()\n");
       return;
     case "penDown":
       writeMapped(writer, nodeId, indent + "pen_down()\n");

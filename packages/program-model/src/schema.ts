@@ -522,6 +522,14 @@ export interface ResetTimerStatement {
   readonly type: "resetTimer";
 }
 
+/**
+ * Ends this copy of the character (Scratch: delete this clone). Meaningful only in the script a
+ * copy starts with ("when I start as a clone"); anywhere else it does nothing.
+ */
+export interface DeleteThisCloneStatement {
+  readonly type: "deleteThisClone";
+}
+
 export interface ClearEffectsStatement {
   readonly type: "clearEffects";
 }
@@ -757,6 +765,7 @@ export type Statement =
   | ChangeEffectStatement
   | ClearEffectsStatement
   | ResetTimerStatement
+  | DeleteThisCloneStatement
   | PenDownStatement
   | PenUpStatement
   | SetPenColorStatement
@@ -846,6 +855,11 @@ export interface OnLoudnessOverTrigger {
   readonly level: number;
 }
 
+/** Starts the script of each copy of the character, the moment the copy exists (Scratch: when I start as a clone). */
+export interface OnCloneStartTrigger {
+  readonly type: "onCloneStart";
+}
+
 export type Trigger =
   | OnStartTrigger
   | GreenFlagTrigger
@@ -854,7 +868,8 @@ export type Trigger =
   | OnMessageTrigger
   | OnBackdropSwitchTrigger
   | OnTimerOverTrigger
-  | OnLoudnessOverTrigger;
+  | OnLoudnessOverTrigger
+  | OnCloneStartTrigger;
 
 export type ProgramEvent =
   | "greenFlag"
@@ -863,7 +878,8 @@ export type ProgramEvent =
   | `message:${string}`
   | `backdrop:${string}`
   | `timer:${number}`
-  | `loud:${number}`;
+  | `loud:${number}`
+  | "clone";
 
 // --- Script / ProjectProgram ------------------------------------------------
 

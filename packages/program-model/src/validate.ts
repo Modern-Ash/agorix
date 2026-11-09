@@ -652,6 +652,8 @@ function validateStatement(
       return { type: "clearEffects" };
     case "resetTimer":
       return { type: "resetTimer" };
+    case "deleteThisClone":
+      return { type: "deleteThisClone" };
     case "penDown":
     case "penUp":
     case "clearPen":
@@ -1090,6 +1092,8 @@ function validateTrigger(input: unknown, path: string): Trigger {
           "event message",
         ),
       };
+    case "onCloneStart":
+      return { type: "onCloneStart" };
     case "onLoudnessOver": {
       if (typeof input.level !== "number") {
         fail("MISSING_FIELD", `${path}.level`, "expected a number", input.level);

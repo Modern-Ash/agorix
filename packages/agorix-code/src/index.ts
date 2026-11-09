@@ -146,6 +146,8 @@ function triggerText(trigger: Trigger): string {
       return `when backdrop switches to ${JSON.stringify(trigger.backdropId)}\n`;
     case "onTimerOver":
       return `when ${trigger.seconds} seconds have passed\n`;
+    case "onCloneStart":
+      return "when I start as a clone\n";
     case "onLoudnessOver":
       return `when loudness is over ${trigger.level}\n`;
   }
@@ -287,6 +289,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "resetTimer":
       writeMapped(writer, nodeId, indent + "reset timer\n");
+      return;
+    case "deleteThisClone":
+      writeMapped(writer, nodeId, indent + "delete this clone\n");
       return;
     case "penDown":
       writeMapped(writer, nodeId, indent + "pen down\n");

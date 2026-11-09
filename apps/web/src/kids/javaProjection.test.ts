@@ -290,6 +290,11 @@ const everything: ProjectProgram = {
       trigger: { type: "onLoudnessOver", level: 30 },
       statements: [{ type: "say", text: "ruido" }],
     },
+    {
+      id: "cl",
+      trigger: { type: "onCloneStart" },
+      statements: [{ type: "move", steps: 10 }, { type: "deleteThisClone" }],
+    },
     { id: "o", trigger: { type: "onStart" }, statements: [{ type: "show" }] },
   ],
 };

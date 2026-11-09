@@ -367,6 +367,9 @@ function projectStatement(
     case "resetTimer":
       write(writer, `${pad}resetTimer();\n`);
       return;
+    case "deleteThisClone":
+      write(writer, `${pad}deleteThisClone();\n`);
+      return;
     case "penDown":
       write(writer, `${pad}pen.down();\n`);
       return;
@@ -609,6 +612,8 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
       return `whenBackdropSwitchesTo(${JSON.stringify(trigger.backdropId)})`;
     case "onTimerOver":
       return `whenTimerOver(${trigger.seconds})`;
+    case "onCloneStart":
+      return "whenIStartAsClone()";
     case "onLoudnessOver":
       return `whenLoudnessOver(${trigger.level})`;
     default: {

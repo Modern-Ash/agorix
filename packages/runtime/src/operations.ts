@@ -34,6 +34,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "changeEffect",
   "clearEffects",
   "resetTimer",
+  "deleteThisClone",
   "penDown",
   "penUp",
   "setPenColor",
@@ -136,6 +137,7 @@ export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze([
   "onBackdropSwitch",
   "onTimerOver",
   "onLoudnessOver",
+  "onCloneStart",
 ] as const);
 
 export const RUNTIME_OPERATIONS = Object.freeze({
