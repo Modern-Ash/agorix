@@ -75,6 +75,8 @@ export type {
   Script,
   SchemaVersion,
   SetVariableStatement,
+  SetPenTransparencyStatement,
+  PenTransparency,
   ResetTimerStatement,
   StampStatement,
   ShowVariableStatement,
@@ -110,6 +112,7 @@ export {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_TRANSPARENCIES,
   SCHEMA_VERSION,
 } from "./schema.js";
 export { paramIdentifiers, procedureIdentifiers } from "./procedures.js";

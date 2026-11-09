@@ -424,6 +424,10 @@ export interface ChangeEffectStatement {
 }
 
 /** The pen extension (ADR 0011): a closed palette, so a drawing never carries a free colour. */
+/** How see-through the pen draws, in percent: a closed list, so a trail stays easy to read. */
+export const PEN_TRANSPARENCIES = [0, 25, 50, 75] as const;
+export type PenTransparency = (typeof PEN_TRANSPARENCIES)[number];
+
 export const PEN_COLORS = ["dark", "red", "orange", "green", "blue", "purple"] as const;
 export type PenColor = (typeof PEN_COLORS)[number];
 
@@ -438,6 +442,11 @@ export interface PenUpStatement {
 export interface SetPenColorStatement {
   readonly type: "setPenColor";
   readonly color: PenColor;
+}
+
+export interface SetPenTransparencyStatement {
+  readonly type: "setPenTransparency";
+  readonly percent: PenTransparency;
 }
 
 export interface SetPenSizeStatement {
@@ -762,6 +771,7 @@ export type Statement =
   | ChangeVolumeStatement
   | BroadcastStatement
   | StampStatement
+  | SetPenTransparencyStatement
   | SetVariableStatement
   | SetTextStatement
   | ChangeVariableStatement
