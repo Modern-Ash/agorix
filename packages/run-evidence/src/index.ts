@@ -29,7 +29,7 @@ export type LoopKindFound = "forever" | "repeatUntil" | "waitUntil";
 
 /** The event a script waits for, as a closed shape. `name` is a key or message name. */
 export interface FindingEvent {
-  readonly type: "key" | "click" | "message" | "backdrop";
+  readonly type: "key" | "click" | "message" | "backdrop" | "clone";
   readonly name?: string;
   /** For a message: how many scripts send it (0 means nothing ever sends it). */
   readonly senders?: number;
@@ -130,6 +130,7 @@ function eventOf(script: Script): FindingEvent | undefined {
   if (trigger.type === "onActorClicked") return { type: "click" };
   if (trigger.type === "onMessage") return { type: "message", name: trigger.message };
   if (trigger.type === "onBackdropSwitch") return { type: "backdrop", name: trigger.backdropId };
+  if (trigger.type === "onCloneStart") return { type: "clone" };
   return undefined;
 }
 
@@ -234,7 +235,13 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
       const event = eventOf(script);
       if (event === undefined) return;
       if (run.activations.some((activation) => activation.scriptId === script.id)) return;
-      const owners = actorsOfScript(creative, script);
+      // A copy script belongs to the character it is the copy script of.
+      const owners = actorsOfScript(
+        creative,
+        script.trigger.type === "onCloneStart"
+          ? { ...script, id: script.id.replace(/-clone$/, "") }
+          : script,
+      );
       const actorId = owners[0] ?? "";
       if (!wants(actorId)) return;
       const sends = event.type === "message" ? (senders.get(event.name ?? "") ?? 0) : undefined;
@@ -256,7 +263,9 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
               : 0.7
           : event.type === "backdrop" && !switchedTo.has(event.name ?? "")
             ? 0.8
-            : 0.5;
+            : event.type === "clone"
+              ? 0.6
+              : 0.5;
       out.push({
         id: `neverStarted:${script.id}`,
         kind: "neverStarted",

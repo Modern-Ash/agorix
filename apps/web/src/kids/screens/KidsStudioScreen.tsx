@@ -68,7 +68,9 @@ import { KIDS_MISSION_IDS, getKidsMission, type KidsCatalog } from "@agorix/curr
 import type { KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
 import {
+  cloneRootId,
   createLiveRuntime,
+  isCloneId,
   createReplayRuntime,
   runMultiActorProgram,
   type LiveInputLog,
@@ -164,6 +166,7 @@ import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
 import { processKidsImage } from "../kidsImage.js";
 import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import { useKidsFlag } from "../kidsFlags.js";
+import { KidsCopyScript } from "./KidsCopyScript.js";
 import { microphoneLevelAllowed, startLevelMeter, type LevelMeter } from "../kidsLevelMeter.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
 import { loadKidsMastery } from "../kidsMastery.js";
@@ -212,6 +215,7 @@ import {
   setStudioTrigger,
   setStudioStatementField,
   studioProcedureUses,
+  hasStudioCloneScript,
   studioActorId,
   type StudioStatement,
   wrapStudioTail,
@@ -305,6 +309,7 @@ const COPY = {
     copiesFollow: "Siguiéndome",
     copiesCount: "Cuántas copias",
     copiesRule: "Cómo se ponen",
+    copiesWithScript: "con su guion",
     goToRandom: "Ir a un lugar al azar",
     goToMouse: "Ir al puntero",
     messageAndWait: "Enviar mensaje y esperar",
@@ -619,6 +624,7 @@ const COPY = {
     copiesFollow: "Following me",
     copiesCount: "How many copies",
     copiesRule: "How they are placed",
+    copiesWithScript: "with their script",
     goToRandom: "Go to a random spot",
     goToMouse: "Go to the pointer",
     messageAndWait: "Broadcast message and wait",
@@ -1231,6 +1237,7 @@ export function KidsStudioScreen({
   const [rotationStyle, setRotationStyle] = useState<"all" | "leftRight" | "none">("all");
   const [copiesCount, setCopiesCount] = useState(3);
   const [copiesRule, setCopiesRule] = useState<"spread" | "fall" | "follow">("spread");
+  const [copiesWithScript, setCopiesWithScript] = useState(false);
   const [stopScope, setStopScope] = useState<"script" | "actor" | "scene">("script");
   const [choicePromptId, setChoicePromptId] = useState<ChoicePromptId>("path");
   const [volume, setVolume] = useState(100);
@@ -2772,7 +2779,7 @@ export function KidsStudioScreen({
             : statement.rule === "fall"
               ? copy.copiesFall
               : copy.copiesFollow
-        }`;
+        }${statement.withScript === true ? ` · ${copy.copiesWithScript}` : ""}`;
       case "goToTarget":
         return statement.target === "random" ? copy.goToRandom : copy.goToMouse;
       case "setX":
@@ -4256,6 +4263,40 @@ export function KidsStudioScreen({
                         </span>
                       </span>
                     ))}
+                    {(shownActors ?? [])
+                      .filter((entry) => isCloneId(entry.id) && cloneRootId(entry.id) === item.id)
+                      .map((entry) => (
+                        <span
+                          key={entry.id}
+                          className="kids-studio-stage-copy"
+                          data-rule="clone"
+                          data-testid="stage-clone"
+                          aria-hidden="true"
+                          style={{
+                            left: `${Math.max(4, Math.min(90, 8 + entry.world.sprite.x / 4))}%`,
+                            top: `${Math.max(8, Math.min(82, 40 + entry.world.sprite.y / 3))}%`,
+                            zIndex: shownStage?.actorOrder?.indexOf(entry.id) ?? 0,
+                            ...(playing
+                              ? {
+                                  transition: `left ${LIVE_PACE_SECONDS}s linear, top ${LIVE_PACE_SECONDS}s linear`,
+                                }
+                              : {}),
+                          }}
+                        >
+                          <span
+                            className="kids-studio-stage-costume"
+                            style={{
+                              transform: `scale(${((entry.world.sprite.size ?? 100) / 100) * 0.7})`,
+                            }}
+                          >
+                            <KidsSprite
+                              slot={{ kind: "gallery", id: characterId }}
+                              imageOverride={costumeArt}
+                              label=""
+                            />
+                          </span>
+                        </span>
+                      ))}
                     <button
                       type="button"
                       className="kids-studio-stage-actor"
@@ -5571,6 +5612,12 @@ export function KidsStudioScreen({
                   {script?.statements.length === 0 ? (
                     <p className="kids-note">{copy.noBlocks}</p>
                   ) : null}
+                  <KidsCopyScript
+                    history={history}
+                    actorId={activeActorId}
+                    locale={locale}
+                    onChange={(next) => persist(next)}
+                  />
                 </div>
               </div>
             </Panel>
@@ -6160,7 +6207,15 @@ export function KidsStudioScreen({
                       label: copy.createCopies,
                       block: "createCopies",
                       onAdd: () =>
-                        add({ type: "createCopies", count: copiesCount, rule: copiesRule }),
+                        add({
+                          type: "createCopies",
+                          count: copiesCount,
+                          rule: copiesRule,
+                          ...(copiesWithScript &&
+                          hasStudioCloneScript(history.current, activeActorId)
+                            ? { withScript: true as const }
+                            : {}),
+                        }),
                     },
                   ]}
                 >
@@ -6186,6 +6241,17 @@ export function KidsStudioScreen({
                     <option value="fall">{copy.copiesFall}</option>
                     <option value="follow">{copy.copiesFollow}</option>
                   </select>
+                  {hasStudioCloneScript(history.current, activeActorId) ? (
+                    <label>
+                      <input
+                        type="checkbox"
+                        data-testid="copies-with-script"
+                        checked={copiesWithScript}
+                        onChange={(event) => setCopiesWithScript(event.target.checked)}
+                      />{" "}
+                      {copy.copiesWithScript}
+                    </label>
+                  ) : null}
                 </KidsPaletteBlock>
                 <KidsPaletteBlock
                   tone="looks"

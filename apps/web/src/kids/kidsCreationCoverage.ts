@@ -15,10 +15,7 @@ type StudioKind = StudioStatement["type"];
  * Engine statements the free scene deliberately does not offer, each with its reason (issue #1121).
  * Empty today: the scene offers every statement the engine defines.
  */
-export const NOT_OFFERED_IN_SCENE = {
-  deleteThisClone:
-    "gap: a copy's own script is built in steps; the palette gets it with that script (#1311)",
-} as const satisfies Partial<Record<EngineKind, string>>;
+export const NOT_OFFERED_IN_SCENE = {} as const satisfies Partial<Record<EngineKind, string>>;
 
 type Unlisted = Exclude<EngineKind, StudioKind | keyof typeof NOT_OFFERED_IN_SCENE>;
 
@@ -126,7 +123,7 @@ export const SCENE_TRIGGERS = [
 export const TRIGGERS_NOT_IN_SCENE = {
   onStart: "by design: it starts a mission run; a scene starts with the green flag",
   onCloneStart:
-    "gap: a character's second script (the copy's) is built in steps; the picker gets it with that script (#1311)",
+    "by design: only a character's copy script starts with it; the copy-script panel adds that script (#1311)",
 } as const satisfies Partial<Record<TriggerKind, CoverageNote>>;
 
 type UndecidedTrigger = Exclude<

@@ -85,6 +85,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     es: "Volver a contar el tiempo desde cero",
     en: "Start counting the time again from zero",
   },
+  deleteThisClone: {
+    es: "Esta copia desaparece de la escena",
+    en: "This copy disappears from the scene",
+  },
   wait: { es: "Esperar unos segundos antes de seguir", en: "Wait a few seconds before going on" },
   switchCostume: { es: "Cambiar el disfraz del personaje", en: "Change the character's costume" },
   switchBackdrop: { es: "Cambiar el fondo de la escena", en: "Change the scene's backdrop" },
@@ -188,6 +192,14 @@ const CATEGORY_TIPS: Readonly<Record<string, Tip>> = {
 const t = (es: string, en: string): Tip => ({ es, en });
 
 export const TIP_RULES: readonly TipRule[] = [
+  // The copy-script panel (#1311): each button carries its own sentence, already in the locale.
+  {
+    match: (c) => c.closest(".kids-copy-script") !== null && c.matches("button"),
+    tip: (c) => {
+      const sentence = c.getAttribute("title") ?? "";
+      return { es: sentence, en: sentence };
+    },
+  },
   // The editor's top bar and its helpers.
   {
     match: cls("kids-studio-back"),

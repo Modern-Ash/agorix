@@ -31,7 +31,7 @@ const KINDS: ReadonlySet<string> = new Set([
   "workingAgainstEachOther",
   "loopNeverEnds",
 ]);
-const EVENT_TYPES: ReadonlySet<string> = new Set(["key", "click", "message", "backdrop"]);
+const EVENT_TYPES: ReadonlySet<string> = new Set(["key", "click", "message", "backdrop", "clone"]);
 const LOOPS: ReadonlySet<string> = new Set<LoopKindFound>(["forever", "repeatUntil", "waitUntil"]);
 const BANDS: ReadonlySet<string> = new Set(["6-8", "9-12", "13+"]);
 const KEYS = ["kind", "counts", "eventType", "loop"];

@@ -60,6 +60,7 @@ const FAMILY: Record<string, string> = {
   wait: "control",
   waitUntil: "control",
   resetTimer: "control",
+  deleteThisClone: "control",
   repeat: "control",
   forever: "control",
   repeatUntil: "control",

@@ -2422,3 +2422,59 @@ test("the block category bar jumps to each family and wraps on a phone", async (
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 });
+
+test("free scene gives its copies a script, they run it and delete themselves, and it survives reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  // Without a copy script the palette offers only plain copies.
+  await expect(page.getByTestId("copies-with-script")).toHaveCount(0);
+  await page.getByTestId("copy-script-add").click();
+  const panel = page.getByRole("region", { name: "Guion de las copias" });
+  await expect(panel.getByTestId("copy-script-hat")).toHaveText("Cuando empiezo como clon");
+  await panel.getByRole("button", { name: "+ Mover" }).click();
+  await panel.getByRole("button", { name: "+ Esperar" }).click();
+  await panel.getByTestId("copy-script-delete").click();
+  await expect(panel.getByTestId("copy-script-blocks").locator("li")).toHaveText([
+    "Mover 20",
+    "Esperar 1s",
+    "Borrar este clon",
+  ]);
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByLabel("Cuántas copias").selectOption("3");
+  await page.getByTestId("copies-with-script").check();
+  await page.getByRole("button", { name: "+ Crear copias" }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("con su guion");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The copies are characters of their own while they live, then they delete themselves.
+  await expect(page.getByTestId("stage-clone")).toHaveCount(3);
+  await expect(page.getByTestId("stage-clone")).toHaveCount(0, { timeout: 15_000 });
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(
+    page
+      .getByRole("region", { name: "Guion de las copias" })
+      .getByTestId("copy-script-blocks")
+      .locator("li"),
+  ).toHaveCount(3);
+});
