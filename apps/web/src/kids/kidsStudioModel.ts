@@ -214,6 +214,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
     value.type === "xPosition" ||
     value.type === "yPosition" ||
     value.type === "direction" ||
+    value.type === "sizePercent" ||
     value.type === "timer" ||
     value.type === "mouseX" ||
     value.type === "mouseY"

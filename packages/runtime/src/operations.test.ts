@@ -143,6 +143,7 @@ describe("runtime operation allowlist", () => {
       "param",
       "random",
       "randomInteger",
+      "sizePercent",
       "subtract",
       "timer",
       "touchingActor",

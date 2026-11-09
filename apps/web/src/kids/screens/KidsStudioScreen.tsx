@@ -478,6 +478,7 @@ const COPY = {
     presetEdge: "tocando el borde",
     presetTouch: "tocando otro personaje",
     presetTimer: "pasaron los segundos",
+    presetSize: "creció más de lo normal",
     randomDecimal: "con decimales",
     distanceTarget: "Distancia al personaje",
     dataName: "Nombre",
@@ -770,6 +771,7 @@ const COPY = {
     presetEdge: "touching the edge",
     presetTouch: "touching another character",
     presetTimer: "the seconds passed",
+    presetSize: "grew bigger than usual",
     randomDecimal: "with decimals",
     distanceTarget: "Distance to character",
     dataName: "Name",
@@ -941,6 +943,7 @@ function expressionLabel(
     return `${locale === "es" ? "tocando" : "touching"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "touchingStageEdge")
     return locale === "es" ? "tocando borde" : "touching edge";
+  if (value.type === "sizePercent") return locale === "es" ? "tamaño" : "size";
   if (value.type === "timer") return locale === "es" ? "tiempo" : "timer";
   if (value.type === "mouseX") return locale === "es" ? "X del ratón" : "mouse X";
   if (value.type === "mouseY") return locale === "es" ? "Y del ratón" : "mouse Y";
@@ -1014,7 +1017,7 @@ function backdropOfStage(
   return isGalleryBackdropId(suffix) ? suffix : fallback;
 }
 
-type ConditionPreset = "key" | "edge" | "touch" | "timer" | "mouse";
+type ConditionPreset = "key" | "edge" | "touch" | "timer" | "mouse" | "size";
 
 function waitingChoiceId(result: MultiActorRunResult | null): ChoicePromptId | null {
   const note = result?.trace.find(
@@ -2537,6 +2540,12 @@ export function KidsStudioScreen({
     if (preset === "key") return { type: "keyDown", key: senseKey };
     if (preset === "mouse") return { type: "mouseDown" };
     if (preset === "edge") return STUDIO_EDGE_CONDITION;
+    if (preset === "size")
+      return {
+        type: "greaterThan",
+        left: { type: "sizePercent" },
+        right: { type: "numericLiteral", value: 100 },
+      };
     if (preset === "touch")
       return targetActorId ? { type: "touchingActor", actorId: targetActorId } : null;
     return {
@@ -6486,6 +6495,7 @@ export function KidsStudioScreen({
                           <option value="touch">{copy.presetTouch}</option>
                         ) : null}
                         <option value="timer">{copy.presetTimer}</option>
+                        <option value="size">{copy.presetSize}</option>
                       </select>
                     </label>
                   ))}

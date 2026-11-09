@@ -87,6 +87,7 @@ export type BlockType =
   | "sensing_x_position"
   | "sensing_direction"
   | "sensing_y_position"
+  | "looks_size"
   | "sensing_timer"
   | "sensing_key_down"
   | "sensing_mouse_x"
@@ -374,6 +375,8 @@ function expressionFromBlock(
       return { type: "direction" };
     case "sensing_y_position":
       return { type: "yPosition" };
+    case "looks_size":
+      return { type: "sizePercent" };
     case "sensing_timer":
       return { type: "timer" };
     case "sensing_key_down":
@@ -883,6 +886,8 @@ function expressionToBlock(
       return { id, type: "sensing_direction" };
     case "yPosition":
       return { id, type: "sensing_y_position" };
+    case "sizePercent":
+      return { id, type: "looks_size" };
     case "timer":
       return { id, type: "sensing_timer" };
     case "keyDown":

@@ -192,6 +192,8 @@ class Converter {
         return { type: "yPosition" };
       case "motion_direction":
         return { type: "direction" };
+      case "looks_size":
+        return { type: "sizePercent" };
       case "sensing_timer":
         return { type: "timer" };
       case "sensing_mousex":
