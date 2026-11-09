@@ -742,6 +742,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "timer()";
     case "keyDown":
       return "key_down(" + JSON.stringify(expression.key) + ")";
+    case "loudness":
+      return "loudness()";
     case "mouseX":
       return "mouse_x()";
     case "mouseY":

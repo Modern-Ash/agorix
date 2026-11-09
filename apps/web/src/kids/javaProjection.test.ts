@@ -208,7 +208,11 @@ const statements: Statement[] = [
             condition: {
               type: "and",
               left: { type: "greaterThan", left: { type: "xPosition" }, right: num(0) },
-              right: { type: "greaterThan", left: { type: "sizePercent" }, right: num(100) },
+              right: {
+                type: "and",
+                left: { type: "greaterThan", left: { type: "sizePercent" }, right: num(100) },
+                right: { type: "greaterThan", left: { type: "loudness" }, right: num(30) },
+              },
             },
             then: [{ type: "show" }],
           },

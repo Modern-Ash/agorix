@@ -178,6 +178,8 @@ function formatExpression(
       return "timer()";
     case "keyDown":
       return `keyDown(${JSON.stringify(expression.key)})`;
+    case "loudness":
+      return "loudness()";
     case "mouseX":
       return "mouseX()";
     case "mouseY":

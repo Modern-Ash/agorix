@@ -138,6 +138,7 @@ describe("runtime operation allowlist", () => {
       "letterOf",
       "listItem",
       "listLength",
+      "loudness",
       "mathFunction",
       "modulo",
       "mouseDown",

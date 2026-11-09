@@ -92,6 +92,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "sizePercent",
   "timer",
   "keyDown",
+  "loudness",
   "mouseX",
   "mouseY",
   "mouseDown",
@@ -229,6 +230,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
     case "sizePercent":
     case "timer":
     case "keyDown":
+    case "loudness":
     case "mouseX":
     case "mouseY":
     case "mouseDown":

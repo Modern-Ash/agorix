@@ -65,6 +65,14 @@ export interface KeyDownExpression {
   readonly key: string;
 }
 
+/**
+ * How loud it is, 0 to 100, as a whole number the caller measured. Only this number reaches the
+ * program, never the sound; 0 when nothing measured it.
+ */
+export interface LoudnessExpression {
+  readonly type: "loudness";
+}
+
 /** Coordinates and pressed state captured from the stage for this run. */
 export interface MouseXExpression {
   readonly type: "mouseX";
@@ -261,6 +269,7 @@ export type Expression =
   | SizePercentExpression
   | TimerExpression
   | KeyDownExpression
+  | LoudnessExpression
   | MouseXExpression
   | MouseYExpression
   | MouseDownExpression

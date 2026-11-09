@@ -62,6 +62,7 @@ export type LiveInput =
       readonly kind: "choices";
       readonly choices: Readonly<Record<string, number>>;
     }
+  | { readonly tick: number; readonly kind: "loudness"; readonly level: number }
   | {
       readonly tick: number;
       readonly kind: "answers";
@@ -84,6 +85,11 @@ export interface LiveRuntimeOptions {
   /** Read at every statement; captured by the caller, never from browser globals. */
   readonly pointer?: () => { readonly x: number; readonly y: number; readonly down: boolean };
   readonly choices?: Readonly<Record<string, number>>;
+  /**
+   * Read every tick: how loud it is, 0 to 100. Only this number is kept in the input log, never
+   * the sound, so a replay needs no microphone. Absent means 0.
+   */
+  readonly loudness?: () => number;
   /** Typed answers; they stay in the local input log, which is never sent anywhere. */
   readonly answers?: Readonly<Record<string, string>>;
   readonly maxSeconds?: number;
@@ -173,6 +179,7 @@ export function createLiveRuntime(
   // What statements read during a tick: sampled once at its start and logged when it changes.
   let sampledKeys: readonly string[] = [];
   let sampledPointer = { x: 0, y: 0, down: false };
+  let sampledLoudness = 0;
   let sampledChoices: Readonly<Record<string, number>> = {};
   let sampledAnswers: Readonly<Record<string, string>> = {};
 
@@ -221,6 +228,9 @@ export function createLiveRuntime(
       },
       get pointer() {
         return sampledPointer;
+      },
+      get loudness() {
+        return sampledLoudness;
       },
       get choices() {
         return sampledChoices;
@@ -400,6 +410,12 @@ export function createLiveRuntime(
       sampledPointer = { x: pointer.x, y: pointer.y, down: pointer.down };
       inputs.push({ tick: tickIndex, kind: "pointer", ...sampledPointer });
     }
+    const measured = options.loudness?.() ?? 0;
+    const level = Number.isFinite(measured) ? Math.max(0, Math.min(100, Math.round(measured))) : 0;
+    if (level !== sampledLoudness) {
+      sampledLoudness = level;
+      inputs.push({ tick: tickIndex, kind: "loudness", level });
+    }
     const choices = { ...options.choices };
     if (JSON.stringify(choices) !== JSON.stringify(sampledChoices)) {
       sampledChoices = choices;
@@ -539,6 +555,7 @@ export function createReplayRuntime(
 ): LiveRuntime {
   let keys: readonly string[] = [];
   let pointer = { x: 0, y: 0, down: false };
+  let loudness = 0;
   const choices: Record<string, number> = {};
   const answers: Record<string, string> = {};
   const inner = createLiveRuntime(programInput, creativeInput, {
@@ -546,6 +563,7 @@ export function createReplayRuntime(
     ...(log.randomSeed === undefined ? {} : { randomSeed: log.randomSeed }),
     keysDown: () => keys,
     pointer: () => pointer,
+    loudness: () => loudness,
     choices,
     answers,
   });
@@ -567,6 +585,7 @@ export function createReplayRuntime(
           if (input.kind === "event") inner.fire(input.event);
           else if (input.kind === "keys") keys = input.keys;
           else if (input.kind === "pointer") pointer = { x: input.x, y: input.y, down: input.down };
+          else if (input.kind === "loudness") loudness = input.level;
           else if (input.kind === "answers") {
             for (const key of Object.keys(answers)) delete answers[key];
             Object.assign(answers, input.answers);

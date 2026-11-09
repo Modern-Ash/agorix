@@ -69,6 +69,7 @@ export type {
   SetPitchStatement,
   SetPanStatement,
   KeyDownExpression,
+  LoudnessExpression,
   MouseXExpression,
   MouseYExpression,
   MouseDownExpression,

@@ -94,6 +94,8 @@ export const SCENE_CONDITION_EXPRESSIONS = [
 
 export const EXPRESSIONS_NOT_IN_SCENE = {
   touchingGoal: "by design: it reads a mission goal cell, which a free scene does not have",
+  loudness:
+    "gap: needs the adult-approved microphone level, which is a separate safety change (#1304)",
   booleanLiteral: "by design: a constant true or false teaches nothing a child can try",
 } as const satisfies Partial<Record<ExpressionKind, CoverageNote>>;
 

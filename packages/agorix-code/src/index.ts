@@ -651,6 +651,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "timer";
     case "keyDown":
       return "key " + expression.key + " is down";
+    case "loudness":
+      return "loudness";
     case "mouseX":
       return "mouse x";
     case "mouseY":
