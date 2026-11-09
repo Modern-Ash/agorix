@@ -65,6 +65,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   setPitch: "music",
   setPan: "music",
   setVariable: "data",
+  setText: "data",
   changeVariable: "data",
   showVariable: "data",
   hideVariable: "data",

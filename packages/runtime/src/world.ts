@@ -9,6 +9,7 @@ import {
   MUSIC_TEMPO_MIN,
   SPRITE_SIZE_MAX,
   SPRITE_SIZE_MIN,
+  TEXT_VALUE_MAX_LENGTH,
   type MusicBeats,
   type MusicDrum,
   type MusicInstrument,
@@ -44,6 +45,12 @@ export interface LooksBubble {
 
 export interface VariableState {
   readonly value: number;
+  readonly visible: boolean;
+}
+
+/** A word or phrase and whether its watcher shows; kept apart from the number variables. */
+export interface TextState {
+  readonly value: string;
   readonly visible: boolean;
 }
 
@@ -106,6 +113,8 @@ export interface WorldState {
   readonly variables?: Readonly<Record<string, VariableState>>;
   /** Present only for programs that declare lists, so every other world is unchanged. */
   readonly lists?: Readonly<Record<string, ListState>>;
+  /** Present only for programs that declare text variables, so every other world is unchanged. */
+  readonly texts?: Readonly<Record<string, TextState>>;
   readonly sounds?: SoundState;
   readonly pen?: PenState;
   readonly music?: MusicState;
@@ -127,6 +136,7 @@ export interface WorldStateInput {
   readonly backdropId?: string;
   readonly variables?: Readonly<Record<string, Partial<VariableState> | undefined>>;
   readonly lists?: Readonly<Record<string, Partial<ListState> | undefined>>;
+  readonly texts?: Readonly<Record<string, Partial<TextState> | undefined>>;
   readonly sounds?: Partial<SoundState>;
   readonly pen?: Partial<PenState>;
   readonly music?: Partial<MusicState>;
@@ -165,6 +175,22 @@ function normalizeVariables(
     normalized[key] = {
       value: normalizeCoordinate(variable.value ?? 0),
       visible: variable.visible ?? false,
+    };
+  }
+  return normalized;
+}
+
+function normalizeTexts(
+  texts: Readonly<Record<string, Partial<TextState> | undefined>> | undefined,
+): Readonly<Record<string, TextState>> | undefined {
+  if (texts === undefined) return undefined;
+  const normalized: Record<string, TextState> = {};
+  for (const key of Object.keys(texts).sort()) {
+    const text = texts[key];
+    if (text === undefined) continue;
+    normalized[key] = {
+      value: (text.value ?? "").slice(0, TEXT_VALUE_MAX_LENGTH),
+      visible: text.visible ?? false,
     };
   }
   return normalized;
@@ -328,6 +354,7 @@ export function audioPlayback(
 export function createWorldState(input: WorldStateInput = {}): WorldState {
   const variables = normalizeVariables(input.variables);
   const lists = normalizeLists(input.lists);
+  const texts = normalizeTexts(input.texts);
   const sounds = normalizeSounds(input.sounds);
   const pen = normalizePen(input.pen);
   const music = normalizeMusic(input.music);
@@ -360,6 +387,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
     ...(input.backdropId === undefined ? {} : { backdropId: input.backdropId }),
     ...(variables === undefined ? {} : { variables }),
     ...(lists === undefined ? {} : { lists }),
+    ...(texts === undefined ? {} : { texts }),
     ...(sounds === undefined ? {} : { sounds }),
     ...(pen === undefined ? {} : { pen }),
     ...(music === undefined ? {} : { music }),
@@ -673,6 +701,31 @@ export function setVolumeWorld(world: WorldState, volume: number): WorldState {
 
 export function changeVolumeWorld(world: WorldState, delta: number): WorldState {
   return setVolumeWorld(world, (world.sounds?.volume ?? 100) + delta);
+}
+
+export function getTextWorld(world: WorldState, variableId: string): string {
+  return world.texts?.[variableId]?.value ?? "";
+}
+
+/** Longer text is cut to the allowed length, never refused. */
+export function setTextWorld(world: WorldState, variableId: string, value: string): WorldState {
+  const previous = world.texts?.[variableId];
+  return createWorldState({
+    ...world,
+    texts: { ...world.texts, [variableId]: { value, visible: previous?.visible ?? false } },
+  });
+}
+
+export function setTextVisibilityWorld(
+  world: WorldState,
+  variableId: string,
+  visible: boolean,
+): WorldState {
+  const previous = world.texts?.[variableId];
+  return createWorldState({
+    ...world,
+    texts: { ...world.texts, [variableId]: { value: previous?.value ?? "", visible } },
+  });
 }
 
 export function getVariableWorld(world: WorldState, variableId: string): number {

@@ -90,6 +90,44 @@ export interface NumericLiteralExpression {
   readonly value: number;
 }
 
+/** A word or phrase written in the program (at most TEXT_VALUE_MAX_LENGTH characters). */
+export interface TextLiteralExpression {
+  readonly type: "textLiteral";
+  readonly value: string;
+}
+
+export interface TextVariableExpression {
+  readonly type: "textVariable";
+  readonly variableId: string;
+}
+
+/** Scratch's "join": the two values written one after the other (numbers as digits). */
+export interface JoinExpression {
+  readonly type: "join";
+  readonly left: Expression;
+  readonly right: Expression;
+}
+
+/** How many letters the text has. */
+export interface TextLengthExpression {
+  readonly type: "textLength";
+  readonly value: Expression;
+}
+
+/** The letter at a 1-based place; empty when the place is outside the text. */
+export interface LetterOfExpression {
+  readonly type: "letterOf";
+  readonly index: Expression;
+  readonly value: Expression;
+}
+
+/** True when `part` appears inside `text`, ignoring upper and lower case. */
+export interface TextContainsExpression {
+  readonly type: "textContains";
+  readonly text: Expression;
+  readonly part: Expression;
+}
+
 export interface VariableExpression {
   readonly type: "variable";
   readonly variableId: string;
@@ -230,6 +268,12 @@ export type Expression =
   | BooleanLiteralExpression
   | NumericLiteralExpression
   | VariableExpression
+  | TextLiteralExpression
+  | TextVariableExpression
+  | JoinExpression
+  | TextLengthExpression
+  | LetterOfExpression
+  | TextContainsExpression
   | AddExpression
   | SubtractExpression
   | MultiplyExpression
@@ -574,6 +618,13 @@ export interface SetVariableStatement {
   readonly value: Expression;
 }
 
+/** Keeps a word in a text variable. Numbers stay in the number variables. */
+export interface SetTextStatement {
+  readonly type: "setText";
+  readonly variableId: string;
+  readonly value: Expression;
+}
+
 export interface ChangeVariableStatement {
   readonly type: "changeVariable";
   readonly variableId: string;
@@ -706,6 +757,7 @@ export type Statement =
   | BroadcastStatement
   | StampStatement
   | SetVariableStatement
+  | SetTextStatement
   | ChangeVariableStatement
   | ShowVariableStatement
   | HideVariableStatement
@@ -761,6 +813,14 @@ export interface ProgramVariable {
   readonly visible: boolean;
 }
 
+/** A named place that holds a word or phrase; numbers use ProgramVariable. */
+export interface ProgramTextVariable {
+  readonly id: string;
+  readonly name: string;
+  readonly initialValue: string;
+  readonly visible: boolean;
+}
+
 /** A list of numbers with a visible watcher flag, declared like a variable. */
 export interface ProgramList {
   readonly id: string;
@@ -797,6 +857,8 @@ export interface ProjectProgram {
   readonly variables?: readonly ProgramVariable[];
   /** Optional: absent in every program written before lists existed. */
   readonly lists?: readonly ProgramList[];
+  /** Optional: absent in every program written before text values existed. */
+  readonly textVariables?: readonly ProgramTextVariable[];
   /** Extension packs the project uses (ADR 0011); absent when it uses none. */
   readonly extensions?: readonly ExtensionId[];
   readonly scripts: readonly Script[];

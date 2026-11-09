@@ -3,6 +3,7 @@ import type {
   ProcedureParamId,
   ProgramList,
   ProgramVariable,
+  ProgramTextVariable,
   ProgramEvent,
   ProjectProgram,
   Script,
@@ -10,6 +11,7 @@ import type {
   StopStatement,
   Trigger,
 } from "@agorix/program-model";
+import { TEXT_VALUE_MAX_LENGTH } from "@agorix/program-model";
 import { COPIES_CAP, createCopiesWorld } from "./copies.js";
 import {
   CHOICE_CATALOG,
@@ -33,6 +35,9 @@ import {
   getListItemWorld,
   getListLengthWorld,
   getVariableWorld,
+  getTextWorld,
+  setTextWorld,
+  setTextVisibilityWorld,
   listAddWorld,
   listRemoveAtWorld,
   listInsertAtWorld,
@@ -263,14 +268,30 @@ function assertStatementBoundary(path: string, state: MutableRunState): void {
   }
 }
 
-type ExpressionValue = boolean | number;
+type ExpressionValue = boolean | number | string;
 
 function coerceNumber(value: ExpressionValue): number {
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return value.trim() !== "" && Number.isFinite(parsed) ? parsed : 0;
+  }
   return typeof value === "boolean" ? (value ? 1 : 0) : value;
 }
 
 function coerceBoolean(value: ExpressionValue): boolean {
+  if (typeof value === "string") return value !== "";
   return typeof value === "boolean" ? value : value !== 0;
+}
+
+/** Numbers as digits (two decimals at most), true and false as words, text as it is. */
+function coerceText(value: ExpressionValue): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return String(Math.round(value * 100) / 100);
+}
+
+function clipText(text: string): string {
+  return text.slice(0, TEXT_VALUE_MAX_LENGTH);
 }
 
 function normalizeRuntimeNumber(value: number, path: string): number {
@@ -373,6 +394,30 @@ function evaluateExpression(
       return expression.value;
     case "variable":
       return getVariableWorld(state.world, expression.variableId);
+    case "textLiteral":
+      return expression.value;
+    case "textVariable":
+      return getTextWorld(state.world, expression.variableId);
+    case "join":
+      return clipText(
+        coerceText(evaluateExpression(expression.left, `${path}.left`, state)) +
+          coerceText(evaluateExpression(expression.right, `${path}.right`, state)),
+      );
+    case "textLength":
+      return coerceText(evaluateExpression(expression.value, `${path}.value`, state)).length;
+    case "letterOf": {
+      const at = Math.trunc(
+        coerceNumber(evaluateExpression(expression.index, `${path}.index`, state)),
+      );
+      const text = coerceText(evaluateExpression(expression.value, `${path}.value`, state));
+      return at >= 1 && at <= text.length ? (text[at - 1] ?? "") : "";
+    }
+    case "textContains":
+      return coerceText(evaluateExpression(expression.text, `${path}.text`, state))
+        .toLowerCase()
+        .includes(
+          coerceText(evaluateExpression(expression.part, `${path}.part`, state)).toLowerCase(),
+        );
     case "add":
       return normalizeRuntimeNumber(
         coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) +
@@ -431,11 +476,14 @@ function evaluateExpression(
         coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) >=
         coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
       );
-    case "equals":
-      return (
-        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) ===
-        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
-      );
+    case "equals": {
+      const left = evaluateExpression(expression.left, `${path}.left`, state);
+      const right = evaluateExpression(expression.right, `${path}.right`, state);
+      // Words are the same when they match ignoring upper and lower case, as in Scratch.
+      if (typeof left === "string" && typeof right === "string")
+        return left.toLowerCase() === right.toLowerCase();
+      return coerceNumber(left) === coerceNumber(right);
+    }
     case "and":
       return (
         coerceBoolean(evaluateExpression(expression.left, `${path}.left`, state)) &&
@@ -527,10 +575,10 @@ function bubbleText(
   state: MutableRunState,
 ): string {
   if (statement.append === undefined) return statement.text;
-  const value = evaluateNumber(statement.append, `${path}.append`, state);
-  // One space between the words and the number unless the words already end with one.
+  const value = coerceText(evaluateExpression(statement.append, `${path}.append`, state));
+  // One space between the words and the value unless the words already end with one.
   const gap = /\s$/.test(statement.text) ? "" : " ";
-  return statement.text + gap + String(Math.round(value * 100) / 100);
+  return statement.text + gap + value;
 }
 
 function* executeStatement(
@@ -828,6 +876,13 @@ function* executeStatement(
         evaluateNumber(statement.value, `${path}.value`, state),
       );
       break;
+    case "setText":
+      state.world = setTextWorld(
+        state.world,
+        statement.variableId,
+        clipText(coerceText(evaluateExpression(statement.value, `${path}.value`, state))),
+      );
+      break;
     case "changeVariable":
       state.world = changeVariableWorld(
         state.world,
@@ -1002,6 +1057,24 @@ function seedProgramLists(
   return next;
 }
 
+function seedProgramTexts(
+  world: WorldState,
+  texts: readonly ProgramTextVariable[] | undefined,
+): WorldState {
+  if (texts === undefined || texts.length === 0) return world;
+  let next = world;
+  for (const text of texts) {
+    if (next.texts?.[text.id] === undefined) {
+      next = setTextVisibilityWorld(
+        setTextWorld(next, text.id, text.initialValue),
+        text.id,
+        text.visible,
+      );
+    }
+  }
+  return next;
+}
+
 function seedProgramVariables(
   world: WorldState,
   variables: readonly ProgramVariable[] | undefined,
@@ -1062,9 +1135,9 @@ export function runProgram(
   assertProgramOperationsAllowed(validated);
   const event = options.event ?? "greenFlag";
   const state: MutableRunState = {
-    world: seedProgramLists(
-      seedProgramVariables(initialWorld, validated.variables),
-      validated.lists,
+    world: seedProgramTexts(
+      seedProgramLists(seedProgramVariables(initialWorld, validated.variables), validated.lists),
+      validated.textVariables,
     ),
     stepsUsed: 0,
     maxSteps: normalizeBudget(options.maxSteps),
@@ -1189,9 +1262,9 @@ export function createScriptStepper(
   }
   assertTrigger(script.trigger, "scripts[0].trigger");
   const state: MutableRunState = {
-    world: seedProgramLists(
-      seedProgramVariables(initialWorld, validated.variables),
-      validated.lists,
+    world: seedProgramTexts(
+      seedProgramLists(seedProgramVariables(initialWorld, validated.variables), validated.lists),
+      validated.textVariables,
     ),
     stepsUsed: 0,
     maxSteps: normalizeBudget(options.maxSteps),

@@ -246,11 +246,13 @@ test("the Escena libre palette offers every cataloged block", async ({ page }) =
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await clickCreateScene(page);
-  // Variable and list blocks appear once one exists.
+  // Variable, list and word blocks appear once one exists.
   await page.getByRole("textbox", { name: "Nombre" }).fill("Cuenta");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("textbox", { name: "Nombre" }).fill("Cosas");
   await page.getByRole("button", { name: "+ Crear lista" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Palabra");
+  await page.getByRole("button", { name: "+ Crear palabra" }).click();
   await expect
     .poll(() => page.locator(".kids-studio-palette [data-kids-block]").count())
     .toBeGreaterThan(15);

@@ -130,6 +130,7 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     es: "Mandar el sonido a la izquierda o a la derecha",
     en: "Send the sound left or right",
   },
+  setText: { es: "Guardar una palabra para usarla después", en: "Keep a word to use later" },
   setVariable: { es: "Guardar un número en una variable", en: "Keep a number in a variable" },
   changeVariable: {
     es: "Sumarle o restarle a una variable",
@@ -382,9 +383,14 @@ export const TIP_RULES: readonly TipRule[] = [
     ),
   },
   {
+    match: named(/^\+ (Crear palabra|Create word)/),
+    tip: t("Crear un lugar para guardar una palabra", "Create a place to keep a word"),
+  },
+  {
     match: named(/^\+ (Crear lista|Create list)/),
     tip: t("Crear una lista: varias cosas en orden", "Create a list: several things in order"),
   },
+  { match: named(/^\+ (Guardar palabra|Save word)/), tip: BLOCK_TIPS["setText"]! },
   {
     match: named(/^\+ (Fijar valor|Set value|Fijar con|Set from|Set with|Guardar|Save)/),
     tip: BLOCK_TIPS["setVariable"]!,

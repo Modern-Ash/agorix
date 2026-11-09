@@ -96,6 +96,7 @@ function safeIdentifier(value: string, fallback: string): string {
 function createProjectionContext(
   variables: readonly ProgramVariable[] | undefined,
   lists: readonly ProgramList[] | undefined = undefined,
+  texts: readonly { readonly id: string; readonly name: string }[] | undefined = undefined,
 ): ProjectionContext {
   const variableNames = new Map<string, string>();
   const variableLabels = new Map<string, string>();
@@ -112,7 +113,7 @@ function createProjectionContext(
     variableNames.set(`list:${list.id}`, name);
     variableLabels.set(`list:${list.id}`, list.name);
   }
-  for (const variable of variables ?? []) {
+  for (const variable of [...(variables ?? []), ...(texts ?? [])]) {
     const base = safeIdentifier(variable.name, safeIdentifier(variable.id, "value"));
     let name = base;
     let suffix = 2;
@@ -188,7 +189,18 @@ function formatExpression(
     case "numericLiteral":
       return formatNumber(expression.value);
     case "variable":
+    case "textVariable":
       return formatVariableName(context, expression.variableId, nodeId);
+    case "textLiteral":
+      return JSON.stringify(expression.value);
+    case "join":
+      return `join(${formatExpression(expression.left, `${nodeId}/left`, context)}, ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "textLength":
+      return `${formatExpression(expression.value, `${nodeId}/value`, context)}.length`;
+    case "letterOf":
+      return `letterOf(${formatExpression(expression.index, `${nodeId}/index`, context)}, ${formatExpression(expression.value, `${nodeId}/value`, context)})`;
+    case "textContains":
+      return `containsText(${formatExpression(expression.text, `${nodeId}/text`, context)}, ${formatExpression(expression.part, `${nodeId}/part`, context)})`;
     case "add":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} + ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "subtract":
@@ -484,6 +496,7 @@ function projectStatement(
         `${pad}stage.${statement.wait === true ? "broadcastAndWait" : "broadcast"}(${JSON.stringify(statement.message)});\n`,
       );
       return;
+    case "setText":
     case "setVariable":
       write(
         writer,
@@ -627,7 +640,7 @@ function projectText(program: ProjectProgram): {
   readonly mapping: LanguageNodeTextMapping;
 } {
   const writer: Writer = { parts: [], offset: 0, mapping: {} };
-  const context = createProjectionContext(program.variables, program.lists);
+  const context = createProjectionContext(program.variables, program.lists, program.textVariables);
   for (const variable of program.variables ?? []) {
     write(
       writer,
@@ -635,6 +648,15 @@ function projectText(program: ProjectProgram): {
     );
     if (variable.visible) {
       write(writer, `showVariable(${JSON.stringify(variable.name)});\n`);
+    }
+  }
+  for (const text of program.textVariables ?? []) {
+    write(
+      writer,
+      `let ${formatVariableName(context, text.id, `textVariables/${text.id}`)} = ${JSON.stringify(text.initialValue)};\n`,
+    );
+    if (text.visible) {
+      write(writer, `showVariable(${JSON.stringify(text.name)});\n`);
     }
   }
   for (const list of program.lists ?? []) {
@@ -647,7 +669,9 @@ function projectText(program: ProjectProgram): {
     }
   }
   if (
-    ((program.variables?.length ?? 0) > 0 || (program.lists?.length ?? 0) > 0) &&
+    ((program.variables?.length ?? 0) > 0 ||
+      (program.lists?.length ?? 0) > 0 ||
+      (program.textVariables?.length ?? 0) > 0) &&
     program.scripts.length > 0
   ) {
     write(writer, "\n");
