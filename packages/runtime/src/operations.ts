@@ -86,6 +86,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
 export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "touchingGoal",
   "touchingActor",
+  "touchingColor",
   "touchingStageEdge",
   "distanceToActor",
   "xPosition",
@@ -225,6 +226,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
       return;
     case "touchingGoal":
     case "touchingActor":
+    case "touchingColor":
     case "touchingStageEdge":
     case "distanceToActor":
     case "xPosition":

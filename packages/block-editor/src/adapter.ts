@@ -93,6 +93,7 @@ export type BlockType =
   | "control_if"
   | "sensing_touching_goal"
   | "sensing_touching_actor"
+  | "sensing_touching_color"
   | "sensing_touching_stage_edge"
   | "sensing_distance_to_actor"
   | "sensing_x_position"
@@ -379,6 +380,11 @@ function expressionFromBlock(
       return { type: "touchingGoal" };
     case "sensing_touching_actor":
       return { type: "touchingActor", actorId: stringField(block, "actorId", path) };
+    case "sensing_touching_color":
+      return {
+        type: "touchingColor",
+        color: stringField(block, "color", path) as PenColor,
+      };
     case "sensing_touching_stage_edge":
       return {
         type: "touchingStageEdge",
@@ -984,6 +990,8 @@ function expressionToBlock(
       return { id, type: "sensing_touching_goal" };
     case "touchingActor":
       return { id, type: "sensing_touching_actor", fields: { actorId: expression.actorId } };
+    case "touchingColor":
+      return { id, type: "sensing_touching_color", fields: { color: expression.color } };
     case "touchingStageEdge":
       return {
         id,

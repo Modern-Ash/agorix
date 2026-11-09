@@ -11,7 +11,7 @@ import type {
   StopStatement,
   Trigger,
 } from "@agorix/program-model";
-import { TEXT_VALUE_MAX_LENGTH } from "@agorix/program-model";
+import { TEXT_VALUE_MAX_LENGTH, type ColorZone } from "@agorix/program-model";
 import { COPIES_CAP, createCopiesWorld } from "./copies.js";
 import {
   CHOICE_CATALOG,
@@ -117,6 +117,11 @@ export interface ExecutionOptions {
   readonly keysDown?: readonly string[];
   /** Stage pointer snapshot captured by the caller; never read from browser globals. */
   readonly pointer?: { readonly x: number; readonly y: number; readonly down: boolean };
+  /**
+   * Where each backdrop is which colour, as rectangles in stage coordinates, by backdrop id. A
+   * backdrop that is not listed has no colours, so touching a colour is false there.
+   */
+  readonly colorZones?: Readonly<Record<string, readonly ColorZone[]>>;
   /** Loudness 0 to 100 measured by the caller (a number, never sound); 0 when absent. */
   readonly loudness?: number;
   /** True when this activation runs as a copy born from "copies that run their own script". */
@@ -351,6 +356,19 @@ function evaluateExpression(
         target !== undefined &&
         target.visible &&
         Math.hypot(state.world.sprite.x - target.x, state.world.sprite.y - target.y) <= 24
+      );
+    }
+    case "touchingColor": {
+      if (state.world.sprite.visible === false) return false;
+      const zones = state.options.colorZones?.[state.world.backdropId ?? ""] ?? [];
+      const { x, y } = state.world.sprite;
+      return zones.some(
+        (zone) =>
+          zone.color === expression.color &&
+          x >= zone.x &&
+          x <= zone.x + zone.width &&
+          y >= zone.y &&
+          y <= zone.y + zone.height,
       );
     }
     case "touchingStageEdge": {

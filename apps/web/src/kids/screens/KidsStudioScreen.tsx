@@ -514,6 +514,7 @@ const COPY = {
     presetTimer: "pasaron los segundos",
     presetSize: "creció más de lo normal",
     presetLoud: "hay mucho ruido",
+    presetColor: "está sobre el color",
     listening: "Escuchando el volumen del micrófono mientras jugás",
     randomDecimal: "con decimales",
     distanceTarget: "Distancia al personaje",
@@ -830,6 +831,7 @@ const COPY = {
     presetTimer: "the seconds passed",
     presetSize: "grew bigger than usual",
     presetLoud: "it gets loud",
+    presetColor: "is over the colour",
     listening: "Listening to the microphone volume while you play",
     randomDecimal: "with decimals",
     distanceTarget: "Distance to character",
@@ -966,6 +968,25 @@ function sameListRef(a: StudioListRef, b: StudioListRef): boolean {
   return JSON.stringify(a.container) === JSON.stringify(b.container) && a.branch === b.branch;
 }
 
+const PEN_COLOR_NAME: Record<"es" | "en", Record<PenColor, string>> = {
+  es: {
+    dark: "negro",
+    red: "rojo",
+    orange: "naranja",
+    green: "verde",
+    blue: "azul",
+    purple: "violeta",
+  },
+  en: {
+    dark: "black",
+    red: "red",
+    orange: "orange",
+    green: "green",
+    blue: "blue",
+    purple: "purple",
+  },
+};
+
 const PEN_HEX: Record<PenColor, string> = {
   dark: "#252342",
   red: "#ef627d",
@@ -1025,6 +1046,8 @@ function expressionLabel(
     return locale === "es" ? "tocando borde" : "touching edge";
   if (value.type === "sizePercent") return locale === "es" ? "tamaño" : "size";
   if (value.type === "loudness") return locale === "es" ? "volumen" : "loudness";
+  if (value.type === "touchingColor")
+    return `${locale === "es" ? "sobre el color" : "over the colour"} ${PEN_COLOR_NAME[locale][value.color]}`;
   if (value.type === "timer") return locale === "es" ? "tiempo" : "timer";
   if (value.type === "mouseX") return locale === "es" ? "X del ratón" : "mouse X";
   if (value.type === "mouseY") return locale === "es" ? "Y del ratón" : "mouse Y";
@@ -1104,7 +1127,8 @@ function programReadsLoudness(program: unknown): boolean {
   return text.includes('"type":"loudness"') || text.includes('"type":"onLoudnessOver"');
 }
 
-type ConditionPreset = "key" | "edge" | "touch" | "timer" | "mouse" | "size" | "loud";
+type ConditionPreset =
+  "key" | "edge" | "touch" | "timer" | "mouse" | "size" | "loud" | `color:${PenColor}`;
 
 function waitingAskTextId(result: MultiActorRunResult | null): AskTextPromptId | null {
   const note = result?.trace.find(
@@ -2701,6 +2725,8 @@ export function KidsStudioScreen({
     if (preset === "key") return { type: "keyDown", key: senseKey };
     if (preset === "mouse") return { type: "mouseDown" };
     if (preset === "edge") return STUDIO_EDGE_CONDITION;
+    if (preset.startsWith("color:"))
+      return { type: "touchingColor", color: preset.slice(6) as PenColor };
     if (preset === "loud")
       return {
         type: "greaterThan",
@@ -6991,6 +7017,11 @@ export function KidsStudioScreen({
                         ) : null}
                         <option value="timer">{copy.presetTimer}</option>
                         <option value="size">{copy.presetSize}</option>
+                        {PEN_COLORS.map((color) => (
+                          <option key={color} value={`color:${color}`}>
+                            {copy.presetColor} {copy.penColors[color]}
+                          </option>
+                        ))}
                         {levelAllowed ? <option value="loud">{copy.presetLoud}</option> : null}
                       </select>
                     </label>

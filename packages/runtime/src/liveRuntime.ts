@@ -226,6 +226,7 @@ export function createLiveRuntime(
       maxVirtualSeconds: maxSeconds,
       event: programEventForRuntimeEvent(event),
       ...(isCloneId(actor.id) ? { isClone: true } : {}),
+      ...(creative.colorZones === undefined ? {} : { colorZones: creative.colorZones }),
       ...(options.randomSeed === undefined ? {} : { randomSeed: options.randomSeed }),
       get sensorActors() {
         return sensors(actor);

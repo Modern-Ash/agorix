@@ -25,6 +25,15 @@ export interface TouchingActorExpression {
   readonly actorId: string;
 }
 
+/**
+ * True while the character is over a stretch of the stage that is this colour, from a closed list.
+ * Which stretches are which colour is a property of the backdrop (its colour zones), not of pixels.
+ */
+export interface TouchingColorExpression {
+  readonly type: "touchingColor";
+  readonly color: PenColor;
+}
+
 /** Rectangle is explicit so an exported program keeps its stage-edge meaning. */
 export interface TouchingStageEdgeExpression {
   readonly type: "touchingStageEdge";
@@ -263,6 +272,7 @@ export type Expression =
   | TouchingGoalExpression
   | TouchingActorExpression
   | TouchingStageEdgeExpression
+  | TouchingColorExpression
   | DistanceToActorExpression
   | XPositionExpression
   | DirectionExpression

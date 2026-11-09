@@ -527,6 +527,7 @@ export function runMultiActorProgram(
           ...(options.keysDown === undefined ? {} : { keysDown: options.keysDown }),
           ...(options.pointer === undefined ? {} : { pointer: options.pointer }),
           ...(options.loudness === undefined ? {} : { loudness: options.loudness }),
+          ...(creative.colorZones === undefined ? {} : { colorZones: creative.colorZones }),
           ...(options.choices === undefined ? {} : { choices: options.choices }),
           ...(options.answers === undefined ? {} : { answers: options.answers }),
         });

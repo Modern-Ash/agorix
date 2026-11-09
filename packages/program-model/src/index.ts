@@ -134,6 +134,7 @@ export type {
   ProjectActor,
   ProjectAsset,
   ProjectAssetKind,
+  ColorZone,
   ProjectCreativeState,
   ProjectStage,
 } from "./creative.js";
