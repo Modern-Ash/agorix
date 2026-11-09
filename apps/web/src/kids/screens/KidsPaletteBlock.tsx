@@ -76,6 +76,7 @@ const GLYPH: Partial<Record<string, string>> = {
   stop: "⏹",
   broadcast: "📣",
   askChoice: "❓",
+  askText: "⌨️",
   setEffect: "✨",
   changeEffect: "✨",
   clearEffects: "✨",

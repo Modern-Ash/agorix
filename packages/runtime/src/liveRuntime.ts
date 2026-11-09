@@ -61,6 +61,11 @@ export type LiveInput =
       readonly tick: number;
       readonly kind: "choices";
       readonly choices: Readonly<Record<string, number>>;
+    }
+  | {
+      readonly tick: number;
+      readonly kind: "answers";
+      readonly answers: Readonly<Record<string, string>>;
     };
 
 export interface LiveInputLog {
@@ -79,6 +84,8 @@ export interface LiveRuntimeOptions {
   /** Read at every statement; captured by the caller, never from browser globals. */
   readonly pointer?: () => { readonly x: number; readonly y: number; readonly down: boolean };
   readonly choices?: Readonly<Record<string, number>>;
+  /** Typed answers; they stay in the local input log, which is never sent anywhere. */
+  readonly answers?: Readonly<Record<string, string>>;
   readonly maxSeconds?: number;
   readonly maxEntries?: number;
 }
@@ -162,6 +169,7 @@ export function createLiveRuntime(
   let sampledKeys: readonly string[] = [];
   let sampledPointer = { x: 0, y: 0, down: false };
   let sampledChoices: Readonly<Record<string, number>> = {};
+  let sampledAnswers: Readonly<Record<string, string>> = {};
 
   const sensors = (self: RuntimeActorMutable) =>
     actors
@@ -211,6 +219,9 @@ export function createLiveRuntime(
       },
       get choices() {
         return sampledChoices;
+      },
+      get answers() {
+        return sampledAnswers;
       },
     };
     const stepper = createScriptStepper(
@@ -389,6 +400,11 @@ export function createLiveRuntime(
       sampledChoices = choices;
       inputs.push({ tick: tickIndex, kind: "choices", choices });
     }
+    const answers = { ...options.answers };
+    if (JSON.stringify(answers) !== JSON.stringify(sampledAnswers)) {
+      sampledAnswers = answers;
+      inputs.push({ tick: tickIndex, kind: "answers", answers });
+    }
     if (inputs.length >= LIVE_MAX_INPUTS) {
       outcome = "budget-exceeded";
       endAll();
@@ -519,12 +535,14 @@ export function createReplayRuntime(
   let keys: readonly string[] = [];
   let pointer = { x: 0, y: 0, down: false };
   const choices: Record<string, number> = {};
+  const answers: Record<string, string> = {};
   const inner = createLiveRuntime(programInput, creativeInput, {
     ...options,
     ...(log.randomSeed === undefined ? {} : { randomSeed: log.randomSeed }),
     keysDown: () => keys,
     pointer: () => pointer,
     choices,
+    answers,
   });
   let next = 0;
   let ticks = 0;
@@ -544,7 +562,10 @@ export function createReplayRuntime(
           if (input.kind === "event") inner.fire(input.event);
           else if (input.kind === "keys") keys = input.keys;
           else if (input.kind === "pointer") pointer = { x: input.x, y: input.y, down: input.down };
-          else {
+          else if (input.kind === "answers") {
+            for (const key of Object.keys(answers)) delete answers[key];
+            Object.assign(answers, input.answers);
+          } else {
             for (const key of Object.keys(choices)) delete choices[key];
             Object.assign(choices, input.choices);
           }

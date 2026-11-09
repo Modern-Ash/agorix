@@ -67,6 +67,7 @@ export const JAVA_SUPPORT_API = [
   "stopSounds",
   "stop",
   "askChoice",
+  "askText",
   "waitUntil",
   "setVolume",
   "changeVolume",
@@ -193,6 +194,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     double timer() { return 0; }
     boolean keyDown(String key) { return false; }
     double askChoice(String prompt) { return 0; }
+    String askText(String prompt) { return ""; }
     double mouseX() { return 0; }
     double mouseY() { return 0; }
     boolean mouseDown() { return false; }
@@ -624,6 +626,8 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       return line("stopSounds()");
     case "stop":
       return line(`stop(${literal(node.scope)})`);
+    case "askText":
+      return line(`${variableName(writer, node.variableId)} = askText(${literal(node.promptId)})`);
     case "askChoice":
       return line(
         `${variableName(writer, node.variableId)} = askChoice(${literal(node.promptId)})`,

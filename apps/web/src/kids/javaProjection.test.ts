@@ -95,6 +95,7 @@ const statements: Statement[] = [
   { type: "stopSounds" },
   { type: "stop", scope: "script" },
   { type: "askChoice", promptId: "path", variableId: "v" },
+  { type: "askText", promptId: "name", variableId: "t" },
   { type: "waitUntil", condition: { type: "booleanLiteral", value: true } },
   { type: "setVolume", volume: 80 },
   { type: "changeVolume", delta: -10 },

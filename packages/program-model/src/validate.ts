@@ -8,6 +8,7 @@ import {
   SCHEMA_VERSION,
 } from "./schema.js";
 import { isChoicePromptId } from "./choiceCatalog.js";
+import { isAskTextPromptId } from "./askTextCatalog.js";
 import type {
   ExtensionId,
   PenColor,
@@ -857,6 +858,20 @@ function validateStatement(
         type: "askChoice",
         promptId: input.promptId,
         variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+      };
+    case "askText":
+      if (!isAskTextPromptId(input.promptId)) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.promptId`,
+          "expected a bundled question id",
+          input.promptId,
+        );
+      }
+      return {
+        type: "askText",
+        promptId: input.promptId,
+        variableId: assertKnownTextVariableId(input.variableId, `${path}.variableId`, state),
       };
     case "setVolume": {
       if (typeof input.volume !== "number") {

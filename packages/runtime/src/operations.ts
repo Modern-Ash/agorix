@@ -62,6 +62,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "stopSounds",
   "stop",
   "askChoice",
+  "askText",
   "setVolume",
   "changeVolume",
   "broadcast",

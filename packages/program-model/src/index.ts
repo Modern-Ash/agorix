@@ -76,6 +76,7 @@ export type {
   Script,
   SchemaVersion,
   SetVariableStatement,
+  AskTextStatement,
   SetPenTransparencyStatement,
   PenTransparency,
   ResetTimerStatement,
@@ -107,6 +108,8 @@ export type {
 } from "./schema.js";
 export { CHOICE_CATALOG, CHOICE_PROMPT_IDS, isChoicePromptId } from "./choiceCatalog.js";
 export type { ChoicePromptId } from "./choiceCatalog.js";
+export { ASK_TEXT_CATALOG, ASK_TEXT_PROMPT_IDS, isAskTextPromptId } from "./askTextCatalog.js";
+export type { AskTextPromptId } from "./askTextCatalog.js";
 export {
   EXTENSION_IDS,
   MUSIC_BEATS,

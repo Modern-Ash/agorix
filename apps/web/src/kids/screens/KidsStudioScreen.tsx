@@ -124,7 +124,10 @@ import { editableFields, parseFieldValue } from "../kidsBlockProperties.js";
 import { propertyHelp, type PropertySubject } from "../kidsPropertyHelp.js";
 import {
   CHOICE_CATALOG,
+  ASK_TEXT_CATALOG,
+  ASK_TEXT_PROMPT_IDS,
   CHOICE_PROMPT_IDS,
+  isAskTextPromptId,
   isChoicePromptId,
   MUSIC_BEATS,
   MUSIC_DRUMS,
@@ -136,6 +139,7 @@ import {
   type MusicInstrument,
   type PenColor,
   type PenTransparency,
+  type AskTextPromptId,
   type ChoicePromptId,
 } from "@agorix/program-model";
 import type {
@@ -433,6 +437,8 @@ const COPY = {
       "La condición no se cumplió en 10 segundos del programa. Se detuvo la escena. Probá cambiar la condición y volvé a jugar.",
     askChoice: "Preguntar con opciones",
     askChoicePrompt: "Pregunta",
+    askText: "Preguntar una palabra",
+    answer: "Responder",
     askChoiceVariable: "Guardar respuesta en",
     growShrink: "Cambiar tamaño",
     exportScene: "Exportar escena",
@@ -742,6 +748,8 @@ const COPY = {
       "The condition did not become true in 10 program seconds. The scene stopped. Try changing the condition and play again.",
     askChoice: "Ask with choices",
     askChoicePrompt: "Question",
+    askText: "Ask for a word",
+    answer: "Answer",
     askChoiceVariable: "Save answer in",
     growShrink: "Change size",
     exportScene: "Export scene",
@@ -1074,6 +1082,14 @@ function backdropOfStage(
 
 type ConditionPreset = "key" | "edge" | "touch" | "timer" | "mouse" | "size";
 
+function waitingAskTextId(result: MultiActorRunResult | null): AskTextPromptId | null {
+  const note = result?.trace.find(
+    (entry) => entry.statementType === "askText" && entry.note?.startsWith("askText: awaiting "),
+  )?.note;
+  const id = note?.slice("askText: awaiting ".length);
+  return isAskTextPromptId(id) ? id : null;
+}
+
 function waitingChoiceId(result: MultiActorRunResult | null): ChoicePromptId | null {
   const note = result?.trace.find(
     (entry) =>
@@ -1284,7 +1300,11 @@ export function KidsStudioScreen({
     mission.onComplete();
   }, [mission, run, sceneGoal, store, id]);
   const choiceAnswers = useRef<Record<string, number>>({});
+  const textAnswers = useRef<Record<string, string>>({});
+  const [typedAnswer, setTypedAnswer] = useState("");
+  const [askTextPrompt, setAskTextPrompt] = useState<AskTextPromptId>("word");
   const pendingChoiceId = waitingChoiceId(run);
+  const pendingAskTextId = waitingAskTextId(run);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
   // Play is a live session, like a green flag: scripts run at once in real time until they end,
@@ -2169,6 +2189,7 @@ export function KidsStudioScreen({
         keysDown: heldKeys,
         pointer: pointerRef.current,
         choices: choiceAnswers.current,
+        answers: textAnswers.current,
       }),
     );
     setEvents(nextEvents);
@@ -2197,6 +2218,7 @@ export function KidsStudioScreen({
           keysDown: heldKeys,
           pointer: pointerRef.current,
           choices: choiceAnswers.current,
+          answers: textAnswers.current,
         }),
       );
       setFrame(null);
@@ -2734,6 +2756,8 @@ export function KidsStudioScreen({
         return copy.stopSounds;
       case "stop":
         return `${copy.stop}: ${statement.scope === "script" ? copy.stopScript : statement.scope === "actor" ? copy.stopActor : copy.stopScene}`;
+      case "askText":
+        return `${copy.askText}: ${ASK_TEXT_CATALOG[statement.promptId].prompt[locale]} → ${history.current.textVariables?.find((item) => item.id === statement.variableId)?.name ?? "?"}`;
       case "askChoice":
         return `${copy.askChoice}: ${CHOICE_CATALOG[statement.promptId].prompt[locale]}`;
       case "setVolume":
@@ -3112,7 +3136,7 @@ export function KidsStudioScreen({
   }
 
   function recordRunResult(result: MultiActorRunResult) {
-    if (waitingChoiceId(result)) return;
+    if (waitingChoiceId(result) || waitingAskTextId(result)) return;
     const completed =
       mission && sceneGoal ? sceneGoalMet(sceneGoal, result) : result.outcome === "completed";
     recordMastery({
@@ -3211,6 +3235,7 @@ export function KidsStudioScreen({
   function play() {
     try {
       choiceAnswers.current = {};
+      textAnswers.current = {};
       stopLive();
       const reduced =
         typeof window.matchMedia === "function" &&
@@ -3221,6 +3246,7 @@ export function KidsStudioScreen({
           keysDown: heldKeys,
           pointer: pointerRef.current,
           choices: choiceAnswers.current,
+          answers: textAnswers.current,
         });
         recordRunResult(result);
         presentRun(result);
@@ -3229,6 +3255,7 @@ export function KidsStudioScreen({
           keysDown: () => heldKeysRef.current,
           pointer: () => pointerRef.current,
           choices: choiceAnswers.current,
+          answers: textAnswers.current,
         });
         live.fire({ type: "start" });
         stopKidsSounds();
@@ -3310,6 +3337,7 @@ export function KidsStudioScreen({
         keysDown: heldKeys,
         pointer: pointerRef.current,
         choices: choiceAnswers.current,
+        answers: textAnswers.current,
       }),
     );
     setEvents(nextEvents);
@@ -4474,6 +4502,7 @@ export function KidsStudioScreen({
                           keysDown: heldKeys,
                           pointer: pointerRef.current,
                           choices: choiceAnswers.current,
+                          answers: textAnswers.current,
                         });
                         recordRunResult(result);
                         presentRun(result);
@@ -4488,7 +4517,49 @@ export function KidsStudioScreen({
                 ))}
               </div>
             ) : null}
-            {run?.outcome === "stopped" && !pendingChoiceId ? (
+            {pendingAskTextId ? (
+              <form
+                className="kids-studio-compound"
+                aria-label={copy.askText}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  try {
+                    textAnswers.current = {
+                      ...textAnswers.current,
+                      [pendingAskTextId]: typedAnswer,
+                    };
+                    setTypedAnswer("");
+                    const result = runMultiActorProgram(history.current, creative, {
+                      events,
+                      keysDown: heldKeys,
+                      pointer: pointerRef.current,
+                      choices: choiceAnswers.current,
+                      answers: textAnswers.current,
+                    });
+                    recordRunResult(result);
+                    presentRun(result);
+                    setError(false);
+                  } catch {
+                    setError(true);
+                  }
+                }}
+              >
+                <label>
+                  <strong>{ASK_TEXT_CATALOG[pendingAskTextId].prompt[locale]}</strong>{" "}
+                  <input
+                    type="text"
+                    maxLength={STUDIO_WORD_MAX_LENGTH}
+                    value={typedAnswer}
+                    autoComplete="off"
+                    onChange={(event) => setTypedAnswer(event.target.value)}
+                  />
+                </label>
+                <button type="submit" className="kids-button">
+                  {copy.answer}
+                </button>
+              </form>
+            ) : null}
+            {run?.outcome === "stopped" && !pendingChoiceId && !pendingAskTextId ? (
               <p className="kids-note" role="status">
                 {locale === "es" ? "Programa detenido: " : "Program stopped: "}
                 {(() => {
@@ -6552,6 +6623,39 @@ export function KidsStudioScreen({
                 >
                   + {copy.askChoice}
                 </button>
+                {history.current.textVariables?.length ? (
+                  <>
+                    <label>
+                      {copy.askChoicePrompt}{" "}
+                      <select
+                        value={askTextPrompt}
+                        onChange={(event) =>
+                          setAskTextPrompt(event.target.value as AskTextPromptId)
+                        }
+                      >
+                        {ASK_TEXT_PROMPT_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {ASK_TEXT_CATALOG[id].prompt[locale]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="askText"
+                      onClick={() =>
+                        add({
+                          type: "askText",
+                          promptId: askTextPrompt,
+                          variableId: selectedTextId,
+                        })
+                      }
+                    >
+                      + {copy.askText}
+                    </button>
+                  </>
+                ) : null}
                 <button
                   type="button"
                   className="kids-button"
