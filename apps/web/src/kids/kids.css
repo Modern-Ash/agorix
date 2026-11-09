@@ -3439,6 +3439,12 @@
   width: 100%;
   height: 100%;
 }
+/* A character drawn from art fills its ring; without this it shrank to one text line (1em). */
+.kids-studio-stage-costume > .kids-art-image {
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+}
 .kids-studio-bubble {
   position: absolute;
   left: 75%;

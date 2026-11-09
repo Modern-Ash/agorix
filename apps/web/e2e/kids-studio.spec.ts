@@ -1038,6 +1038,29 @@ test("free scene sets the pen transparency and keeps the block after reopening",
   await expect(page.getByText("Transparencia del lápiz: 50%").first()).toBeVisible();
 });
 
+test("a character on the stage fills its ring instead of shrinking to one text line", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  const art = page.locator(".kids-studio-stage-actor .kids-art-image").first();
+  await expect(art).toBeVisible();
+  const box = (await art.boundingBox())!;
+  const ring = (await page.locator(".kids-studio-stage-actor").first().boundingBox())!;
+  expect(box.width).toBeGreaterThan(ring.width * 0.6);
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {
