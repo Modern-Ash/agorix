@@ -288,6 +288,11 @@ export function createLiveRuntime(
         stage.actorOrder = statement.layer === "front" ? [...rest, actor.id] : [actor.id, ...rest];
       }
     }
+    if (raw.statementType === "switchBackdrop") {
+      const statement = statementAtNodeId(single, raw.nodeId);
+      if (statement?.type === "switchBackdrop")
+        pending.push({ event: { type: "backdropSwitched", backdropId: statement.backdropId } });
+    }
     if (raw.statementType === "broadcast") {
       const statement = statementAtNodeId(single, raw.nodeId);
       if (statement?.type === "broadcast") {

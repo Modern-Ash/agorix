@@ -52,7 +52,7 @@ function target(context: OriStudioContext) {
       return (
         !match ||
         Number(match[1]) !== index + 1 ||
-        !["greenFlag", "onActorClicked", "onKeyPressed", "onMessage"].includes(
+        !["greenFlag", "onActorClicked", "onKeyPressed", "onMessage", "onBackdropSwitch"].includes(
           script.trigger.type,
         ) ||
         script.statements.length > MAX_STATEMENTS

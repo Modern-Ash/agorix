@@ -1030,6 +1030,8 @@ function eventText(event: RuntimeEvent): string {
       return event.senderActorId === undefined
         ? `message:${event.message}`
         : `message:${event.message} from ${event.senderActorId}`;
+    case "backdropSwitched":
+      return `backdrop:${event.backdropId}`;
   }
 }
 

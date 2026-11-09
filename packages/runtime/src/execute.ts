@@ -1118,6 +1118,7 @@ function assertTrigger(trigger: Trigger, path: string): void {
     case "onKeyPressed":
     case "onActorClicked":
     case "onMessage":
+    case "onBackdropSwitch":
       return;
     default: {
       const unknown = trigger as { type?: unknown };

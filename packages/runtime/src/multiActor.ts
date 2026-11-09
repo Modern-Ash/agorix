@@ -49,7 +49,8 @@ export type RuntimeEvent =
   | { readonly type: "start" }
   | { readonly type: "keyPressed"; readonly key: string }
   | { readonly type: "actorClicked"; readonly actorId: string }
-  | { readonly type: "message"; readonly message: string; readonly senderActorId?: string };
+  | { readonly type: "message"; readonly message: string; readonly senderActorId?: string }
+  | { readonly type: "backdropSwitched"; readonly backdropId: string };
 
 export interface MultiActorScriptActivation {
   readonly id: string;
@@ -262,6 +263,8 @@ function triggerMatchesEvent(
       return event.type === "actorClicked" && event.actorId === actor.id;
     case "onMessage":
       return event.type === "message" && trigger.message === event.message;
+    case "onBackdropSwitch":
+      return event.type === "backdropSwitched" && trigger.backdropId === event.backdropId;
   }
 }
 
@@ -279,6 +282,8 @@ export function cloneRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
         message: event.message,
         ...(event.senderActorId === undefined ? {} : { senderActorId: event.senderActorId }),
       };
+    case "backdropSwitched":
+      return { type: "backdropSwitched", backdropId: event.backdropId };
   }
 }
 
@@ -292,6 +297,8 @@ export function programEventForRuntimeEvent(event: RuntimeEvent): ProgramEvent {
       return "actorClicked";
     case "message":
       return `message:${event.message}`;
+    case "backdropSwitched":
+      return `backdrop:${event.backdropId}`;
   }
 }
 
@@ -315,6 +322,8 @@ export function reasonForActivation(
       return event.senderActorId === undefined
         ? `Message ${JSON.stringify(event.message)} was received`
         : `Message ${JSON.stringify(event.message)} was broadcast by ${event.senderActorId}`;
+    case "backdropSwitched":
+      return `Backdrop ${JSON.stringify(event.backdropId)} was switched to`;
   }
 }
 
@@ -471,6 +480,11 @@ export function runMultiActorProgram(
               stage.actorOrder =
                 statement.layer === "front" ? [...rest, actor.id] : [actor.id, ...rest];
             }
+          }
+          if (entry.statementType === "switchBackdrop") {
+            const statement = statementAtNodeId(script, entry.nodeId);
+            if (statement?.type === "switchBackdrop")
+              queue.push({ type: "backdropSwitched", backdropId: statement.backdropId });
           }
           if (entry.statementType === "broadcast") {
             const statement = statementAtNodeId(script, entry.nodeId);

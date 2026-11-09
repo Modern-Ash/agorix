@@ -1057,6 +1057,11 @@ function validateTrigger(input: unknown, path: string): Trigger {
           "event message",
         ),
       };
+    case "onBackdropSwitch":
+      return {
+        type: "onBackdropSwitch",
+        backdropId: checkText(input.backdropId, `${path}.backdropId`),
+      };
     default:
       return fail(
         "UNKNOWN_TRIGGER_TYPE",

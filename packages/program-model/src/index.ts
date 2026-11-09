@@ -21,6 +21,7 @@ export type {
   OnActorClickedTrigger,
   OnKeyPressedTrigger,
   OnMessageTrigger,
+  OnBackdropSwitchTrigger,
   OnStartTrigger,
   PlaySoundStatement,
   ProgramEvent,

@@ -61,6 +61,14 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
             ? `It waits for the message “${name}”. The block that sends it did not run.`
             : `It waits for the message “${name}”. A block sends it, but it did not run this time.`;
       }
+      if (event?.type === "backdrop")
+        return es
+          ? young
+            ? "Empieza cuando cambia el fondo a ese. Esta vez no cambió a ese."
+            : "Este programa empieza cuando el fondo cambia a uno en particular. En esta corrida el fondo no cambió a ese."
+          : young
+            ? "It starts when the backdrop changes to that one. It did not change to it this time."
+            : "This program starts when the backdrop changes to a particular one. The backdrop did not change to it this run.";
       if (event?.type === "key")
         return es
           ? young

@@ -84,6 +84,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "event_on_backdrop_switch",
+    label: "When backdrop switches",
+    section: "Start",
+    placement: "trigger",
+    accessibleName: "when backdrop switches",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "event_on_backdrop_switch",
+      fields: { backdropId: "backdrop:forest" },
+    }),
+  },
+  {
     type: "event_broadcast",
     label: "Broadcast message",
     section: "Start",

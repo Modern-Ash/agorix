@@ -591,6 +591,8 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
       return "whenActorClicked";
     case "onMessage":
       return `whenMessageReceived(${JSON.stringify(trigger.message)})`;
+    case "onBackdropSwitch":
+      return `whenBackdropSwitchesTo(${JSON.stringify(trigger.backdropId)})`;
     default: {
       const unknown = trigger as { type?: unknown };
       throw new UnsupportedNodeError(nodeId, String(unknown.type));

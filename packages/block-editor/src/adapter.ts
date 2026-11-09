@@ -28,6 +28,7 @@ export type BlockType =
   | "event_on_key_pressed"
   | "event_on_actor_clicked"
   | "event_on_message"
+  | "event_on_backdrop_switch"
   | "event_broadcast"
   | "motion_move"
   | "motion_go_to"
@@ -1462,6 +1463,8 @@ function triggerFromBlock(block: BlockNode, path: string): Trigger {
       return { type: "onActorClicked" };
     case "event_on_message":
       return { type: "onMessage", message: stringField(block, "message", path) };
+    case "event_on_backdrop_switch":
+      return { type: "onBackdropSwitch", backdropId: stringField(block, "backdropId", path) };
     default:
       return fail(
         "UNSUPPORTED_TRIGGER",
@@ -1484,6 +1487,8 @@ function triggerToBlock(trigger: Trigger, id: string): BlockNode {
       return { id, type: "event_on_actor_clicked" };
     case "onMessage":
       return { id, type: "event_on_message", fields: { message: trigger.message } };
+    case "onBackdropSwitch":
+      return { id, type: "event_on_backdrop_switch", fields: { backdropId: trigger.backdropId } };
   }
 }
 

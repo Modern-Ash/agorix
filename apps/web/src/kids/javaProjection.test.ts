@@ -268,6 +268,11 @@ const everything: ProjectProgram = {
       trigger: { type: "onMessage", message: "hola" },
       statements: [{ type: "say", text: "mensaje" }],
     },
+    {
+      id: "b",
+      trigger: { type: "onBackdropSwitch", backdropId: "backdrop:forest" },
+      statements: [{ type: "say", text: "fondo" }],
+    },
     { id: "o", trigger: { type: "onStart" }, statements: [{ type: "show" }] },
   ],
 };

@@ -376,6 +376,15 @@ export function validateProjectCreativeState(
   const stage =
     input.stage === undefined ? undefined : validateStage(input.stage, "$.stage", state);
   for (const [index, script] of program.scripts.entries()) {
+    if (
+      script.trigger.type === "onBackdropSwitch" &&
+      !state.backdropIds.has(script.trigger.backdropId)
+    )
+      failReference(
+        `$.program.scripts[${index}].trigger.backdropId`,
+        `unknown backdrop id ${JSON.stringify(script.trigger.backdropId)}`,
+        script.trigger.backdropId,
+      );
     validateStatementAssetRefs(script.statements, `$.program.scripts[${index}].statements`, state);
     script.procedures?.forEach((procedure, procedureIndex) =>
       validateStatementAssetRefs(

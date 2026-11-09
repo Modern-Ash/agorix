@@ -934,6 +934,33 @@ test("free scene stamps copies of the character while it moves", async ({ page }
   await expect(page.locator('.kids-studio-stage-copy[data-rule="stamp"]')).toHaveCount(2);
 });
 
+test("free scene starts a character when the backdrop changes", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByLabel("Cuando").selectOption("onBackdropSwitch");
+  await expect(page.locator(".kids-start-block")).toContainText("Al cambiar el fondo a");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-start-block")).toContainText("Al cambiar el fondo a");
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {
