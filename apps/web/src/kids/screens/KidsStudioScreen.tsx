@@ -165,6 +165,9 @@ import { useInterventionPolicy } from "../kidsBehavior.js";
 import { noteName, playKidsMusic, playKidsMusicEntry, stopKidsMusic } from "../kidsMusic.js";
 import {
   addStudioActor,
+  MAX_STUDIO_ACTORS,
+  MAX_STUDIO_BLOCKS,
+  studioBlocksUsed,
   addStudioList,
   addStudioText,
   STUDIO_WORD_MAX_LENGTH,
@@ -559,6 +562,10 @@ const COPY = {
     yes: "Sí",
     no: "No",
     saveError: "No pudimos guardar esta escena. Probá de nuevo.",
+    blocksFull:
+      "Este personaje ya tiene todos los bloques que entran. Un «Repetir» o «Mis bloques» te deja lugar.",
+    actorsFull: "Ya hay todos los personajes que entran en la escena.",
+    blocksNear: "bloques de",
     chooseActor: "Elegí un personaje",
     noBlocks: "Agregá un bloque para ver qué hace este personaje.",
     stage: "Escenario",
@@ -861,6 +868,9 @@ const COPY = {
     yes: "Yes",
     no: "No",
     saveError: "We couldn't save this scene. Try again.",
+    blocksFull: "This character has all the blocks it can hold. A Repeat or My blocks makes room.",
+    actorsFull: "The scene already has all the characters it can hold.",
+    blocksNear: "blocks of",
     chooseActor: "Choose a character",
     noBlocks: "Add a block to see what this character does.",
     stage: "Stage",
@@ -1179,6 +1189,7 @@ export function KidsStudioScreen({
   const [volume, setVolume] = useState(100);
   const [volumeChange, setVolumeChange] = useState(-10);
   const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
+  const [limitHit, setLimitHit] = useState<"blocks" | "actors" | null>(null);
   const [eventBackdrop, setEventBackdrop] = useState<KidsGalleryBackdropId>(
     KIDS_GALLERY_BACKDROPS[0]!.id,
   );
@@ -1396,6 +1407,7 @@ export function KidsStudioScreen({
     script?.statements.map((statement) => statement.type) ?? [],
   );
   const scriptIndexOfActor = script === undefined ? -1 : history.current.scripts.indexOf(script);
+  const blocksUsed = studioBlocksUsed(history.current, activeActorId);
   const selectedTextId = history.current.textVariables?.some((item) => item.id === textVarId)
     ? textVarId
     : (history.current.textVariables?.[0]?.id ?? textVarId);
@@ -2246,6 +2258,7 @@ export function KidsStudioScreen({
     try {
       saveStudioProject(id, next.current, backdropId, nextActive, locale, store);
       setHistory(next);
+      setLimitHit(null);
       setActiveActorId(nextActive);
       setRun(null);
       setEvents([{ type: "start" }]);
@@ -2515,7 +2528,8 @@ export function KidsStudioScreen({
       const next = addStudioActor(history, newCharacter);
       persist(next, studioActorId(next.current.scripts.length, newCharacter));
     } catch {
-      setError(true);
+      if (history.current.scripts.length >= MAX_STUDIO_ACTORS) setLimitHit("actors");
+      else setError(true);
     }
   }
 
@@ -2574,7 +2588,10 @@ export function KidsStudioScreen({
       persist(appendStudioStatement(history, activeActorId, statement));
       if (paletteView === "focused") setOpenCategory(null);
     } catch {
-      setError(true);
+      // At the size limit the reason is the limit, not a failed save.
+      if (studioBlocksUsed(history.current, activeActorId) >= MAX_STUDIO_BLOCKS)
+        setLimitHit("blocks");
+      else setError(true);
     }
   }
 
@@ -5105,6 +5122,11 @@ export function KidsStudioScreen({
                     >
                       {copy.pressKey}: {script.trigger.key}
                     </button>
+                  ) : null}
+                  {blocksUsed >= MAX_STUDIO_BLOCKS - 10 ? (
+                    <p className="kids-note" data-testid="studio-blocks-used">
+                      {blocksUsed} {copy.blocksNear} {MAX_STUDIO_BLOCKS}
+                    </p>
                   ) : null}
                   <ol
                     ref={programRef}
@@ -8014,6 +8036,11 @@ export function KidsStudioScreen({
         {error ? (
           <p role="alert" className="kids-note">
             {copy.saveError}
+          </p>
+        ) : null}
+        {limitHit ? (
+          <p role="alert" className="kids-note" data-testid="studio-limit">
+            {limitHit === "blocks" ? copy.blocksFull : copy.actorsFull}
           </p>
         ) : null}
         {exportingMedia ? (

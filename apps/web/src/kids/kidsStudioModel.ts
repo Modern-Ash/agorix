@@ -52,7 +52,7 @@ import { KIDS_SOUNDS, isKidsSoundId } from "./kidsSoundLibrary.js";
 import { validKidsImageDataUrl } from "./kidsImages.js";
 
 const SCRIPT = /^studio-actor-([1-9][0-9]?)-([a-z]+)$/;
-const MAX_STUDIO_ACTORS = 12;
+export const MAX_STUDIO_ACTORS = 12;
 
 export type StudioStatement = Extract<
   Statement,
@@ -133,7 +133,7 @@ export const STUDIO_EDGE_CONDITION = {
   maxY: 120,
 } as const;
 const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
-const MAX_STUDIO_BLOCKS = 60;
+export const MAX_STUDIO_BLOCKS = 60;
 /** White keys from C3 to C6: the notes the Studio offers (the model accepts every semitone). */
 export const STUDIO_NOTES = Array.from({ length: 37 }, (_value, index) => 48 + index).filter(
   (note) => [0, 2, 4, 5, 7, 9, 11].includes(note % 12),
@@ -409,6 +409,18 @@ function statementCount(statements: readonly Statement[]): number {
           : 0),
     0,
   );
+}
+
+/** How many blocks a character's script and custom blocks hold, against the most the Studio allows. */
+export function studioBlocksUsed(program: ProjectProgram, actorId: string): number {
+  const script = program.scripts.find((item) => {
+    const actor = actorOfScript(item.id);
+    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
+  });
+  return script === undefined
+    ? 0
+    : statementCount(script.statements) +
+        (script.procedures ?? []).reduce((sum, item) => sum + statementCount(item.body), 0);
 }
 
 export function studioActorId(index: number, characterId: KidsGalleryCharacterId): string {

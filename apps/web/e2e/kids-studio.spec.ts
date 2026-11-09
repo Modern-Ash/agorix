@@ -961,6 +961,28 @@ test("free scene starts a character when the backdrop changes", async ({ page })
   await expect(page.locator(".kids-start-block")).toContainText("Al cambiar el fondo a");
 });
 
+test("free scene says why a block cannot be added when the character is full", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  const move = page.getByRole("button", { name: "+ Mover", exact: true });
+  for (let i = 0; i < 60; i += 1) await move.click();
+  await expect(page.getByTestId("studio-blocks-used")).toHaveText("60 bloques de 60");
+  await move.click();
+  await expect(page.getByTestId("studio-limit")).toContainText("todos los bloques que entran");
+  await expect(page.getByText("No pudimos guardar esta escena")).toHaveCount(0);
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {
