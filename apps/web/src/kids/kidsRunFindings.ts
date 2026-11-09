@@ -61,6 +61,14 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
             ? `It waits for the message “${name}”. The block that sends it did not run.`
             : `It waits for the message “${name}”. A block sends it, but it did not run this time.`;
       }
+      if (event?.type === "clone")
+        return es
+          ? young
+            ? "El guion de las copias no corrió: ninguna copia nació con su guion."
+            : "El guion de las copias empieza cuando nace una copia con su guion, y en esta corrida no nació ninguna."
+          : young
+            ? "The copy script did not run: no copy was born with its script."
+            : "The copy script starts when a copy with its script is born, and none was born this run.";
       if (event?.type === "backdrop")
         return es
           ? young

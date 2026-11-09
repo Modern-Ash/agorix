@@ -263,7 +263,8 @@ test("the Escena libre palette offers every cataloged block", async ({ page }) =
       ...new Set(nodes.map((node) => node.getAttribute("data-kids-block"))),
     ]);
   // Offered only once the project has what they point at: another character, or a made block.
-  const needsProjectContent = ["pointTowards", "callProcedure"];
+  // "Delete this clone" lives in the copy-script panel, not in the palette.
+  const needsProjectContent = ["pointTowards", "callProcedure", "deleteThisClone"];
   const missing = Object.keys(STUDIO_BLOCK_CATEGORY).filter(
     (kind) => !offered.includes(kind) && !needsProjectContent.includes(kind),
   );

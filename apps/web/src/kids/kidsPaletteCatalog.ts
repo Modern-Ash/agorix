@@ -51,6 +51,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   forever: "logic",
   waitUntil: "logic",
   resetTimer: "logic",
+  deleteThisClone: "logic",
   if: "logic",
   broadcast: "logic",
   callProcedure: "myBlocks",

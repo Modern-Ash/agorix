@@ -81,6 +81,7 @@ export type StudioStatement = Extract<
       | "changeEffect"
       | "clearEffects"
       | "resetTimer"
+      | "deleteThisClone"
       | "switchCostume"
       | "nextCostume"
       | "switchBackdrop"
@@ -494,8 +495,9 @@ function checked(
     );
   if (statement.type === "createCopies")
     return (
-      // Copies with a script of their own come with the Studio's clone palette (#1311).
-      statement.withScript !== true &&
+      // Copies with a script of their own need a character that has a copy script (#1311).
+      (statement.withScript !== true ||
+        program.scripts.some((script) => cloneActorOfScript(script.id) !== null)) &&
       [2, 3, 5].includes(statement.count) &&
       (statement.rule === "spread" || statement.rule === "fall" || statement.rule === "follow")
     );
@@ -917,11 +919,15 @@ export function appendStudioStatement(
   statement: StudioStatement,
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
-  if (!checked(statement, program)) throw new RangeError("unsupported studio block or asset");
-  const index = program.scripts.findIndex((script) => {
-    const actor = actorOfScript(script.id);
-    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
-  });
+  if (!checked(statement, program, 0, 0, isCloneTarget(actorId)))
+    throw new RangeError("unsupported studio block or asset");
+  const index = scriptIndexOfActor(program, actorId);
+  if (
+    statement.type === "createCopies" &&
+    statement.withScript === true &&
+    !hasStudioCloneScript(program, actorId)
+  )
+    throw new RangeError("this character has no copy script");
   if (index < 0) throw new RangeError("unknown studio actor");
   const scripts = [...program.scripts];
   const script = scripts[index]!;
@@ -964,10 +970,7 @@ export function wrapStudioTail(
     | { readonly type: "if"; readonly condition: Expression },
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
-  const index = program.scripts.findIndex((script) => {
-    const actor = actorOfScript(script.id);
-    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
-  });
+  const index = scriptIndexOfActor(program, actorId);
   const script = program.scripts[index];
   if (!script || !Number.isInteger(count) || count < 1 || count > MAX_STUDIO_BODY)
     throw new RangeError("invalid studio group");
@@ -981,7 +984,8 @@ export function wrapStudioTail(
         : control.type === "forever"
           ? { type: "forever", body }
           : { type: "if", condition: control.condition, then: body };
-  if (!checked(statement, program)) throw new RangeError("unsupported studio group");
+  if (!checked(statement, program, 0, 0, isCloneTarget(actorId)))
+    throw new RangeError("unsupported studio group");
   const scripts = [...program.scripts];
   scripts[index] = {
     ...script,
@@ -992,11 +996,106 @@ export function wrapStudioTail(
     .history;
 }
 
+/** The editing target of a character's copy script: its actor id and this suffix (#1311). */
+export const CLONE_TARGET_SUFFIX = ":clone";
+
+export function studioCloneTarget(actorId: string): string {
+  return `${actorId}${CLONE_TARGET_SUFFIX}`;
+}
+
+function isCloneTarget(actorId: string): boolean {
+  return actorId.endsWith(CLONE_TARGET_SUFFIX);
+}
+
+/** The script a character, or its copy script (`studioCloneTarget`), is edited through. */
 function scriptIndexOfActor(program: ProjectProgram, actorId: string): number {
+  const copies = isCloneTarget(actorId);
+  const wanted = copies ? actorId.slice(0, -CLONE_TARGET_SUFFIX.length) : actorId;
   return program.scripts.findIndex((script) => {
-    const actor = actorOfScript(script.id);
-    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
+    const actor = copies ? cloneActorOfScript(script.id) : actorOfScript(script.id);
+    return actor !== null && studioActorId(actor.index, actor.characterId) === wanted;
   });
+}
+
+/** Whether the character has the script its copies start with. */
+export function hasStudioCloneScript(program: ProjectProgram, actorId: string): boolean {
+  return scriptIndexOfActor(program, studioCloneTarget(actorId)) >= 0;
+}
+
+/** The blocks of a character's copy script; none when it has no such script. */
+export function studioCloneStatements(
+  program: ProjectProgram,
+  actorId: string,
+): readonly Statement[] {
+  return program.scripts[scriptIndexOfActor(program, studioCloneTarget(actorId))]?.statements ?? [];
+}
+
+/** Give a character the script its copies start with ("when I start as a clone"), empty. */
+export function addStudioCloneScript(history: EditorHistory, actorId: string): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const main = program.scripts[scriptIndexOfActor(program, actorId)];
+  const owner = main === undefined ? null : actorOfScript(main.id);
+  if (owner === null || hasStudioCloneScript(program, actorId))
+    throw new RangeError("unknown studio actor or it already has a copy script");
+  const next = validateStudioProgram({
+    ...program,
+    scripts: [
+      ...program.scripts,
+      {
+        id: cloneScriptId(owner.index, owner.characterId),
+        trigger: { type: "onCloneStart" },
+        statements: [],
+      },
+    ],
+  });
+  return recordCanonicalTransaction(history, { label: "add copy script", after: next }).history;
+}
+
+function withoutCopyScripts(statements: readonly Statement[]): Statement[] {
+  return statements.map((statement) => {
+    if (statement.type === "createCopies" && statement.withScript === true) {
+      return { type: "createCopies", count: statement.count, rule: statement.rule };
+    }
+    if (
+      statement.type === "repeat" ||
+      statement.type === "repeatUntil" ||
+      statement.type === "forever"
+    )
+      return { ...statement, body: withoutCopyScripts(statement.body) };
+    if (statement.type === "if")
+      return {
+        ...statement,
+        then: withoutCopyScripts(statement.then),
+        ...(statement.else === undefined ? {} : { else: withoutCopyScripts(statement.else) }),
+      };
+    return statement;
+  });
+}
+
+/** Take a character's copy script away; its "copies with a script" go back to plain copies. */
+export function removeStudioCloneScript(history: EditorHistory, actorId: string): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const at = scriptIndexOfActor(program, studioCloneTarget(actorId));
+  if (at < 0) throw new RangeError("that character has no copy script");
+  const main = scriptIndexOfActor(program, actorId);
+  const scripts = program.scripts
+    .filter((_script, index) => index !== at)
+    .map((script, index) =>
+      index === main ? { ...script, statements: withoutCopyScripts(script.statements) } : script,
+    );
+  const next = validateStudioProgram({ ...program, scripts });
+  return recordCanonicalTransaction(history, { label: "remove copy script", after: next }).history;
+}
+
+/** "If it touches the edge, delete this clone": the way most copies end, in one block. */
+export function addStudioCloneEdgeDelete(history: EditorHistory, actorId: string): EditorHistory {
+  return withScript(history, studioCloneTarget(actorId), "add delete at the edge", (script) => ({
+    ...script,
+    statements: [
+      ...script.statements,
+      { type: "if", condition: STUDIO_EDGE_CONDITION, then: [{ type: "deleteThisClone" }] },
+    ],
+  }));
 }
 
 function countCalls(statements: readonly Statement[], procedureId: string): number {
@@ -1813,10 +1912,7 @@ export function setStudioTrigger(
   const program = validateStudioProgram(history.current);
   const resolved = typeof trigger === "string" ? ({ type: trigger } as Trigger) : trigger;
   if (!checkedTrigger(resolved)) throw new RangeError("unsupported studio event");
-  const index = program.scripts.findIndex((script) => {
-    const actor = actorOfScript(script.id);
-    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
-  });
+  const index = scriptIndexOfActor(program, actorId);
   if (index < 0) throw new RangeError("unknown studio actor");
   const scripts = [...program.scripts];
   scripts[index] = { ...scripts[index]!, trigger: resolved };
@@ -1903,10 +1999,7 @@ export function removeStudioStatement(
   statementIndex: number,
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
-  const index = program.scripts.findIndex((script) => {
-    const actor = actorOfScript(script.id);
-    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
-  });
+  const index = scriptIndexOfActor(program, actorId);
   const script = program.scripts[index];
   if (!script || statementIndex < 0 || statementIndex >= script.statements.length)
     throw new RangeError("unknown studio block");

@@ -134,3 +134,5 @@ export {
   type WorldState,
   type WorldStateInput,
 } from "./world.js";
+
+export { cloneRootId, copyRoom, isCloneId, liveClones } from "./clones.js";
