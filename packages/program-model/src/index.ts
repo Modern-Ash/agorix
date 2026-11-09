@@ -75,6 +75,7 @@ export type {
   Script,
   SchemaVersion,
   SetVariableStatement,
+  ResetTimerStatement,
   StampStatement,
   ShowVariableStatement,
   StopSoundsStatement,

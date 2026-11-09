@@ -333,6 +333,8 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Graphic effect";
     case "clearEffects":
       return "Clear effects";
+    case "resetTimer":
+      return "Reset timer";
     case "glideTo":
       return "Glide";
     case "callProcedure":

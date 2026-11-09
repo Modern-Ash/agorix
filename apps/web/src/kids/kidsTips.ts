@@ -81,6 +81,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
   setEffect: { es: "Poner un efecto de color o brillo", en: "Set a colour or glow effect" },
   changeEffect: { es: "Cambiar un efecto de a poco", en: "Change an effect a little at a time" },
   clearEffects: { es: "Quitar todos los efectos", en: "Remove every effect" },
+  resetTimer: {
+    es: "Volver a contar el tiempo desde cero",
+    en: "Start counting the time again from zero",
+  },
   wait: { es: "Esperar unos segundos antes de seguir", en: "Wait a few seconds before going on" },
   switchCostume: { es: "Cambiar el disfraz del personaje", en: "Change the character's costume" },
   switchBackdrop: { es: "Cambiar el fondo de la escena", en: "Change the scene's backdrop" },

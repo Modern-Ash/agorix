@@ -344,6 +344,7 @@ const COPY = {
     hide: "Esconder",
     size: "Tamaño",
     wait: "Esperar",
+    resetTimer: "Reiniciar el tiempo",
     repeat: "Repetir",
     groupCount: "Bloques del final",
     myBlocks: "Mis bloques",
@@ -650,6 +651,7 @@ const COPY = {
     hide: "Hide",
     size: "Size",
     wait: "Wait",
+    resetTimer: "Reset the timer",
     repeat: "Repeat",
     groupCount: "Last blocks",
     myBlocks: "My blocks",
@@ -1078,6 +1080,7 @@ function starterLabel(
     readonly sound: string;
     readonly repeat: string;
     readonly wait: string;
+    readonly resetTimer: string;
   },
 ): string {
   return kind === "move"
@@ -2741,6 +2744,8 @@ export function KidsStudioScreen({
         return `${copy.setEffect}: ${effectName(statement.effect)} ${statement.value}`;
       case "changeEffect":
         return `${copy.changeEffect}: ${effectName(statement.effect)} ${statement.delta > 0 ? "+" : ""}${statement.delta}`;
+      case "resetTimer":
+        return copy.resetTimer;
       case "clearEffects":
         return copy.clearEffects;
       case "wait":
@@ -6612,6 +6617,14 @@ export function KidsStudioScreen({
                   }
                 >
                   {copy.groupUntilTimer}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-kids-block="resetTimer"
+                  onClick={() => add({ type: "resetTimer" })}
+                >
+                  + {copy.resetTimer}
                 </button>
                 <div role="group" aria-label={copy.compoundTitle} className="kids-studio-compound">
                   <strong>{copy.compoundTitle}</strong>

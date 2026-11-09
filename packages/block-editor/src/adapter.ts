@@ -49,6 +49,7 @@ export type BlockType =
   | "looks_set_effect"
   | "looks_change_effect"
   | "looks_clear_effects"
+  | "control_reset_timer"
   | "pen_down"
   | "pen_up"
   | "pen_set_color"
@@ -653,6 +654,8 @@ function statementFromBlock(
       };
     case "looks_clear_effects":
       return { type: "clearEffects" };
+    case "control_reset_timer":
+      return { type: "resetTimer" };
     case "pen_down":
       return { type: "penDown" };
     case "pen_up":
@@ -1192,6 +1195,8 @@ function statementToBlock(
       };
     case "clearEffects":
       return { id, type: "looks_clear_effects" };
+    case "resetTimer":
+      return { id, type: "control_reset_timer" };
     case "penDown":
       return { id, type: "pen_down" };
     case "penUp":

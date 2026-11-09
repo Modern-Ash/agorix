@@ -373,6 +373,14 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "looks_size" }),
   },
   {
+    type: "control_reset_timer",
+    label: "Reset timer",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "reset timer",
+    createDefaultBlock: (id) => ({ id, type: "control_reset_timer" }),
+  },
+  {
     type: "sensing_timer",
     label: "Timer",
     section: "Check",

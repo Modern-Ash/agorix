@@ -51,6 +51,7 @@ export const JAVA_SUPPORT_API = [
   "setEffect",
   "changeEffect",
   "clearEffects",
+  "resetTimer",
   "say",
   "sayFor",
   "think",
@@ -136,6 +137,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void setEffect(String effect, double value) {}
     void changeEffect(String effect, double delta) {}
     void clearEffects() {}
+    void resetTimer() {}
     void say(String text) {}
     void sayFor(String text, double seconds) {}
     void think(String text) {}
@@ -582,6 +584,8 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       return line(`changeEffect(${literal(node.effect)}, ${number(node.delta)})`);
     case "clearEffects":
       return line("clearEffects()");
+    case "resetTimer":
+      return line("resetTimer()");
     case "say":
     case "think": {
       const message =
@@ -859,6 +863,7 @@ export const javaLanguagePack: LanguagePack = {
     "setEffect",
     "changeEffect",
     "clearEffects",
+    "resetTimer",
     "say",
     "think",
     "show",

@@ -59,6 +59,7 @@ const FAMILY: Record<string, string> = {
   changeVolume: "sound",
   wait: "control",
   waitUntil: "control",
+  resetTimer: "control",
   repeat: "control",
   forever: "control",
   repeatUntil: "control",

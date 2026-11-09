@@ -362,6 +362,9 @@ function projectStatement(
     case "clearEffects":
       write(writer, `${pad}sprite.clearEffects();\n`);
       return;
+    case "resetTimer":
+      write(writer, `${pad}resetTimer();\n`);
+      return;
     case "penDown":
       write(writer, `${pad}pen.down();\n`);
       return;

@@ -33,6 +33,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "setEffect",
   "changeEffect",
   "clearEffects",
+  "resetTimer",
   "penDown",
   "penUp",
   "setPenColor",

@@ -91,6 +91,7 @@ describe("runtime operation allowlist", () => {
       "pointTowards",
       "repeat",
       "repeatUntil",
+      "resetTimer",
       "say",
       "setEffect",
       "setInstrument",

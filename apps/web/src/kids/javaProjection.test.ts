@@ -126,6 +126,7 @@ const statements: Statement[] = [
   { type: "penUp" },
   { type: "clearPen" },
   { type: "stamp" },
+  { type: "resetTimer" },
   { type: "playNote", note: 60, beats: 1 },
   { type: "playDrum", drum: "snare", beats: 0.5 },
   { type: "setInstrument", instrument: "flute" },
