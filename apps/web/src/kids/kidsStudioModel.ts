@@ -21,6 +21,7 @@ import {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_TRANSPARENCIES,
   PROCEDURE_NUMBER_CHOICES,
   PROCEDURE_NUMBER_DEFAULTS,
   procedureNumberUnits,
@@ -112,6 +113,7 @@ export type StudioStatement = Extract<
       | "penUp"
       | "setPenColor"
       | "setPenSize"
+      | "setPenTransparency"
       | "clearPen"
       | "stamp"
       | "playNote"
@@ -511,6 +513,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "setPenColor")
     return (PEN_COLORS as readonly string[]).includes(statement.color);
   if (statement.type === "setPenSize") return STUDIO_PEN_SIZES.includes(statement.size);
+  if (statement.type === "setPenTransparency")
+    return (PEN_TRANSPARENCIES as readonly number[]).includes(statement.percent);
   if (statement.type === "playNote")
     return STUDIO_NOTES.includes(statement.note) && MUSIC_BEATS.includes(statement.beats);
   if (statement.type === "playDrum")
@@ -853,9 +857,15 @@ export function appendStudioStatement(
   const script = scripts[index]!;
   scripts[index] = { ...script, statements: [...script.statements, statement] };
   // A pen or music block makes the project declare its extension (ADR 0011).
-  const pack = ["penDown", "penUp", "setPenColor", "setPenSize", "clearPen", "stamp"].includes(
-    statement.type,
-  )
+  const pack = [
+    "penDown",
+    "penUp",
+    "setPenColor",
+    "setPenSize",
+    "setPenTransparency",
+    "clearPen",
+    "stamp",
+  ].includes(statement.type)
     ? ("pen" as const)
     : ["playNote", "playDrum", "setInstrument", "setTempo", "setPitch", "setPan"].includes(
           statement.type,

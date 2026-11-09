@@ -64,6 +64,7 @@ import {
   penUpWorld,
   setPenColorWorld,
   setPenSizeWorld,
+  setPenTransparencyWorld,
   clearPenWorld,
   stampWorld,
   drawPenTrail,
@@ -717,6 +718,9 @@ function* executeStatement(
       break;
     case "setPenSize":
       state.world = setPenSizeWorld(state.world, statement.size);
+      break;
+    case "setPenTransparency":
+      state.world = setPenTransparencyWorld(state.world, statement.percent);
       break;
     case "clearPen":
       state.world = clearPenWorld(state.world);

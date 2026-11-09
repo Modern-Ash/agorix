@@ -381,6 +381,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "setPenSize":
       writeMapped(writer, nodeId, indent + "set_pen_size(" + statement.size + ")\n");
       return;
+    case "setPenTransparency":
+      writeMapped(writer, nodeId, indent + "set_pen_transparency(" + statement.percent + ")\n");
+      return;
     case "playNote":
       writeMapped(
         writer,

@@ -1009,6 +1009,35 @@ test("free scene adds a reset timer block and keeps it after reopening", async (
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
 });
 
+test("free scene sets the pen transparency and keeps the block after reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByLabel("Transparencia del lápiz").selectOption("50");
+  await page.getByRole("button", { name: "+ Transparencia del lápiz" }).click();
+  await expect(page.getByText("Transparencia del lápiz: 50%").first()).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.getByText("Transparencia del lápiz: 50%").first()).toBeVisible();
+});
+
 test("free scene repeats blocks until the character reaches the edge and keeps the loop after reopening", async ({
   page,
 }) => {
