@@ -52,3 +52,14 @@ The runtime remains deterministic and the trace remains the evidence; every prog
 2. **The cap:** 20 live clones or copies, or another number.
 3. **If B:** is the closed list of rules (spread out, fall from the top, follow the leader) right, or is there a behaviour children ask for first?
 4. **If A:** may a character have a second script (the clone hat), which changes the Studio's one-script-per-character rule?
+
+## Decisions (owner, 2026-11-08)
+
+1. **Size B first** (copies without scripts).
+2. **Cap: 20 live** copies across the run.
+3. **Rules accepted:** spread out, fall from the top, follow the leader.
+4. **Size A later:** a character may then get a second script (the clone hat), changing the one-script-per-character rule.
+
+## Status
+
+Size B built and merged (#1298): `createCopies` statement, deterministic runtime, stage, projections, Scratch import, Ori ideas _rain_ and _crowd_. Size A not started.
