@@ -284,3 +284,25 @@ test("Ori notices the same block written three times and offers one Repetir, onl
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(3);
 });
+
+test("Ori notices a word nobody gave a value", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByLabel("Nombre", { exact: true }).fill("Palabra");
+  await page.getByRole("button", { name: "+ Crear palabra" }).click();
+  await page.getByRole("button", { name: "+ Decir la palabra" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("button", { name: /Ori vio algo/ }).click();
+  await expect(page.locator(".kids-ori-noticed-panel")).toContainText("está vacía");
+});

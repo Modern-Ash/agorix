@@ -30,6 +30,8 @@ const KINDS: ReadonlySet<string> = new Set([
   "soundSilent",
   "workingAgainstEachOther",
   "loopNeverEnds",
+  "wordNeverSet",
+  "copiesAtLimit",
 ]);
 const EVENT_TYPES: ReadonlySet<string> = new Set(["key", "click", "message", "backdrop", "clone"]);
 const LOOPS: ReadonlySet<string> = new Set<LoopKindFound>(["forever", "repeatUntil", "waitUntil"]);
@@ -130,6 +132,7 @@ const MAY_MENTION: Readonly<Record<string, Record<OriLocale, readonly string[]>>
   hiddenCharacter: { es: ["mostrar", "esconder"], en: ["show", "hide"] },
   soundSilent: { es: ["volumen", "sonido"], en: ["volume", "sound"] },
   loopNeverEnds: { es: ["por siempre", "repetir", "esperar"], en: ["forever", "repeat", "wait"] },
+  wordNeverSet: { es: ["preguntar"], en: ["ask"] },
 };
 
 const TU_FORMS =
