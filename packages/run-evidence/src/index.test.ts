@@ -486,6 +486,28 @@ describe("run evidence findings", () => {
       eventType: "backdrop",
     });
   });
+
+  it("names a timer hat and a loudness hat that never started, with kinds only", () => {
+    const scripts: Script[] = [
+      { id: "a", trigger: flag, statements: [{ type: "move", steps: 20 }] },
+      { id: "b", trigger: { type: "onTimerOver", seconds: 60 }, statements: [{ type: "hide" }] },
+      { id: "c", trigger: { type: "onLoudnessOver", level: 90 }, statements: [{ type: "show" }] },
+    ];
+    const p = program(scripts);
+    const c = creative(scripts);
+    const found = diagnoseRun({ program: p, creative: c, run: runMultiActorProgram(p, c) });
+    const types = found
+      .filter((item) => item.kind === "neverStarted")
+      .map((item) => toProviderFinding(item));
+    expect(types).toEqual(
+      expect.arrayContaining([
+        { kind: "neverStarted", counts: {}, eventType: "timer" },
+        { kind: "neverStarted", counts: {}, eventType: "loudness" },
+      ]),
+    );
+    // Neither the seconds nor the level reach the provider input.
+    expect(JSON.stringify(types)).not.toMatch(/60|90/);
+  });
 });
 
 describe("a word nothing ever gave a value, and copies that do not fit (#1303, #1311)", () => {

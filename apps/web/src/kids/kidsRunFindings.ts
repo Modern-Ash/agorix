@@ -77,6 +77,22 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
           : young
             ? "It starts when the backdrop changes to that one. It did not change to it this time."
             : "This program starts when the backdrop changes to a particular one. The backdrop did not change to it this run.";
+      if (event?.type === "timer")
+        return es
+          ? young
+            ? "Empieza cuando pasa el tiempo. Esta vez el juego paró antes."
+            : "Este programa empieza cuando el cronómetro pasa de cierto tiempo. En esta corrida no llegó a ese tiempo."
+          : young
+            ? "It starts when the timer gets to its time. The game stopped before that this time."
+            : "This program starts when the timer goes over a set time. The timer did not get that far this run.";
+      if (event?.type === "loudness")
+        return es
+          ? young
+            ? "Empieza cuando hay mucho ruido. Esta vez no hubo tanto."
+            : "Este programa empieza cuando el volumen pasa de cierto nivel. En esta corrida no lo pasó (o el micrófono estaba apagado)."
+          : young
+            ? "It starts when it gets loud. It did not get that loud this time."
+            : "This program starts when the loudness goes over a set level. It did not this run (or the microphone was off).";
       if (event?.type === "key")
         return es
           ? young
