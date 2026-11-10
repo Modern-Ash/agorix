@@ -487,3 +487,93 @@ describe("run evidence findings", () => {
     });
   });
 });
+
+describe("a word nothing ever gave a value, and copies that do not fit (#1303, #1311)", () => {
+  const withWord = (scripts: Script[]): ProjectProgram => ({
+    schema: SCHEMA_VERSION,
+    textVariables: [{ id: "studio-text-1", name: "Palabra", initialValue: "", visible: true }],
+    scripts,
+  });
+
+  it("does not call a word unset when a block writes it, even from its own value", () => {
+    const p = withWord([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          {
+            type: "setText",
+            variableId: "studio-text-1",
+            value: { type: "textVariable", variableId: "studio-text-1" },
+          },
+        ] as never,
+      },
+    ]);
+    // Reading the word to write it back is not a value from anywhere.
+    const c = creative([...p.scripts]);
+    const found = diagnoseRun({ program: p, creative: c, run: runMultiActorProgram(p, c) });
+    expect(found.map((item) => item.kind)).not.toContain("wordNeverSet");
+  });
+
+  it("is quiet when the word is asked for, and says so when it is never set", () => {
+    const asked = withWord([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          { type: "askText", promptId: "name", variableId: "studio-text-1" },
+          {
+            type: "setText",
+            variableId: "studio-text-1",
+            value: { type: "textLiteral", value: "x" },
+          },
+        ] as never,
+      },
+    ]);
+    const c = creative([...asked.scripts]);
+    expect(
+      diagnoseRun({ program: asked, creative: c, run: runMultiActorProgram(asked, c) }).map(
+        (item) => item.kind,
+      ),
+    ).not.toContain("wordNeverSet");
+    const never = withWord([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          {
+            type: "if",
+            condition: {
+              type: "textContains",
+              text: { type: "textVariable", variableId: "studio-text-1" },
+              part: { type: "textLiteral", value: "a" },
+            },
+            then: [{ type: "move", steps: 20 }],
+          },
+        ] as never,
+      },
+    ]);
+    const nc = creative([...never.scripts]);
+    const finding = diagnoseRun({
+      program: never,
+      creative: nc,
+      run: runMultiActorProgram(never, nc),
+    }).find((item) => item.kind === "wordNeverSet");
+    expect(finding).toMatchObject({ actorId: "actor:1", counts: { reads: 1 } });
+    // It is about a word: nothing about its content, only kind and counts reach a provider.
+    expect(JSON.stringify(toProviderFinding(finding!))).not.toContain("Palabra");
+  });
+
+  it("says copies were not made when the run already holds the most it may", () => {
+    const make = { type: "createCopies", count: 5, rule: "spread" } as const;
+    const found = diagnose([
+      { id: "a", trigger: flag, statements: [make, make, make, make, make] },
+    ]);
+    const finding = found.find((item) => item.kind === "copiesAtLimit");
+    expect(finding).toMatchObject({ kind: "copiesAtLimit", actorId: "actor:1" });
+    expect(finding!.counts["refused"]).toBeGreaterThanOrEqual(1);
+    expect(
+      diagnose([{ id: "a", trigger: flag, statements: [make] }]).map((item) => item.kind),
+    ).not.toContain("copiesAtLimit");
+  });
+});

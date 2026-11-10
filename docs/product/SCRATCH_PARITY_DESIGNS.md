@@ -112,3 +112,7 @@ The runtime stays deterministic and the trace stays the evidence; a project with
 Done: reset timer (#1323), typed answer (#1329), microphone volume and its hat (#1332, #1333), and touching a colour over a **backdrop's colour zones**: the expression `touchingColor { color }` (closed pen palette), with each bundled backdrop's sky and ground as zones in the creative state (`colorZones`, validated and bounded), so the runtime answers on the scene model and never reads pixels. A backdrop without zones (every imported one) answers false. The Studio offers it as a condition ("está sobre el color …"); the Scratch importer maps `sensing_touchingcolor` to the nearest pen colour by hue.
 
 Not done: touching the pen trail or a stamped copy. Each character's pen lives in its own world, so reading another character's trail needs the scheduler to share trails first; it is left for its own slice.
+
+## Status: Ori findings from the run's evidence
+
+Added: `wordNeverSet` (a word that blocks read and nothing ever sets or asks for; sure once the reading block ran) and `copiesAtLimit` (copy requests refused because the run already holds 20; the trace now carries the note for plain copies too). Both say only a kind and counts to a provider, with a local es/en sentence for each age band and no fix proposal. Still open: "near the block limit".

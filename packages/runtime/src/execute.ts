@@ -625,6 +625,7 @@ function* executeStatement(
   const before = cloneWorldState(state.world);
   let conditionResult: boolean | undefined;
   let waitUntilTimedOut = false;
+  let copiesRefused = false;
   let choicePending = false;
   let callArgs: readonly number[] | undefined;
   let audio: AudioPlayback | undefined;
@@ -657,8 +658,10 @@ function* executeStatement(
       if (statement.withScript === true) break;
       const before = state.world.copies?.length ?? 0;
       state.world = createCopiesWorld(state.world, statement.count, statement.rule);
-      if ((state.world.copies?.length ?? 0) - before < statement.count)
+      if ((state.world.copies?.length ?? 0) - before < statement.count) {
         addNote(state, `createCopies: limit of ${COPIES_CAP} copies`);
+        copiesRefused = true;
+      }
       break;
     }
     case "goToTarget": {
@@ -1063,6 +1066,7 @@ function* executeStatement(
     statementType: statement.type,
     ...(statement.type === "forever" ? { note: "forever: bounded by runtime budgets" } : {}),
     ...(waitUntilTimedOut ? { note: "waitUntil: stopped after 10 virtual seconds" } : {}),
+    ...(copiesRefused ? { note: `createCopies: limit of ${COPIES_CAP} copies` } : {}),
     ...(choicePending && statement.type === "askChoice"
       ? { note: `askChoice: awaiting ${statement.promptId}` }
       : {}),

@@ -191,6 +191,24 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
           ? "This loop never ends. Give it a way out so the program can stop."
           : `This loop has no end: it ran ${passes} steps and the program had to cut it off.`;
     }
+    case "wordNeverSet":
+      return es
+        ? young
+          ? "Esta palabra está vacía porque nadie le puso nada. Probá «Preguntar una palabra»."
+          : "Este programa usa una palabra a la que nunca se le dio un valor, así que siempre está vacía. Podés dársela con «Preguntar una palabra» o con «Poner la palabra»."
+        : young
+          ? "This word is empty because nothing ever put anything in it. Try “Ask for a word”."
+          : "This program uses a word that is never given a value, so it is always empty. You can give it one with “Ask for a word” or “Set the word”.";
+    case "copiesAtLimit": {
+      const refused = finding.counts["refused"] ?? 1;
+      return es
+        ? young
+          ? "Ya hay muchas copias en la escena (20) y no entran más. Hacé que se borren solas."
+          : `La escena ya tenía el máximo de 20 copias y ${refused === 1 ? "un pedido de copias no se cumplió" : `${refused} pedidos de copias no se cumplieron`}. Si las copias se borran solas cuando terminan, caben más.`
+        : young
+          ? "There are many copies on the scene (20) and no more fit. Make them delete themselves."
+          : `The scene already held the most copies it can (20) and ${refused === 1 ? "one request for copies was not met" : `${refused} requests for copies were not met`}. If copies delete themselves when they finish, more fit.`;
+    }
     case "predictionMismatch":
       return es
         ? young
