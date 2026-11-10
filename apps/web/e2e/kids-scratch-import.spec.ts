@@ -156,3 +156,48 @@ test("a file that is not a Scratch project says so and changes nothing", async (
   await expect(page.getByRole("status").filter({ hasText: "no se pudo importar" })).toBeVisible();
   await expect(page.locator(".kids-scratch-report")).toHaveCount(0);
 });
+
+test("a scene can be exported as a Scratch .sb3 and imported back (#1312)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await page.getByRole("button", { name: "Volver a Crear" }).click();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByTestId("export-scratch")
+    .click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/\.sb3$/);
+  const path = await file.path();
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync(path);
+  // A zip that holds project.json, readable by the importer.
+  expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK");
+  expect(bytes.includes(Buffer.from("project.json"))).toBe(true);
+  await expect(page.getByRole("status")).toContainText("Exporté 1 bloque(s) a Scratch");
+  // And it comes back through "Importar de Scratch".
+  await page.getByLabel("Importar de Scratch (.sb3)").setInputFiles({
+    name: "back.sb3",
+    mimeType: "application/zip",
+    buffer: bytes,
+  });
+  const report = page.locator(".kids-scratch-report");
+  await expect(report).toContainText("1 objeto(s)");
+  await report.getByRole("button", { name: "Abrir la escena" }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("Mover");
+});
