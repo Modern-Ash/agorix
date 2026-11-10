@@ -44,6 +44,7 @@ export {
   replayLiveRuntime,
   type LiveInput,
   type LiveInputLog,
+  type ClockSample,
   type LiveRuntime,
   type LiveRuntimeOptions,
 } from "./liveRuntime.js";

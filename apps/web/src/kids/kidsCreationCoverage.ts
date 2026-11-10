@@ -52,6 +52,7 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "loudness",
   "costumeNumber",
   "backdropNumber",
+  "currentTime",
   "timer",
   "mouseX",
   "mouseY",

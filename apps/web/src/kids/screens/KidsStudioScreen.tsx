@@ -73,6 +73,7 @@ import {
   isCloneId,
   createReplayRuntime,
   runMultiActorProgram,
+  type ClockSample,
   type LiveInputLog,
   type LiveRuntime,
   type MultiActorRunResult,
@@ -539,6 +540,7 @@ const COPY = {
     presetCostume: "lleva otro disfraz que el primero",
     presetBackdrop: "el fondo no es el primero",
     presetLoud: "hay mucho ruido",
+    presetAfternoon: "es por la tarde",
     presetColor: "está sobre el color",
     listening: "Escuchando el volumen del micrófono mientras jugás",
     randomDecimal: "con decimales",
@@ -872,6 +874,7 @@ const COPY = {
     presetCostume: "wears a costume other than the first",
     presetBackdrop: "the backdrop is not the first",
     presetLoud: "it gets loud",
+    presetAfternoon: "it is afternoon",
     presetColor: "is over the colour",
     listening: "Listening to the microphone volume while you play",
     randomDecimal: "with decimals",
@@ -1094,6 +1097,7 @@ function expressionLabel(
     return locale === "es" ? "número de disfraz" : "costume number";
   if (value.type === "backdropNumber")
     return locale === "es" ? "número de fondo" : "backdrop number";
+  if (value.type === "currentTime") return `${locale === "es" ? "reloj" : "clock"} ${value.part}`;
   if (value.type === "loudness") return locale === "es" ? "volumen" : "loudness";
   if (value.type === "touchingColor")
     return `${locale === "es" ? "sobre el color" : "over the colour"} ${PEN_COLOR_NAME[locale][value.color]}`;
@@ -1176,6 +1180,20 @@ function programReadsLoudness(program: unknown): boolean {
   return text.includes('"type":"loudness"') || text.includes('"type":"onLoudnessOver"');
 }
 
+/** The device clock as whole numbers, read here (the runtime never reads a global). */
+function readClock(): ClockSample {
+  const now = new Date();
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    date: now.getDate(),
+    dayOfWeek: now.getDay() + 1,
+    hour: now.getHours(),
+    minute: now.getMinutes(),
+    second: now.getSeconds(),
+  };
+}
+
 type ConditionPreset =
   | "key"
   | "edge"
@@ -1186,6 +1204,7 @@ type ConditionPreset =
   | "costume"
   | "backdrop"
   | "loud"
+  | "afternoon"
   | `color:${PenColor}`;
 
 function waitingAskTextId(result: MultiActorRunResult | null): AskTextPromptId | null {
@@ -2869,6 +2888,12 @@ export function KidsStudioScreen({
     if (preset === "edge") return STUDIO_EDGE_CONDITION;
     if (preset.startsWith("color:"))
       return { type: "touchingColor", color: preset.slice(6) as PenColor };
+    if (preset === "afternoon")
+      return {
+        type: "greaterThan",
+        left: { type: "currentTime", part: "hour" },
+        right: { type: "numericLiteral", value: 11 },
+      };
     if (preset === "loud")
       return {
         type: "greaterThan",
@@ -3521,6 +3546,7 @@ export function KidsStudioScreen({
           pointer: () => pointerRef.current,
           choices: choiceAnswers.current,
           answers: textAnswers.current,
+          clock: readClock,
           paceSeconds: LIVE_PACE_SECONDS,
           // Only a program that reads loudness, with the adult's switch on, gets a level source.
           ...(levelAllowed && programReadsLoudness(history.current)
@@ -7381,6 +7407,7 @@ export function KidsStudioScreen({
                             {copy.presetColor} {copy.penColors[color]}
                           </option>
                         ))}
+                        <option value="afternoon">{copy.presetAfternoon}</option>
                         {levelAllowed ? <option value="loud">{copy.presetLoud}</option> : null}
                       </select>
                     </label>

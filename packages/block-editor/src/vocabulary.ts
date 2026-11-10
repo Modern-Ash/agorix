@@ -473,6 +473,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "sensing_loudness" }),
   },
   {
+    type: "sensing_current_time",
+    label: "Current [part] of the clock",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "a part of the clock now, as a number",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "sensing_current_time",
+      fields: { part: "hour" },
+    }),
+  },
+  {
     type: "sensing_mouse_x",
     label: "Mouse X",
     section: "Check",

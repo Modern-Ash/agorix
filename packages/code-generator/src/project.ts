@@ -186,6 +186,8 @@ function formatExpression(
       return "costumeNumber()";
     case "backdropNumber":
       return "backdropNumber()";
+    case "currentTime":
+      return `currentTime(${JSON.stringify(expression.part)})`;
     case "mouseX":
       return "mouseX()";
     case "mouseY":

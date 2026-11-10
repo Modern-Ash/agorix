@@ -778,6 +778,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "costume_number()";
     case "backdropNumber":
       return "backdrop_number()";
+    case "currentTime":
+      return "current_time(" + JSON.stringify(expression.part) + ")";
     case "mouseX":
       return "mouse_x()";
     case "mouseY":

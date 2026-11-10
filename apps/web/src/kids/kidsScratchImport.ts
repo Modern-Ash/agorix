@@ -1,4 +1,5 @@
 import {
+  type ClockPart,
   SCHEMA_VERSION,
   type Expression,
   type ProjectProgram,
@@ -51,6 +52,15 @@ export interface ScratchImportResult {
   readonly report: ScratchImportReport;
 }
 
+const CLOCK_PART_OF_SCRATCH: Readonly<Record<string, ClockPart>> = {
+  YEAR: "year",
+  MONTH: "month",
+  DATE: "date",
+  DAYOFWEEK: "dayOfWeek",
+  HOUR: "hour",
+  MINUTE: "minute",
+  SECOND: "second",
+};
 const MAX_SPRITES = 12;
 const MESSAGES = ["hola", "vamos", "listo"] as const;
 const KEYS: Readonly<Record<string, string>> = {
@@ -223,6 +233,10 @@ class Converter {
         return { type: "timer" };
       case "sensing_loudness":
         return { type: "loudness" };
+      case "sensing_current": {
+        const part = CLOCK_PART_OF_SCRATCH[String(block.fields["CURRENTMENU"]?.[0]).toUpperCase()];
+        return part === undefined ? undefined : { type: "currentTime", part };
+      }
       // Only the number is read; the costume or backdrop name has no counterpart here.
       case "looks_costumenumbername":
         return block.fields["NUMBER_NAME"]?.[0] === "number"

@@ -14,6 +14,7 @@ import {
   type MusicBeats,
   type MusicDrum,
   type MusicInstrument,
+  type ClockPart,
   type PenColor,
   type PenTransparency,
   ProgramVariable,
@@ -105,6 +106,7 @@ export type BlockType =
   | "sensing_loudness"
   | "sensing_costume_number"
   | "sensing_backdrop_number"
+  | "sensing_current_time"
   | "sensing_mouse_x"
   | "sensing_mouse_y"
   | "sensing_mouse_down"
@@ -417,6 +419,8 @@ function expressionFromBlock(
       return { type: "costumeNumber" };
     case "sensing_backdrop_number":
       return { type: "backdropNumber" };
+    case "sensing_current_time":
+      return { type: "currentTime", part: stringField(block, "part", path) as ClockPart };
     case "sensing_mouse_x":
       return { type: "mouseX" };
     case "sensing_mouse_y":
@@ -1031,6 +1035,8 @@ function expressionToBlock(
       return { id, type: "sensing_costume_number" };
     case "backdropNumber":
       return { id, type: "sensing_backdrop_number" };
+    case "currentTime":
+      return { id, type: "sensing_current_time", fields: { part: expression.part } };
     case "mouseX":
       return { id, type: "sensing_mouse_x" };
     case "mouseY":

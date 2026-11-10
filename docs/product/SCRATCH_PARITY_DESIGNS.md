@@ -111,6 +111,8 @@ The runtime stays deterministic and the trace stays the evidence; a project with
 
 Done: reset timer (#1323), typed answer (#1329), microphone volume and its hat (#1332, #1333), and touching a colour over a **backdrop's colour zones**: the expression `touchingColor { color }` (closed pen palette), with each bundled backdrop's sky and ground as zones in the creative state (`colorZones`, validated and bounded), so the runtime answers on the scene model and never reads pixels. A backdrop without zones (every imported one) answers false. The Studio offers it as a condition ("está sobre el color …"); the Scratch importer maps `sensing_touchingcolor` to the nearest pen colour by hue.
 
+Current time (#1304): the expression `currentTime { part }` reads one of year, month, date, day of week, hour, minute or second as a whole number. The caller captures the clock (the runtime never reads a global); the live runtime samples it each tick and logs it in the input log only when it changes, so a replay needs no clock. Without a clock every part is 0. The Studio offers "it is afternoon" as a condition; the Scratch importer maps `sensing_current`.
+
 Not done: touching the pen trail or a stamped copy. Each character's pen lives in its own world, so reading another character's trail needs the scheduler to share trails first; it is left for its own slice.
 
 ## Status: costume and backdrop editor (#1308), increment 1

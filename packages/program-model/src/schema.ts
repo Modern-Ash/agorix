@@ -90,6 +90,27 @@ export interface CostumeNumberExpression {
   readonly type: "costumeNumber";
 }
 
+/** The parts of the clock a program can read, as whole numbers (Scratch: current year, month, ...). */
+export const CLOCK_PARTS = [
+  "year",
+  "month",
+  "date",
+  "dayOfWeek",
+  "hour",
+  "minute",
+  "second",
+] as const;
+export type ClockPart = (typeof CLOCK_PARTS)[number];
+
+/**
+ * One part of the device clock, read by the caller and handed to the run (never read from a global),
+ * so a replay gives the same value. 0 when the caller gave no clock.
+ */
+export interface CurrentTimeExpression {
+  readonly type: "currentTime";
+  readonly part: ClockPart;
+}
+
 /** Which backdrop the stage shows, counted from 1 in the project's backdrop order; 0 when unlisted. */
 export interface BackdropNumberExpression {
   readonly type: "backdropNumber";
@@ -295,6 +316,7 @@ export type Expression =
   | LoudnessExpression
   | CostumeNumberExpression
   | BackdropNumberExpression
+  | CurrentTimeExpression
   | MouseXExpression
   | MouseYExpression
   | MouseDownExpression
