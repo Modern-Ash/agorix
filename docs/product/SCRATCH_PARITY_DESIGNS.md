@@ -140,3 +140,7 @@ Two number reporters, `costumeNumber` and `backdropNumber`, count from 1 in an o
 ## Status: Scratch variables that hold words
 
 The Scratch importer now keeps a variable as a **word variable** (up to three, the scene's text values) when it starts as a word or the project sets it to a word, and numbers stay numbers. "Set to" a short word (at most 20 letters, no control characters) or to another word variable becomes `setText`; anything longer, or "change by" on a word variable, is left out and reported. The scene's variables start empty, so a starting word is not kept. Lists of words are still not offered: they need their own statements and reporters in every layer and a decision on how child text appears in watchers, so they are a separate design.
+
+## Status: custom block numbers (#1310)
+
+"Mis bloques" and "Bloques para todos" accept at most **five** named numbers, with positional ids `p1` through `p5`. Five keeps the call and its inputs bounded on a small screen while allowing a child to pass more than the former three values. The validator rejects a sixth number and calls with the wrong arity; the scene hides the add control at five. Removing a number renumbers the remaining inputs and updates calls in one undoable step. The runtime and all code views read the same canonical inputs.

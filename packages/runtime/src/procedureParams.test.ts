@@ -105,6 +105,26 @@ describe("custom block numbers at run time", () => {
     expect(result.world.sprite.heading).toBe((((90 + 90 - 90) % 360) + 360) % 360);
   });
 
+  it("uses the fifth number in the canonical runtime and records all five", () => {
+    const result = run(
+      build(
+        [call("a", 1, 2, 3, 4, 60)],
+        [
+          {
+            id: "a",
+            name: "Cinco",
+            params: p("uno", "dos", "tres", "cuatro", "pasos"),
+            body: [{ type: "move", steps: 1, stepsFrom: "p5" }],
+          },
+        ],
+      ),
+    );
+    expect(result.world.sprite.x).toBe(60);
+    expect(result.trace.find((entry) => entry.statementType === "callProcedure")?.args).toEqual([
+      1, 2, 3, 4, 60,
+    ]);
+  });
+
   it("the call step records the numbers it received; blocks without numbers record none", () => {
     const withNumbers = run(
       build([call("a", 120)], [{ id: "a", name: "Cuadrado", params: p("lado"), body: square }]),
