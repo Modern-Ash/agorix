@@ -89,3 +89,4 @@ The same adult switch that allows recording on this device also shows "Grabar un
 - **Leaving the device.** A recording counts as child-added media. Exporting a project that holds one needs the same explicit adult opt-in as a drawing, and a file carrying a recording is re-validated on import. Without the opt-in the export is refused.
 - **Never read by Ori or the provider.** A block plays a recording by its id. Findings and provider input carry kinds and counts only, never the audio and not its name's meaning.
 - **Never executed.** The bytes are decoded for playback only; if they will not decode, the run stays quiet and its result is unchanged.
+- **Deleting.** A child can delete a recording from the sound drawer. One a block still plays is kept and the child is told why; the program is never changed behind their back.

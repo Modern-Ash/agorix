@@ -21,6 +21,9 @@ const COPY = {
     stop: "Parar",
     choose: "Elegir y escuchar",
     use: "Usar",
+    remove: "Borrar",
+    removed: "Borraste",
+    inUse: "un bloque lo usa todavía. Quitá ese bloque y probá de nuevo.",
     full: "Ya tenés 8 grabaciones.",
     none: "Aún no grabaste nada.",
     failed: "No se pudo grabar.",
@@ -39,6 +42,9 @@ const COPY = {
     stop: "Stop",
     choose: "Choose and listen",
     use: "Use",
+    remove: "Delete",
+    removed: "Deleted",
+    inUse: "a block still plays it. Remove that block and try again.",
     full: "You already have 8 recordings.",
     none: "You have not recorded anything yet.",
     failed: "Could not record.",
@@ -72,6 +78,7 @@ export function KidsRecordedSounds({
   onChoose,
   onUse,
   onSave,
+  onRemove,
 }: {
   readonly locale: "es" | "en";
   readonly sounds: readonly ProjectAsset[];
@@ -82,6 +89,8 @@ export function KidsRecordedSounds({
   readonly onUse?: (id: string) => void;
   /** Keeps the recording in the project; throws when it cannot. Without it nothing is recorded. */
   readonly onSave?: (wavDataUrl: string) => void;
+  /** Deletes a recording; throws when a block still plays it. Without it nothing is deleted. */
+  readonly onRemove?: (id: string) => void;
 }) {
   const copy = COPY[locale];
   const allowed = onSave !== undefined && microphoneAllowed();
@@ -127,6 +136,15 @@ export function KidsRecordedSounds({
     }
   }
 
+  function remove(sound: ProjectAsset) {
+    try {
+      onRemove?.(sound.id);
+      setMessage(`${copy.removed} ${sound.name}`);
+    } catch {
+      setMessage(`${sound.name}: ${copy.inUse}`);
+    }
+  }
+
   const full = sounds.length >= MAX_EMBEDDED_SOUNDS;
   return (
     <div className="kids-sound-picker" role="group" aria-label={copy.title}>
@@ -151,6 +169,16 @@ export function KidsRecordedSounds({
                 onClick={() => onUse(sound.id)}
               >
                 {copy.use}
+              </button>
+            ) : null}
+            {onRemove ? (
+              <button
+                type="button"
+                className="kids-button"
+                aria-label={`${copy.remove} ${sound.name}`}
+                onClick={() => remove(sound)}
+              >
+                {copy.remove}
               </button>
             ) : null}
           </li>

@@ -128,3 +128,7 @@ This did not need a new proposal operation: a picture is a project asset, not pa
 ## Status: words for the child's own pictures (#1308)
 
 A picture the child drew or imported had no text for a screen reader. Now each one is described in a short sentence ("Tu dibujo: ocupa buena parte, con azul, verde y blanco."), worked out on the device from the pixels alone, from a closed list of eleven colour words and three coverage phrases. No file text, no model and no network are involved, and the sentence is deterministic. It is the accessible name of the character on the stage and of the stage backdrop, and it is read beside each entry of "Mis disfraces" and "Mis fondos". A picture that cannot be read keeps just its name. Shapes and what a drawing _depicts_ are not claimed: only colours and how much of the picture is drawn.
+
+## Status: own sounds (#1309), recordings in the project
+
+Recording, trimming, keeping the recording as a project sound, playing it from a block, exporting it only with the adult's opt-in, and deleting it (refused while a block plays it) are built. Ori never hears or names a recording.

@@ -3,6 +3,7 @@ import { createEditorHistory } from "@agorix/block-editor";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import {
   addStudioSound,
+  removeStudioSound,
   createStudioProject,
   exportStudioProject,
   importStudioProject,
@@ -89,6 +90,28 @@ describe("recordings kept in a studio project", () => {
     const exported = exportStudioProject(project.id, store, true);
     const copy = importStudioProject(exported, "es", store, index);
     expect(store.load(copy.id).metadata.assets?.some((asset) => asset.id === sound)).toBe(true);
+  });
+
+  it("deletes a recording nothing plays, and keeps one a block still plays", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const used = addStudioSound(project.id, wav(), "es", store);
+    const spare = addStudioSound(project.id, wav(), "es", store);
+    const history = appendStudioStatement(
+      createEditorHistory(store.load(project.id).program),
+      "actor:studio-1-nova",
+      { type: "playSound", soundId: used },
+    );
+    saveStudioProject(project.id, history.current, "forest", "actor:studio-1-nova", "es", store);
+    expect(() => removeStudioSound(project.id, used, store)).toThrow(/in use/);
+    removeStudioSound(project.id, spare, store);
+    const ids = store.load(project.id).metadata.assets?.map((asset) => asset.id) ?? [];
+    expect(ids).toContain(used);
+    expect(ids).not.toContain(spare);
+    expect(() => removeStudioSound(project.id, spare, store)).toThrow(/unknown/);
+    expect(() => removeStudioSound(project.id, "kids:pop", store)).toThrow(/invalid/);
+    // The number is free again.
+    expect(addStudioSound(project.id, wav(), "es", store)).toBe(spare);
   });
 
   it("plays a project recording from its data, and stays quiet when it will not decode", async () => {
