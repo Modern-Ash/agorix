@@ -38,6 +38,8 @@ export const MAX_PROGRAM_NODES = 500;
 
 /** Custom blocks ("procedures") of one script, i.e. of one character. */
 export const PROCEDURES_MAX_PER_SCRIPT = 20;
+/** Custom blocks defined once for the whole program, any character may call them. */
+export const SHARED_PROCEDURES_MAX = 10;
 export const PROCEDURE_BODY_MAX = 20;
 export const PROCEDURE_NAME_MAX_LENGTH = 20;
 /** A custom block takes at most this many numbers (ids p1 to p3). */

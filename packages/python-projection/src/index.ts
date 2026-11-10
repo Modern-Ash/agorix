@@ -35,6 +35,8 @@ interface Writer {
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
+  if (validated.sharedProcedures !== undefined)
+    throw new RangeError("shared custom blocks are not shown as code yet");
   const writer: Writer = {
     text: "",
     mapping: {},

@@ -437,6 +437,9 @@ export function singleScriptProgram(program: ProjectProgram, script: Script): Pr
     ...(program.lists === undefined ? {} : { lists: program.lists }),
     ...(program.textVariables === undefined ? {} : { textVariables: program.textVariables }),
     ...(program.extensions === undefined ? {} : { extensions: program.extensions }),
+    ...(program.sharedProcedures === undefined
+      ? {}
+      : { sharedProcedures: program.sharedProcedures }),
     scripts: [script],
   };
 }
