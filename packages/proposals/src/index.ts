@@ -1,6 +1,7 @@
 import { projectProgram, type ProjectionResult, type TextRange } from "@agorix/code-generator";
 import {
   PROCEDURE_PARAMS_MAX,
+  PROCEDURE_BODY_MAX,
   SCHEMA_VERSION,
   validateProgram,
   type Expression,
@@ -1288,11 +1289,18 @@ function assertOperation(operation: ProposalOperation, path: string): void {
     case "addSharedProcedure":
       assertAllowedKeys(operation, path, ["type", "procedure"]);
       assertPlainObject(operation.procedure, `${path}.procedure`);
-      validateProgram({
-        schema: SCHEMA_VERSION,
-        scripts: [],
-        sharedProcedures: [operation.procedure],
-      });
+      assertAllowedKeys(operation.procedure, `${path}.procedure`, ["id", "name", "params", "body"]);
+      assertBoundedString(operation.procedure.id, `${path}.procedure.id`, 1, 64);
+      assertBoundedString(operation.procedure.name, `${path}.procedure.name`, 1, 20);
+      if (
+        !Array.isArray(operation.procedure.body) ||
+        operation.procedure.body.length < 1 ||
+        operation.procedure.body.length > PROCEDURE_BODY_MAX
+      ) {
+        fail("INVALID_PROPOSAL", `${path}.procedure.body`, "expected a bounded block body");
+      }
+      // References in the body are checked against the full accepted program when the
+      // candidate is reviewed. An isolated procedure cannot resolve existing shared blocks.
       return;
     case "addScript": {
       assertAllowedKeys(operation, path, ["type", "script"]);

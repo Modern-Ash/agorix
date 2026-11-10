@@ -241,4 +241,28 @@ describe("the shared block Ori proposes for blocks repeated apart", () => {
     ).toThrow();
     expect(fixFor({ ...finding, counts: { period: 3, times: 3 } }, base)).toBeNull();
   });
+
+  it("can share a repeated group that uses an existing shared block", () => {
+    const call = { type: "callProcedure", procedureId: "shared-1" } as const;
+    const withShared = validateStudioProgram({
+      ...base,
+      sharedProcedures: [{ id: "shared-1", name: "Paso", body: [move] }],
+      scripts: [
+        {
+          ...base.scripts[0]!,
+          statements: [call, turn, pause, call, turn, pause, call, turn],
+        },
+      ],
+    });
+    const proposal = proposeRunFix(withShared, finding, "es");
+    const accepted = acceptProposal(
+      withShared,
+      reviewRunFix(withShared, finding, proposal),
+    ).program;
+    expect(accepted.sharedProcedures?.[1]?.body).toEqual([call, turn]);
+    expect(accepted.scripts[0]?.statements[0]).toEqual({
+      type: "callProcedure",
+      procedureId: "shared-2",
+    });
+  });
 });
