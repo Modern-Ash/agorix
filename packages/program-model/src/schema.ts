@@ -331,7 +331,7 @@ export type Expression =
 // --- Statements -----------------------------------------------------------
 
 /** The numbers a custom block can take; positional, so a call's `args[i]` fills `params[i]`. */
-export type ProcedureParamId = "p1" | "p2" | "p3";
+export type ProcedureParamId = "p1" | "p2" | "p3" | "p4" | "p5";
 
 export interface MoveStatement {
   readonly type: "move";
@@ -940,7 +940,7 @@ export interface ProgramList {
 export interface Procedure {
   readonly id: string;
   readonly name: string;
-  /** Up to three numbers; titles are child text and never leave the program. */
+  /** Up to five numbers; titles are child text and never leave the program. */
   readonly params?: readonly ProcedureParam[];
   readonly body: readonly Statement[];
 }

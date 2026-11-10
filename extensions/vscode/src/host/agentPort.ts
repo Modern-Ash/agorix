@@ -183,6 +183,8 @@ function describeOperation(operation: ProposalOperation): {
   label: string;
 } {
   switch (operation.type) {
+    case "addSharedProcedure":
+      return { kind: "add", label: `Add shared block ${operation.procedure.name}` };
     case "addScript":
       return { kind: "add", label: "Add the script the copies start with" };
     case "appendStatement":

@@ -116,18 +116,22 @@ describe("Mis bloques numbers", () => {
     ).toThrow();
   });
 
-  it("adds up to three numbers and removes one without changing behaviour", () => {
+  it("adds up to five numbers and removes one without changing behaviour", () => {
     let history = bindStudioProcedureBlock(stepsBlock(), nova, "proc-1-1", [0], "p1");
     history = addStudioProcedureNumber(history, nova, "proc-1-1", "Giro");
     history = bindStudioProcedureBlock(history, nova, "proc-1-1", [1], "p2");
     history = addStudioProcedureNumber(history, nova, "proc-1-1", "Tercero");
-    expect(() => addStudioProcedureNumber(history, nova, "proc-1-1", "Cuarto")).toThrow();
+    history = addStudioProcedureNumber(history, nova, "proc-1-1", "Cuarto");
+    history = addStudioProcedureNumber(history, nova, "proc-1-1", "Quinto");
+    expect(() => addStudioProcedureNumber(history, nova, "proc-1-1", "Sexto")).toThrow();
     const before = xOf(history);
     history = removeStudioProcedureNumber(history, nova, "proc-1-1", "p1");
     const procedure = history.current.scripts[0]!.procedures![0]!;
     expect(procedure.params?.map((item) => [item.id, item.name])).toEqual([
       ["p1", "Giro"],
       ["p2", "Tercero"],
+      ["p3", "Cuarto"],
+      ["p4", "Quinto"],
     ]);
     expect(procedure.body).toEqual([
       { type: "move", steps: 40 },
@@ -136,6 +140,8 @@ describe("Mis bloques numbers", () => {
     expect(history.current.scripts[0]?.statements[0]).toMatchObject({
       args: [
         { type: "numericLiteral", value: 90 },
+        { type: "numericLiteral", value: 0 },
+        { type: "numericLiteral", value: 0 },
         { type: "numericLiteral", value: 0 },
       ],
     });

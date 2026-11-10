@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type Statement } from "./schema.js";
 import { ProgramValidationError, validateProgram } from "./validate.js";
 
-// Issue #538, Mis bloques version 2: custom blocks can take up to three numbers.
+// Issue #1310: custom blocks can take up to five numbers.
 const num = (value: number) => ({ type: "numericLiteral" as const, value });
 const program = (
   statements: Statement[],
@@ -68,6 +68,18 @@ describe("custom block numbers: valid programs", () => {
         },
       ],
       [{ id: "v", name: "v", initialValue: 0, visible: false }],
+    );
+    expect(validateProgram(ok)).toEqual(ok);
+  });
+
+  it("accepts five positional numbers, including the fifth in a block body", () => {
+    const params = ["p1", "p2", "p3", "p4", "p5"].map((id, index) => ({
+      id,
+      name: `n${index + 1}`,
+    }));
+    const ok = program(
+      [call([num(1), num(2), num(3), num(4), num(5)])],
+      [square({ params, body: [{ type: "move", steps: 40, stepsFrom: "p5" }] })],
     );
     expect(validateProgram(ok)).toEqual(ok);
   });
@@ -171,7 +183,7 @@ describe("custom block numbers: rejected programs", () => {
     invalid(program([call([num(1)])], [square({ params: "lado" })]));
     invalid(
       program(
-        [call([num(1), num(1), num(1), num(1)])],
+        [call([num(1), num(1), num(1), num(1), num(1), num(1)])],
         [
           square({
             params: [
@@ -179,6 +191,8 @@ describe("custom block numbers: rejected programs", () => {
               { id: "p2", name: "b" },
               { id: "p3", name: "c" },
               { id: "p4", name: "d" },
+              { id: "p5", name: "e" },
+              { id: "p6", name: "f" },
             ],
           }),
         ],

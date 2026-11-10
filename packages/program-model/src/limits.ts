@@ -42,8 +42,8 @@ export const PROCEDURES_MAX_PER_SCRIPT = 20;
 export const SHARED_PROCEDURES_MAX = 10;
 export const PROCEDURE_BODY_MAX = 20;
 export const PROCEDURE_NAME_MAX_LENGTH = 20;
-/** A custom block takes at most this many numbers (ids p1 to p3). */
-export const PROCEDURE_PARAMS_MAX = 3;
+/** A custom block takes at most this many numbers (ids p1 to p5). */
+export const PROCEDURE_PARAMS_MAX = 5;
 
 /** Most extension packs one project may declare (ADR 0011). */
 export const EXTENSIONS_MAX = 4;
