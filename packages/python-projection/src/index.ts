@@ -11,6 +11,7 @@ import {
   procedureIdentifiers,
   validateProgram,
   type Expression,
+  type Procedure,
   type ProjectProgram,
   type Statement,
   type Trigger,
@@ -35,8 +36,6 @@ interface Writer {
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
-  if (validated.sharedProcedures !== undefined)
-    throw new RangeError("shared custom blocks are not shown as code yet");
   const writer: Writer = {
     text: "",
     mapping: {},
@@ -107,25 +106,39 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
   ) {
     writer.text += "\n";
   }
+  const writeProcedure = (procedure: Procedure, name: string, procedureId: string): void => {
+    const start = writer.text.length;
+    const params = procedure.params ?? [];
+    const identifiers = paramIdentifiers(params);
+    writer.paramNames = new Map(params.map((item, k) => [item.id, identifiers[k]!]));
+    writer.text += "def " + name + "(" + identifiers.join(", ") + "):\n";
+    procedure.body.forEach((statement, index) =>
+      writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
+    );
+    addRange(writer, procedureId, start, writer.text.length);
+    writer.paramNames = undefined;
+    writer.text += "\n";
+  };
+  // Shared custom blocks are written once, before the scripts that call them.
+  const shared = validated.sharedProcedures ?? [];
+  const sharedNames = procedureIdentifiers(shared);
+  writer.procedureNames = new Map(shared.map((item, index) => [item.id, sharedNames[index]!]));
+  shared.forEach((procedure, index) =>
+    writeProcedure(procedure, sharedNames[index]!, "sharedProcedures[" + index + "]"),
+  );
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = "scripts[" + scriptIndex + "]";
-    const procedures = script.procedures ?? [];
+    // The shared blocks come first in the naming, so a script's own block never takes their name.
+    const procedures = [...shared, ...(script.procedures ?? [])];
     const names = procedureIdentifiers(procedures);
     writer.procedureNames = new Map(procedures.map((item, index) => [item.id, names[index]!]));
-    procedures.forEach((procedure, procedureIndex) => {
-      const procedureId = scriptId + "/procedures[" + procedureIndex + "]";
-      const start = writer.text.length;
-      const params = procedure.params ?? [];
-      const identifiers = paramIdentifiers(params);
-      writer.paramNames = new Map(params.map((item, k) => [item.id, identifiers[k]!]));
-      writer.text += "def " + names[procedureIndex] + "(" + identifiers.join(", ") + "):\n";
-      procedure.body.forEach((statement, index) =>
-        writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
-      );
-      addRange(writer, procedureId, start, writer.text.length);
-      writer.paramNames = undefined;
-      writer.text += "\n";
-    });
+    (script.procedures ?? []).forEach((procedure, procedureIndex) =>
+      writeProcedure(
+        procedure,
+        names[shared.length + procedureIndex]!,
+        scriptId + "/procedures[" + procedureIndex + "]",
+      ),
+    );
     writeMapped(writer, scriptId, triggerText(script.trigger));
     if (script.statements.length === 0) {
       writer.text += "    pass\n";

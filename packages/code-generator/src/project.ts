@@ -632,12 +632,10 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
 function projectProcedure(
   procedure: Procedure,
   identifier: string,
-  scriptIndex: number,
-  procedureIndex: number,
+  path: string,
   writer: Writer,
   context: ProjectionContext,
 ): void {
-  const path = `scripts[${scriptIndex}]/procedures[${procedureIndex}]`;
   const start = writer.offset;
   const params = procedure.params ?? [];
   const identifiers = paramIdentifiers(params);
@@ -670,8 +668,6 @@ function projectText(program: ProjectProgram): {
   readonly text: string;
   readonly mapping: LanguageNodeTextMapping;
 } {
-  if (program.sharedProcedures !== undefined)
-    throw new RangeError("shared custom blocks are not shown as code yet");
   const writer: Writer = { parts: [], offset: 0, mapping: {} };
   const context = createProjectionContext(program.variables, program.lists, program.textVariables);
   for (const variable of program.variables ?? []) {
@@ -709,6 +705,13 @@ function projectText(program: ProjectProgram): {
   ) {
     write(writer, "\n");
   }
+  // Shared custom blocks are written once, before the scripts that call them.
+  const shared = program.sharedProcedures ?? [];
+  const sharedNames = procedureIdentifiers(shared);
+  context.procedureNames = new Map(shared.map((item, k) => [item.id, sharedNames[k]!]));
+  shared.forEach((procedure, k) =>
+    projectProcedure(procedure, sharedNames[k]!, `sharedProcedures[${k}]`, writer, context),
+  );
   for (let i = 0; i < program.scripts.length; i += 1) {
     const script = program.scripts[i];
     if (script === undefined) {
@@ -717,11 +720,18 @@ function projectText(program: ProjectProgram): {
     if (i > 0) {
       write(writer, "\n");
     }
-    const procedures = script.procedures ?? [];
+    // The shared blocks come first in the naming, so a script's own block never takes their name.
+    const procedures = [...shared, ...(script.procedures ?? [])];
     const identifiers = procedureIdentifiers(procedures);
     context.procedureNames = new Map(procedures.map((item, k) => [item.id, identifiers[k]!]));
-    procedures.forEach((procedure, k) =>
-      projectProcedure(procedure, identifiers[k]!, i, k, writer, context),
+    (script.procedures ?? []).forEach((procedure, k) =>
+      projectProcedure(
+        procedure,
+        identifiers[shared.length + k]!,
+        `scripts[${i}]/procedures[${k}]`,
+        writer,
+        context,
+      ),
     );
     projectScript(script, i, writer, context);
   }

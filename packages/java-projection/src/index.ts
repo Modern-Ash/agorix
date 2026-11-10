@@ -12,6 +12,7 @@ import {
   procedureIdentifiers,
   validateProgram,
   type Expression,
+  type Procedure,
   type ProjectProgram,
   type Statement,
   type Trigger,
@@ -785,8 +786,6 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
 /** Display-only Java view. The canonical program remains the runtime authority. */
 export function projectJava(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
-  if (validated.sharedProcedures !== undefined)
-    throw new RangeError("shared custom blocks are not shown as code yet");
   const allNames = namesFor(
     [...(validated.variables ?? []), ...(validated.textVariables ?? [])],
     new Set(Array.from({ length: 10 }, (_item, depth) => `i${depth}`)),
@@ -832,6 +831,24 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     methods.add(name);
     return name;
   };
+  const writeProcedure = (procedure: Procedure, name: string, procedureId: string): void => {
+    const params = procedure.params ?? [];
+    const identifiers = paramIdentifiers(params);
+    writer.paramNames = new Map(params.map((item, k) => [item.id, identifiers[k]!]));
+    const start = writer.text.length;
+    writer.text += `${INDENT}void ${name}(${identifiers.map((id) => `double ${id}`).join(", ")}) {\n`;
+    block(writer, procedureId, procedure.body, "body", 2);
+    writer.text += `${INDENT}}\n`;
+    addRange(writer, procedureId, start, writer.text.length);
+    writer.paramNames = undefined;
+  };
+  // Shared custom blocks are methods of the class too, written before the scripts that call them.
+  const shared = validated.sharedProcedures ?? [];
+  const sharedNames = procedureIdentifiers(shared).map((base) => unique(camelCase(base), 0));
+  writer.procedureNames = new Map(shared.map((item, index) => [item.id, sharedNames[index]!]));
+  shared.forEach((procedure, index) =>
+    writeProcedure(procedure, sharedNames[index]!, `sharedProcedures[${index}]`),
+  );
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = `scripts[${scriptIndex}]`;
     const procedures = script.procedures ?? [];
@@ -840,18 +857,13 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     const known = new Map(writer.procedureNames);
     procedures.forEach((item, index) => known.set(item.id, names[index]!));
     writer.procedureNames = known;
-    procedures.forEach((procedure, procedureIndex) => {
-      const procedureId = `${scriptId}/procedures[${procedureIndex}]`;
-      const params = procedure.params ?? [];
-      const identifiers = paramIdentifiers(params);
-      writer.paramNames = new Map(params.map((item, k) => [item.id, identifiers[k]!]));
-      const start = writer.text.length;
-      writer.text += `${INDENT}void ${names[procedureIndex]}(${identifiers.map((id) => `double ${id}`).join(", ")}) {\n`;
-      block(writer, procedureId, procedure.body, "body", 2);
-      writer.text += `${INDENT}}\n`;
-      addRange(writer, procedureId, start, writer.text.length);
-      writer.paramNames = undefined;
-    });
+    procedures.forEach((procedure, procedureIndex) =>
+      writeProcedure(
+        procedure,
+        names[procedureIndex]!,
+        `${scriptId}/procedures[${procedureIndex}]`,
+      ),
+    );
     const start = writer.text.length;
     writer.text += `${INDENT}void ${unique(handlerName(script.trigger), scriptIndex)}() {\n`;
     block(writer, scriptId, script.statements, "statements", 2);
