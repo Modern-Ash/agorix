@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { acceptProposal } from "@agorix/proposals";
 import {
+  ORI_IMPORT_INTENTS,
   ORI_STUDIO_INTENTS,
   proposeOriStudioIntent,
   validateOriStudioIntentProposal,
@@ -279,5 +280,22 @@ describe("Studio ideas that add the copy script", () => {
     expect(() =>
       validateOriStudioIntentProposal(context, forge({ ...good, trigger: { type: "greenFlag" } })),
     ).toThrow();
+  });
+});
+
+describe("replacements for what a Scratch import left out (#1312)", () => {
+  it("are one block each, from the closed list, and change nothing by themselves", () => {
+    for (const intent of ORI_IMPORT_INTENTS) {
+      const proposal = proposeOriStudioIntent(context, intent);
+      expect(proposal.operations).toHaveLength(1);
+      expect(program.scripts[0]?.statements).toHaveLength(1);
+      const review = validateOriStudioIntentProposal(context, proposal);
+      expect(review.candidateProgram.scripts[0]?.statements).toHaveLength(2);
+    }
+  });
+
+  it("are not part of the goals every scene offers", () => {
+    for (const intent of ORI_IMPORT_INTENTS)
+      expect((ORI_STUDIO_INTENTS as readonly string[]).includes(intent)).toBe(false);
   });
 });

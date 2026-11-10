@@ -173,6 +173,7 @@ import { processKidsImage } from "../kidsImage.js";
 import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { KidsCopyScript } from "./KidsCopyScript.js";
+import { intentsForCuts, loadImportCuts } from "../kidsImportCuts.js";
 import { KidsArtVariation } from "./KidsArtVariation.js";
 import { microphoneLevelAllowed, startLevelMeter, type LevelMeter } from "../kidsLevelMeter.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
@@ -1350,6 +1351,7 @@ export function KidsStudioScreen({
   const [backdropId, setBackdropId] = useState<KidsGalleryBackdropId>(
     () => listStudioProjects().find((item) => item.id === id)?.backdropId ?? "forest",
   );
+  const [importedIntents] = useState(() => intentsForCuts(loadImportCuts(id)));
   const [activeSlot, setActiveSlot] = useState<1 | 2 | 3>(1);
   const [eventTaken, setEventTaken] = useState(false);
   const [activeActorId, setActiveActorId] = useState(
@@ -8802,20 +8804,24 @@ export function KidsStudioScreen({
                 </button>
                 <StudioIntentPicker
                   locale={locale}
-                  intents={ORI_STUDIO_INTENTS.filter(
-                    (intent) =>
-                      oriIntentsWithin({
-                        ...pacedPolicy,
-                        maxProposalBlocks: Math.min(
-                          pacedPolicy.maxProposalBlocks,
-                          ageBand ? bandProfile(ageBand).oriMaxBlocks : 8,
-                        ),
-                      }).includes(intent) &&
-                      (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)) &&
-                      // The ideas that bring their own copy script are for a character without one.
-                      (oriIdeaCopyScript(intent) === undefined ||
-                        !hasStudioCloneScript(history.current, activeActorId)),
-                  )}
+                  intents={[
+                    ...ORI_STUDIO_INTENTS.filter(
+                      (intent) =>
+                        oriIntentsWithin({
+                          ...pacedPolicy,
+                          maxProposalBlocks: Math.min(
+                            pacedPolicy.maxProposalBlocks,
+                            ageBand ? bandProfile(ageBand).oriMaxBlocks : 8,
+                          ),
+                        }).includes(intent) &&
+                        (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)) &&
+                        // The ideas that bring their own copy script are for a character without one.
+                        (oriIdeaCopyScript(intent) === undefined ||
+                          !hasStudioCloneScript(history.current, activeActorId)),
+                    ),
+                    // What a Scratch import left out: shown only in a scene that came from one.
+                    ...importedIntents,
+                  ]}
                   disabled={oriBusy}
                   onPick={startIntent}
                 />

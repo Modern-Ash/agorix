@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -59,8 +60,79 @@ test("a Scratch project becomes a free scene, with a report of what could not co
   await expect(report).toContainText("1 bloque(s)");
   await report.locator("summary").click();
   await expect(report).toContainText("motion_glideto");
+  // Ori says why in plain words, and promises the idea will be shown before it is used.
+  await expect(page.getByTestId("cut-explanations")).toContainText("deslizarse a");
+  await expect(page.getByTestId("cut-ideas-note")).toContainText("vos decidís");
   await report.getByRole("button", { name: "Abrir la escena" }).click();
   await expect(page.locator(".kids-program-block").first()).toContainText("Mover");
+});
+
+test("Ori offers a replacement for a cut block as an idea, shown before it is used (#1312)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+    localStorage.setItem(
+      "agorix.kids.adults.v1",
+      JSON.stringify({ oriSuggestions: true, readAloud: true, dailyLimitMinutes: 30 }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.getByLabel("Importar de Scratch (.sb3)").setInputFiles({
+    name: "project.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(PROJECT)),
+  });
+  await page
+    .locator(".kids-scratch-report")
+    .getByRole("button", { name: "Abrir la escena" })
+    .click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
+  await page.getByRole("button", { name: /Ir a un lugar al azar \(en lugar de/ }).click();
+  // Nothing is added yet: the block is a ghost with the preview of what it would do.
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(1);
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await page.getByTestId("intent-card").getByRole("button", { name: "No usar" }).click();
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
+  await page.getByRole("button", { name: /Ir a un lugar al azar \(en lugar de/ }).click();
+  await page.getByTestId("intent-card").getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  // One undo takes it back.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+});
+
+test("a scene that did not come from an import never shows those ideas (#1312)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+    localStorage.setItem(
+      "agorix.kids.adults.v1",
+      JSON.stringify({ oriSuggestions: true, readAloud: true, dailyLimitMinutes: 30 }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
+  await expect(page.getByRole("button", { name: /en lugar de/ })).toHaveCount(0);
 });
 
 test("a file that is not a Scratch project says so and changes nothing", async ({ page }) => {
