@@ -128,6 +128,7 @@ describe("runtime operation allowlist", () => {
       "backdropNumber",
       "booleanLiteral",
       "costumeNumber",
+      "currentTime",
       "direction",
       "distanceToActor",
       "divide",

@@ -48,6 +48,8 @@ const findings: Finding[] = [
     counts: { scripts: 2 },
     nodeIds: ["scripts[0]/statements[0]", "scripts[0]/statements[1]"],
   },
+  { ...base, kind: "neverStarted", counts: {}, event: { type: "timer" } },
+  { ...base, kind: "neverStarted", counts: {}, event: { type: "loudness" } },
 ];
 
 describe("sentences for what Ori noticed", () => {

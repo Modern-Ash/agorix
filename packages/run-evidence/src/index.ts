@@ -31,7 +31,7 @@ export type LoopKindFound = "forever" | "repeatUntil" | "waitUntil";
 
 /** The event a script waits for, as a closed shape. `name` is a key or message name. */
 export interface FindingEvent {
-  readonly type: "key" | "click" | "message" | "backdrop" | "clone";
+  readonly type: "key" | "click" | "message" | "backdrop" | "clone" | "timer" | "loudness";
   readonly name?: string;
   /** For a message: how many scripts send it (0 means nothing ever sends it). */
   readonly senders?: number;
@@ -140,6 +140,8 @@ function eventOf(script: Script): FindingEvent | undefined {
   if (trigger.type === "onMessage") return { type: "message", name: trigger.message };
   if (trigger.type === "onBackdropSwitch") return { type: "backdrop", name: trigger.backdropId };
   if (trigger.type === "onCloneStart") return { type: "clone" };
+  if (trigger.type === "onTimerOver") return { type: "timer" };
+  if (trigger.type === "onLoudnessOver") return { type: "loudness" };
   return undefined;
 }
 
