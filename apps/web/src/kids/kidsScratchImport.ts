@@ -29,6 +29,8 @@ import {
   STUDIO_EDGE_CONDITION,
   STUDIO_PEN_SIZES,
   cloneScriptId,
+  extraScriptId,
+  MAX_STUDIO_EXTRA_SCRIPTS,
   studioActorId,
   validateStudioProgram,
 } from "./kidsStudioModel.js";
@@ -936,6 +938,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
 
   const scripts: Script[] = [];
   const cloneScripts: Script[] = [];
+  const extraScripts: Script[] = [];
   const positions: Record<string, { x: number; y: number; direction: number; size: number }> = {};
   const baseline: ProjectProgram = {
     schema: SCHEMA_VERSION,
@@ -961,14 +964,29 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
     let trigger: Trigger = { type: "greenFlag" };
     let statements: Statement[] = [];
     let imported = 0;
+    // The character keeps up to three scripts, each with its own event (#1363); a second script
+    // for an event it already answers, or a fourth, is left behind and counted below.
+    const kept: { trigger: Trigger; statements: Statement[] }[] = [];
+    const answered = new Set<string>();
     for (const [, hat] of supported) {
+      if (kept.length >= 1 + MAX_STUDIO_EXTRA_SCRIPTS) break;
       const found = converter.trigger(hat);
-      if (found === undefined) continue;
-      trigger = found;
-      statements = converter.stack(hat.next);
-      imported = 1;
-      break;
+      if (found === undefined || answered.has(JSON.stringify(found))) continue;
+      answered.add(JSON.stringify(found));
+      kept.push({ trigger: found, statements: converter.stack(hat.next) });
     }
+    if (kept[0] !== undefined) {
+      trigger = kept[0].trigger;
+      statements = kept[0].statements;
+    }
+    imported = kept.length;
+    kept.slice(1).forEach((extra, at) => {
+      extraScripts.push({
+        id: extraScriptId(index + 1, character.id, (at + 2) as 2 | 3),
+        trigger: extra.trigger,
+        statements: extra.statements,
+      });
+    });
     // A character may also have the script its copies start with: the first clone hat's stack.
     if (cloneHat !== undefined) {
       converter.inCloneScript = true;
@@ -980,7 +998,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
       converter.inCloneScript = false;
       imported += 1;
     }
-    // The scene gives each character one script (and a copy script); the rest is left behind.
+    // The scene gives each character up to three scripts (and a copy script); the rest is left behind.
     const stacks = [...blocks.values()].filter((block) => block.topLevel).length;
     for (let i = 0; i < stacks - imported; i += 1) converter.drop("another script of the sprite");
     const id = `studio-actor-${index + 1}-${character.id}`;
@@ -1014,10 +1032,13 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
     ...baseline,
     ...(variables.length > 0 ? { variables } : {}),
     ...(textVariables.length > 0 ? { textVariables } : {}),
-    scripts: [...scripts, ...cloneScripts].map((script) => ({ ...script, statements: [] })),
+    scripts: [...scripts, ...cloneScripts, ...extraScripts].map((script) => ({
+      ...script,
+      statements: [],
+    })),
   };
   const draft: ProjectProgram = converter.usesPen ? { ...withData, extensions: ["pen"] } : withData;
-  const legal = [...scripts, ...cloneScripts].map((script, position) =>
+  const legal = [...scripts, ...cloneScripts, ...extraScripts].map((script, position) =>
     legalize(script, draft, position, converter),
   );
   const program = validateStudioProgram({ ...draft, scripts: legal });
