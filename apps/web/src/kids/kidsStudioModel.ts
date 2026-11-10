@@ -429,6 +429,28 @@ function checkedProcedures(
   );
 }
 
+/** A block made for every character: `shared-1` to `shared-9`, at most five at once. */
+const STUDIO_SHARED_ID = /^shared-[1-9]$/;
+export const MAX_STUDIO_SHARED = 5;
+
+function checkedShared(shared: readonly Procedure[] | undefined, program: ProjectProgram): boolean {
+  if (shared === undefined) return true;
+  return (
+    shared.length >= 1 &&
+    shared.length <= MAX_STUDIO_SHARED &&
+    new Set(shared.map((item) => item.id)).size === shared.length &&
+    shared.every(
+      (item) =>
+        STUDIO_SHARED_ID.test(item.id) &&
+        DATA_NAME.test(item.name) &&
+        checkedParams(item.params) &&
+        item.body.length >= 1 &&
+        statementCount(item.body) <= MAX_STUDIO_BLOCKS &&
+        item.body.every((statement) => checked(statement, program, 0, item.params?.length ?? 0)),
+    )
+  );
+}
+
 function statementCount(statements: readonly Statement[]): number {
   return statements.reduce(
     (sum, statement) =>
@@ -684,7 +706,8 @@ function checked(
     );
   if (statement.type === "callProcedure")
     return (
-      /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(statement.procedureId) &&
+      (/^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(statement.procedureId) ||
+        STUDIO_SHARED_ID.test(statement.procedureId)) &&
       checkedArgs(statement.args, arity)
     );
   if (statement.type === "repeatUntil")
@@ -722,8 +745,7 @@ function checked(
 export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
   const program = validateProgram(raw);
   if (
-    // Shared custom blocks are not part of the scene's editor yet.
-    program.sharedProcedures !== undefined ||
+    !checkedShared(program.sharedProcedures, program) ||
     (program.extensions !== undefined &&
       !program.extensions.every((id) => id === "pen" || id === "music")) ||
     mainScripts(program).length < 1 ||
@@ -1371,6 +1393,7 @@ function withScript(
   change: (
     script: ProjectProgram["scripts"][number],
     actorIndex: number,
+    shared: readonly Procedure[],
   ) => ProjectProgram["scripts"][number],
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
@@ -1378,7 +1401,7 @@ function withScript(
   const script = program.scripts[index];
   if (!script) throw new RangeError("unknown studio actor");
   const scripts = [...program.scripts];
-  scripts[index] = change(script, index + 1);
+  scripts[index] = change(script, index + 1, program.sharedProcedures ?? []);
   const next = validateStudioProgram({ ...program, scripts });
   return recordCanonicalTransaction(history, { label, after: next }).history;
 }
@@ -1845,11 +1868,12 @@ export function setStudioCallNumbers(
   index: number,
   values: readonly number[],
 ): EditorHistory {
-  return withScript(history, actorId, "set custom block numbers", (script) => {
+  return withScript(history, actorId, "set custom block numbers", (script, _actor, shared) => {
     const call = script.statements[index];
     if (call?.type !== "callProcedure") throw new RangeError("not a custom block");
     const arity =
-      script.procedures?.find((item) => item.id === call.procedureId)?.params?.length ?? 0;
+      [...(script.procedures ?? []), ...shared].find((item) => item.id === call.procedureId)?.params
+        ?.length ?? 0;
     if (values.length !== arity) throw new RangeError("wrong number of values");
     return {
       ...script,
@@ -2102,13 +2126,14 @@ export function setStudioProcedureCallNumbers(
   path: StudioBlockPath,
   values: readonly StudioCallValue[],
 ): EditorHistory {
-  return withScript(history, actorId, "set custom block numbers", (script) => {
+  return withScript(history, actorId, "set custom block numbers", (script, _actor, shared) => {
     const owner = script.procedures?.find((item) => item.id === procedureId);
     if (!owner) throw new RangeError("unknown custom block");
     const body = updateAt(owner.body, path, (statement) => {
       if (statement.type !== "callProcedure") throw new RangeError("not a custom block");
       const arity =
-        script.procedures?.find((item) => item.id === statement.procedureId)?.params?.length ?? 0;
+        [...(script.procedures ?? []), ...shared].find((item) => item.id === statement.procedureId)
+          ?.params?.length ?? 0;
       if (values.length !== arity) throw new RangeError("wrong number of values");
       return withArgs(statement, values);
     });
@@ -2136,6 +2161,166 @@ function called(statements: readonly Statement[]): string[] {
   });
 }
 
+function withoutSharedProcedures(program: ProjectProgram): ProjectProgram {
+  return Object.fromEntries(
+    Object.entries(program).filter(([key]) => key !== "sharedProcedures"),
+  ) as unknown as ProjectProgram;
+}
+
+/** The blocks made for every character, in the order they were made. */
+export function studioSharedProcedures(program: ProjectProgram): readonly Procedure[] {
+  return program.sharedProcedures ?? [];
+}
+
+/** How many times the characters' blocks call a shared block, counting every script. */
+export function studioSharedUses(program: ProjectProgram, procedureId: string): number {
+  return (
+    program.scripts.reduce(
+      (sum, script) =>
+        sum +
+        countCalls(script.statements, procedureId) +
+        (script.procedures ?? []).reduce(
+          (inner, item) => inner + countCalls(item.body, procedureId),
+          0,
+        ),
+      0,
+    ) +
+    (program.sharedProcedures ?? []).reduce(
+      (sum, item) => sum + countCalls(item.body, procedureId),
+      0,
+    )
+  );
+}
+
+/**
+ * Make one of a character's custom blocks (and every block of its own it uses) a block for every
+ * character. It leaves this character's own list, and this character's calls now call the shared
+ * block, so nothing it does changes. Other characters keep whatever they had; a copy someone else
+ * made earlier stays their own. One undoable step.
+ */
+export function shareStudioProcedure(
+  history: EditorHistory,
+  actorId: string,
+  procedureId: string,
+): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const index = scriptIndexOfActor(program, actorId);
+  const script = program.scripts[index];
+  if (!script) throw new RangeError("unknown studio actor");
+  const own = script.procedures ?? [];
+  const wanted: string[] = [];
+  const visit = (id: string) => {
+    if (wanted.includes(id) || STUDIO_SHARED_ID.test(id)) return;
+    const found = own.find((item) => item.id === id);
+    if (!found) throw new RangeError("unknown custom block");
+    wanted.push(id);
+    called(found.body).forEach(visit);
+  };
+  visit(procedureId);
+  const existing = program.sharedProcedures ?? [];
+  if (existing.length + wanted.length > MAX_STUDIO_SHARED)
+    throw new RangeError("shared block limit");
+  const taken = new Set(existing.map((item) => item.id));
+  const renamed = new Map<string, string>();
+  let n = 1;
+  for (const id of wanted) {
+    while (taken.has(`shared-${n}`)) n += 1;
+    renamed.set(id, `shared-${n}`);
+    taken.add(`shared-${n}`);
+  }
+  const names = new Set(existing.map((item) => item.name.toLocaleLowerCase()));
+  for (const id of wanted)
+    if (names.has(own.find((item) => item.id === id)!.name.toLocaleLowerCase()))
+      throw new RangeError("a shared block already has that name");
+  const rewrite = (body: readonly Statement[]) =>
+    deepMap(body, (node) =>
+      node.type === "callProcedure" && renamed.has(node.procedureId as string)
+        ? { ...node, procedureId: renamed.get(node.procedureId as string)! }
+        : undefined,
+    ) as Statement[];
+  const moved = wanted.map((id): Procedure => {
+    const item = own.find((entry) => entry.id === id)!;
+    return { ...item, id: renamed.get(id)!, body: rewrite(item.body) };
+  });
+  const stay = own
+    .filter((item) => !renamed.has(item.id))
+    .map((item) => ({ ...item, body: rewrite(item.body) }));
+  const scripts = [...program.scripts];
+  scripts[index] = {
+    id: script.id,
+    trigger: script.trigger,
+    statements: rewrite(script.statements),
+    ...(stay.length === 0 ? {} : { procedures: stay }),
+  };
+  return recordCanonicalTransaction(history, {
+    label: "share custom block",
+    after: validateStudioProgram({
+      ...program,
+      sharedProcedures: [...existing, ...moved],
+      scripts,
+    }),
+  }).history;
+}
+
+/**
+ * Stop sharing a block: every call, in every character, is replaced by the block's own blocks, so
+ * each character does exactly what it did before, and the shared block goes away. Refused for a
+ * block that calls itself, or that another shared block calls. One undoable step.
+ */
+export function unshareStudioProcedure(history: EditorHistory, procedureId: string): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const shared = program.sharedProcedures ?? [];
+  const procedure = shared.find((item) => item.id === procedureId);
+  if (!procedure) throw new RangeError("unknown shared block");
+  if (
+    reaches(shared, procedureId, procedureId) ||
+    shared.some((item) => item.id !== procedureId && countCalls(item.body, procedureId) > 0)
+  )
+    throw new RangeError("a block that others call cannot be unshared");
+  const scripts = program.scripts.map((script) => ({
+    ...script,
+    statements: replaceCalls(script.statements, procedure),
+    ...(script.procedures === undefined
+      ? {}
+      : {
+          procedures: script.procedures.map((item) => ({
+            ...item,
+            body: replaceCalls(item.body, procedure),
+          })),
+        }),
+  }));
+  const rest = shared.filter((item) => item.id !== procedureId);
+  const withoutShared = withoutSharedProcedures(program);
+  return recordCanonicalTransaction(history, {
+    label: "stop sharing custom block",
+    after: validateStudioProgram({
+      ...withoutShared,
+      ...(rest.length === 0 ? {} : { sharedProcedures: rest }),
+      scripts,
+    }),
+  }).history;
+}
+
+/** Delete a shared block nobody calls. Refused while any character still does. */
+export function deleteStudioSharedProcedure(
+  history: EditorHistory,
+  procedureId: string,
+): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const shared = program.sharedProcedures ?? [];
+  if (!shared.some((item) => item.id === procedureId)) throw new RangeError("unknown shared block");
+  if (studioSharedUses(program, procedureId) > 0) throw new RangeError("shared block is in use");
+  const rest = shared.filter((item) => item.id !== procedureId);
+  const withoutShared = withoutSharedProcedures(program);
+  return recordCanonicalTransaction(history, {
+    label: "delete shared custom block",
+    after: validateStudioProgram({
+      ...withoutShared,
+      ...(rest.length === 0 ? {} : { sharedProcedures: rest }),
+    }),
+  }).history;
+}
+
 /**
  * Give another character its own copy of a custom block, together with every block it uses. The
  * copies are independent: changing one later never changes the other.
@@ -2155,7 +2340,8 @@ export function copyStudioProcedure(
   const source = from.procedures ?? [];
   const wanted: string[] = [];
   const visit = (id: string) => {
-    if (wanted.includes(id)) return;
+    // A shared block is already everyone's, so a copy keeps calling it.
+    if (wanted.includes(id) || STUDIO_SHARED_ID.test(id)) return;
     const found = source.find((item) => item.id === id);
     if (!found) throw new RangeError("unknown custom block");
     wanted.push(id);
