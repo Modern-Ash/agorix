@@ -28,6 +28,10 @@ import {
   deleteStudioProcedure,
   studioProcedureUses,
   setStudioStatementField,
+  shareStudioProcedure,
+  unshareStudioProcedure,
+  deleteStudioSharedProcedure,
+  studioSharedUses,
 } from "./kidsStudioModel.js";
 
 describe("editing a block already in the program (#1240)", () => {
@@ -1023,5 +1027,75 @@ describe("costume and backdrop order for the numbers", () => {
       "actor:studio-1-nova": ["costume:nova", "costume:studio-art-1"],
     });
     expect(creative.backdropOrder).toEqual(["backdrop:forest", "backdrop:studio-art-2"]);
+  });
+});
+
+describe("blocks made for every character (#1310)", () => {
+  const nova = "actor:studio-1-nova";
+  const mika = "actor:studio-2-mika";
+  function twoWithBlock() {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    history = appendStudioStatement(history, nova, { type: "move", steps: 40 });
+    history = appendStudioStatement(history, nova, { type: "turn", degrees: 90 });
+    return createStudioProcedure(history, nova, 2, "Cuadro");
+  }
+
+  it("moves a character's block to everyone without changing what it does", () => {
+    const before = twoWithBlock();
+    const history = shareStudioProcedure(before, nova, "proc-1-1");
+    const program = validateStudioProgram(history.current);
+    expect(program.sharedProcedures?.map((item) => [item.id, item.name])).toEqual([
+      ["shared-1", "Cuadro"],
+    ]);
+    expect(program.scripts[0]!.procedures).toBeUndefined();
+    expect(program.scripts[0]!.statements).toEqual([
+      { type: "callProcedure", procedureId: "shared-1" },
+    ]);
+    expect(history.canUndo).toBe(true);
+    const run = (h: typeof before) =>
+      runMultiActorProgram(h.current, creativeForStudio(h.current, "forest", "es")).actors.map(
+        (actor) => [actor.id, actor.world.sprite.x, actor.world.sprite.heading],
+      );
+    expect(run(history)).toEqual(run(before));
+  });
+
+  it("lets another character call it, and the block runs on whoever calls", () => {
+    let history = shareStudioProcedure(twoWithBlock(), nova, "proc-1-1");
+    history = appendStudioStatement(history, mika, {
+      type: "callProcedure",
+      procedureId: "shared-1",
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    const heading = (id: string) => result.actors.find((a) => a.id === id)!.world.sprite.heading;
+    expect(heading(nova)).toBe(heading(mika));
+    expect(studioSharedUses(history.current, "shared-1")).toBe(2);
+  });
+
+  it("refuses to delete a block someone still calls, and unsharing gives everyone its blocks", () => {
+    let history = shareStudioProcedure(twoWithBlock(), nova, "proc-1-1");
+    history = appendStudioStatement(history, mika, {
+      type: "callProcedure",
+      procedureId: "shared-1",
+    });
+    expect(() => deleteStudioSharedProcedure(history, "shared-1")).toThrow(/in use/);
+    const open = unshareStudioProcedure(history, "shared-1");
+    const program = validateStudioProgram(open.current);
+    expect(program.sharedProcedures).toBeUndefined();
+    expect(program.scripts[0]!.statements.map((item) => item.type)).toEqual(["move", "turn"]);
+    expect(program.scripts[1]!.statements.map((item) => item.type)).toEqual(["move", "turn"]);
+  });
+
+  it("deletes an unused one, and refuses a second block with the same name", () => {
+    let history = shareStudioProcedure(twoWithBlock(), nova, "proc-1-1");
+    history = appendStudioStatement(history, mika, { type: "move", steps: 40 });
+    history = createStudioProcedure(history, mika, 1, "Cuadro");
+    expect(() => shareStudioProcedure(history, mika, "proc-2-1")).toThrow(/same name|already/);
+    const unused = removeStudioStatement(history, nova, 0);
+    const gone = deleteStudioSharedProcedure(unused, "shared-1");
+    expect(validateStudioProgram(gone.current).sharedProcedures).toBeUndefined();
   });
 });

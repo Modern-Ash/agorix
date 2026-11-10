@@ -2613,3 +2613,58 @@ test("the costume number is offered only once the child has a picture of their o
   await page.getByTestId("compound-if").click();
   await expect(page.getByText(/número de disfraz/).first()).toBeVisible();
 });
+
+test("a block made for everyone is used by another character, and stays after reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  const actors = page.getByRole("group", { name: "Personajes" }).getByRole("button");
+  await actors.first().click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Cuadro");
+  await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
+  await page.getByRole("button", { name: "Hacer para todos: Cuadro" }).click();
+  const everyone = page.getByTestId("shared-blocks");
+  await expect(everyone).toContainText("Cuadro");
+  await expect(page.locator(".kids-program-block").first()).toContainText(
+    "Usar: Cuadro (para todos)",
+  );
+  // Another character uses it without making or copying anything.
+  await actors.nth(1).click();
+  await page.getByTestId("shared-blocks").getByRole("button", { name: "+ Usar: Cuadro" }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("Usar: Cuadro");
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  // It cannot be deleted while a character uses it.
+  await page.getByRole("button", { name: "Borrar bloque: Cuadro" }).last().click();
+  await expect(page.getByText("No se puede borrar: algún personaje lo usa todavía.")).toBeVisible();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.getByTestId("shared-blocks")).toContainText("Cuadro");
+  // Stop sharing: every character keeps the blocks inside.
+  await page.getByRole("button", { name: "Dejar de compartir: Cuadro" }).click();
+  await expect(page.getByTestId("shared-blocks")).not.toContainText("Cuadro");
+  await expect(page.locator(".kids-program-block").first()).toContainText("Mover");
+});

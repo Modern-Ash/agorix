@@ -205,6 +205,10 @@ import {
   appendStudioStatement,
   creativeForStudio,
   copyStudioProcedure,
+  shareStudioProcedure,
+  unshareStudioProcedure,
+  deleteStudioSharedProcedure,
+  studioSharedProcedures,
   createStudioProcedure,
   deleteStudioProcedure,
   duplicateStudioStatement,
@@ -372,6 +376,16 @@ const COPY = {
     myBlocks: "Mis bloques",
     myBlockName: "Título del bloque",
     makeBlock: "Crear bloque con estos bloques",
+    forEveryoneTag: "(para todos)",
+    forEveryoneTitle: "Bloques para todos",
+    shareBlock: "Hacer para todos",
+    shareTip: "Lo podrán usar todos los personajes. Lo que hace tu personaje no cambia.",
+    unshareBlock: "Dejar de compartir",
+    unshareTip: "Cada personaje se queda con los bloques de adentro, y todo sigue igual.",
+    sharedBlockInUse: "No se puede borrar: algún personaje lo usa todavía.",
+    sharedLimit: "Ya hay 5 bloques para todos.",
+    sharedNameTaken: "Ya hay un bloque para todos con ese nombre. Cambiale el nombre primero.",
+    sharedNone: "Todavía no hay bloques para todos.",
     useBlock: "Usar",
     renameBlock: "Cambiar nombre",
     deleteBlock: "Borrar bloque",
@@ -695,6 +709,16 @@ const COPY = {
     myBlocks: "My blocks",
     myBlockName: "Block title",
     makeBlock: "Make a block from these blocks",
+    forEveryoneTag: "(for everyone)",
+    forEveryoneTitle: "Blocks for everyone",
+    shareBlock: "Make it for everyone",
+    shareTip: "Every character can use it. What your character does does not change.",
+    unshareBlock: "Stop sharing",
+    unshareTip: "Each character keeps the blocks inside, and everything stays the same.",
+    sharedBlockInUse: "It cannot be deleted: a character still uses it.",
+    sharedLimit: "There are already 5 blocks for everyone.",
+    sharedNameTaken: "A block for everyone already has that name. Rename it first.",
+    sharedNone: "There are no blocks for everyone yet.",
     useBlock: "Use",
     renameBlock: "Rename",
     deleteBlock: "Delete block",
@@ -1483,6 +1507,7 @@ export function KidsStudioScreen({
   const customImagesEnabled = useKidsFlag("customImages");
   // Ori's ideas for one of the child's own pictures, and the picture before the last one was used.
   const [variationFor, setVariationFor] = useState<string | null>(null);
+  const [sharedMessage, setSharedMessage] = useState("");
   const [artWords, setArtWords] = useState<Readonly<Record<string, string>>>({});
   const [artUndo, setArtUndo] = useState<{ readonly id: string; readonly previous: string } | null>(
     null,
@@ -1534,6 +1559,9 @@ export function KidsStudioScreen({
     ? sensorTargetId
     : otherActors[0]?.id;
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
+  const sharedBlocks = studioSharedProcedures(history.current);
+  /** Every block this character can call: its own, then the ones made for everyone. */
+  const callableBlocks = [...(script?.procedures ?? []), ...sharedBlocks];
   const quantityKindForScript = quantityKindFor(
     script?.statements.map((statement) => statement.type) ?? [],
   );
@@ -3047,7 +3075,7 @@ export function KidsStudioScreen({
       case "setPan":
         return `${copy.setPan}: ${statement.pan}`;
       case "callProcedure": {
-        const procedure = script?.procedures?.find((item) => item.id === statement.procedureId);
+        const procedure = callableBlocks.find((item) => item.id === statement.procedureId);
         const numbers = (procedure?.params ?? [])
           .map((param, index) => {
             const arg = statement.args?.[index];
@@ -3060,7 +3088,11 @@ export function KidsStudioScreen({
             return `${param.name}: ${value}`;
           })
           .join(", ");
-        return `${copy.useBlock}: ${procedure?.name ?? "?"}${numbers ? ` (${numbers})` : ""}`;
+        return `${copy.useBlock}: ${procedure?.name ?? "?"}${numbers ? ` (${numbers})` : ""}${
+          procedure !== undefined && sharedBlocks.includes(procedure)
+            ? ` ${copy.forEveryoneTag}`
+            : ""
+        }`;
       }
       case "repeatUntil":
         return `${copy.repeatUntil} ${expressionLabel(statement.condition, history.current, locale)}`;
@@ -3130,9 +3162,9 @@ export function KidsStudioScreen({
   /** Pickers for a use of one custom block inside another: a fixed number, or the outer block's own. */
   function calleeNumbers(owner: Procedure, statement: Statement, path: StudioBlockPath) {
     if (statement.type !== "callProcedure") return null;
-    const callee = script?.procedures?.find((item) => item.id === statement.procedureId);
+    const callee = callableBlocks.find((item) => item.id === statement.procedureId);
     if (!callee?.params) return null;
-    const units = studioProcedureNumberUnits(callee, script?.procedures);
+    const units = studioProcedureNumberUnits(callee, callableBlocks);
     const values: StudioCallValue[] = callee.params.map((_param, at) => {
       const arg = statement.args?.[at];
       return arg?.type === "param" ? arg.paramId : arg?.type === "numericLiteral" ? arg.value : 0;
@@ -3185,9 +3217,9 @@ export function KidsStudioScreen({
 
   function callNumbers(statement: Statement, index: number) {
     if (statement.type !== "callProcedure") return null;
-    const procedure = script?.procedures?.find((item) => item.id === statement.procedureId);
+    const procedure = callableBlocks.find((item) => item.id === statement.procedureId);
     if (!procedure?.params) return null;
-    const units = studioProcedureNumberUnits(procedure, script?.procedures);
+    const units = studioProcedureNumberUnits(procedure, callableBlocks);
     const values = procedure.params.map((_param, at) => {
       const arg = statement.args?.[at];
       return arg?.type === "numericLiteral" ? arg.value : 0;
@@ -3223,6 +3255,25 @@ export function KidsStudioScreen({
         </label>
       );
     });
+  }
+
+  function shareBlock(procedureId: string) {
+    setSharedMessage("");
+    try {
+      persist(shareStudioProcedure(history, activeActorId, procedureId));
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "";
+      setSharedMessage(text.includes("limit") ? copy.sharedLimit : copy.sharedNameTaken);
+    }
+  }
+
+  function deleteSharedBlock(procedureId: string) {
+    setSharedMessage("");
+    try {
+      persist(deleteStudioSharedProcedure(history, procedureId));
+    } catch {
+      setSharedMessage(copy.sharedBlockInUse);
+    }
   }
 
   function authorBlock(change: () => EditorHistory) {
@@ -6889,6 +6940,15 @@ export function KidsStudioScreen({
                         >
                           + {copy.useBlock}: {item.name}
                         </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          title={copy.shareTip}
+                          data-testid="share-block"
+                          onClick={() => shareBlock(item.id)}
+                        >
+                          {copy.shareBlock}: {item.name}
+                        </button>
                         {otherActors.length > 0 ? (
                           <>
                             <label>
@@ -6995,6 +7055,64 @@ export function KidsStudioScreen({
                     );
                   })}
                 </ul>
+                <div role="group" aria-label={copy.forEveryoneTitle} data-testid="shared-blocks">
+                  <strong>{copy.forEveryoneTitle}</strong>
+                  {sharedBlocks.length === 0 ? (
+                    <p className="kids-note">{copy.sharedNone}</p>
+                  ) : null}
+                  <ul className="kids-studio-my-blocks">
+                    {sharedBlocks.map((item) => (
+                      <li key={item.id}>
+                        <strong>{item.name}</strong>
+                        {procedureBlocks(item, item.body, [])}
+                        <button
+                          data-kids-block="callProcedure"
+                          type="button"
+                          className="kids-button"
+                          onClick={() => {
+                            const units = studioProcedureNumberUnits(item, callableBlocks);
+                            add({
+                              type: "callProcedure",
+                              procedureId: item.id,
+                              ...(item.params
+                                ? {
+                                    args: units.map((unit) => ({
+                                      type: "numericLiteral" as const,
+                                      value: STUDIO_NUMBER_DEFAULTS[unit],
+                                    })),
+                                  }
+                                : {}),
+                            } as StudioStatement);
+                          }}
+                        >
+                          + {copy.useBlock}: {item.name}
+                        </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          title={copy.unshareTip}
+                          onClick={() =>
+                            authorBlock(() => unshareStudioProcedure(history, item.id))
+                          }
+                        >
+                          {copy.unshareBlock}: {item.name}
+                        </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() => deleteSharedBlock(item.id)}
+                        >
+                          {copy.deleteBlock}: {item.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {sharedMessage ? (
+                    <p role="status" className="kids-note">
+                      {sharedMessage}
+                    </p>
+                  ) : null}
+                </div>
                 <i hidden data-cat-start="logic" />
                 <button
                   type="button"
