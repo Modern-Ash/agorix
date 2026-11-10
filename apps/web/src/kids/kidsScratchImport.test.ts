@@ -459,4 +459,26 @@ describe("Scratch pen, timer and value hats", () => {
     expect(statements[3]).toMatchObject({ volume: 100 });
     expect(report.dropped.some((item) => item.what.includes("fisheye"))).toBe(true);
   });
+
+  it("maps the Music blocks to the scene's notes, beats, drums, tempo and instruments", () => {
+    const { program } = convertScratchProject(
+      sprite({
+        d: block("music_menu_DRUM", { fields: { DRUM: ["1", null] }, shadow: true }),
+        i: block("music_menu_INSTRUMENT", { fields: { INSTRUMENT: ["4", null] }, shadow: true }),
+        ...chain(
+          ["music_setTempo", { inputs: { TEMPO: lit(100) } }],
+          ["music_playNoteForBeats", { inputs: { NOTE: lit(60), BEATS: lit(0.6) } }],
+          ["music_playDrumForBeats", { inputs: { BEATS: lit(1), DRUM: [1, "d"] } }],
+          ["music_setInstrument", { inputs: { INSTRUMENT: [1, "i"] } }],
+        ),
+      }),
+    );
+    expect(program.extensions).toContain("music");
+    expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
+      "setTempo",
+      "playNote",
+      "playDrum",
+      "setInstrument",
+    ]);
+  });
 });

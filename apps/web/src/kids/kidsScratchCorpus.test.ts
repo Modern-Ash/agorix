@@ -70,7 +70,7 @@ describe("Scratch import measured on the team's corpus", () => {
     expect(imported).toBeLessThanOrEqual(statements);
     // Floors: an import change may raise these (then raise them here), never lower them.
     expect(statements).toBe(91);
-    expect(imported).toBeGreaterThanOrEqual(58);
+    expect(imported).toBeGreaterThanOrEqual(63);
     expect(scripts).toBe(23);
     expect(kept).toBeGreaterThanOrEqual(14);
   });

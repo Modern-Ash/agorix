@@ -173,6 +173,6 @@ There is still no corpus of children's `.sb3` files, so the team wrote ten proje
 | ghost-story   | 11         | 9            | 3       | 2            |
 | **Total**     | **91**     | **58 (64%)** | **23**  | **14 (61%)** |
 
-What is left behind, most to least: **another script of the same character (9 of 23 scripts)**, because the scene gives each character one script plus a copy script (the same limit #1313 asks to review); then the Music extension (notes, drums, tempo: the scene has them but the importer does not map them), lists and "my blocks", "ask and wait", switching costume or backdrop by name, "if/else" on an answer, and a pen colour step. A value that comes from another block (a random number inside "go to") is also dropped.
+What is left behind, most to least: **another script of the same character (9 of 23 scripts)**, because the scene gives each character one script plus a copy script (the same limit #1313 asks to review); then lists and "my blocks", "ask and wait", switching costume or backdrop by name, "if/else" on an answer, and a pen colour step. A value that comes from another block (a random number inside "go to") is also dropped.
 
-Next in order of what it would recover: map the Music blocks (no model work needed), then decide with #1313 whether a second script per character is worth it, since it is the biggest loss by far.
+The Music blocks (notes, beats, drums, tempo, instruments) are now mapped to the scene's closed lists, taking music-box from 0 of 5 to 5 of 5. Next, decide with #1313 whether a second script per character is worth it, since it is the biggest loss by far.
