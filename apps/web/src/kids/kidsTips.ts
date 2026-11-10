@@ -239,6 +239,24 @@ export const TIP_RULES: readonly TipRule[] = [
     tip: t("Tu franja de edad: qué te muestra la app", "Your age band: what the app shows you"),
   },
   {
+    match: named(/^(Guion|Script) [123]$/),
+    tip: t(
+      "Elegir qué guion del personaje ves y editás",
+      "Choose which script of the character you see and edit",
+    ),
+  },
+  {
+    match: named(/^\+ (Otro guion|Another script)$/),
+    tip: t(
+      "Darle al personaje otro guion que empieza con otro evento",
+      "Give the character another script that starts with another event",
+    ),
+  },
+  {
+    match: named(/^(Quitar este guion|Remove this script)$/),
+    tip: t("Quitar este guion y sus bloques", "Remove this script and its blocks"),
+  },
+  {
     match: named(/^(Deshacer|Undo)$/),
     tip: t("Deshacer el último cambio", "Undo the last change"),
   },
