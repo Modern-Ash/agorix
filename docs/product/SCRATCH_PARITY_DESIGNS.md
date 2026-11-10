@@ -154,3 +154,25 @@ Stamp and pen transparency were already in. The pen now also has a **shade**, `s
 ## Status: Scratch import fidelity (#1312), increment 1
 
 The importer now also reads blocks the scene already had but the importer did not map: pen size, pen colour (a swatch becomes the nearest pen colour), pen transparency and brightness or shade (to the three shades), reset timer, and the hats "when timer > N" and "when loudness > N" (to the nearest value the scene offers). Each snapped value counts as adjusted in the report. No `.sb3` corpus exists, so the hit rate is still not measured; this increment closes the gap by comparing the opcode list with what the scene supports. Increment 2 adds colour, ghost and brightness effects (set, change, clear) and volume (set, change); other Scratch effects are reported as left out. Still left out and reported: "when backdrop switches to", ask and wait, costume and backdrop switching, lists, and custom blocks.
+
+## Status: Scratch import measured on a corpus (#1312)
+
+There is still no corpus of children's `.sb3` files, so the team wrote ten projects of the kind a child makes (`apps/web/src/kids/__fixtures__/scratch/corpus.ts`, built by a small Scratch 3 JSON builder). They are synthetic: what they show is which blocks the importer handles, not how often children use them. The test `kidsScratchCorpus.test.ts` converts each one, runs the result in the deterministic runtime, and fails if the numbers get worse. The report's own `blocksImported` counts only top-level statements, so the measure counts every nested statement in the converted program instead.
+
+| Project       | Statements | Came across  | Scripts | Kept         |
+| ------------- | ---------- | ------------ | ------- | ------------ |
+| catch-game    | 15         | 12           | 4       | 2            |
+| pen-spiral    | 10         | 8            | 2       | 1            |
+| quiz          | 7          | 2            | 1       | 1            |
+| maze          | 12         | 10           | 4       | 2            |
+| dance         | 9          | 5            | 2       | 1            |
+| clone-rain    | 9          | 8            | 2       | 2            |
+| timer-race    | 6          | 4            | 2       | 1            |
+| music-box     | 5          | 0            | 1       | 1            |
+| custom-blocks | 7          | 0            | 2       | 1            |
+| ghost-story   | 11         | 9            | 3       | 2            |
+| **Total**     | **91**     | **58 (64%)** | **23**  | **14 (61%)** |
+
+What is left behind, most to least: **another script of the same character (9 of 23 scripts)**, because the scene gives each character one script plus a copy script (the same limit #1313 asks to review); then the Music extension (notes, drums, tempo: the scene has them but the importer does not map them), lists and "my blocks", "ask and wait", switching costume or backdrop by name, "if/else" on an answer, and a pen colour step. A value that comes from another block (a random number inside "go to") is also dropped.
+
+Next in order of what it would recover: map the Music blocks (no model work needed), then decide with #1313 whether a second script per character is worth it, since it is the biggest loss by far.
