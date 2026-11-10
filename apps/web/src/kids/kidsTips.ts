@@ -132,6 +132,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     es: "Elegir qué tan transparente es la línea",
     en: "Choose how see-through the line is",
   },
+  setPenShade: {
+    es: "Elegir si la línea sale más clara o más oscura",
+    en: "Choose whether the line is lighter or darker",
+  },
   clearPen: { es: "Borrar todo lo dibujado", en: "Erase everything drawn" },
   stamp: {
     es: "Dejar una copia del personaje en el lugar donde está",
@@ -406,6 +410,10 @@ export const TIP_RULES: readonly TipRule[] = [
   {
     match: named(/^\+ (Transparencia del lápiz|Pen transparency)/),
     tip: BLOCK_TIPS["setPenTransparency"]!,
+  },
+  {
+    match: named(/^\+ (Tono del lápiz|Pen shade)/),
+    tip: BLOCK_TIPS["setPenShade"]!,
   },
   { match: named(/^\+ (Borrar los trazos|Clear drawing)/), tip: BLOCK_TIPS["clearPen"]! },
   { match: named(/^\+ (Sellar|Stamp)/), tip: BLOCK_TIPS["stamp"]! },

@@ -572,6 +572,15 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "pen_set_transparency", fields: { percent: 50 } }),
   },
   {
+    type: "pen_set_shade",
+    label: "Pen shade [S]",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "set pen shade",
+    legacy: true,
+    createDefaultBlock: (id) => ({ id, type: "pen_set_shade", fields: { shade: "darker" } }),
+  },
+  {
     type: "music_play_note",
     label: "Play note [N] for [B] beats",
     section: "Looks",

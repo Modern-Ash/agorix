@@ -16,6 +16,7 @@ import {
   type MusicInstrument,
   type ClockPart,
   type PenColor,
+  type PenShade,
   type PenTransparency,
   ProgramVariable,
   type ProjectProgram,
@@ -61,6 +62,7 @@ export type BlockType =
   | "pen_set_color"
   | "pen_set_size"
   | "pen_set_transparency"
+  | "pen_set_shade"
   | "music_play_note"
   | "music_play_drum"
   | "music_set_instrument"
@@ -699,6 +701,8 @@ function statementFromBlock(
       return { type: "setPenColor", color: stringField(block, "color", path) as PenColor };
     case "pen_set_size":
       return { type: "setPenSize", size: numberField(block, "size", path) };
+    case "pen_set_shade":
+      return { type: "setPenShade", shade: stringField(block, "shade", path) as PenShade };
     case "pen_set_transparency":
       return {
         type: "setPenTransparency",
@@ -1271,6 +1275,8 @@ function statementToBlock(
       return { id, type: "pen_set_color", fields: { color: statement.color } };
     case "setPenSize":
       return { id, type: "pen_set_size", fields: { size: statement.size } };
+    case "setPenShade":
+      return { id, type: "pen_set_shade", fields: { shade: statement.shade } };
     case "setPenTransparency":
       return { id, type: "pen_set_transparency", fields: { percent: statement.percent } };
     case "playNote":

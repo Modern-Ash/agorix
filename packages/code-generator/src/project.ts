@@ -396,6 +396,9 @@ function projectStatement(
     case "setPenSize":
       write(writer, `${pad}pen.setSize(${statement.size});\n`);
       return;
+    case "setPenShade":
+      write(writer, `${pad}pen.setShade(${JSON.stringify(statement.shade)});\n`);
+      return;
     case "setPenTransparency":
       write(writer, `${pad}pen.setTransparency(${statement.percent});\n`);
       return;

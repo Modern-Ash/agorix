@@ -21,6 +21,7 @@ import {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_SHADES,
   PEN_TRANSPARENCIES,
   PROCEDURE_NUMBER_CHOICES,
   PROCEDURE_NUMBER_DEFAULTS,
@@ -122,6 +123,7 @@ export type StudioStatement = Extract<
       | "setPenColor"
       | "setPenSize"
       | "setPenTransparency"
+      | "setPenShade"
       | "clearPen"
       | "stamp"
       | "playNote"
@@ -592,6 +594,8 @@ function checked(
   if (statement.type === "setPenColor")
     return (PEN_COLORS as readonly string[]).includes(statement.color);
   if (statement.type === "setPenSize") return STUDIO_PEN_SIZES.includes(statement.size);
+  if (statement.type === "setPenShade")
+    return (PEN_SHADES as readonly string[]).includes(statement.shade);
   if (statement.type === "setPenTransparency")
     return (PEN_TRANSPARENCIES as readonly number[]).includes(statement.percent);
   if (statement.type === "playNote")
@@ -1002,6 +1006,7 @@ export function appendStudioStatement(
     "setPenColor",
     "setPenSize",
     "setPenTransparency",
+    "setPenShade",
     "clearPen",
     "stamp",
   ].includes(statement.type)

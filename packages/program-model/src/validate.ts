@@ -5,6 +5,7 @@ import {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_SHADES,
   PEN_TRANSPARENCIES,
   SCHEMA_VERSION,
 } from "./schema.js";
@@ -14,6 +15,7 @@ import type {
   ExtensionId,
   ClockPart,
   PenColor,
+  PenShade,
   PenTransparency,
   Expression,
   MathFunction,
@@ -721,6 +723,18 @@ function validateStatement(
         );
       }
       return { type: "setPenTransparency", percent: input.percent as PenTransparency };
+    }
+    case "setPenShade": {
+      state.usedExtensions.add("pen");
+      if (!(PEN_SHADES as readonly unknown[]).includes(input.shade)) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.shade`,
+          "expected lighter, normal or darker",
+          input.shade,
+        );
+      }
+      return { type: "setPenShade", shade: input.shade as PenShade };
     }
     case "setPenSize": {
       state.usedExtensions.add("pen");

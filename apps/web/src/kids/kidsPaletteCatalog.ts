@@ -60,6 +60,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   setPenColor: "pen",
   setPenSize: "pen",
   setPenTransparency: "pen",
+  setPenShade: "pen",
   clearPen: "pen",
   stamp: "pen",
   playNote: "music",
