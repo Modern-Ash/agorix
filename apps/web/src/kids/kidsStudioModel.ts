@@ -39,6 +39,8 @@ import {
   type Script,
   type Statement,
   type Trigger,
+  MAX_EMBEDDED_SOUNDS,
+  validEmbeddedSoundSource,
 } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
 import {
@@ -163,10 +165,26 @@ export interface StudioArt {
   readonly stageBackdropId?: string | undefined;
 }
 
+/** A recording the child kept in this project: `sound:recorded-1` to `sound:recorded-9`. */
+export const STUDIO_RECORDED_SOUND_ID = /^sound:recorded-[1-9]$/;
+
+export function isStudioRecordedSoundId(id: string): boolean {
+  return STUDIO_RECORDED_SOUND_ID.test(id);
+}
+
+/**
+ * The child's own assets: pictures (at most 12) and recordings (at most 8). A recording is a
+ * bounded WAV and nothing else; a picture is a bounded PNG or WebP.
+ */
 export function studioArtAssets(assets: readonly ProjectAsset[] = []): readonly ProjectAsset[] {
+  const sounds = assets.filter((asset) => asset.kind === "sound");
+  const pictures = assets.length - sounds.length;
   if (
-    assets.length > 12 ||
+    pictures > 12 ||
+    sounds.length > MAX_EMBEDDED_SOUNDS ||
     assets.some((asset) => {
+      if (asset.kind === "sound")
+        return !isStudioRecordedSoundId(asset.id) || !validEmbeddedSoundSource(asset.source);
       const match = STUDIO_ART_ID.exec(asset.id);
       return !match || match[1] !== asset.kind || !validKidsImageDataUrl(asset.source);
     }) ||
@@ -585,7 +603,10 @@ function checked(
       statement.backdropId.startsWith("backdrop:")
     );
   if (statement.type === "playSound")
-    return isKidsSoundId(statement.soundId) && statement.soundId !== "kids:custom";
+    return (
+      (isKidsSoundId(statement.soundId) && statement.soundId !== "kids:custom") ||
+      isStudioRecordedSoundId(statement.soundId)
+    );
   if (statement.type === "stopSounds") return true;
   if (statement.type === "stop") return ["script", "actor", "scene"].includes(statement.scope);
   if (statement.type === "askText")

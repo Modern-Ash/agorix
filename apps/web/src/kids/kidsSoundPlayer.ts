@@ -1,5 +1,6 @@
 import type { KidsAvatarRef } from "./kidsProjects.js";
 import { loadKidsAudio } from "./kidsAudio.js";
+import { isStudioRecordedSoundId } from "./kidsStudioModel.js";
 import {
   KIDS_CUSTOM_SOUND_ID,
   soundParameters,
@@ -11,6 +12,22 @@ interface SoundDependencies {
   readonly createContext?: () => AudioContext;
   readonly loadCustom?: (actor: KidsAvatarRef) => Promise<Blob | undefined>;
   readonly volume?: number;
+  /** The project's recording for a `sound:recorded-N` id, as its data URL; undefined when absent. */
+  readonly recorded?: (id: string) => string | undefined;
+}
+
+/** The bytes of a data URL's base64 payload, or undefined when it is not one. */
+function bytesOfDataUrl(source: string): ArrayBuffer | undefined {
+  const comma = source.indexOf(",");
+  if (!source.startsWith("data:") || comma < 0) return undefined;
+  try {
+    const text = atob(source.slice(comma + 1));
+    const bytes = new Uint8Array(text.length);
+    for (let index = 0; index < text.length; index += 1) bytes[index] = text.charCodeAt(index);
+    return bytes.buffer;
+  } catch {
+    return undefined;
+  }
 }
 
 const activeContexts = new Set<AudioContext>();
@@ -112,6 +129,29 @@ export async function playKidsSound(
   try {
     context = (deps.createContext ?? (() => new AudioContext()))();
     activeContexts.add(context);
+    if (isStudioRecordedSoundId(id)) {
+      // A recording kept in the project. If it cannot be played, the run just stays quiet.
+      const source = deps.recorded?.(id);
+      const data = source === undefined ? undefined : bytesOfDataUrl(source);
+      try {
+        if (data) {
+          const buffer = await context.decodeAudioData(data);
+          const player = context.createBufferSource();
+          const gain = context.createGain();
+          gain.gain.setValueAtTime(volume, context.currentTime);
+          player.buffer = buffer;
+          player.connect(gain).connect(context.destination);
+          closeWhenEnded(player, context);
+          player.start();
+          return;
+        }
+      } catch {
+        // A recording that will not decode is left silent.
+      }
+      activeContexts.delete(context);
+      await context.close().catch(() => undefined);
+      return;
+    }
     if (id === KIDS_CUSTOM_SOUND_ID) {
       try {
         const blob = await (deps.loadCustom ?? loadKidsAudio)(actor);

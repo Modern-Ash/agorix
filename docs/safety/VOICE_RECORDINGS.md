@@ -80,3 +80,12 @@ its own rules; it is not recording.
 - **Enforcement.** `scripts/security-baseline.mjs` allows user media in exactly two files,
   `kidsRecorder.ts` and `kidsLevelMeter.ts`, each with an attributed marker; anywhere else is a finding
   no marker can suppress.
+
+## Recordings kept in a project (#1309)
+
+The same adult switch that allows recording on this device also shows "Grabar un sonido" in the Studio's sound drawer. Nothing about the microphone changes: it is still opened only by `kidsRecorder.ts`, only after the adult's switch and the browser prompt, and released when the recording ends.
+
+- **Where it is kept.** After trimming, the recording is stored as a `sound:recorded-N` asset of the project: a mono, 16-bit PCM WAV at 16 000 or 22 050 Hz, at most five seconds, at most eight per project. Anything else is rejected by the model (`validEmbeddedSoundSource`), by the project's own validator and by import.
+- **Leaving the device.** A recording counts as child-added media. Exporting a project that holds one needs the same explicit adult opt-in as a drawing, and a file carrying a recording is re-validated on import. Without the opt-in the export is refused.
+- **Never read by Ori or the provider.** A block plays a recording by its id. Findings and provider input carry kinds and counts only, never the audio and not its name's meaning.
+- **Never executed.** The bytes are decoded for playback only; if they will not decode, the run stays quiet and its result is unchanged.

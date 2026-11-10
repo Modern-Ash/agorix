@@ -6,6 +6,7 @@ import {
   type ProjectMetadata,
   type ProjectSceneGoal,
 } from "@agorix/persistence";
+import { validEmbeddedSoundSource } from "@agorix/program-model";
 import type { ProjectAsset, ProjectProgram } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
 import {
@@ -188,8 +189,9 @@ export function addStudioArt(
   const custom = studioArtAssets(
     metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
   );
-  if (custom.length >= 12) throw new RangeError("studio art limit");
-  const number = Math.max(0, ...custom.map((asset) => Number(asset.id.split("-").at(-1)))) + 1;
+  const pictures = custom.filter((asset) => asset.kind !== "sound");
+  if (pictures.length >= 12) throw new RangeError("studio art limit");
+  const number = Math.max(0, ...pictures.map((asset) => Number(asset.id.split("-").at(-1)))) + 1;
   if (number > 99) throw new RangeError("studio art limit");
   const asset: ProjectAsset = {
     id: `${kind}:studio-art-${number}`,
@@ -234,6 +236,43 @@ export function addStudioArt(
     actors: { activeId: metadata.actors?.activeId ?? actorId, items: creative.actors! },
     stage: creative.stage!,
     assets: creative.assets!,
+  });
+  return asset.id;
+}
+
+/**
+ * Keep a recording in the project as a sound the child's blocks can play. The recording must be
+ * the bounded WAV the model accepts; the first free `sound:recorded-N` is used. Returns its id.
+ */
+export function addStudioSound(
+  id: string,
+  wavDataUrl: string,
+  locale: Locale,
+  store: ProjectStore = new ProjectStore(),
+): string {
+  if (!STUDIO_ID.test(id) || !validEmbeddedSoundSource(wavDataUrl))
+    throw new RangeError("invalid studio sound");
+  const saved = store.load(id);
+  validateStudioProgram(saved.program);
+  const metadata = saved.metadata;
+  const custom = studioArtAssets(
+    metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
+  );
+  const taken = new Set(custom.map((asset) => asset.id));
+  const number = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((n) => !taken.has(`sound:recorded-${n}`));
+  if (number === undefined || custom.filter((asset) => asset.kind === "sound").length >= 8)
+    throw new RangeError("studio sound limit");
+  const asset: ProjectAsset = {
+    id: `sound:recorded-${number}`,
+    kind: "sound",
+    name: locale === "es" ? `Mi sonido ${number}` : `My sound ${number}`,
+    source: wavDataUrl,
+  };
+  studioArtAssets([...custom, asset]);
+  store.save(id, saved.program, {
+    ...metadata,
+    updatedAt: new Date().toISOString(),
+    assets: [...(metadata.assets ?? []), asset],
   });
   return asset.id;
 }
