@@ -346,7 +346,15 @@ export const ORI_STUDIO_INTENTS = [
   "rainFalls",
   "crowdJumps",
 ] as const;
-export type OriStudioIntent = (typeof ORI_STUDIO_INTENTS)[number];
+
+/**
+ * Replacements for what a Scratch import could not bring (#1312): one block each, offered only
+ * after an import, through the same preview and decision as any goal.
+ */
+export const ORI_IMPORT_INTENTS = ["scratchGoTo", "scratchMove", "scratchSound"] as const;
+
+export type OriStudioIntent =
+  (typeof ORI_STUDIO_INTENTS)[number] | (typeof ORI_IMPORT_INTENTS)[number];
 
 /** The closed sounds and notes an idea may use (issue #626): ids and numbers only, no free text. */
 const IDEA_SOUND_IDS = ["kids:win", "kids:sparkle", "kids:bell", "kids:tada"];
@@ -510,6 +518,9 @@ const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
     { type: "wait", seconds: 1 },
     { type: "goToTarget", target: "random" },
   ],
+  scratchGoTo: [{ type: "goToTarget", target: "random" }],
+  scratchMove: [{ type: "move", steps: 80 }],
+  scratchSound: [{ type: "playSound", soundId: "kids:sparkle" }],
   follow: [
     { type: "goToTarget", target: "mouse" },
     { type: "wait", seconds: 0.5 },
@@ -598,7 +609,10 @@ function intentBlocks(
 }
 
 export function isOriStudioIntent(value: unknown): value is OriStudioIntent {
-  return (ORI_STUDIO_INTENTS as readonly unknown[]).includes(value);
+  return (
+    (ORI_STUDIO_INTENTS as readonly unknown[]).includes(value) ||
+    (ORI_IMPORT_INTENTS as readonly unknown[]).includes(value)
+  );
 }
 
 export function proposeOriStudioIntent(

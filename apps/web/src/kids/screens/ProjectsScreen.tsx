@@ -6,6 +6,14 @@ import { missionOfStudio } from "../kidsMissionStudio.js";
 import type { KidsText } from "../useKidsText.js";
 import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
 import { convertScratchProject, type ScratchImportReport } from "../kidsScratchImport.js";
+import {
+  cutKindOf,
+  cutSentence,
+  forgetImportCuts,
+  intentsForCuts,
+  saveImportCuts,
+  type CutKind,
+} from "../kidsImportCuts.js";
 import { readScratchProject } from "../kidsScratchZip.js";
 import { ExportMediaDialog } from "./ExportMediaDialog.js";
 import { KidsBackdrop } from "./KidsArt.js";
@@ -26,6 +34,20 @@ interface Props {
   readonly onStudio: (id: string) => void;
 }
 
+/** The cuts of an import grouped by kind, most frequent first. */
+function cutSummary(
+  report: ScratchImportReport,
+): readonly { readonly kind: CutKind; readonly count: number }[] {
+  const totals = new Map<CutKind, number>();
+  for (const item of report.dropped) {
+    const kind = cutKindOf(item.what);
+    totals.set(kind, (totals.get(kind) ?? 0) + item.count);
+  }
+  return [...totals.entries()]
+    .map(([kind, count]) => ({ kind, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio }: Props) {
   const [store] = useState(() => new ProjectStore());
   const [studios, setStudios] = useState(() => listStudioProjects());
@@ -41,6 +63,7 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
     setDeleting(null);
     if (!id) return;
     const removed = deleteStudioProject(id, store);
+    if (removed) forgetImportCuts(id);
     setStudios(listStudioProjects());
     setMessage(
       removed
@@ -77,6 +100,10 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
       const converted = convertScratchProject(await readScratchProject(await file.arrayBuffer()));
       const scene = importScratchStudioProject(converted, locale, store);
       setStudios(listStudioProjects());
+      saveImportCuts(
+        scene.id,
+        converted.report.dropped.map((item) => cutKindOf(item.what)),
+      );
       setScratchImport({ id: scene.id, report: converted.report });
       setMessage("");
     } catch {
@@ -147,18 +174,38 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
               : `Brought ${scratchImport.report.sprites} sprite(s) and ${scratchImport.report.blocksImported} block(s) from Scratch; ${scratchImport.report.blocksAdjusted} were adjusted to what the scene allows.`}
           </p>
           {scratchImport.report.dropped.length > 0 ? (
-            <details>
-              <summary>
-                {locale === "es" ? "Lo que no pude traer" : "What I could not bring"}
-              </summary>
-              <ul>
-                {scratchImport.report.dropped.map((item) => (
-                  <li key={item.what}>
-                    {item.what} × {item.count}
-                  </li>
-                ))}
-              </ul>
-            </details>
+            <>
+              <section aria-label={locale === "es" ? "Ori explica" : "Ori explains"}>
+                <h3>{locale === "es" ? "Ori te cuenta por qué" : "Ori tells you why"}</h3>
+                <ul data-testid="cut-explanations">
+                  {cutSummary(scratchImport.report).map((item) => (
+                    <li key={item.kind}>
+                      {cutSentence(item.kind, locale)} ({item.count})
+                    </li>
+                  ))}
+                </ul>
+                {intentsForCuts(cutSummary(scratchImport.report).map((item) => item.kind)).length >
+                0 ? (
+                  <p className="kids-note" data-testid="cut-ideas-note">
+                    {locale === "es"
+                      ? "Al abrir la escena, Ori te mostrará esas ideas antes de usarlas: vos decidís."
+                      : "When you open the scene, Ori will show you those ideas before using them: you decide."}
+                  </p>
+                ) : null}
+              </section>
+              <details>
+                <summary>
+                  {locale === "es" ? "Lo que no pude traer" : "What I could not bring"}
+                </summary>
+                <ul>
+                  {scratchImport.report.dropped.map((item) => (
+                    <li key={item.what}>
+                      {item.what} × {item.count}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </>
           ) : null}
           <button
             type="button"
