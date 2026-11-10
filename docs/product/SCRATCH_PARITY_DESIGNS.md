@@ -161,21 +161,19 @@ There is still no corpus of children's `.sb3` files, so the team wrote ten proje
 
 | Project       | Statements | Came across  | Scripts | Kept         |
 | ------------- | ---------- | ------------ | ------- | ------------ |
-| catch-game    | 15         | 12           | 4       | 2            |
-| pen-spiral    | 10         | 8            | 2       | 1            |
+| catch-game    | 15         | 14           | 4       | 4            |
+| pen-spiral    | 10         | 9            | 2       | 2            |
 | quiz          | 7          | 2            | 1       | 1            |
-| maze          | 12         | 10           | 4       | 2            |
-| dance         | 9          | 5            | 2       | 1            |
+| maze          | 12         | 12           | 4       | 4            |
+| dance         | 9          | 6            | 2       | 2            |
 | clone-rain    | 9          | 8            | 2       | 2            |
-| timer-race    | 6          | 4            | 2       | 1            |
-| music-box     | 5          | 0            | 1       | 1            |
+| timer-race    | 6          | 6            | 2       | 2            |
+| music-box     | 5          | 5            | 1       | 1            |
 | custom-blocks | 7          | 0            | 2       | 1            |
 | ghost-story   | 11         | 9            | 3       | 2            |
-| **Total**     | **91**     | **58 (64%)** | **23**  | **14 (61%)** |
+| **Total**     | **91**     | **71 (78%)** | **23**  | **21 (91%)** |
 
-What is left behind, most to least: **another script of the same character (9 of 23 scripts)**, because the scene gives each character one script plus a copy script (the same limit #1313 asks to review); then the Music extension (notes, drums, tempo: the scene has them but the importer does not map them), lists and "my blocks", "ask and wait", switching costume or backdrop by name, "if/else" on an answer, and a pen colour step. A value that comes from another block (a random number inside "go to") is also dropped.
-
-Next in order of what it would recover: map the Music blocks (no model work needed), then decide with #1313 whether a second script per character is worth it, since it is the biggest loss by far.
+Measured at the end of #1363: with Music mapped and up to three scripts per character, 71 of 91 statements (78%) and 21 of 23 scripts (91%) come across. Before, it was 58 (64%) and 14 (61%). What is left, most to least: lists and "my blocks", "ask and wait", switching costume or backdrop by name, "if/else" on an answer, a pen colour step, a value that comes from another block (a random number inside "go to"), and a second script for an event the character already answers.
 
 ## Status: more than one script per character (#1363), increment 1
 
@@ -188,3 +186,9 @@ Increment 1 is the Studio model only, with no interface yet. The engine already 
 - New: `addStudioScript`, `removeStudioScript`, `studioExtraScripts`; `studioBlocksUsed` now sums the character's scripts; adding a character keeps the others' extra scripts.
 
 Next increments: (2) the Studio interface (a tab per script, add and remove, choose the event); (3) the Scratch importer keeps up to three scripts per sprite; (4) Ori's findings, the timeline and the four code views read every script of a character.
+
+## Status: more than one script per character (#1363), increments 2 and 3
+
+The Studio now shows tabs "Script 1, 2, 3" above the blocks, with "+ Another script" (it starts with the first event the character does not answer yet) and "Remove this script" for the last one. Every block edit, move, copy, delete and event choice goes to the script in the open tab. Choosing an event the character already answers in another script is refused with a message, and the script stays as it was. Custom blocks are made only on script 1. The Scratch importer keeps up to three scripts per sprite, each with its own event, and counts a repeat or a fourth as "another script of the sprite".
+
+Increment 4: the four code views write every script of a character (tested), and Ori's findings read every script because a character lists them in the creative state. Ori's **ideas** land in the character's first script, so the screen jumps to Script 1 while Ori has an idea to show, and the ghost blocks appear where they would go. Making Ori propose for a chosen script is left for when sessions show it is wanted.

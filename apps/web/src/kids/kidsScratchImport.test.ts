@@ -78,9 +78,10 @@ function project() {
 }
 
 describe("Scratch import", () => {
-  it("brings the first script of each sprite across, snapped to the scene's lists", () => {
+  it("brings the scripts of each sprite across, snapped to the scene's lists", () => {
     const { program, report, positions } = convertScratchProject(project());
-    expect(program.scripts).toHaveLength(2);
+    // The cat's flag script, the ball's tap script, then the cat's second script (the space key).
+    expect(program.scripts).toHaveLength(3);
     const [cat, ball] = program.scripts;
     expect(cat!.trigger).toEqual({ type: "greenFlag" });
     expect(cat!.statements.map((statement) => statement.type)).toEqual([
@@ -105,7 +106,20 @@ describe("Scratch import", () => {
     const { report } = convertScratchProject(project());
     const reasons = report.dropped.map((item) => item.what);
     expect(reasons).toContain("motion_glideto");
-    expect(reasons).toContain("another script of the sprite");
+  });
+
+  it("keeps a second script for another event, and leaves one for an event already answered", () => {
+    const twice = project();
+    (twice.targets[1] as { blocks: Record<string, unknown> }).blocks["again"] = block(
+      "event_whenkeypressed",
+      { topLevel: true, fields: { KEY_OPTION: ["space", null] }, next: "step" },
+    );
+    (twice.targets[1] as { blocks: Record<string, unknown> }).blocks["step"] = block(
+      "motion_movesteps",
+      { inputs: { STEPS: lit(10) } },
+    );
+    const { report } = convertScratchProject(twice);
+    expect(report.dropped.map((item) => item.what)).toContain("another script of the sprite");
   });
 
   it("produces a program that runs in the deterministic runtime", () => {
@@ -458,5 +472,27 @@ describe("Scratch pen, timer and value hats", () => {
     ]);
     expect(statements[3]).toMatchObject({ volume: 100 });
     expect(report.dropped.some((item) => item.what.includes("fisheye"))).toBe(true);
+  });
+
+  it("maps the Music blocks to the scene's notes, beats, drums, tempo and instruments", () => {
+    const { program } = convertScratchProject(
+      sprite({
+        d: block("music_menu_DRUM", { fields: { DRUM: ["1", null] }, shadow: true }),
+        i: block("music_menu_INSTRUMENT", { fields: { INSTRUMENT: ["4", null] }, shadow: true }),
+        ...chain(
+          ["music_setTempo", { inputs: { TEMPO: lit(100) } }],
+          ["music_playNoteForBeats", { inputs: { NOTE: lit(60), BEATS: lit(0.6) } }],
+          ["music_playDrumForBeats", { inputs: { BEATS: lit(1), DRUM: [1, "d"] } }],
+          ["music_setInstrument", { inputs: { INSTRUMENT: [1, "i"] } }],
+        ),
+      }),
+    );
+    expect(program.extensions).toContain("music");
+    expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
+      "setTempo",
+      "playNote",
+      "playDrum",
+      "setInstrument",
+    ]);
   });
 });

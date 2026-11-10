@@ -155,6 +155,7 @@ import type {
   ProcedureParamId,
   ProjectProgram,
   Statement,
+  Trigger,
 } from "@agorix/program-model";
 import type { Locale } from "../../i18n.js";
 import {
@@ -226,6 +227,11 @@ import {
   setStudioStatementField,
   studioProcedureUses,
   hasStudioCloneScript,
+  addStudioScript,
+  removeStudioScript,
+  studioExtraScripts,
+  studioExtraTarget,
+  MAX_STUDIO_EXTRA_SCRIPTS,
   studioActorId,
   type StudioStatement,
   wrapStudioTail,
@@ -562,6 +568,13 @@ const COPY = {
     categories: "Categorías de bloques",
     event: "Cuando",
     onPlay: "Al jugar",
+    scriptsLabel: "Guiones del personaje",
+    scriptTab: "Guion",
+    addScript: "+ Otro guion",
+    addScriptTip: "Dar al personaje otro guion que empieza con otro evento",
+    removeScript: "Quitar este guion",
+    removeScriptTip: "Quitar este guion y sus bloques",
+    eventTaken: "Este personaje ya responde a ese evento en otro guion. Elegí otro.",
     onTap: "Al tocar este personaje",
     tapHint: "Tocá el personaje en el escenario después de Jugar.",
     remove: "Quitar bloque",
@@ -898,6 +911,13 @@ const COPY = {
     categories: "Block categories",
     event: "When",
     onPlay: "When played",
+    scriptsLabel: "Character scripts",
+    scriptTab: "Script",
+    addScript: "+ Another script",
+    addScriptTip: "Give the character another script that starts with another event",
+    removeScript: "Remove this script",
+    removeScriptTip: "Remove this script and its blocks",
+    eventTaken: "This character already answers that event in another script. Pick another.",
     onTap: "When this character is tapped",
     tapHint: "Tap the character on the stage after Play.",
     remove: "Remove block",
@@ -977,6 +997,18 @@ const COPY = {
 
 const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
+
+/** The events a new script of a character starts with, the first one it does not answer yet. */
+const ADDED_SCRIPT_EVENTS: readonly Trigger[] = [
+  { type: "onActorClicked" },
+  { type: "onKeyPressed", key: "ArrowRight" },
+  { type: "onKeyPressed", key: "ArrowLeft" },
+  { type: "onKeyPressed", key: "ArrowUp" },
+  { type: "onKeyPressed", key: "ArrowDown" },
+  { type: "onMessage", message: "hola" },
+  { type: "onMessage", message: "vamos" },
+  { type: "onMessage", message: "listo" },
+];
 type DropTarget =
   | {
       readonly kind: "list";
@@ -1318,6 +1350,8 @@ export function KidsStudioScreen({
   const [backdropId, setBackdropId] = useState<KidsGalleryBackdropId>(
     () => listStudioProjects().find((item) => item.id === id)?.backdropId ?? "forest",
   );
+  const [activeSlot, setActiveSlot] = useState<1 | 2 | 3>(1);
+  const [eventTaken, setEventTaken] = useState(false);
   const [activeActorId, setActiveActorId] = useState(
     () => store.load(id).metadata.actors?.activeId ?? studioActorId(1, "nova"),
   );
@@ -1596,7 +1630,15 @@ export function KidsStudioScreen({
   const targetActorId = otherActors.some((item) => item.id === sensorTargetId)
     ? sensorTargetId
     : otherActors[0]?.id;
-  const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
+  // A character answers up to three events, one script each (#1363): the tabs pick which one the
+  // blocks below belong to; every edit goes through the same target name.
+  const extraScripts = studioExtraScripts(history.current, activeActorId);
+  const slot: 1 | 2 | 3 = extraScripts.some((item) => item.slot === activeSlot) ? activeSlot : 1;
+  const scriptTarget = slot === 1 ? activeActorId : studioExtraTarget(activeActorId, slot);
+  const script =
+    slot === 1
+      ? history.current.scripts.find((item) => actor?.scripts?.includes(item.id))
+      : extraScripts.find((item) => item.slot === slot)?.script;
   const sharedBlocks = studioSharedProcedures(history.current);
   /** Every block this character can call: its own, then the ones made for everyone. */
   const callableBlocks = [...(script?.procedures ?? []), ...sharedBlocks];
@@ -1670,6 +1712,11 @@ export function KidsStudioScreen({
     /** Ori's idea applied to a copy, only to listen to it: the child's program is untouched. */
     readonly candidate: ProjectProgram;
   } | null>(null);
+  // Ori's ideas land in the character's first script, so the screen shows that one while it has an
+  // idea to look at (nothing is hidden: the ghost blocks appear where they would go).
+  useEffect(() => {
+    if (oriIdea || intentPlan || compoundOri) setActiveSlot(1);
+  }, [oriIdea, intentPlan, compoundOri]);
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
   const [quantityGuess, setQuantityGuess] = useState<number | null>(null);
@@ -1985,7 +2032,7 @@ export function KidsStudioScreen({
     if (count !== pending.expected) return;
     try {
       persist(
-        moveStudioStatementTo(history, activeActorId, [count - 1], pending.ref, pending.index),
+        moveStudioStatementTo(history, scriptTarget, [count - 1], pending.ref, pending.index),
       );
     } catch {
       setError(true);
@@ -2018,7 +2065,7 @@ export function KidsStudioScreen({
     try {
       if (target.kind === "actor") {
         if (from.length === 1 && typeof from[0] === "number")
-          persist(moveStudioStatementToActor(history, activeActorId, from[0], target.actorId));
+          persist(moveStudioStatementToActor(history, scriptTarget, from[0], target.actorId));
         return;
       }
       const source = listOf(from);
@@ -2029,7 +2076,7 @@ export function KidsStudioScreen({
           ? target.index - 1
           : target.index;
       if (sameList && index === last) return;
-      persist(moveStudioStatementTo(history, activeActorId, from, target.ref, index));
+      persist(moveStudioStatementTo(history, scriptTarget, from, target.ref, index));
     } catch {
       setError(true);
     }
@@ -2451,6 +2498,46 @@ export function KidsStudioScreen({
     return () => window.removeEventListener("keydown", studioKeyDown);
   });
 
+  /** A character answers each event once: a repeat leaves the script as it was and says why. */
+  function trySetTrigger(target: string, trigger: Trigger | "greenFlag" | "onActorClicked") {
+    try {
+      const next = setStudioTrigger(history, target, trigger);
+      setEventTaken(false);
+      return next;
+    } catch {
+      setEventTaken(true);
+      return history;
+    }
+  }
+
+  function addScript() {
+    try {
+      const used = new Set(
+        [script, ...extraScripts.map((item) => item.script)].map((item) =>
+          JSON.stringify(item?.trigger),
+        ),
+      );
+      const free = ADDED_SCRIPT_EVENTS.find((item) => !used.has(JSON.stringify(item)));
+      if (free === undefined) return;
+      const next = addStudioScript(history, activeActorId, free);
+      persist(next);
+      setActiveSlot((extraScripts.length + 2) as 2 | 3);
+      setEventTaken(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function removeScript() {
+    try {
+      persist(removeStudioScript(history, activeActorId));
+      setActiveSlot(1);
+      setEventTaken(false);
+    } catch {
+      setError(true);
+    }
+  }
+
   function setEvent(type: StudioEvent) {
     const trigger =
       type === "onKeyPressed"
@@ -2464,7 +2551,7 @@ export function KidsStudioScreen({
               : type === "onLoudnessOver"
                 ? ({ type, level: eventLevel } as const)
                 : ({ type } as const);
-    persist(setStudioTrigger(history, activeActorId, trigger));
+    persist(trySetTrigger(scriptTarget, trigger));
   }
 
   function createData(kind: "variable" | "list" | "word") {
@@ -2543,6 +2630,8 @@ export function KidsStudioScreen({
     try {
       saveStudioProject(id, history.current, backdropId, next, locale, store);
       setActiveActorId(next);
+      setActiveSlot(1);
+      setEventTaken(false);
       setOriIdea(null);
       setCompoundOri(null);
       setOriMessage("");
@@ -2836,13 +2925,7 @@ export function KidsStudioScreen({
       );
       if (!field) return;
       persist(
-        setStudioStatementField(
-          history,
-          activeActorId,
-          index,
-          key,
-          parseFieldValue(field.key, raw),
-        ),
+        setStudioStatementField(history, scriptTarget, index, key, parseFieldValue(field.key, raw)),
       );
     } catch {
       // A value outside the closed lists cannot be chosen from here; a text that is empty or too
@@ -2854,12 +2937,12 @@ export function KidsStudioScreen({
   function blockAction(action: "duplicate" | "delete" | "up" | "down", index: number) {
     if (inspectorKind === "block") setInspectorOpen(false);
     try {
-      if (action === "duplicate") persist(duplicateStudioStatement(history, activeActorId, index));
-      if (action === "delete") persist(removeStudioStatement(history, activeActorId, index));
+      if (action === "duplicate") persist(duplicateStudioStatement(history, scriptTarget, index));
+      if (action === "delete") persist(removeStudioStatement(history, scriptTarget, index));
       if (action === "up" && index > 0)
-        persist(moveStudioStatement(history, activeActorId, index, index - 1));
+        persist(moveStudioStatement(history, scriptTarget, index, index - 1));
       if (action === "down" && index < (script?.statements.length ?? 1) - 1)
-        persist(moveStudioStatement(history, activeActorId, index, index + 1));
+        persist(moveStudioStatement(history, scriptTarget, index, index + 1));
     } catch {
       // At the size limit or already at the end: nothing changes.
     }
@@ -2881,7 +2964,7 @@ export function KidsStudioScreen({
 
   function add(statement: StudioStatement) {
     try {
-      persist(appendStudioStatement(history, activeActorId, statement));
+      persist(appendStudioStatement(history, scriptTarget, statement));
       if (paletteView === "focused") setOpenCategory(null);
     } catch {
       // At the size limit the reason is the limit, not a failed save.
@@ -3339,7 +3422,7 @@ export function KidsStudioScreen({
       persist(
         wrapStudioTail(
           history,
-          activeActorId,
+          scriptTarget,
           groupCount,
           type === "repeat"
             ? { type, times: repeatCount as 2 | 3 | 5 }
@@ -5569,6 +5652,55 @@ export function KidsStudioScreen({
             >
               <div className="kids-program-zone">
                 <div className="kids-program-stack">
+                  <div
+                    className="kids-script-tabs"
+                    role="group"
+                    aria-label={copy.scriptsLabel}
+                    data-testid="script-tabs"
+                  >
+                    {[1, ...extraScripts.map((item) => item.slot)].map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className="kids-button"
+                        aria-pressed={slot === item}
+                        data-testid={`script-tab-${item}`}
+                        onClick={() => {
+                          setActiveSlot(item as 1 | 2 | 3);
+                          setEventTaken(false);
+                        }}
+                      >
+                        {copy.scriptTab} {item}
+                      </button>
+                    ))}
+                    {extraScripts.length < MAX_STUDIO_EXTRA_SCRIPTS ? (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        data-testid="script-add"
+                        title={copy.addScriptTip}
+                        onClick={addScript}
+                      >
+                        {copy.addScript}
+                      </button>
+                    ) : null}
+                    {slot !== 1 && slot === extraScripts.length + 1 ? (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        data-testid="script-remove"
+                        title={copy.removeScriptTip}
+                        onClick={removeScript}
+                      >
+                        {copy.removeScript}
+                      </button>
+                    ) : null}
+                  </div>
+                  {eventTaken ? (
+                    <p className="kids-note" role="status" data-testid="event-taken">
+                      {copy.eventTaken}
+                    </p>
+                  ) : null}
                   <label>
                     {copy.event}
                     <select
@@ -5594,9 +5726,7 @@ export function KidsStudioScreen({
                         onChange={(event) => {
                           const key = event.target.value as (typeof STUDIO_KEYS)[number];
                           setEventKey(key);
-                          persist(
-                            setStudioTrigger(history, activeActorId, { type: "onKeyPressed", key }),
-                          );
+                          persist(trySetTrigger(scriptTarget, { type: "onKeyPressed", key }));
                         }}
                       >
                         {STUDIO_KEYS.map((key) => (
@@ -5617,7 +5747,7 @@ export function KidsStudioScreen({
                           const level = Number(event.target.value);
                           setEventLevel(level);
                           persist(
-                            setStudioTrigger(history, activeActorId, {
+                            trySetTrigger(scriptTarget, {
                               type: "onLoudnessOver",
                               level,
                             }),
@@ -5642,7 +5772,7 @@ export function KidsStudioScreen({
                           const seconds = Number(event.target.value);
                           setEventSeconds(seconds);
                           persist(
-                            setStudioTrigger(history, activeActorId, {
+                            trySetTrigger(scriptTarget, {
                               type: "onTimerOver",
                               seconds,
                             }),
@@ -5666,7 +5796,7 @@ export function KidsStudioScreen({
                           const next = event.target.value as KidsGalleryBackdropId;
                           setEventBackdrop(next);
                           persist(
-                            setStudioTrigger(history, activeActorId, {
+                            trySetTrigger(scriptTarget, {
                               type: "onBackdropSwitch",
                               backdropId: `backdrop:${next}`,
                             }),
@@ -5690,7 +5820,7 @@ export function KidsStudioScreen({
                           const message = event.target.value as (typeof STUDIO_MESSAGES)[number];
                           setEventMessage(message);
                           persist(
-                            setStudioTrigger(history, activeActorId, {
+                            trySetTrigger(scriptTarget, {
                               type: "onMessage",
                               message,
                             }),
@@ -5896,7 +6026,7 @@ export function KidsStudioScreen({
                           aria-label={`${copy.blockUp} ${index + 1}`}
                           disabled={index === 0}
                           onClick={() =>
-                            persist(moveStudioStatement(history, activeActorId, index, index - 1))
+                            persist(moveStudioStatement(history, scriptTarget, index, index - 1))
                           }
                         >
                           ↑
@@ -5907,7 +6037,7 @@ export function KidsStudioScreen({
                           aria-label={`${copy.blockDown} ${index + 1}`}
                           disabled={index === (script?.statements.length ?? 1) - 1}
                           onClick={() =>
-                            persist(moveStudioStatement(history, activeActorId, index, index + 1))
+                            persist(moveStudioStatement(history, scriptTarget, index, index + 1))
                           }
                         >
                           ↓
@@ -5920,7 +6050,7 @@ export function KidsStudioScreen({
                             disabled={(script?.statements.length ?? 0) >= 60}
                             onClick={() => {
                               try {
-                                persist(duplicateStudioStatement(history, activeActorId, index));
+                                persist(duplicateStudioStatement(history, scriptTarget, index));
                               } catch {
                                 // The program is at its size limit: no copy is made.
                               }
@@ -5934,7 +6064,7 @@ export function KidsStudioScreen({
                           className="kids-button"
                           aria-label={`${copy.remove} ${index + 1}`}
                           onClick={() =>
-                            persist(removeStudioStatement(history, activeActorId, index))
+                            persist(removeStudioStatement(history, scriptTarget, index))
                           }
                         >
                           ×
@@ -6885,7 +7015,9 @@ export function KidsStudioScreen({
                 <button
                   type="button"
                   className="kids-button"
-                  disabled={!blockName.trim() || (script?.statements.length ?? 0) < groupCount}
+                  disabled={
+                    slot !== 1 || !blockName.trim() || (script?.statements.length ?? 0) < groupCount
+                  }
                   onClick={() => {
                     authorBlock(() =>
                       createStudioProcedure(

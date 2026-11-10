@@ -121,3 +121,27 @@ describe("a character's extra scripts (#1363)", () => {
     expect(studioExtraScripts(program, nova)).toHaveLength(1);
   });
 });
+
+describe("every view of the program shows every script of a character (#1363)", () => {
+  it("writes the two key scripts in Python, TypeScript, Java and Agorix code", async () => {
+    const { projectPython } = await import("@agorix/python-projection");
+    const { projectJava } = await import("@agorix/java-projection");
+    const { projectAgorixCode } = await import("@agorix/agorix-code");
+    const { projectProgramLanguage } = await import("@agorix/code-generator");
+    let history = addStudioScript(addStudioScript(start(), nova, right), nova, left);
+    history = appendStudioStatement(history, studioExtraTarget(nova, 2), {
+      type: "move",
+      steps: 20,
+    });
+    history = appendStudioStatement(history, studioExtraTarget(nova, 3), {
+      type: "move",
+      steps: -20,
+    });
+    const program = validateStudioProgram(history.current);
+    for (const project of [projectPython, projectJava, projectAgorixCode, projectProgramLanguage]) {
+      const text = JSON.stringify(project(program));
+      expect(text, project.name).toContain("ArrowRight");
+      expect(text, project.name).toContain("ArrowLeft");
+    }
+  });
+});

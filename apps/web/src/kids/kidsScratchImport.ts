@@ -1,5 +1,9 @@
 import {
+  MUSIC_BEATS,
   PEN_TRANSPARENCIES,
+  type ExtensionId,
+  type MusicDrum,
+  type MusicInstrument,
   type ClockPart,
   type PenShade,
   SCHEMA_VERSION,
@@ -27,8 +31,12 @@ import {
 import { penColorOfHex } from "./kidsBackdropZones.js";
 import {
   STUDIO_EDGE_CONDITION,
+  STUDIO_NOTES,
   STUDIO_PEN_SIZES,
+  STUDIO_TEMPOS,
   cloneScriptId,
+  extraScriptId,
+  MAX_STUDIO_EXTRA_SCRIPTS,
   studioActorId,
   validateStudioProgram,
 } from "./kidsStudioModel.js";
@@ -72,6 +80,31 @@ const CLOCK_PART_OF_SCRATCH: Readonly<Record<string, ClockPart>> = {
 function shadeOf(value: number): PenShade {
   return value < 40 ? "darker" : value > 60 ? "lighter" : "normal";
 }
+
+/** Scratch's drum numbers (1 snare, 2 bass, 5 and 6 hi-hats, 8 clap) to the scene's four drums. */
+const DRUM_OF_SCRATCH: Readonly<Record<string, MusicDrum>> = {
+  "1": "snare",
+  "2": "kick",
+  "5": "hat",
+  "6": "hat",
+  "8": "clap",
+};
+
+/** Scratch's instrument numbers to the scene's four, by family. */
+const INSTRUMENT_OF_SCRATCH: Readonly<Record<string, MusicInstrument>> = {
+  "1": "piano",
+  "2": "piano",
+  "3": "piano",
+  "4": "guitar",
+  "5": "guitar",
+  "6": "guitar",
+  "12": "flute",
+  "13": "flute",
+  "16": "bell",
+  "17": "bell",
+  "18": "bell",
+  "19": "bell",
+};
 
 const MAX_SPRITES = 12;
 const MESSAGES = ["hola", "vamos", "listo"] as const;
@@ -150,6 +183,7 @@ class Converter {
   readonly messages = new Map<string, string>();
   readonly spriteActorIds = new Map<string, string>();
   usesPen = false;
+  usesMusic = false;
   blocks = new Map<string, ScratchBlock>();
 
   drop(what: string): void {
@@ -714,6 +748,41 @@ class Converter {
         );
         return { type: "changeVolume", delta: this.adjust(Math.round(clamped), delta) };
       }
+      case "music_playNoteForBeats": {
+        const note = num("NOTE");
+        const beats = num("BEATS");
+        if (note === undefined || beats === undefined) return missing();
+        this.usesMusic = true;
+        return {
+          type: "playNote",
+          note: this.adjust(nearest(note, STUDIO_NOTES), note),
+          beats: this.adjust(nearest(beats, MUSIC_BEATS), beats),
+        };
+      }
+      case "music_playDrumForBeats": {
+        const beats = num("BEATS");
+        if (beats === undefined) return missing();
+        const drum = DRUM_OF_SCRATCH[this.menu(block, "DRUM") ?? ""];
+        this.usesMusic = true;
+        if (drum === undefined) this.adjusted += 1;
+        return {
+          type: "playDrum",
+          drum: drum ?? "snare",
+          beats: this.adjust(nearest(beats, MUSIC_BEATS), beats),
+        };
+      }
+      case "music_setTempo": {
+        const tempo = num("TEMPO");
+        if (tempo === undefined) return missing();
+        this.usesMusic = true;
+        return { type: "setTempo", bpm: this.adjust(nearest(tempo, STUDIO_TEMPOS), tempo) };
+      }
+      case "music_setInstrument": {
+        const instrument = INSTRUMENT_OF_SCRATCH[this.menu(block, "INSTRUMENT") ?? ""];
+        this.usesMusic = true;
+        this.adjusted += 1;
+        return { type: "setInstrument", instrument: instrument ?? "piano" };
+      }
       case "sensing_resettimer":
         return { type: "resetTimer" };
       case "pen_clear":
@@ -936,6 +1005,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
 
   const scripts: Script[] = [];
   const cloneScripts: Script[] = [];
+  const extraScripts: Script[] = [];
   const positions: Record<string, { x: number; y: number; direction: number; size: number }> = {};
   const baseline: ProjectProgram = {
     schema: SCHEMA_VERSION,
@@ -961,14 +1031,29 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
     let trigger: Trigger = { type: "greenFlag" };
     let statements: Statement[] = [];
     let imported = 0;
+    // The character keeps up to three scripts, each with its own event (#1363); a second script
+    // for an event it already answers, or a fourth, is left behind and counted below.
+    const kept: { trigger: Trigger; statements: Statement[] }[] = [];
+    const answered = new Set<string>();
     for (const [, hat] of supported) {
+      if (kept.length >= 1 + MAX_STUDIO_EXTRA_SCRIPTS) break;
       const found = converter.trigger(hat);
-      if (found === undefined) continue;
-      trigger = found;
-      statements = converter.stack(hat.next);
-      imported = 1;
-      break;
+      if (found === undefined || answered.has(JSON.stringify(found))) continue;
+      answered.add(JSON.stringify(found));
+      kept.push({ trigger: found, statements: converter.stack(hat.next) });
     }
+    if (kept[0] !== undefined) {
+      trigger = kept[0].trigger;
+      statements = kept[0].statements;
+    }
+    imported = kept.length;
+    kept.slice(1).forEach((extra, at) => {
+      extraScripts.push({
+        id: extraScriptId(index + 1, character.id, (at + 2) as 2 | 3),
+        trigger: extra.trigger,
+        statements: extra.statements,
+      });
+    });
     // A character may also have the script its copies start with: the first clone hat's stack.
     if (cloneHat !== undefined) {
       converter.inCloneScript = true;
@@ -980,7 +1065,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
       converter.inCloneScript = false;
       imported += 1;
     }
-    // The scene gives each character one script (and a copy script); the rest is left behind.
+    // The scene gives each character up to three scripts (and a copy script); the rest is left behind.
     const stacks = [...blocks.values()].filter((block) => block.topLevel).length;
     for (let i = 0; i < stacks - imported; i += 1) converter.drop("another script of the sprite");
     const id = `studio-actor-${index + 1}-${character.id}`;
@@ -1014,10 +1099,18 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
     ...baseline,
     ...(variables.length > 0 ? { variables } : {}),
     ...(textVariables.length > 0 ? { textVariables } : {}),
-    scripts: [...scripts, ...cloneScripts].map((script) => ({ ...script, statements: [] })),
+    scripts: [...scripts, ...cloneScripts, ...extraScripts].map((script) => ({
+      ...script,
+      statements: [],
+    })),
   };
-  const draft: ProjectProgram = converter.usesPen ? { ...withData, extensions: ["pen"] } : withData;
-  const legal = [...scripts, ...cloneScripts].map((script, position) =>
+  const extensions = [
+    ...(converter.usesPen ? ["pen"] : []),
+    ...(converter.usesMusic ? ["music"] : []),
+  ];
+  const draft: ProjectProgram =
+    extensions.length > 0 ? { ...withData, extensions: extensions as ExtensionId[] } : withData;
+  const legal = [...scripts, ...cloneScripts, ...extraScripts].map((script, position) =>
     legalize(script, draft, position, converter),
   );
   const program = validateStudioProgram({ ...draft, scripts: legal });
