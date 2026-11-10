@@ -13,6 +13,10 @@ import { KIDS_GALLERY_CHARACTERS, type KidsGalleryBackdropId } from "./kidsGalle
 import { KIDS_SOUNDS } from "./kidsSoundLibrary.js";
 import {
   STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_EFFECT_DELTAS,
+  STUDIO_VOLUME_DELTA_RANGE,
+  STUDIO_VOLUME_RANGE,
+  studioEffectValues,
   STUDIO_REPEAT_COUNTS,
   STUDIO_SHIFT_AMOUNTS,
   STUDIO_SIZES,
@@ -668,6 +672,47 @@ class Converter {
         this.usesPen = true;
         this.adjusted += 1;
         return { type: "setPenShade", shade: shadeOf(value) };
+      }
+      case "looks_seteffectto":
+      case "looks_changeeffectby": {
+        const effect = (this.menu(block, "EFFECT") ?? "").toLowerCase();
+        if (effect !== "color" && effect !== "ghost" && effect !== "brightness") {
+          this.drop(`${block.opcode} (${effect === "" ? "unknown" : effect} effect)`);
+          return undefined;
+        }
+        if (block.opcode === "looks_seteffectto") {
+          const value = num("VALUE");
+          if (value === undefined) return missing();
+          const snapped = nearest(value, studioEffectValues(effect));
+          return { type: "setEffect", effect, value: this.adjust(snapped, value) };
+        }
+        const change = num("CHANGE");
+        if (change === undefined) return missing();
+        return {
+          type: "changeEffect",
+          effect,
+          delta: this.adjust(nearest(change, STUDIO_EFFECT_DELTAS), change),
+        };
+      }
+      case "looks_cleargraphiceffects":
+        return { type: "clearEffects" };
+      case "sound_setvolumeto": {
+        const volume = num("VOLUME");
+        if (volume === undefined) return missing();
+        const clamped = Math.max(
+          STUDIO_VOLUME_RANGE.min,
+          Math.min(STUDIO_VOLUME_RANGE.max, volume),
+        );
+        return { type: "setVolume", volume: this.adjust(Math.round(clamped), volume) };
+      }
+      case "sound_changevolumeby": {
+        const delta = num("VOLUME");
+        if (delta === undefined) return missing();
+        const clamped = Math.max(
+          STUDIO_VOLUME_DELTA_RANGE.min,
+          Math.min(STUDIO_VOLUME_DELTA_RANGE.max, delta),
+        );
+        return { type: "changeVolume", delta: this.adjust(Math.round(clamped), delta) };
       }
       case "sensing_resettimer":
         return { type: "resetTimer" };

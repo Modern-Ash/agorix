@@ -425,4 +425,38 @@ describe("Scratch pen, timer and value hats", () => {
     expect(hat("TIMER", 4)).toEqual({ type: "onTimerOver", seconds: 3 });
     expect(hat("LOUDNESS", 45)).toEqual({ type: "onLoudnessOver", level: 50 });
   });
+
+  it("maps effects and volume to the scene's lists, and leaves other effects out", () => {
+    const { program, report } = convertScratchProject(
+      sprite({
+        ...chain(
+          [
+            "looks_seteffectto",
+            { fields: { EFFECT: ["GHOST", null] }, inputs: { VALUE: lit(40) } },
+          ],
+          [
+            "looks_changeeffectby",
+            { fields: { EFFECT: ["COLOR", null] }, inputs: { CHANGE: lit(20) } },
+          ],
+          [
+            "looks_seteffectto",
+            { fields: { EFFECT: ["FISHEYE", null] }, inputs: { VALUE: lit(40) } },
+          ],
+          ["looks_cleargraphiceffects"],
+          ["sound_setvolumeto", { inputs: { VOLUME: lit(150) } }],
+          ["sound_changevolumeby", { inputs: { VOLUME: lit(-20) } }],
+        ),
+      }),
+    );
+    const statements = program.scripts[0]!.statements;
+    expect(statements.map((statement) => statement.type)).toEqual([
+      "setEffect",
+      "changeEffect",
+      "clearEffects",
+      "setVolume",
+      "changeVolume",
+    ]);
+    expect(statements[3]).toMatchObject({ volume: 100 });
+    expect(report.dropped.some((item) => item.what.includes("fisheye"))).toBe(true);
+  });
 });
