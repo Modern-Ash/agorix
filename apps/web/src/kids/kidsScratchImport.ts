@@ -60,6 +60,19 @@ const KEYS: Readonly<Record<string, string>> = {
   "left arrow": "ArrowLeft",
   "right arrow": "ArrowRight",
 };
+/** A text the scene keeps as a word: at most 20 letters and no control characters. */
+export function wordOf(value: string): Expression | undefined {
+  const trimmed = value.trim();
+  return trimmed.length <= 20 && !/\p{Cc}/u.test(trimmed)
+    ? { type: "textLiteral", value: trimmed }
+    : undefined;
+}
+
+/** True when a Scratch value is a word, not a number. */
+function isWord(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "" && !Number.isFinite(Number(value));
+}
+
 const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
 
 type Json = Record<string, unknown>;
@@ -110,6 +123,8 @@ class Converter {
   adjusted = 0;
   readonly dropped = new Map<string, number>();
   readonly variableIds = new Map<string, string>();
+  /** Scratch variables that hold words, by name, with the scene's text variable they become. */
+  readonly textIds = new Map<string, string>();
   readonly messages = new Map<string, string>();
   readonly spriteActorIds = new Map<string, string>();
   usesPen = false;
@@ -599,6 +614,16 @@ class Converter {
       case "data_setvariableto":
       case "data_changevariableby": {
         const name = block.fields["VARIABLE"]?.[0];
+        const textId = typeof name === "string" ? this.textIds.get(name) : undefined;
+        if (textId !== undefined) {
+          const word =
+            block.opcode === "data_setvariableto" ? this.wordExpression(block, "VALUE") : undefined;
+          if (word === undefined) {
+            this.drop(`${block.opcode} (a word variable set to anything but a short word)`);
+            return undefined;
+          }
+          return { type: "setText", variableId: textId, value: word };
+        }
         const id = typeof name === "string" ? this.variableIds.get(name) : undefined;
         if (id === undefined) {
           this.drop(`${block.opcode} (more than three variables, or an unsupported name)`);
@@ -617,6 +642,22 @@ class Converter {
         this.drop(block.opcode);
         return undefined;
     }
+  }
+
+  /** A short word the scene can keep: a text of at most 20 letters, or another word variable. */
+  wordExpression(block: ScratchBlock, name: string): Expression | undefined {
+    const reference = block.inputs[name]?.[1];
+    if (typeof reference === "string") {
+      const inner = this.blocks.get(reference);
+      if (inner?.opcode === "data_variable") {
+        const variable = inner.fields["VARIABLE"]?.[0];
+        const id = typeof variable === "string" ? this.textIds.get(variable) : undefined;
+        return id === undefined ? undefined : { type: "textVariable", variableId: id };
+      }
+      return undefined;
+    }
+    const value = this.literal(block, name);
+    return value === undefined ? undefined : wordOf(value);
   }
 
   /**
@@ -734,18 +775,41 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
 
   // Up to three variables, from the stage first, then the sprites.
   const names: string[] = [];
+  const words: { name: string }[] = [];
+  // A variable holds words when it starts as a word or the project sets it to a word.
+  const setToWord = new Set<string>();
+  for (const target of [stage, ...sprites]) {
+    const rawBlocks = isRecord(target?.["blocks"]) ? target["blocks"] : {};
+    for (const raw of Object.values(rawBlocks)) {
+      const block = parseBlock(raw);
+      if (block?.opcode !== "data_setvariableto") continue;
+      const variable = block.fields["VARIABLE"]?.[0];
+      const input = block.inputs["VALUE"]?.[1];
+      const value = Array.isArray(input) ? (input as unknown as Primitive)[1] : undefined;
+      if (typeof variable === "string" && isWord(value)) setToWord.add(variable);
+    }
+  }
   for (const target of [stage, ...sprites]) {
     const variables = isRecord(target?.["variables"]) ? target["variables"] : {};
     for (const entry of Object.values(variables)) {
       const name = Array.isArray(entry) ? entry[0] : undefined;
-      if (typeof name === "string" && DATA_NAME.test(name) && !names.includes(name))
-        names.push(name);
+      if (typeof name !== "string" || !DATA_NAME.test(name)) continue;
+      if (names.includes(name) || words.some((word) => word.name === name)) continue;
+      const initial: unknown = Array.isArray(entry) ? entry[1] : undefined;
+      // The scene's variables always start empty, so a starting word is not kept.
+      if (isWord(initial) || setToWord.has(name)) words.push({ name });
+      else names.push(name);
     }
   }
   names
     .slice(0, 3)
     .forEach((name, index) => converter.variableIds.set(name, `studio-var-${index + 1}`));
   for (const name of names.slice(3)) converter.drop(`variable "${name}" (more than three)`);
+  words
+    .slice(0, 3)
+    .forEach((word, index) => converter.textIds.set(word.name, `studio-text-${index + 1}`));
+  for (const word of words.slice(3))
+    converter.drop(`word variable "${word.name}" (more than three)`);
 
   const scripts: Script[] = [];
   const cloneScripts: Script[] = [];
@@ -817,9 +881,16 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
     initialValue: 0,
     visible: true,
   }));
+  const textVariables = words.slice(0, 3).map((word, index) => ({
+    id: `studio-text-${index + 1}`,
+    name: word.name,
+    initialValue: "",
+    visible: true,
+  }));
   const withData: ProjectProgram = {
     ...baseline,
     ...(variables.length > 0 ? { variables } : {}),
+    ...(textVariables.length > 0 ? { textVariables } : {}),
     scripts: [...scripts, ...cloneScripts].map((script) => ({ ...script, statements: [] })),
   };
   const draft: ProjectProgram = converter.usesPen ? { ...withData, extensions: ["pen"] } : withData;

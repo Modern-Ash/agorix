@@ -280,3 +280,64 @@ describe("Scratch costume and backdrop number", () => {
     expect(report.dropped.length).toBeGreaterThan(0);
   });
 });
+
+describe("Scratch variables that hold words", () => {
+  function wordProject(value: string, extra: Record<string, unknown> = {}) {
+    return {
+      targets: [
+        {
+          isStage: true,
+          name: "Stage",
+          variables: { w: ["name", "Ana"], n: ["score", 0] },
+          blocks: {},
+        },
+        {
+          isStage: false,
+          name: "Cat",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          blocks: {
+            hat: block("event_whenflagclicked", { next: "set", topLevel: true }),
+            set: block("data_setvariableto", {
+              next: "num",
+              fields: { VARIABLE: ["name", "w"] },
+              inputs: { VALUE: lit(value, 10) },
+            }),
+            num: block("data_setvariableto", {
+              fields: { VARIABLE: ["score", "n"] },
+              inputs: { VALUE: lit(5) },
+            }),
+            ...extra,
+          },
+        },
+      ],
+    };
+  }
+
+  it("keeps a word variable as a word, and numbers as numbers", () => {
+    const { program } = convertScratchProject(wordProject("Hola"));
+    expect(program.textVariables).toEqual([
+      { id: "studio-text-1", name: "name", initialValue: "", visible: true },
+    ]);
+    expect(program.variables?.map((item) => item.name)).toEqual(["score"]);
+    expect(program.scripts[0]!.statements[0]).toEqual({
+      type: "setText",
+      variableId: "studio-text-1",
+      value: { type: "textLiteral", value: "Hola" },
+    });
+    expect(program.scripts[0]!.statements[1]).toMatchObject({ type: "setVariable" });
+  });
+
+  it("leaves out a word that is too long, and says so", () => {
+    const { program, report } = convertScratchProject(
+      wordProject("una frase demasiado larga para guardarla"),
+    );
+    expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
+      "setVariable",
+    ]);
+    expect(report.dropped.some((item) => item.what.includes("data_setvariableto"))).toBe(true);
+  });
+});
