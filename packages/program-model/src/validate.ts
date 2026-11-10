@@ -391,6 +391,10 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "timer" };
     case "loudness":
       return { type: "loudness" };
+    case "costumeNumber":
+      return { type: "costumeNumber" };
+    case "backdropNumber":
+      return { type: "backdropNumber" };
     case "mouseX":
       return { type: "mouseX" };
     case "mouseY":

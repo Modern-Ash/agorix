@@ -1,4 +1,4 @@
-import type { CopyRule, ProjectProgram } from "@agorix/program-model";
+import type { CopyRule, ProjectCreativeState, ProjectProgram } from "@agorix/program-model";
 import { COPIES_CAP, createCopiesWorld, liveCopies } from "./copies.js";
 import { cloneWorldState, createWorldState } from "./world.js";
 import type { RuntimeActorMutable } from "./multiActor.js";
@@ -86,4 +86,22 @@ export function makeClones(
       ...(scriptIds === undefined ? {} : { scriptIds }),
     };
   });
+}
+
+/**
+ * The costume and backdrop orders a script reads "costume number" and "backdrop number" from. A
+ * clone counts costumes like the character it was born from.
+ */
+export function orderOptions(
+  creative: ProjectCreativeState,
+  actorId: string,
+): {
+  readonly costumeOrder?: readonly string[];
+  readonly backdropOrder?: readonly string[];
+} {
+  const costumes = creative.costumeOrders?.[cloneRootId(actorId)];
+  return {
+    ...(costumes === undefined ? {} : { costumeOrder: costumes }),
+    ...(creative.backdropOrder === undefined ? {} : { backdropOrder: creative.backdropOrder }),
+  };
 }

@@ -1008,3 +1008,20 @@ describe("how full a character is", () => {
     expect(() => appendStudioStatement(history, actor, { type: "move", steps: 20 })).toThrow();
   });
 });
+
+describe("costume and backdrop order for the numbers", () => {
+  it("counts from the character's own costume, then the child's pictures, and the scene backdrop first", () => {
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==";
+    const creative = creativeForStudio(createStudioProgram("nova"), "forest", "es", {}, [], {
+      assets: [
+        { id: "costume:studio-art-1", kind: "costume", name: "Mi disfraz 1", source: png },
+        { id: "backdrop:studio-art-2", kind: "backdrop", name: "Mi fondo 2", source: png },
+      ],
+    });
+    expect(creative.costumeOrders).toEqual({
+      "actor:studio-1-nova": ["costume:nova", "costume:studio-art-1"],
+    });
+    expect(creative.backdropOrder).toEqual(["backdrop:forest", "backdrop:studio-art-2"]);
+  });
+});

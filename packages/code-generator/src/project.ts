@@ -182,6 +182,10 @@ function formatExpression(
       return `keyDown(${JSON.stringify(expression.key)})`;
     case "loudness":
       return "loudness()";
+    case "costumeNumber":
+      return "costumeNumber()";
+    case "backdropNumber":
+      return "backdropNumber()";
     case "mouseX":
       return "mouseX()";
     case "mouseY":

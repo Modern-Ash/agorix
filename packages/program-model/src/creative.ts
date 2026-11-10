@@ -48,6 +48,13 @@ export interface ProjectCreativeState {
    * scene model and not on pixels. A backdrop without an entry has no colours.
    */
   readonly colorZones?: Readonly<Record<string, readonly ColorZone[]>>;
+  /**
+   * The costumes each character can wear, in order, by actor id: the "costume number" counts from
+   * 1 in this list. A costume that is not listed is number 0.
+   */
+  readonly costumeOrders?: Readonly<Record<string, readonly string[]>>;
+  /** The backdrops, in order: the "backdrop number" counts from 1 in this list. */
+  readonly backdropOrder?: readonly string[];
 }
 
 interface CreativeValidationState {
@@ -66,7 +73,15 @@ const MAX_TAGS = 16;
 const MAX_STAGE_DIMENSION = 4096;
 const MAX_ACTOR_SIZE = 400;
 const STABLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
-const CREATIVE_KEYS = ["actors", "stage", "assets", "colorZones"] as const;
+const CREATIVE_KEYS = [
+  "actors",
+  "stage",
+  "assets",
+  "colorZones",
+  "costumeOrders",
+  "backdropOrder",
+] as const;
+const MAX_ORDER = 140;
 const MAX_ZONE_BACKDROPS = 32;
 const MAX_ZONES = 8;
 const ASSET_KEYS = ["id", "kind", "name", "source", "tags"] as const;
@@ -425,6 +440,24 @@ function validateStatementAssetRefs(
   }
 }
 
+function validateOrder(
+  input: unknown,
+  path: string,
+  known: ReadonlySet<string>,
+): readonly string[] {
+  if (!Array.isArray(input) || input.length > MAX_ORDER)
+    fail(path, `expected an array with at most ${MAX_ORDER} ids`, input);
+  const seen = new Set<string>();
+  return input.map((id, index) => {
+    const at = `${path}[${index}]`;
+    const value = stableId(id, at);
+    if (!known.has(value)) failReference(at, `unknown id ${JSON.stringify(value)}`, value);
+    if (seen.has(value)) fail(at, "expected each id once", value);
+    seen.add(value);
+    return value;
+  });
+}
+
 function validateColorZones(input: unknown): Readonly<Record<string, readonly ColorZone[]>> {
   if (!isPlainObject(input)) fail("$.colorZones", "expected an object", input);
   const entries = Object.entries(input);
@@ -497,6 +530,25 @@ export function validateProjectCreativeState(
     input.stage === undefined ? undefined : validateStage(input.stage, "$.stage", state);
   const colorZones =
     input.colorZones === undefined ? undefined : validateColorZones(input.colorZones);
+  const costumeOrders =
+    input.costumeOrders === undefined
+      ? undefined
+      : (() => {
+          if (!isPlainObject(input.costumeOrders))
+            fail("$.costumeOrders", "expected an object", input.costumeOrders);
+          const ids = new Set(actors?.map((actor) => actor.id));
+          const out: Record<string, readonly string[]> = {};
+          for (const [actorId, order] of Object.entries(input.costumeOrders)) {
+            const path = `$.costumeOrders[${JSON.stringify(actorId)}]`;
+            if (!ids.has(actorId)) failReference(path, "unknown actor id", actorId);
+            out[actorId] = validateOrder(order, path, state.costumeIds);
+          }
+          return out;
+        })();
+  const backdropOrder =
+    input.backdropOrder === undefined
+      ? undefined
+      : validateOrder(input.backdropOrder, "$.backdropOrder", state.backdropIds);
   for (const [index, script] of program.scripts.entries()) {
     if (
       script.trigger.type === "onBackdropSwitch" &&
@@ -521,5 +573,7 @@ export function validateProjectCreativeState(
     ...(stage === undefined ? {} : { stage }),
     ...(assets === undefined ? {} : { assets }),
     ...(colorZones === undefined ? {} : { colorZones }),
+    ...(costumeOrders === undefined ? {} : { costumeOrders }),
+    ...(backdropOrder === undefined ? {} : { backdropOrder }),
   };
 }

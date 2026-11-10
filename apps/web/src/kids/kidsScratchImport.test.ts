@@ -236,3 +236,47 @@ describe("Scratch clones (#1311)", () => {
     );
   });
 });
+
+describe("Scratch costume and backdrop number", () => {
+  function numberProject(field: "number" | "name") {
+    return {
+      targets: [
+        { isStage: true, name: "Stage", variables: {}, blocks: {} },
+        {
+          isStage: false,
+          name: "Cat",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          blocks: {
+            hat: block("event_whenflagclicked", { next: "if", topLevel: true }),
+            if: block("control_if", {
+              inputs: { CONDITION: [2, "gt"], SUBSTACK: [2, "step"] },
+            }),
+            step: block("motion_movesteps", { inputs: { STEPS: lit(10) } }),
+            gt: block("operator_gt", {
+              inputs: { OPERAND1: [3, "num", [4, "0"]], OPERAND2: lit(1) },
+            }),
+            num: block("looks_costumenumbername", { fields: { NUMBER_NAME: [field, null] } }),
+          },
+        },
+      ],
+    };
+  }
+
+  it("reads the costume number", () => {
+    const { program } = convertScratchProject(numberProject("number"));
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: { type: "greaterThan", left: { type: "costumeNumber" } },
+    });
+  });
+
+  it("leaves the costume name out and says so", () => {
+    const { program, report } = convertScratchProject(numberProject("name"));
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.length).toBeGreaterThan(0);
+  });
+});

@@ -208,6 +208,15 @@ class Converter {
         return { type: "timer" };
       case "sensing_loudness":
         return { type: "loudness" };
+      // Only the number is read; the costume or backdrop name has no counterpart here.
+      case "looks_costumenumbername":
+        return block.fields["NUMBER_NAME"]?.[0] === "number"
+          ? { type: "costumeNumber" }
+          : undefined;
+      case "looks_backdropnumbername":
+        return block.fields["NUMBER_NAME"]?.[0] === "number"
+          ? { type: "backdropNumber" }
+          : undefined;
       case "sensing_mousex":
         return { type: "mouseX" };
       case "sensing_mousey":

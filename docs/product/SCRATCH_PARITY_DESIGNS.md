@@ -132,3 +132,7 @@ A picture the child drew or imported had no text for a screen reader. Now each o
 ## Status: own sounds (#1309), recordings in the project
 
 Recording, trimming, keeping the recording as a project sound, playing it from a block, exporting it only with the adult's opt-in, and deleting it (refused while a block plays it) are built. Ori never hears or names a recording.
+
+## Status: costume and backdrop number (#1307)
+
+Two number reporters, `costumeNumber` and `backdropNumber`, count from 1 in an order the project lists: the character's own costume first, then the child's own pictures in the order they were made; for the backdrop, the scene's backdrop first, then the child's own. A costume or backdrop that is not listed is 0. The order is part of the creative state (`costumeOrders` by actor, `backdropOrder`), validated against the project's assets, so the runtime never guesses it. A clone counts like its character. The scene offers them as "wears a costume other than the first" and "the backdrop is not the first", only once the child has a picture of their own. The Scratch importer reads "costume number" and "backdrop number"; the name versions are reported as left out. Names are not offered because a name is text the child wrote.

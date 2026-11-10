@@ -111,6 +111,8 @@ export const JAVA_SUPPORT_API = [
   "timer",
   "keyDown",
   "loudness",
+  "costumeNumber",
+  "backdropNumber",
   "mouseX",
   "mouseY",
   "mouseDown",
@@ -203,6 +205,8 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     double askChoice(String prompt) { return 0; }
     String askText(String prompt) { return ""; }
     double loudness() { return 0; }
+    double costumeNumber() { return 1; }
+    double backdropNumber() { return 1; }
     double mouseX() { return 0; }
     double mouseY() { return 0; }
     boolean mouseDown() { return false; }
@@ -467,6 +471,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return `keyDown(${literal(expression.key)})`;
     case "loudness":
       return "loudness()";
+    case "costumeNumber":
+      return "costumeNumber()";
+    case "backdropNumber":
+      return "backdropNumber()";
     case "mouseX":
       return "mouseX()";
     case "mouseY":
