@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
-import { projectProgram } from "@agorix/code-generator";
+import { projectProgramLanguage } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
 import { projectJava } from "@agorix/java-projection";
 import { projectAgorixCode } from "@agorix/agorix-code";
@@ -25,8 +25,40 @@ describe("shared custom blocks in the editor and the code views", () => {
     expect(workspaceToProgram(workspace).program).toEqual(program);
   });
 
-  it("are refused by every code view instead of being shown half-written", () => {
-    for (const project of [projectProgram, projectPython, projectJava, projectAgorixCode])
-      expect(() => project(program)).toThrow(/shared custom blocks/);
+  const withOwn: ProjectProgram = {
+    ...program,
+    scripts: [
+      {
+        id: "a",
+        trigger: { type: "greenFlag" },
+        statements: [
+          { type: "callProcedure", procedureId: "shared-1" },
+          { type: "callProcedure", procedureId: "local-1" },
+        ],
+        procedures: [{ id: "local-1", name: "Salto", body: [{ type: "turn", degrees: 90 }] }],
+      },
+    ],
+  };
+
+  it("are written once, before the scripts, by every code view, with their own mapping", () => {
+    const python = projectPython(withOwn);
+    expect(python.text).toContain("def my_salto():");
+    expect(python.text).toContain("def my_salto_2():");
+    expect(python.text.indexOf("def my_salto():")).toBeLessThan(
+      python.text.indexOf("def my_salto_2():"),
+    );
+    const agorix = projectAgorixCode(withOwn);
+    expect(agorix.text).toContain("define shared Salto");
+    expect(agorix.text.indexOf("define shared Salto")).toBeLessThan(
+      agorix.text.indexOf("define Salto"),
+    );
+    const java = projectJava(withOwn);
+    expect(java.text).toContain("void mySalto()");
+    expect(java.text).toContain("void mySalto1()");
+    const typescript = projectProgramLanguage(withOwn);
+    expect(typescript.text).toContain("function my_salto()");
+    expect(typescript.text).toContain("function my_salto_2()");
+    for (const view of [python, agorix, java, typescript])
+      expect(Object.keys(view.mapping)).toContain("sharedProcedures[0]");
   });
 });

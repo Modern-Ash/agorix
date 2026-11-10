@@ -150,8 +150,8 @@ Two number reporters, `costumeNumber` and `backdropNumber`, count from 1 in an o
 
 **Increments.**
 
-1. **Model, validator and runtime (built).** `sharedProcedures`, its validation and the call lookup; the trace names a shared body `sharedProcedures[N]/body`. The block workspace carries the field through unchanged. Until the code views know how to write them, **every code view refuses a program that has shared blocks** (a clear error) rather than show half-written code, and the scene's editor refuses them too. Nothing creates one yet.
-2. **Code views.** Python, TypeScript, Java and Agorix code write the shared blocks as top-level functions, with source mapping.
+1. **Model, validator and runtime (built).** `sharedProcedures`, its validation and the call lookup; the trace names a shared body `sharedProcedures[N]/body`. The block workspace carries the field through unchanged. The scene's editor still refuses a program with shared blocks, and nothing creates one yet.
+2. **Code views (built).** Python, TypeScript, Java and Agorix code write each shared block once, before the scripts that call them (Agorix code says `define shared`), with a source range `sharedProcedures[N]`. A shared block is named first, so a script's own block of the same name gets the next free name.
 3. **Scene.** "Make this block for everyone" turns a block into a shared one (a visible, undoable step, with the other characters' own copies named), editing it edits it for all, and deleting is refused while another character calls it.
 4. **Ori.** The `repeatedApart` finding proposes sharing a block as a normal proposal (the child sees the change and chooses); Ori never shares one on its own.
 5. **More numbers.** The limit of three numbers rises to a stated cap, with the same checks in every layer.
