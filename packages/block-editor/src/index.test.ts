@@ -109,6 +109,7 @@ describe("block-editor", () => {
       "Timer",
       "Key [K] is down",
       "Loudness",
+      "Current [part] of the clock",
       "Mouse X",
       "Mouse Y",
       "Mouse is down",
@@ -138,7 +139,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(71);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(72);
   });
 
   it("creates safe defaults for every required POC block", () => {
