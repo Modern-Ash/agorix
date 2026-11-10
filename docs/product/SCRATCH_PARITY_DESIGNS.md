@@ -137,21 +137,6 @@ Recording, trimming, keeping the recording as a project sound, playing it from a
 
 Two number reporters, `costumeNumber` and `backdropNumber`, count from 1 in an order the project lists: the character's own costume first, then the child's own pictures in the order they were made; for the backdrop, the scene's backdrop first, then the child's own. A costume or backdrop that is not listed is 0. The order is part of the creative state (`costumeOrders` by actor, `backdropOrder`), validated against the project's assets, so the runtime never guesses it. A clone counts like its character. The scene offers them as "wears a costume other than the first" and "the backdrop is not the first", only once the child has a picture of their own. The Scratch importer reads "costume number" and "backdrop number"; the name versions are reported as left out. Names are not offered because a name is text the child wrote.
 
-## Shared custom blocks (#1310)
+## Status: Scratch variables that hold words
 
-**Today.** "Mis bloques" belong to one character; "give another character a copy" makes an independent copy.
-
-**Design.** A program may declare `sharedProcedures` (1 to 10): custom blocks defined once, which any script may call. A call runs on the character that makes it, so one "jump" block moves whoever uses it. Rules, all enforced by the validator:
-
-- A shared block's id is unique across the whole program (including every script's own blocks).
-- A shared block's body may call only other shared blocks, because it belongs to no one character. Recursion stays bounded at the usual depth.
-- A script may call its own blocks and the shared ones; a call to anything else is refused.
-- Numbers work as in a script's own block.
-
-**Increments.**
-
-1. **Model, validator and runtime (built).** `sharedProcedures`, its validation and the call lookup; the trace names a shared body `sharedProcedures[N]/body`. The block workspace carries the field through unchanged. Until the code views know how to write them, **every code view refuses a program that has shared blocks** (a clear error) rather than show half-written code, and the scene's editor refuses them too. Nothing creates one yet.
-2. **Code views.** Python, TypeScript, Java and Agorix code write the shared blocks as top-level functions, with source mapping.
-3. **Scene.** "Make this block for everyone" turns a block into a shared one (a visible, undoable step, with the other characters' own copies named), editing it edits it for all, and deleting is refused while another character calls it.
-4. **Ori.** The `repeatedApart` finding proposes sharing a block as a normal proposal (the child sees the change and chooses); Ori never shares one on its own.
-5. **More numbers.** The limit of three numbers rises to a stated cap, with the same checks in every layer.
+The Scratch importer now keeps a variable as a **word variable** (up to three, the scene's text values) when it starts as a word or the project sets it to a word, and numbers stay numbers. "Set to" a short word (at most 20 letters, no control characters) or to another word variable becomes `setText`; anything longer, or "change by" on a word variable, is left out and reported. The scene's variables start empty, so a starting word is not kept. Lists of words are still not offered: they need their own statements and reporters in every layer and a decision on how child text appears in watchers, so they are a separate design.
