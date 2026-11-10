@@ -200,3 +200,13 @@ After a Scratch import, the report now has "Ori tells you why": one fixed senten
 These three ideas are `ORI_IMPORT_INTENTS`, one block each, kept apart from the goals every scene offers. They go through the same path as any idea: the ghost block and its preview, use, change or reject, one undo. They appear in the Ori panel only in a scene that came from an import and had such a cut. What is kept on the device for that is only the closed kinds of cut per scene, never a name or a block from the file, and it is forgotten when the scene is deleted.
 
 Left out on purpose: ideas for the other cuts (lists, ask and wait, costume switching, pen steps, effects). The closed idea contract does not allow those blocks yet, and widening it is a decision for its own change.
+
+## Status: export to Scratch (.sb3) (#1312)
+
+Each scene in "My projects" now has "Export to Scratch". It reads the canonical program (never changes it) and writes a Scratch 3 project: a zip with `project.json` and one SVG per costume and backdrop, stored without compression, so the same scene always gives the same bytes. Sprites keep their position, size and direction (the scene's stage and angles are converted to Scratch's); every script is written under its own hat, including the extra scripts and the copy script; broadcasts, variables and the pen and music extensions are declared.
+
+What is written: movement, looks, size, effects, layers, waits, loops, if and if/else, repeat until, wait until, broadcasts, variables, the pen (colour, size, transparency, shade, stamp), music (notes, drums, tempo, instruments), volume, the timer, copies (written as "create clone of myself", the copy rule is lost) and the conditions and values the scene has. A scene exported and imported again gives back the same blocks with the same values (tested on a scene that uses every one of these), except the copy rule.
+
+What is not written, and counted in the message after the export: the scene's own sounds (a Scratch project needs real audio files), questions with a prompt, lists, custom blocks, costume or backdrop switching by name, and backdrop hats. The pictures in the file are stand-ins drawn from the character's glyph and colour; a scene's own drawings are not exported yet.
+
+Found on the way: the importer read "point in direction 90" (Scratch's right) as 180 (left) in the scene. Fixed, with a test.

@@ -736,6 +736,15 @@ export const TIP_RULES: readonly TipRule[] = [
     tip: t("Abrir este proyecto y jugarlo", "Open this project and play it"),
   },
   {
+    match: (c) =>
+      c.closest(".kids-project-card") !== null &&
+      /^(Exportar a Scratch|Export to Scratch)/.test(label(c)),
+    tip: t(
+      "Guardar este proyecto como archivo de Scratch (.sb3)",
+      "Save this project as a Scratch file (.sb3)",
+    ),
+  },
+  {
     match: (c) => c.closest(".kids-project-card") !== null && /^(Exportar|Export)/.test(label(c)),
     tip: t("Guardar este proyecto en un archivo", "Save this project to a file"),
   },

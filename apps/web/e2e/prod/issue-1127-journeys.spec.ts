@@ -131,7 +131,7 @@ test("a locally saved scene survives reopening and portable export/import", asyn
   await page
     .getByRole("article")
     .filter({ hasText: "Escena libre" })
-    .getByRole("button", { name: "Exportar" })
+    .getByRole("button", { name: "Exportar", exact: true })
     .click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/\.agorix$/);

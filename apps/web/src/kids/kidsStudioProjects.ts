@@ -1,3 +1,4 @@
+import { exportScratchProject, type ScratchExport } from "./kidsScratchExport.js";
 import type { ScratchImportResult } from "./kidsScratchImport.js";
 import {
   parseAgorixProject,
@@ -498,6 +499,26 @@ export function exportStudioProject(
 ): string {
   if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
   return serializeAgorixProject(store.load(id), { includeMedia });
+}
+
+/** A saved scene as a Scratch `.sb3`, with the report of what Scratch could not hold. */
+export function exportScratchStudioProject(
+  id: string,
+  locale: Locale,
+  store: ProjectStore = new ProjectStore(),
+  storage: StudioStorage | undefined = browserStorage(),
+): ScratchExport {
+  if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
+  const saved = store.load(id);
+  const backdropId =
+    listStudioProjects(storage).find((item) => item.id === id)?.backdropId ?? "forest";
+  const positions = Object.fromEntries(
+    (saved.metadata.actors?.items ?? []).map((actor) => [
+      actor.id,
+      { x: actor.x, y: actor.y, direction: actor.direction, size: actor.size },
+    ]),
+  );
+  return exportScratchProject(saved.program, backdropId, locale, positions);
 }
 
 export function importStudioProject(

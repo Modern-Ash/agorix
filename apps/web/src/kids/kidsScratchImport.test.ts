@@ -495,4 +495,15 @@ describe("Scratch pen, timer and value hats", () => {
       "setInstrument",
     ]);
   });
+
+  it("reads 'point in direction' the way the sprite faces: Scratch 90 is right, which is 0 here", () => {
+    const point = (direction: number) =>
+      convertScratchProject(
+        sprite(chain(["motion_pointindirection", { inputs: { DIRECTION: lit(direction) } }])),
+      ).program.scripts[0]!.statements[0];
+    expect(point(90)).toMatchObject({ type: "pointInDirection", degrees: 0 });
+    expect(point(0)).toMatchObject({ type: "pointInDirection", degrees: -90 });
+    expect(point(-90)).toMatchObject({ type: "pointInDirection", degrees: 180 });
+    expect(point(180)).toMatchObject({ type: "pointInDirection", degrees: 90 });
+  });
 });

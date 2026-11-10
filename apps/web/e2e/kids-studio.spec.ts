@@ -1439,7 +1439,7 @@ test("drawn costume and backdrop survive adult-approved export and import", asyn
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   const card = page.getByRole("article").filter({ hasText: "Escena libre" });
-  await card.getByRole("button", { name: "Exportar" }).click();
+  await card.getByRole("button", { name: "Exportar", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("Solo para adultos");
   await page.getByRole("dialog").getByRole("button", { name: "1", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "2", exact: true }).click();

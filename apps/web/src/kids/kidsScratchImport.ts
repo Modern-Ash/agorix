@@ -436,7 +436,7 @@ class Converter {
       case "motion_pointindirection": {
         const direction = num("DIRECTION");
         if (direction === undefined) return missing();
-        const heading = (((direction - 90 + 540) % 360) + 360) % 360;
+        const heading = (((direction - 90) % 360) + 360) % 360;
         const signed = heading > 180 ? heading - 360 : heading;
         const choices = [0, 90, 180, -90] as const;
         const best = choices.reduce((a, b) =>
