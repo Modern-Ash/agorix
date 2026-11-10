@@ -56,6 +56,7 @@ interface CreativeValidationState {
   readonly costumeIds: Set<string>;
   readonly backdropIds: Set<string>;
   readonly soundIds: Set<string>;
+  recordedSounds: number;
   readonly scriptIds: Set<string>;
 }
 
@@ -153,6 +154,61 @@ export function validEmbeddedImageSource(value: unknown): value is string {
   }
 }
 
+/** A recorded sound is at most this long, so its bytes are bounded before they are read. */
+export const MAX_EMBEDDED_SOUND_SECONDS = 5;
+/** The only sample rates a recorded sound is stored at. */
+export const EMBEDDED_SOUND_RATES = [16000, 22050] as const;
+/** How many recorded sounds one project may hold. */
+export const MAX_EMBEDDED_SOUNDS = 8;
+
+/**
+ * Embedded project sound: a mono, 16-bit PCM WAV at one of the two stored rates, at most five
+ * seconds, in a data URL. The whole header is checked, so what is stored is exactly a recording
+ * and never another audio format. The bytes are playback output only: never executed, never part
+ * of a run's result.
+ */
+export function validEmbeddedSoundSource(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = /^data:audio\/wav;base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!match) return false;
+  try {
+    const bytes = atob(match[1]!);
+    if (bytes.length <= 44) return false;
+    const text = (from: number, to: number) => bytes.slice(from, to);
+    const number = (from: number, size: 2 | 4) => {
+      let result = 0;
+      for (let index = size - 1; index >= 0; index -= 1)
+        result = result * 256 + bytes.charCodeAt(from + index);
+      return result;
+    };
+    const rate = number(24, 4);
+    if (
+      text(0, 4) !== "RIFF" ||
+      text(8, 12) !== "WAVE" ||
+      text(12, 16) !== "fmt " ||
+      number(16, 4) !== 16 ||
+      number(20, 2) !== 1 ||
+      number(22, 2) !== 1 ||
+      !(EMBEDDED_SOUND_RATES as readonly number[]).includes(rate) ||
+      number(28, 4) !== rate * 2 ||
+      number(32, 2) !== 2 ||
+      number(34, 2) !== 16 ||
+      text(36, 40) !== "data"
+    )
+      return false;
+    const size = number(40, 4);
+    return (
+      size > 0 &&
+      size % 2 === 0 &&
+      size === bytes.length - 44 &&
+      size <= rate * 2 * MAX_EMBEDDED_SOUND_SECONDS &&
+      number(4, 4) === bytes.length - 8
+    );
+  } catch {
+    return false;
+  }
+}
+
 function stableId(value: unknown, path: string): string {
   const id = nonEmptyString(value, path);
   if (!STABLE_ID_PATTERN.test(id)) {
@@ -219,9 +275,13 @@ function validateAsset(input: unknown, path: string, state: CreativeValidationSt
     name: nonEmptyString(input.name, `${path}.name`),
     source:
       typeof input.source === "string" && input.source.startsWith("data:")
-        ? kind !== "sound" && validEmbeddedImageSource(input.source)
-          ? input.source
-          : fail(`${path}.source`, "expected bounded PNG/WebP image data", input.source)
+        ? kind === "sound"
+          ? validEmbeddedSoundSource(input.source)
+            ? input.source
+            : fail(`${path}.source`, "expected a bounded mono 16-bit WAV recording", input.source)
+          : validEmbeddedImageSource(input.source)
+            ? input.source
+            : fail(`${path}.source`, "expected bounded PNG/WebP image data", input.source)
         : nonEmptyString(input.source, `${path}.source`),
     ...(input.tags === undefined
       ? {}
@@ -229,7 +289,14 @@ function validateAsset(input: unknown, path: string, state: CreativeValidationSt
   };
   if (kind === "costume") state.costumeIds.add(id);
   if (kind === "backdrop") state.backdropIds.add(id);
-  if (kind === "sound") state.soundIds.add(id);
+  if (kind === "sound") {
+    state.soundIds.add(id);
+    if (asset.source.startsWith("data:")) {
+      state.recordedSounds += 1;
+      if (state.recordedSounds > MAX_EMBEDDED_SOUNDS)
+        fail(path, `expected at most ${MAX_EMBEDDED_SOUNDS} recorded sounds`, id);
+    }
+  }
   return asset;
 }
 
@@ -409,6 +476,7 @@ export function validateProjectCreativeState(
     costumeIds: new Set(),
     backdropIds: new Set(),
     soundIds: new Set(),
+    recordedSounds: 0,
     scriptIds: new Set(program.scripts.map((script) => script.id)),
   };
   const rawAssets = input.assets;
