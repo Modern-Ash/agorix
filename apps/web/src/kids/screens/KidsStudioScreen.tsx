@@ -137,12 +137,14 @@ import {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_SHADES,
   PEN_TRANSPARENCIES,
   PROCEDURE_PARAMS_MAX,
   type MusicBeats,
   type MusicDrum,
   type MusicInstrument,
   type PenColor,
+  type PenShade,
   type PenTransparency,
   type AskTextPromptId,
   type ChoicePromptId,
@@ -497,6 +499,8 @@ const COPY = {
     penColor: "Color del lápiz",
     penSize: "Grosor del lápiz",
     penTransparency: "Transparencia del lápiz",
+    penShade: "Tono del lápiz",
+    penShades: { lighter: "más claro", normal: "normal", darker: "más oscuro" },
     clearPen: "Borrar los trazos",
     stamp: "Sellar",
     musicTitle: "Música",
@@ -831,6 +835,8 @@ const COPY = {
     penColor: "Pen color",
     penSize: "Pen size",
     penTransparency: "Pen transparency",
+    penShade: "Pen shade",
+    penShades: { lighter: "lighter", normal: "normal", darker: "darker" },
     clearPen: "Clear drawing lines",
     stamp: "Stamp",
     musicTitle: "Music",
@@ -1034,6 +1040,17 @@ const PEN_COLOR_NAME: Record<"es" | "en", Record<PenColor, string>> = {
     purple: "purple",
   },
 };
+
+/** The pen colour pulled a third of the way to white or to black; normal is the colour itself. */
+function shadedPenHex(hex: string, shade: PenShade | undefined): string {
+  if (shade === undefined || shade === "normal") return hex;
+  const target = shade === "lighter" ? 255 : 0;
+  const channel = (at: number) =>
+    Math.round(parseInt(hex.slice(at, at + 2), 16) * (2 / 3) + target / 3)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(1)}${channel(3)}${channel(5)}`;
+}
 
 const PEN_HEX: Record<PenColor, string> = {
   dark: "#252342",
@@ -1384,6 +1401,7 @@ export function KidsStudioScreen({
   const [penColor, setPenColor] = useState<PenColor>("dark");
   const [penSize, setPenSize] = useState(8);
   const [penTransparency, setPenTransparency] = useState<PenTransparency>(50);
+  const [penShade, setPenShade] = useState<PenShade>("darker");
   const penEnabled = useKidsFlag("extensionPen");
   const musicEnabled = useKidsFlag("extensionMusic");
   const categoryLabel: Record<StudioCategory, string> = {
@@ -3086,6 +3104,8 @@ export function KidsStudioScreen({
         return `${copy.penColor}: ${copy.penColors[statement.color]}`;
       case "setPenSize":
         return `${copy.penSize}: ${statement.size}`;
+      case "setPenShade":
+        return `${copy.penShade}: ${copy.penShades[statement.shade]}`;
       case "setPenTransparency":
         return `${copy.penTransparency}: ${statement.percent}%`;
       case "playNote":
@@ -4419,7 +4439,7 @@ export function KidsStudioScreen({
                         y1={stageY(segment.y1)}
                         x2={stageX(segment.x2)}
                         y2={stageY(segment.y2)}
-                        stroke={PEN_HEX[segment.color]}
+                        stroke={shadedPenHex(PEN_HEX[segment.color], segment.shade)}
                         strokeWidth={segment.size / 2}
                         strokeOpacity={1 - (segment.transparency ?? 0) / 100}
                         strokeLinecap="round"
@@ -7625,6 +7645,27 @@ export function KidsStudioScreen({
                       onClick={() => add({ type: "setPenTransparency", percent: penTransparency })}
                     >
                       + {copy.penTransparency}
+                    </button>
+                    <label>
+                      {copy.penShade}{" "}
+                      <select
+                        value={penShade}
+                        onChange={(event) => setPenShade(event.target.value as PenShade)}
+                      >
+                        {PEN_SHADES.map((shade) => (
+                          <option key={shade} value={shade}>
+                            {copy.penShades[shade]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setPenShade"
+                      onClick={() => add({ type: "setPenShade", shade: penShade })}
+                    >
+                      + {copy.penShade}
                     </button>
                     <button
                       type="button"

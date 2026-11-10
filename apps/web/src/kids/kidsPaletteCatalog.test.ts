@@ -27,6 +27,7 @@ const PACK_SAMPLES: Readonly<Record<string, Statement>> = {
   clearPen: { type: "clearPen" },
   stamp: { type: "stamp" },
   setPenTransparency: { type: "setPenTransparency", percent: 50 },
+  setPenShade: { type: "setPenShade", shade: "darker" },
   playNote: { type: "playNote", note: 60, beats: 1 },
   playDrum: { type: "playDrum", drum: "snare", beats: 1 },
   setInstrument: { type: "setInstrument", instrument: "piano" },

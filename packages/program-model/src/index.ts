@@ -82,6 +82,8 @@ export type {
   SetVariableStatement,
   AskTextStatement,
   SetPenTransparencyStatement,
+  SetPenShadeStatement,
+  PenShade,
   PenTransparency,
   DeleteThisCloneStatement,
   ResetTimerStatement,
@@ -122,6 +124,7 @@ export {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PEN_SHADES,
   PEN_TRANSPARENCIES,
   SCHEMA_VERSION,
 } from "./schema.js";

@@ -40,6 +40,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "setPenColor",
   "setPenSize",
   "setPenTransparency",
+  "setPenShade",
   "clearPen",
   "stamp",
   "playNote",

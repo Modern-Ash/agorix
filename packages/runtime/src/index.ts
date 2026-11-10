@@ -108,6 +108,7 @@ export {
   setPenColorWorld,
   setPenSizeWorld,
   setPenTransparencyWorld,
+  setPenShadeWorld,
   clearPenWorld,
   stampWorld,
   drawPenTrail,

@@ -146,3 +146,7 @@ The Scratch importer now keeps a variable as a **word variable** (up to three, t
 ## Status: custom block numbers (#1310)
 
 "Mis bloques" and "Bloques para todos" accept at most **five** named numbers, with positional ids `p1` through `p5`. Five keeps the call and its inputs bounded on a small screen while allowing a child to pass more than the former three values. The validator rejects a sixth number and calls with the wrong arity; the scene hides the add control at five. Removing a number renumbers the remaining inputs and updates calls in one undoable step. The runtime and all code views read the same canonical inputs.
+
+## Status: pen shade (#1306)
+
+Stamp and pen transparency were already in. The pen now also has a **shade**, `setPenShade { shade }` from the closed list lighter, normal, darker (normal is the colour as chosen). It stays inside the pen pack (ADR 0011): the validator marks the pen as used, the world keeps the shade on the pen and on each segment drawn while it is set, and the stage pulls the colour a third of the way to white or black. A free number is not offered, so a trail stays easy to read. The Scratch importer still reports the pen shade blocks as left out. All four code views and the block editor read the same canonical statement.

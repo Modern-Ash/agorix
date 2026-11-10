@@ -489,6 +489,10 @@ export interface ChangeEffectStatement {
 export const PEN_TRANSPARENCIES = [0, 25, 50, 75] as const;
 export type PenTransparency = (typeof PEN_TRANSPARENCIES)[number];
 
+/** How light or deep the pen colour draws, a closed list: normal is the colour as chosen. */
+export const PEN_SHADES = ["lighter", "normal", "darker"] as const;
+export type PenShade = (typeof PEN_SHADES)[number];
+
 export const PEN_COLORS = ["dark", "red", "orange", "green", "blue", "purple"] as const;
 export type PenColor = (typeof PEN_COLORS)[number];
 
@@ -508,6 +512,11 @@ export interface SetPenColorStatement {
 export interface SetPenTransparencyStatement {
   readonly type: "setPenTransparency";
   readonly percent: PenTransparency;
+}
+
+export interface SetPenShadeStatement {
+  readonly type: "setPenShade";
+  readonly shade: PenShade;
 }
 
 export interface SetPenSizeStatement {
@@ -850,6 +859,7 @@ export type Statement =
   | BroadcastStatement
   | StampStatement
   | SetPenTransparencyStatement
+  | SetPenShadeStatement
   | SetVariableStatement
   | SetTextStatement
   | ChangeVariableStatement

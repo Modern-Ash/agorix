@@ -128,6 +128,7 @@ const statements: Statement[] = [
   { type: "clearPen" },
   { type: "stamp" },
   { type: "setPenTransparency", percent: 25 },
+  { type: "setPenShade", shade: "lighter" },
   { type: "resetTimer" },
   { type: "playNote", note: 60, beats: 1 },
   { type: "playDrum", drum: "snare", beats: 0.5 },

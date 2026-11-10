@@ -8,6 +8,8 @@ import {
   MUSIC_TEMPO_MAX,
   MUSIC_TEMPO_MIN,
   PEN_TRANSPARENCIES,
+  PEN_SHADES,
+  type PenShade,
   SPRITE_SIZE_MAX,
   SPRITE_SIZE_MIN,
   TEXT_VALUE_MAX_LENGTH,
@@ -77,6 +79,7 @@ export interface PenSegment {
   readonly color: PenColor;
   readonly size: number;
   readonly transparency?: number;
+  readonly shade?: PenShade;
 }
 
 /** Present only after a pen block ran, so every other world is unchanged (ADR 0011). */
@@ -93,6 +96,8 @@ export interface PenState {
   readonly down: boolean;
   /** Percent see-through; absent (and treated as 0) until a block sets it. */
   readonly transparency?: number;
+  /** Absent means normal. */
+  readonly shade?: PenShade;
   readonly color: PenColor;
   readonly size: number;
   readonly segments: readonly PenSegment[];
@@ -249,6 +254,10 @@ function normalizePen(input: Partial<PenState> | undefined): PenState | undefine
   if (!(PEN_TRANSPARENCIES as readonly number[]).includes(transparency)) {
     throw new RangeError(`pen transparency out of range: ${transparency}`);
   }
+  const shade = input.shade ?? "normal";
+  if (!(PEN_SHADES as readonly string[]).includes(shade)) {
+    throw new RangeError(`unknown pen shade: ${shade}`);
+  }
   const size = input.size ?? 4;
   if (!Number.isInteger(size) || size < 1 || size > PEN_SIZE_MAX) {
     throw new RangeError(`pen size out of range: ${size}`);
@@ -258,6 +267,7 @@ function normalizePen(input: Partial<PenState> | undefined): PenState | undefine
     color,
     size,
     ...(transparency === 0 ? {} : { transparency }),
+    ...(shade === "normal" ? {} : { shade }),
     segments: (input.segments ?? []).slice(0, PEN_SEGMENTS_MAX).map((item) => ({
       x1: normalizeCoordinate(item.x1),
       y1: normalizeCoordinate(item.y1),
@@ -268,6 +278,7 @@ function normalizePen(input: Partial<PenState> | undefined): PenState | undefine
       ...(item.transparency === undefined || item.transparency === 0
         ? {}
         : { transparency: item.transparency }),
+      ...(item.shade === undefined || item.shade === "normal" ? {} : { shade: item.shade }),
     })),
     ...(input.stamps === undefined || input.stamps.length === 0
       ? {}
@@ -507,6 +518,7 @@ function dot(world: WorldState, pen: PenState): readonly PenSegment[] {
       color: pen.color,
       size: pen.size,
       ...(pen.transparency === undefined ? {} : { transparency: pen.transparency }),
+      ...(pen.shade === undefined ? {} : { shade: pen.shade }),
     },
   ];
 }
@@ -535,6 +547,10 @@ export function setPenSizeWorld(world: WorldState, size: number): WorldState {
 
 export function setPenTransparencyWorld(world: WorldState, percent: number): WorldState {
   return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { transparency: percent });
+}
+
+export function setPenShadeWorld(world: WorldState, shade: PenShade): WorldState {
+  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { shade });
 }
 
 export function clearPenWorld(world: WorldState): WorldState {
@@ -574,6 +590,7 @@ export function drawPenTrail(
     color: pen.color,
     size: pen.size,
     ...(pen.transparency === undefined ? {} : { transparency: pen.transparency }),
+    ...(pen.shade === undefined ? {} : { shade: pen.shade }),
   };
   return {
     world: createWorldState({ ...after, pen: { ...pen, segments: [...pen.segments, segment] } }),
