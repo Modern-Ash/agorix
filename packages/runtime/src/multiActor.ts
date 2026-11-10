@@ -107,6 +107,7 @@ export interface MultiActorExecutionOptions extends Pick<ExecutionOptions, "maxS
   readonly keysDown?: readonly string[];
   readonly pointer?: ExecutionOptions["pointer"];
   readonly loudness?: ExecutionOptions["loudness"];
+  readonly clock?: ExecutionOptions["clock"];
   readonly choices?: ExecutionOptions["choices"];
   readonly answers?: ExecutionOptions["answers"];
   /** Restore actor worlds from a session snapshot; program variables and lists live here. */
@@ -530,6 +531,7 @@ export function runMultiActorProgram(
           ...(options.keysDown === undefined ? {} : { keysDown: options.keysDown }),
           ...(options.pointer === undefined ? {} : { pointer: options.pointer }),
           ...(options.loudness === undefined ? {} : { loudness: options.loudness }),
+          ...(options.clock === undefined ? {} : { clock: options.clock }),
           ...(creative.colorZones === undefined ? {} : { colorZones: creative.colorZones }),
           ...orderOptions(creative, actor.id),
           ...(options.choices === undefined ? {} : { choices: options.choices }),

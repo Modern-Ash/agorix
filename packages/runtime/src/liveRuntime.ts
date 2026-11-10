@@ -1,5 +1,7 @@
 import {
+  CLOCK_PARTS,
   validateProgram,
+  type ClockPart,
   validateProjectCreativeState,
   type ProjectCreativeState,
   type ProjectProgram,
@@ -65,11 +67,15 @@ export type LiveInput =
       readonly choices: Readonly<Record<string, number>>;
     }
   | { readonly tick: number; readonly kind: "loudness"; readonly level: number }
+  | { readonly tick: number; readonly kind: "clock"; readonly clock: ClockSample }
   | {
       readonly tick: number;
       readonly kind: "answers";
       readonly answers: Readonly<Record<string, string>>;
     };
+
+/** The clock as whole numbers, captured by the caller; kept in the input log so a replay agrees. */
+export type ClockSample = Readonly<Partial<Record<ClockPart, number>>>;
 
 export interface LiveInputLog {
   readonly version: 1;
@@ -92,6 +98,8 @@ export interface LiveRuntimeOptions {
    * the sound, so a replay needs no microphone. Absent means 0.
    */
   readonly loudness?: () => number;
+  /** Read every tick; only a change is kept in the input log. Absent means every part is 0. */
+  readonly clock?: () => ClockSample;
   /** Typed answers; they stay in the local input log, which is never sent anywhere. */
   readonly answers?: Readonly<Record<string, string>>;
   readonly maxSeconds?: number;
@@ -186,6 +194,7 @@ export function createLiveRuntime(
   let sampledKeys: readonly string[] = [];
   let sampledPointer = { x: 0, y: 0, down: false };
   let sampledLoudness = 0;
+  let sampledClock: ClockSample = {};
   let sampledChoices: Readonly<Record<string, number>> = {};
   let sampledAnswers: Readonly<Record<string, string>> = {};
 
@@ -240,6 +249,9 @@ export function createLiveRuntime(
       },
       get loudness() {
         return sampledLoudness;
+      },
+      get clock() {
+        return sampledClock;
       },
       get choices() {
         return sampledChoices;
@@ -452,6 +464,16 @@ export function createLiveRuntime(
       sampledLoudness = level;
       inputs.push({ tick: tickIndex, kind: "loudness", level });
     }
+    const read = options.clock?.() ?? {};
+    const clock: Partial<Record<ClockPart, number>> = {};
+    for (const part of CLOCK_PARTS) {
+      const value = read[part];
+      if (value !== undefined && Number.isFinite(value)) clock[part] = Math.trunc(value);
+    }
+    if (JSON.stringify(clock) !== JSON.stringify(sampledClock)) {
+      sampledClock = clock;
+      inputs.push({ tick: tickIndex, kind: "clock", clock });
+    }
     const choices = { ...options.choices };
     if (JSON.stringify(choices) !== JSON.stringify(sampledChoices)) {
       sampledChoices = choices;
@@ -600,6 +622,7 @@ export function createReplayRuntime(
   let keys: readonly string[] = [];
   let pointer = { x: 0, y: 0, down: false };
   let loudness = 0;
+  let clock: ClockSample = {};
   const choices: Record<string, number> = {};
   const answers: Record<string, string> = {};
   const inner = createLiveRuntime(programInput, creativeInput, {
@@ -608,6 +631,7 @@ export function createReplayRuntime(
     keysDown: () => keys,
     pointer: () => pointer,
     loudness: () => loudness,
+    clock: () => clock,
     choices,
     answers,
   });
@@ -630,6 +654,7 @@ export function createReplayRuntime(
           else if (input.kind === "keys") keys = input.keys;
           else if (input.kind === "pointer") pointer = { x: input.x, y: input.y, down: input.down };
           else if (input.kind === "loudness") loudness = input.level;
+          else if (input.kind === "clock") clock = input.clock;
           else if (input.kind === "answers") {
             for (const key of Object.keys(answers)) delete answers[key];
             Object.assign(answers, input.answers);

@@ -682,6 +682,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "costume number";
     case "backdropNumber":
       return "backdrop number";
+    case "currentTime":
+      return "current " + expression.part;
     case "mouseX":
       return "mouse x";
     case "mouseY":

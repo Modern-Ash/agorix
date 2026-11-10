@@ -1,4 +1,5 @@
 import {
+  CLOCK_PARTS,
   EXTENSION_IDS,
   MUSIC_BEATS,
   MUSIC_DRUMS,
@@ -11,6 +12,7 @@ import { isChoicePromptId } from "./choiceCatalog.js";
 import { isAskTextPromptId } from "./askTextCatalog.js";
 import type {
   ExtensionId,
+  ClockPart,
   PenColor,
   PenTransparency,
   Expression,
@@ -393,6 +395,16 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "sizePercent" };
     case "timer":
       return { type: "timer" };
+    case "currentTime":
+      if (!(CLOCK_PARTS as readonly unknown[]).includes(input.part)) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.part`,
+          "expected a clock part from the closed list",
+          input.part,
+        );
+      }
+      return { type: "currentTime", part: input.part as ClockPart };
     case "loudness":
       return { type: "loudness" };
     case "costumeNumber":

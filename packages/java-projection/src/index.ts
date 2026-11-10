@@ -114,6 +114,7 @@ export const JAVA_SUPPORT_API = [
   "loudness",
   "costumeNumber",
   "backdropNumber",
+  "currentTime",
   "mouseX",
   "mouseY",
   "mouseDown",
@@ -208,6 +209,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     double loudness() { return 0; }
     double costumeNumber() { return 1; }
     double backdropNumber() { return 1; }
+    double currentTime(String part) { return 0; }
     double mouseX() { return 0; }
     double mouseY() { return 0; }
     boolean mouseDown() { return false; }
@@ -476,6 +478,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "costumeNumber()";
     case "backdropNumber":
       return "backdropNumber()";
+    case "currentTime":
+      return `currentTime(${literal(expression.part)})`;
     case "mouseX":
       return "mouseX()";
     case "mouseY":

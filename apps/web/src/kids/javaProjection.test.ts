@@ -221,7 +221,19 @@ const statements: Statement[] = [
                   right: {
                     type: "and",
                     left: { type: "greaterThan", left: { type: "costumeNumber" }, right: num(1) },
-                    right: { type: "greaterThan", left: { type: "backdropNumber" }, right: num(1) },
+                    right: {
+                      type: "and",
+                      left: {
+                        type: "greaterThan",
+                        left: { type: "backdropNumber" },
+                        right: num(1),
+                      },
+                      right: {
+                        type: "greaterThan",
+                        left: { type: "currentTime", part: "hour" },
+                        right: num(11),
+                      },
+                    },
                   },
                 },
               },

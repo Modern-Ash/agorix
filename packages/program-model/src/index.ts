@@ -55,6 +55,7 @@ export type {
   SizePercentExpression,
   TimerExpression,
   ExtensionId,
+  ClockPart,
   PenColor,
   PenDownStatement,
   PenUpStatement,
@@ -115,6 +116,7 @@ export type { ChoicePromptId } from "./choiceCatalog.js";
 export { ASK_TEXT_CATALOG, ASK_TEXT_PROMPT_IDS, isAskTextPromptId } from "./askTextCatalog.js";
 export type { AskTextPromptId } from "./askTextCatalog.js";
 export {
+  CLOCK_PARTS,
   EXTENSION_IDS,
   MUSIC_BEATS,
   MUSIC_DRUMS,

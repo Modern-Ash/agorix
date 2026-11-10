@@ -12,7 +12,7 @@ import type {
   StopStatement,
   Trigger,
 } from "@agorix/program-model";
-import { TEXT_VALUE_MAX_LENGTH, type ColorZone } from "@agorix/program-model";
+import { TEXT_VALUE_MAX_LENGTH, type ClockPart, type ColorZone } from "@agorix/program-model";
 import { COPIES_CAP, createCopiesWorld } from "./copies.js";
 import {
   CHOICE_CATALOG,
@@ -127,6 +127,8 @@ export interface ExecutionOptions {
   readonly costumeOrder?: readonly string[];
   /** The backdrop ids in order: the backdrop number counts from 1 here. */
   readonly backdropOrder?: readonly string[];
+  /** The clock as whole numbers, captured by the caller (never read here); 0 for a part it omits. */
+  readonly clock?: Readonly<Partial<Record<ClockPart, number>>>;
   /** Loudness 0 to 100 measured by the caller (a number, never sound); 0 when absent. */
   readonly loudness?: number;
   /** True when this activation runs as a copy born from "copies that run their own script". */
@@ -414,6 +416,10 @@ function evaluateExpression(
       return (state.options.costumeOrder?.indexOf(state.world.sprite.costumeId ?? "") ?? -1) + 1;
     case "backdropNumber":
       return (state.options.backdropOrder?.indexOf(state.world.backdropId ?? "") ?? -1) + 1;
+    case "currentTime": {
+      const value = state.options.clock?.[expression.part];
+      return value !== undefined && Number.isFinite(value) ? Math.trunc(value) : 0;
+    }
     case "loudness": {
       const level = state.options.loudness;
       return level !== undefined && Number.isFinite(level)

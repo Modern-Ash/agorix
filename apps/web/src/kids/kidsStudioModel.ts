@@ -279,6 +279,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
     value.type === "loudness" ||
     value.type === "costumeNumber" ||
     value.type === "backdropNumber" ||
+    value.type === "currentTime" ||
     value.type === "timer" ||
     value.type === "mouseX" ||
     value.type === "mouseY"
