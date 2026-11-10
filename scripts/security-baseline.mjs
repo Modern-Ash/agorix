@@ -124,6 +124,7 @@ export const USER_MEDIA_FILES = Object.freeze([
   "apps/web/e2e/kids-loudness.spec.ts",
   "apps/web/src/kids/kidsRecorder.test.ts",
   "apps/web/e2e/kids-recording.spec.ts",
+  "apps/web/e2e/kids-recorded-sounds.spec.ts",
 ]);
 
 export const PROHIBITED_FEATURE_PATTERNS = Object.freeze([

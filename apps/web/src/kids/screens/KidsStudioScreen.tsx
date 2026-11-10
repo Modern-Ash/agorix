@@ -224,6 +224,7 @@ import {
 } from "../kidsStudioModel.js";
 import {
   addStudioArt,
+  addStudioSound,
   listStudioProjects,
   moveStudioActorLayer,
   saveStudioProject,
@@ -261,6 +262,8 @@ import type { OriContext } from "../kidsOriContext.js";
 import { OriContextNote } from "./OriContextNote.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsSoundPicker } from "./KidsSoundPicker.js";
+import { KidsRecordedSounds } from "./KidsRecordedSounds.js";
+import { microphoneAllowed } from "../kidsRecorder.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 import { OriFace } from "./OriFace.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
@@ -2134,6 +2137,11 @@ export function KidsStudioScreen({
     creative.assets?.filter(
       (asset) => asset.kind === "backdrop" && asset.source.startsWith("data:"),
     ) ?? [];
+  const recordedSounds = (creative.assets ?? []).filter(
+    (asset) => asset.kind === "sound" && asset.source.startsWith("data:"),
+  );
+  const recordedOf = (soundId: string) =>
+    recordedSounds.find((asset) => asset.id === soundId)?.source;
   const codeTabs: readonly CodeTab[] = ageBand
     ? codeTabsForBand(ageBand, showMoreLanguages)
     : ["agorix", "python", "node", "java"];
@@ -2182,7 +2190,7 @@ export function KidsStudioScreen({
       void playKidsSound(
         entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
         { kind: "gallery", id: characterOfActor(owner.id) },
-        { volume: entry.worldAfter.sounds?.volume ?? 100 },
+        { volume: entry.worldAfter.sounds?.volume ?? 100, recorded: recordedOf },
       );
   }
 
@@ -2580,6 +2588,13 @@ export function KidsStudioScreen({
     } catch {
       setError(true);
     }
+  }
+
+  /** A recording the child trimmed, kept in this project as a sound a block can play. */
+  function saveRecording(wavDataUrl: string) {
+    const soundId = addStudioSound(id, wavDataUrl, locale, store);
+    setPlacementRevision((value) => value + 1);
+    setNewSound(soundId);
   }
 
   async function importImage(kind: "costume" | "backdrop", event: ChangeEvent<HTMLInputElement>) {
@@ -3234,7 +3249,7 @@ export function KidsStudioScreen({
         void playKidsSound(
           entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
           { kind: "gallery", id: characterOfActor(entry.actorId ?? activeActorId) },
-          { volume: entry.worldAfter.sounds?.volume ?? 100 },
+          { volume: entry.worldAfter.sounds?.volume ?? 100, recorded: recordedOf },
         );
       }
     } catch {
@@ -3334,7 +3349,7 @@ export function KidsStudioScreen({
         void playKidsSound(
           entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
           { kind: "gallery", id: characterOfActor(owner.id) },
-          { volume: entry.worldAfter.sounds?.volume ?? 100 },
+          { volume: entry.worldAfter.sounds?.volume ?? 100, recorded: recordedOf },
         );
       }
     }
@@ -5051,10 +5066,11 @@ export function KidsStudioScreen({
                             className="kids-button"
                             aria-label={`${locale === "es" ? "Escuchar" : "Listen to"} ${item[locale]}`}
                             onClick={() =>
-                              void playKidsSound(item.id, {
-                                kind: "gallery",
-                                id: characterOfActor(activeActorId),
-                              })
+                              void playKidsSound(
+                                item.id,
+                                { kind: "gallery", id: characterOfActor(activeActorId) },
+                                { recorded: recordedOf },
+                              )
                             }
                           >
                             ▶
@@ -5073,6 +5089,26 @@ export function KidsStudioScreen({
                         </li>
                       ))}
                     </ul>
+                    {recordedSounds.length > 0 || microphoneAllowed() ? (
+                      <KidsRecordedSounds
+                        locale={locale}
+                        sounds={recordedSounds}
+                        value={newSound}
+                        onChoose={(soundId) => {
+                          setNewSound(soundId);
+                          void playKidsSound(
+                            soundId,
+                            { kind: "gallery", id: characterOfActor(activeActorId) },
+                            { recorded: recordedOf },
+                          );
+                        }}
+                        onUse={(soundId) => {
+                          setNewSound(soundId);
+                          add({ type: "playSound", soundId });
+                        }}
+                        onSave={saveRecording}
+                      />
+                    ) : null}
                     {KIDS_SOUNDS.some((item) =>
                       item[locale]
                         .toLocaleLowerCase(locale)
@@ -6452,10 +6488,11 @@ export function KidsStudioScreen({
                       label: `▶ ${copy.sound}`,
                       kind: "tool",
                       onAdd: () =>
-                        void playKidsSound(newSound, {
-                          kind: "gallery",
-                          id: characterOfActor(activeActorId),
-                        }),
+                        void playKidsSound(
+                          newSound,
+                          { kind: "gallery", id: characterOfActor(activeActorId) },
+                          { recorded: recordedOf },
+                        ),
                     },
                   ]}
                 >
@@ -6464,12 +6501,28 @@ export function KidsStudioScreen({
                     value={newSound}
                     onChoose={(id) => {
                       setNewSound(id);
-                      void playKidsSound(id, {
-                        kind: "gallery",
-                        id: characterOfActor(activeActorId),
-                      });
+                      void playKidsSound(
+                        id,
+                        { kind: "gallery", id: characterOfActor(activeActorId) },
+                        { recorded: recordedOf },
+                      );
                     }}
                   />
+                  {recordedSounds.length > 0 || microphoneAllowed() ? (
+                    <KidsRecordedSounds
+                      locale={locale}
+                      sounds={recordedSounds}
+                      value={newSound}
+                      onChoose={(soundId) => {
+                        setNewSound(soundId);
+                        void playKidsSound(
+                          soundId,
+                          { kind: "gallery", id: characterOfActor(activeActorId) },
+                          { recorded: recordedOf },
+                        );
+                      }}
+                    />
+                  ) : null}
                 </KidsPaletteBlock>
                 <KidsPaletteBlock
                   tone="sound"

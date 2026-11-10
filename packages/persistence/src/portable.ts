@@ -3,6 +3,8 @@ import {
   validateProgram,
   validateProjectCreativeState,
   validEmbeddedImageSource,
+  validEmbeddedSoundSource,
+  MAX_EMBEDDED_SOUNDS,
   type ProjectProgram,
 } from "@agorix/program-model";
 import {
@@ -114,7 +116,8 @@ export function serializeAgorixProject(
   const project = validatePortableStoredProject(stored, true);
   const media: Record<string, string> = {};
   const assets = project.metadata.assets?.map((asset) => {
-    if (!asset.source.startsWith("data:image/")) return asset;
+    if (!asset.source.startsWith("data:image/") && !asset.source.startsWith("data:audio/"))
+      return asset;
     media[asset.id] = asset.source;
     return { ...asset, source: `embedded:${asset.id}` };
   });
@@ -126,8 +129,8 @@ export function serializeAgorixProject(
       "embedded media needs explicit adult opt-in",
     );
   }
-  if (Object.keys(media).length > 12) {
-    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "too many embedded images");
+  if (Object.keys(media).length > 12 + MAX_EMBEDDED_SOUNDS) {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "too many embedded media");
   }
   const portableProject = hasMedia
     ? validatePortableStoredProject({
@@ -211,7 +214,10 @@ export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnve
   assertPlainObject(input.media, "$.media");
   const assets = project.metadata.assets ?? [];
   const embedded = assets.filter((asset) => asset.source.startsWith("embedded:"));
-  if (embedded.length > 12 || Object.keys(input.media).length !== embedded.length) {
+  if (
+    embedded.length > 12 + MAX_EMBEDDED_SOUNDS ||
+    Object.keys(input.media).length !== embedded.length
+  ) {
     throw new PersistenceError(
       "SCHEMA_MISMATCH",
       PORTABLE_PROJECT_ID,
@@ -220,9 +226,10 @@ export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnve
   }
   for (const asset of embedded) {
     if (
-      asset.kind === "sound" ||
       asset.source !== `embedded:${asset.id}` ||
-      !validEmbeddedImageSource(input.media[asset.id])
+      !(asset.kind === "sound"
+        ? validEmbeddedSoundSource(input.media[asset.id])
+        : validEmbeddedImageSource(input.media[asset.id]))
     ) {
       throw new PersistenceError(
         "SCHEMA_MISMATCH",
@@ -436,7 +443,10 @@ function validateAssets(input: unknown, allowInlineImages: boolean): ProjectMeta
     if (
       typeof asset.source !== "string" ||
       (asset.source.startsWith("data:")
-        ? !allowInlineImages || asset.kind === "sound" || !validEmbeddedImageSource(asset.source)
+        ? !allowInlineImages ||
+          !(asset.kind === "sound"
+            ? validEmbeddedSoundSource(asset.source)
+            : validEmbeddedImageSource(asset.source))
         : asset.source.length < 1 || asset.source.length > 120)
     ) {
       throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.source invalid`);
