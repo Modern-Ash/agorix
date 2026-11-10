@@ -2562,6 +2562,13 @@ test("Ori's idea for a drawing is shown beside it, changes nothing until used, a
       .locator(".kids-studio-stage-actor .kids-art-image")
       .evaluate((el) => getComputedStyle(el).backgroundImage);
   const before = await art();
+  // The picture is described in words, from its own pixels, for anyone who cannot see it.
+  await expect(page.getByTestId("art-words").first()).toHaveText(/^Tu dibujo: .+\.$/);
+  const words = (await page.getByTestId("art-words").first().textContent()) ?? "";
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveAttribute(
+    "aria-label",
+    new RegExp(words.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
   await page.getByTestId("art-variation-open").first().click();
   await page.getByTestId("art-variation-hue").click();
   await expect(page.getByTestId("art-variation-compare")).toBeVisible();
