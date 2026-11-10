@@ -88,9 +88,37 @@ test("a recording is trimmed, kept in the project, chosen for a block, and goes 
   );
   expect(stored).toBe(true);
   await mine.getByRole("button", { name: "Usar Mi sonido 1" }).click();
-  await expect(page.getByText(/Mi sonido 1/).first()).toBeVisible();
+  // The block really is in the program, so the saved project plays the recording.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).some((key) =>
+          (localStorage.getItem(key) ?? "").includes('"soundId":"sound:recorded-1"'),
+        ),
+      ),
+    )
+    .toBe(true);
+  // A recording a block plays cannot be deleted from under it.
+  await mine.getByRole("button", { name: "Borrar Mi sonido 1" }).click();
+  await expect(mine.getByRole("status")).toContainText("un bloque lo usa todavía");
+  await expect(mine.getByRole("button", { name: "Elegir y escuchar Mi sonido 1" })).toBeVisible();
   const origin = new URL(page.url()).origin;
   expect(requests.filter((request) => !request.url.startsWith(origin))).toEqual([]);
   // The only request with a body is the scene's own (its setup choices); no sound is in any.
   expect(requests.filter((request) => /audio|wav|recorded/i.test(request.body))).toEqual([]);
+});
+
+test("a recording no block plays can be deleted", async ({ page }) => {
+  await openSounds(page, true);
+  await page.getByTestId("record-sound").click();
+  await page.waitForTimeout(1200);
+  await page.getByRole("button", { name: "Parar" }).click();
+  await page
+    .getByRole("region", { name: /Editar audio/ })
+    .getByRole("button", { name: "Guardar cambios" })
+    .click();
+  const mine = page.getByRole("group", { name: "Mis grabaciones" });
+  await mine.getByRole("button", { name: "Borrar Mi sonido 1" }).click();
+  await expect(mine.getByRole("button", { name: "Elegir y escuchar Mi sonido 1" })).toHaveCount(0);
+  await expect(mine).toContainText("Aún no grabaste nada");
 });

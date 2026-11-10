@@ -221,10 +221,13 @@ import {
   studioActorId,
   type StudioStatement,
   wrapStudioTail,
+  studioArtAssets,
 } from "../kidsStudioModel.js";
 import {
   addStudioArt,
   addStudioSound,
+  removeStudioSound,
+  studioSoundInUse,
   listStudioProjects,
   moveStudioActorLayer,
   saveStudioProject,
@@ -2412,7 +2415,10 @@ export function KidsStudioScreen({
       );
       unrevisedRun.current = null;
     }
-    const nextCreative = creativeForStudio(next.current, backdropId, locale);
+    // The child's own pictures and recordings stay in the project; a block may play a recording.
+    const nextCreative = creativeForStudio(next.current, backdropId, locale, {}, [], {
+      assets: studioArtAssets(creative.assets?.filter((asset) => asset.source.startsWith("data:"))),
+    });
     const nextActive = nextCreative.actors?.some((item) => item.id === selected)
       ? selected
       : nextCreative.actors![0]!.id;
@@ -2617,6 +2623,15 @@ export function KidsStudioScreen({
     const soundId = addStudioSound(id, wavDataUrl, locale, store);
     setPlacementRevision((value) => value + 1);
     setNewSound(soundId);
+  }
+
+  /** Delete a recording no block plays; throws when one still does (the program is untouched). */
+  function removeRecording(soundId: string) {
+    // The program on screen may be newer than the saved one, so both are checked.
+    if (studioSoundInUse(history.current, soundId)) throw new RangeError("studio sound in use");
+    removeStudioSound(id, soundId, store);
+    if (newSound === soundId) setNewSound("kids:pop");
+    setPlacementRevision((value) => value + 1);
   }
 
   async function importImage(kind: "costume" | "backdrop", event: ChangeEvent<HTMLInputElement>) {
@@ -5138,6 +5153,7 @@ export function KidsStudioScreen({
                           add({ type: "playSound", soundId });
                         }}
                         onSave={saveRecording}
+                        onRemove={removeRecording}
                       />
                     ) : null}
                     {KIDS_SOUNDS.some((item) =>

@@ -18,6 +18,7 @@ import {
 import {
   createStudioProgram,
   creativeForStudio,
+  isStudioRecordedSoundId,
   studioArtAssets,
   validateStudioProgram,
 } from "./kidsStudioModel.js";
@@ -275,6 +276,34 @@ export function addStudioSound(
     assets: [...(metadata.assets ?? []), asset],
   });
   return asset.id;
+}
+
+/** Whether any block of the program plays this sound. */
+export function studioSoundInUse(program: ProjectProgram, soundId: string): boolean {
+  return JSON.stringify(program).includes(`"soundId":${JSON.stringify(soundId)}`);
+}
+
+/**
+ * Remove one of the child's recordings from the project. A recording a block still plays is kept
+ * (the call throws): the program is never changed behind the child's back.
+ */
+export function removeStudioSound(
+  id: string,
+  soundId: string,
+  store: ProjectStore = new ProjectStore(),
+): void {
+  if (!STUDIO_ID.test(id) || !isStudioRecordedSoundId(soundId))
+    throw new RangeError("invalid studio sound");
+  const saved = store.load(id);
+  validateStudioProgram(saved.program);
+  if (!saved.metadata.assets?.some((asset) => asset.id === soundId && asset.kind === "sound"))
+    throw new RangeError("unknown studio sound");
+  if (studioSoundInUse(saved.program, soundId)) throw new RangeError("studio sound in use");
+  store.save(id, saved.program, {
+    ...saved.metadata,
+    updatedAt: new Date().toISOString(),
+    assets: (saved.metadata.assets ?? []).filter((asset) => asset.id !== soundId),
+  });
 }
 
 export function selectStudioArt(
