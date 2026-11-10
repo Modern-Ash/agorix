@@ -137,6 +137,7 @@ import {
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
   PEN_TRANSPARENCIES,
+  PROCEDURE_PARAMS_MAX,
   type MusicBeats,
   type MusicDrum,
   type MusicInstrument,
@@ -6811,7 +6812,7 @@ export function KidsStudioScreen({
                   className="kids-button"
                   disabled={
                     !numberTitle.trim() ||
-                    blockNumbers.length >= 3 ||
+                    blockNumbers.length >= PROCEDURE_PARAMS_MAX ||
                     blockNumbers.some(
                       (item) => item.toLowerCase() === numberTitle.trim().toLowerCase(),
                     )
@@ -6882,7 +6883,7 @@ export function KidsStudioScreen({
                             {param.name} ✕
                           </button>
                         ))}
-                        {(item.params?.length ?? 0) < 3 ? (
+                        {(item.params?.length ?? 0) < PROCEDURE_PARAMS_MAX ? (
                           <>
                             <label>
                               {copy.numberTitle} ({item.name})

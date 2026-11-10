@@ -285,6 +285,38 @@ test("Ori notices the same block written three times and offers one Repetir, onl
   await expect(page.locator(".kids-program-block")).toHaveCount(3);
 });
 
+test("Ori previews a shared block for groups repeated apart and applies it only when accepted", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  for (let i = 0; i < 3; i += 1) {
+    await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+    await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+    if (i < 2) await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("button", { name: /Ori vio algo/ }).click();
+  await expect(page.getByTestId("ori-fix-diff")).toContainText("Bloques para todos");
+  await expect(page.locator(".kids-program-block")).toHaveCount(8);
+  await page.getByRole("button", { name: "Usar este cambio" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(5);
+  await expect(page.locator(".kids-program-block").first()).toContainText("para todos");
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(8);
+});
+
 test("Ori notices a word nobody gave a value", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");

@@ -58,6 +58,8 @@ export function fixFor(finding: Finding, raw: ProjectProgram): RunFix | null {
   } else if (finding.kind === "repeatedBlocks") {
     // The run is in this script.
     scriptIndex = placeIndex;
+  } else if (finding.kind === "repeatedApart") {
+    scriptIndex = placeIndex;
   }
   const script = program.scripts[scriptIndex];
   if (script === undefined) return null;
@@ -81,6 +83,13 @@ export function fixFor(finding: Finding, raw: ProjectProgram): RunFix | null {
     affectedNodeIds = found.affected(scriptIndex);
     shown = found.repeat;
     after = found.after;
+  } else if (finding.kind === "repeatedApart") {
+    const found = sharedFix(finding, program, scriptIndex);
+    if (!found) return null;
+    operations = found.operations;
+    affectedNodeIds = found.affectedNodeIds;
+    shown = found.call;
+    after = found.after;
   } else return null;
   try {
     validateStudioProgram({
@@ -88,11 +97,63 @@ export function fixFor(finding: Finding, raw: ProjectProgram): RunFix | null {
       scripts: program.scripts.map((item, index) =>
         index === scriptIndex ? { ...item, statements: after } : item,
       ),
+      ...(finding.kind === "repeatedApart" && operations[0]?.type === "addSharedProcedure"
+        ? { sharedProcedures: [...(program.sharedProcedures ?? []), operations[0].procedure] }
+        : {}),
     });
   } catch {
     return null;
   }
   return { scriptIndex, statement: shown, actorId, operations, affectedNodeIds };
+}
+
+function sharedFix(finding: Finding, program: ProjectProgram, scriptIndex: number) {
+  const script = program.scripts[scriptIndex];
+  const match = /^scripts\[\d+\]\/statements\[(\d+)\]$/.exec(finding.nodeIds[0] ?? "");
+  const period = finding.counts["period"] ?? 0;
+  if (!script || !match || period < 2 || period > 3 || (program.sharedProcedures?.length ?? 0) >= 5)
+    return null;
+  const start = Number(match[1]);
+  const body = script.statements.slice(start, start + period);
+  if (body.length !== period) return null;
+  const keys = body.map((item) => JSON.stringify(item));
+  const positions: number[] = [];
+  for (let i = start; i + period <= script.statements.length;) {
+    if (keys.every((key, offset) => JSON.stringify(script.statements[i + offset]) === key)) {
+      positions.push(i);
+      i += period;
+    } else i += 1;
+  }
+  if (positions.length < 3 || positions[0] !== start) return null;
+  const used = new Set((program.sharedProcedures ?? []).map((item) => item.id));
+  let n = 1;
+  while (used.has(`shared-${n}`)) n += 1;
+  const id = `shared-${n}`;
+  const name = `Grupo ${n}`;
+  if (
+    (program.sharedProcedures ?? []).some(
+      (item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+    )
+  )
+    return null;
+  const call: Statement = { type: "callProcedure", procedureId: id };
+  const operations: ProposalOperation[] = [
+    { type: "addSharedProcedure", procedure: { id, name, body } },
+  ];
+  const after = [...script.statements];
+  const affectedNodeIds = [`sharedProcedures[${program.sharedProcedures?.length ?? 0}]`];
+  for (const position of [...positions].reverse()) {
+    after.splice(position, period, call);
+    const nodeId = `scripts[${scriptIndex}]/statements[${position}]`;
+    affectedNodeIds.push(nodeId);
+    operations.push({ type: "replaceStatement", nodeId, statement: call });
+    for (let offset = 1; offset < period; offset += 1) {
+      const removed = `scripts[${scriptIndex}]/statements[${position + 1}]`;
+      affectedNodeIds.push(removed);
+      operations.push({ type: "removeStatement", nodeId: removed });
+    }
+  }
+  return { call, operations, after, affectedNodeIds };
 }
 
 /** One to three blocks written out in a row become one `repeat`; any leftover copy stays as is. */
@@ -141,6 +202,10 @@ export function explainFix(finding: Finding, locale: Locale): string {
     return locale === "es"
       ? "Si los metés en un «Repetir», el programa hace lo mismo con menos bloques."
       : "If you put them in a “Repeat”, the program does the same with fewer blocks.";
+  if (finding.kind === "repeatedApart")
+    return locale === "es"
+      ? "Si hacés este grupo de bloques para todos, queda escrito una vez y cualquier personaje puede usarlo. Revisá cada reemplazo antes de aceptarlo."
+      : "If you make this group a block for everyone, it is written once and any character can use it. Review each replacement before accepting.";
   if (finding.kind === "hiddenCharacter")
     return locale === "es"
       ? "Si al final agregás «Mostrar», el personaje vuelve a verse."
@@ -166,17 +231,21 @@ export function proposeRunFix(
     baseProgram: current,
     source: { kind: "learning-companion", capability: "builder" },
     purpose:
-      finding.kind === "repeatedBlocks"
+      finding.kind === "repeatedApart"
         ? locale === "es"
-          ? "Juntar los bloques repetidos"
-          : "Join the repeated blocks"
-        : finding.kind === "hiddenCharacter"
+          ? "Compartir los bloques que se repiten"
+          : "Share the repeated blocks"
+        : finding.kind === "repeatedBlocks"
           ? locale === "es"
-            ? "Volver a mostrar al personaje"
-            : "Show the character again"
-          : locale === "es"
-            ? "Mandar el mensaje que falta"
-            : "Send the missing message",
+            ? "Juntar los bloques repetidos"
+            : "Join the repeated blocks"
+          : finding.kind === "hiddenCharacter"
+            ? locale === "es"
+              ? "Volver a mostrar al personaje"
+              : "Show the character again"
+            : locale === "es"
+              ? "Mandar el mensaje que falta"
+              : "Send the missing message",
     rationale: explainFix(finding, locale),
     affectedActorIds: [fix.actorId],
     affectedScriptIds: [script.id],

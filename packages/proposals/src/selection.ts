@@ -38,6 +38,7 @@ export function operationEditable(operation: ProposalOperation): EditableValue |
     case "replaceStatement":
       return editableOfStatement(operation.statement);
     case "addScript":
+    case "addSharedProcedure":
       return undefined;
     case "replaceStatementField":
       return { field: operation.field, value: operation.value };
@@ -129,6 +130,7 @@ export function resolveOperationTargets(
       live.push(operation.script.statements.map(() => placeholder));
       return undefined;
     }
+    if (operation.type === "addSharedProcedure") return undefined;
     if (operation.type === "appendStatement") {
       live[operation.scriptIndex]?.push(placeholder);
       return undefined;

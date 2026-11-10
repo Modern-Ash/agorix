@@ -1251,7 +1251,7 @@ function validateList(input: unknown, path: string, state: ValidationState): Pro
 }
 
 const PROCEDURE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
-const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3"];
+const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3", "p4", "p5"];
 
 /** `<field>From`: take the value from one of the enclosing custom block's numbers. */
 function optionalParamRef(
@@ -1294,7 +1294,7 @@ function validateProcedureParams(
     if (unknownKey !== undefined) {
       fail("INVALID_FIELD_TYPE", `${itemPath}.${unknownKey}`, "unexpected field", item[unknownKey]);
     }
-    // Ids are positional (p1, p2, p3 with no gaps) so a call's arguments line up by index.
+    // Ids are positional (p1 through p5 with no gaps) so a call's arguments line up by index.
     if (item.id !== PARAM_IDS[index]) {
       fail("INVALID_FIELD_TYPE", `${itemPath}.id`, `expected "${PARAM_IDS[index]}"`, item.id);
     }

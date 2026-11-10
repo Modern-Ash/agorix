@@ -178,3 +178,67 @@ describe("the fix Ori can offer for blocks written out in a row", () => {
     ).toThrow();
   });
 });
+
+describe("the shared block Ori proposes for blocks repeated apart", () => {
+  const move = { type: "move", steps: 20 } as const;
+  const turn = { type: "turn", degrees: 90 } as const;
+  const pause = { type: "wait", seconds: 1 } as const;
+  const base = validateStudioProgram({
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "studio-actor-1-mika",
+        trigger: { type: "greenFlag" },
+        statements: [move, turn, pause, move, turn, pause, move, turn],
+      },
+    ],
+  });
+  const finding: Finding = {
+    id: "repeatedApart:scripts[0]/statements[0]",
+    kind: "repeatedApart",
+    actorId: "actor:studio-1-mika",
+    nodeIds: ["scripts[0]/statements[0]"],
+    counts: { period: 2, times: 3 },
+    confidence: 0.62,
+  };
+
+  it("previews a shared body and all call replacements before acceptance", () => {
+    const proposal = proposeRunFix(base, finding, "es");
+    expect(proposal.operations[0]).toMatchObject({
+      type: "addSharedProcedure",
+      procedure: { id: "shared-1", body: [move, turn] },
+    });
+    expect(proposal.operations.filter((item) => item.type === "replaceStatement")).toHaveLength(3);
+    expect(base.sharedProcedures).toBeUndefined();
+    const review = reviewRunFix(base, finding, proposal);
+    const accepted = acceptProposal(base, review).program;
+    expect(accepted.sharedProcedures?.[0]?.body).toEqual([move, turn]);
+    expect(accepted.scripts[0]?.statements).toEqual([
+      { type: "callProcedure", procedureId: "shared-1" },
+      pause,
+      { type: "callProcedure", procedureId: "shared-1" },
+      pause,
+      { type: "callProcedure", procedureId: "shared-1" },
+    ]);
+    rejectProposal(base, review);
+    expect(base.sharedProcedures).toBeUndefined();
+  });
+
+  it("rejects stale or altered sharing proposals and invalid findings", () => {
+    const proposal = proposeRunFix(base, finding, "en");
+    expect(() =>
+      reviewRunFix(base, finding, { ...proposal, operations: proposal.operations.slice(1) }),
+    ).toThrow();
+    expect(() =>
+      reviewRunFix(
+        {
+          ...base,
+          scripts: [{ ...base.scripts[0]!, statements: [pause, ...base.scripts[0]!.statements] }],
+        },
+        finding,
+        proposal,
+      ),
+    ).toThrow();
+    expect(fixFor({ ...finding, counts: { period: 3, times: 3 } }, base)).toBeNull();
+  });
+});

@@ -23,7 +23,7 @@ export const PROCEDURE_NUMBER_DEFAULTS: Readonly<Record<ProcedureNumberUnit, num
     number: 1,
   });
 
-const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3"];
+const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3", "p4", "p5"];
 
 const SLOT_UNIT: Readonly<Record<string, ProcedureNumberUnit>> = {
   stepsFrom: "steps",

@@ -223,7 +223,7 @@ function checkedTrigger(trigger: Trigger): boolean {
   );
 }
 
-const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3"];
+const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3", "p4", "p5"];
 
 /** A bound field or `param` expression may only name one of the enclosing custom block's numbers. */
 function paramInScope(id: ProcedureParamId | undefined, arity: number): boolean {
