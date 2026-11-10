@@ -191,6 +191,8 @@ export interface BlockWorkspaceSnapshot {
   readonly lists?: readonly ProgramList[];
   readonly textVariables?: readonly ProgramTextVariable[];
   readonly extensions?: readonly ExtensionId[];
+  /** Shared custom blocks travel with the workspace unchanged; the editor does not edit them. */
+  readonly sharedProcedures?: ProjectProgram["sharedProcedures"];
   readonly scripts: readonly BlockScript[];
 }
 
@@ -1585,6 +1587,9 @@ export function workspaceToProgram(workspace: BlockWorkspaceSnapshot): Workspace
     ...(workspace.lists === undefined ? {} : { lists: workspace.lists }),
     ...(workspace.textVariables === undefined ? {} : { textVariables: workspace.textVariables }),
     ...(workspace.extensions === undefined ? {} : { extensions: workspace.extensions }),
+    ...(workspace.sharedProcedures === undefined
+      ? {}
+      : { sharedProcedures: workspace.sharedProcedures }),
     scripts: workspace.scripts.map((script, index) => scriptFromBlocks(script, index, mapping)),
   });
   return { program, mapping };
@@ -1598,6 +1603,9 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
     ...(validated.lists === undefined ? {} : { lists: validated.lists }),
     ...(validated.textVariables === undefined ? {} : { textVariables: validated.textVariables }),
     ...(validated.extensions === undefined ? {} : { extensions: validated.extensions }),
+    ...(validated.sharedProcedures === undefined
+      ? {}
+      : { sharedProcedures: validated.sharedProcedures }),
     scripts: validated.scripts.map((script, index) => {
       const scriptId = `scripts[${index}]`;
       const blockId = blockIdFor(scriptId);

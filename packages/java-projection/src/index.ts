@@ -785,6 +785,8 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
 /** Display-only Java view. The canonical program remains the runtime authority. */
 export function projectJava(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
+  if (validated.sharedProcedures !== undefined)
+    throw new RangeError("shared custom blocks are not shown as code yet");
   const allNames = namesFor(
     [...(validated.variables ?? []), ...(validated.textVariables ?? [])],
     new Set(Array.from({ length: 10 }, (_item, depth) => `i${depth}`)),

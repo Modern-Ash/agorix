@@ -968,5 +968,11 @@ export interface ProjectProgram {
   readonly textVariables?: readonly ProgramTextVariable[];
   /** Extension packs the project uses (ADR 0011); absent when it uses none. */
   readonly extensions?: readonly ExtensionId[];
+  /**
+   * Custom blocks defined once for the whole program: any script may call them, and each call runs
+   * on the character that makes it. A script's own block of the same purpose is separate. Absent
+   * in every program written before shared blocks existed.
+   */
+  readonly sharedProcedures?: readonly Procedure[];
   readonly scripts: readonly Script[];
 }

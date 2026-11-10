@@ -1,5 +1,6 @@
 import type {
   Expression,
+  Procedure,
   ProcedureParamId,
   ProgramList,
   ProgramVariable,
@@ -231,6 +232,8 @@ interface MutableRunState {
   timerOrigin: number;
   /** The script being run, so a call can find its own custom blocks. */
   script?: Script;
+  /** The program's shared custom blocks, which any script may call. */
+  shared: readonly Procedure[];
   scriptIndex: number;
   callDepth: number;
   /** One entry per active custom-block call that took numbers; the last one is the current call. */
@@ -990,8 +993,14 @@ function* executeStatement(
       break;
     case "callProcedure": {
       const procedures = state.script?.procedures ?? [];
-      const procedureIndex = procedures.findIndex((item) => item.id === statement.procedureId);
-      const procedure = procedures[procedureIndex];
+      const ownIndex = procedures.findIndex((item) => item.id === statement.procedureId);
+      const sharedIndex =
+        ownIndex >= 0 ? -1 : state.shared.findIndex((item) => item.id === statement.procedureId);
+      const procedure = ownIndex >= 0 ? procedures[ownIndex] : state.shared[sharedIndex];
+      const bodyPath =
+        ownIndex >= 0
+          ? `scripts[${state.scriptIndex}].procedures[${ownIndex}].body`
+          : `sharedProcedures[${sharedIndex}].body`;
       if (procedure === undefined) {
         throw new RuntimeExecutionError(`${path}.procedureId`, statement.procedureId);
       }
@@ -1009,11 +1018,7 @@ function* executeStatement(
         state.paramFrames.push(callArgs);
       }
       try {
-        yield* executeStatements(
-          procedure.body,
-          `scripts[${state.scriptIndex}].procedures[${procedureIndex}].body`,
-          state,
-        );
+        yield* executeStatements(procedure.body, bodyPath, state);
       } finally {
         state.callDepth -= 1;
         if (takesNumbers) state.paramFrames.pop();
@@ -1229,6 +1234,7 @@ export function runProgram(
     randomState: normalizeRandomSeed(options.randomSeed),
     virtualSeconds: 0,
     timerOrigin: 0,
+    shared: validated.sharedProcedures ?? [],
     scriptIndex: 0,
     callDepth: 0,
     paramFrames: [],
@@ -1358,6 +1364,7 @@ export function createScriptStepper(
     virtualSeconds: 0,
     timerOrigin: 0,
     script,
+    shared: validated.sharedProcedures ?? [],
     scriptIndex: 0,
     callDepth: 0,
     paramFrames: [],

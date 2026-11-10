@@ -670,6 +670,8 @@ function projectText(program: ProjectProgram): {
   readonly text: string;
   readonly mapping: LanguageNodeTextMapping;
 } {
+  if (program.sharedProcedures !== undefined)
+    throw new RangeError("shared custom blocks are not shown as code yet");
   const writer: Writer = { parts: [], offset: 0, mapping: {} };
   const context = createProjectionContext(program.variables, program.lists, program.textVariables);
   for (const variable of program.variables ?? []) {

@@ -722,6 +722,8 @@ function checked(
 export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
   const program = validateProgram(raw);
   if (
+    // Shared custom blocks are not part of the scene's editor yet.
+    program.sharedProcedures !== undefined ||
     (program.extensions !== undefined &&
       !program.extensions.every((id) => id === "pen" || id === "music")) ||
     mainScripts(program).length < 1 ||

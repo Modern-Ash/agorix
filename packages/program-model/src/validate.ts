@@ -48,6 +48,7 @@ import {
   NUMERIC_LITERAL_MAX,
   NUMERIC_LITERAL_MIN,
   PROCEDURES_MAX_PER_SCRIPT,
+  SHARED_PROCEDURES_MAX,
   PROCEDURE_BODY_MAX,
   PROCEDURE_NAME_MAX_LENGTH,
   PROCEDURE_PARAMS_MAX,
@@ -176,8 +177,11 @@ interface ValidationState {
   variableIds: Set<string>;
   textVariableIds: Set<string>;
   listIds: Set<string>;
-  /** Custom blocks of the script being validated. */
+  /** Custom blocks of the script being validated, shared ones included. */
   procedureIds: Set<string>;
+  /** The program's shared custom blocks, and the numbers each declares. */
+  sharedProcedureIds: Set<string>;
+  sharedProcedureArity: Map<string, number>;
   /** Numbers each custom block of the current script declares, by block id. */
   procedureArity: Map<string, number>;
   /** Numbers declared by the custom block whose body is being checked (undefined elsewhere). */
@@ -1338,6 +1342,54 @@ function validateProcedure(input: unknown, path: string, state: ValidationState)
   };
 }
 
+/**
+ * Shared custom blocks: defined once, callable from every script. A shared block's body may call
+ * only other shared blocks, because it belongs to no one character. Recursion stays bounded at run
+ * time like any custom block.
+ */
+function validateSharedProcedures(
+  input: unknown,
+  state: ValidationState,
+): readonly Procedure[] | undefined {
+  if (input === undefined) return undefined;
+  const path = "$.sharedProcedures";
+  if (!Array.isArray(input)) {
+    fail("INVALID_FIELD_TYPE", path, "expected an array", input);
+  }
+  if (input.length < 1 || input.length > SHARED_PROCEDURES_MAX) {
+    fail(
+      "PROGRAM_TOO_LARGE",
+      path,
+      `expected 1 to ${SHARED_PROCEDURES_MAX} shared custom blocks`,
+      input.length,
+    );
+  }
+  state.procedureIds = new Set();
+  state.procedureArity = new Map();
+  const headers = input.map((item, index) => validateProcedure(item, `${path}[${index}]`, state));
+  state.loopDepth = 0;
+  state.foreverCount = 0;
+  const shared = headers.map((header, index) => {
+    const raw = input[index] as Record<string, unknown>;
+    const bodyPath = `${path}[${index}].body`;
+    state.currentParams = new Set((header.params ?? []).map((param) => param.id));
+    const body = validateStatementArray(raw.body, bodyPath, state, 2);
+    state.currentParams = undefined;
+    if (body.length < 1 || body.length > PROCEDURE_BODY_MAX) {
+      fail(
+        "PROGRAM_TOO_LARGE",
+        bodyPath,
+        `expected 1 to ${PROCEDURE_BODY_MAX} statements`,
+        body.length,
+      );
+    }
+    return { ...header, body };
+  });
+  state.sharedProcedureIds = new Set(state.procedureIds);
+  state.sharedProcedureArity = new Map(state.procedureArity);
+  return shared;
+}
+
 function validateScript(input: unknown, path: string, state: ValidationState): Script {
   countNode(state, path);
   if (!isPlainObject(input)) {
@@ -1347,8 +1399,9 @@ function validateScript(input: unknown, path: string, state: ValidationState): S
     fail("MISSING_FIELD", `${path}.id`, "expected a non-empty string", input.id);
   }
   recordId(state, input.id, `${path}.id`);
-  state.procedureIds = new Set();
-  state.procedureArity = new Map();
+  // A script may call its own custom blocks and the program's shared ones.
+  state.procedureIds = new Set(state.sharedProcedureIds);
+  state.procedureArity = new Map(state.sharedProcedureArity);
   state.loopDepth = 0;
   state.foreverCount = 0;
   let procedures: Procedure[] | undefined;
@@ -1422,6 +1475,8 @@ export function validateProgram(input: unknown): ProjectProgram {
     listIds: new Set(),
     procedureIds: new Set(),
     procedureArity: new Map(),
+    sharedProcedureIds: new Set(),
+    sharedProcedureArity: new Map(),
     currentParams: undefined,
     usedExtensions: new Set(),
     loopDepth: 0,
@@ -1449,6 +1504,7 @@ export function validateProgram(input: unknown): ProjectProgram {
       : Array.isArray(input.lists)
         ? input.lists.map((item, index) => validateList(item, `$.lists[${index}]`, state))
         : fail("INVALID_FIELD_TYPE", "$.lists", "expected an array", input.lists);
+  const sharedProcedures = validateSharedProcedures(input.sharedProcedures, state);
   const scripts = input.scripts.map((item, index) =>
     validateScript(item, `$.scripts[${index}]`, state),
   );
@@ -1459,6 +1515,7 @@ export function validateProgram(input: unknown): ProjectProgram {
     ...(lists === undefined ? {} : { lists }),
     ...(textVariables === undefined ? {} : { textVariables }),
     ...(extensions === undefined ? {} : { extensions }),
+    ...(sharedProcedures === undefined ? {} : { sharedProcedures }),
     scripts,
   };
 }
