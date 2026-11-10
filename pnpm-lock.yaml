@@ -359,6 +359,12 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/art-document:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+
   packages/auth-service:
     dependencies:
       '@agorix/platform-contract':

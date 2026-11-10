@@ -1,0 +1,30 @@
+export {
+  ART_DOCUMENT_SCHEMA,
+  ART_KINDS,
+  ART_PALETTE,
+  ART_STROKE_WIDTHS,
+  ART_TEXT_SIZES,
+  ArtDocumentError,
+  MAX_ART_BITMAPS,
+  MAX_ART_SHAPES,
+  MAX_ART_TEXT_LENGTH,
+  MAX_STROKE_POINTS,
+  createArtDocument,
+  validateArtDocument,
+  type ArtBitmap,
+  type ArtColor,
+  type ArtDocument,
+  type ArtDocumentErrorCode,
+  type ArtEllipse,
+  type ArtKind,
+  type ArtLine,
+  type ArtRect,
+  type ArtShape,
+  type ArtStroke,
+  type ArtStrokeWidth,
+  type ArtText,
+  type ArtTextSize,
+} from "./document.js";
+export { renderArtDocumentSvg } from "./render.js";
+export { describeArtDocument, type ArtLocale } from "./describe.js";
+export { MAX_SVG_INPUT_CHARS, SvgSanitizeError, sanitizeSvg, type SvgRefusal } from "./sanitize.js";
