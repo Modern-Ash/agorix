@@ -176,3 +176,15 @@ There is still no corpus of children's `.sb3` files, so the team wrote ten proje
 What is left behind, most to least: **another script of the same character (9 of 23 scripts)**, because the scene gives each character one script plus a copy script (the same limit #1313 asks to review); then the Music extension (notes, drums, tempo: the scene has them but the importer does not map them), lists and "my blocks", "ask and wait", switching costume or backdrop by name, "if/else" on an answer, and a pen colour step. A value that comes from another block (a random number inside "go to") is also dropped.
 
 Next in order of what it would recover: map the Music blocks (no model work needed), then decide with #1313 whether a second script per character is worth it, since it is the biggest loss by far.
+
+## Status: more than one script per character (#1363), increment 1
+
+Owner decision (2026-11-10): a character may have more than one script. Working cap: its own script plus **two** more (three), plus the copy script as before. To be confirmed with #1313 and in a learner session before any default changes.
+
+Increment 1 is the Studio model only, with no interface yet. The engine already ran several scripts per character (a character lists its scripts in the creative state), so only the Studio's one-script rule changes:
+
+- Extra scripts are named `studio-actor-N-<character>-s2` and `-s3`, after the characters' own scripts. Rules: slots in order with no gap; each has its own event, never the copy hat and never one the character already answers (so two arrows are two keys, never a repeat); no custom blocks of their own; the character's blocks across all its scripts count against the one block limit.
+- They are edited through a target name, like the copy script: `studioExtraTarget(actorId, slot)`, so every editing function (add, remove, move, set the event) works unchanged.
+- New: `addStudioScript`, `removeStudioScript`, `studioExtraScripts`; `studioBlocksUsed` now sums the character's scripts; adding a character keeps the others' extra scripts.
+
+Next increments: (2) the Studio interface (a tab per script, add and remove, choose the event); (3) the Scratch importer keeps up to three scripts per sprite; (4) Ori's findings, the timeline and the four code views read every script of a character.
