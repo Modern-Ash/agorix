@@ -113,6 +113,14 @@ Done: reset timer (#1323), typed answer (#1329), microphone volume and its hat (
 
 Not done: touching the pen trail or a stamped copy. Each character's pen lives in its own world, so reading another character's trail needs the scheduler to share trails first; it is left for its own slice.
 
-## Status: Ori findings from the run's evidence
+## Status: costume and backdrop editor (#1308), increment 1
 
-Added: `wordNeverSet` (a word that blocks read and nothing ever sets or asks for; sure once the reading block ran) and `copiesAtLimit` (copy requests refused because the run already holds 20; the trace now carries the note for plain copies too). Both say only a kind and counts to a provider, with a local es/en sentence for each age band and no fix proposal. Still open: "near the block limit".
+Built: `@agorix/art-document`, with no interface. The document (v1: rectangle, ellipse, line, free stroke, text of at most 20 letters, imported bitmap; closed palette of 16 colours, closed stroke widths and text sizes, whole-number coordinates inside the canvas, at most 60 shapes, 64 points a stroke, 2 pictures), one pure renderer to SVG, a description for screen readers built from the shapes (es/en), and the SVG sanitiser (tokenizer, element and attribute allow-list, checked values, rebuilt output; scripts, handlers, links, styles, external references, entities and oversize or too-deep pictures are refused) with a corpus of 37 hostile pictures.
+
+One correction to the design: a bitmap layer keeps the **existing project rule** (PNG or WebP, under 60 KB, `validEmbeddedImageSource`), not the 256 KB the design proposed. JPEG and SVG imports must therefore be rasterised to that format by the browser in increment 3, and a saved edit becomes a costume asset by the same route; the vector document is kept next to it so it stays editable.
+
+## Correction and status: Ori's variations of a drawing (#1308)
+
+The editor section above said a child cannot change a picture. That was wrong: `KidsDrawArt` already draws (brush, eraser, fill, line, rectangle, circle, text, select and move, two layers, undo), imports an image and edits a saved drawing again. What was missing, and is now built, is what Ori adds: **ideas for the child's own pictures**. A closed list of six (mirror, flip, quarter turn, change the colours, lighter, darker), each a fixed transformation of the pixels already there, computed locally. Ori does not draw and no model is read. The idea is shown beside the picture, nothing changes until the child presses "use", and "go back to the drawing from before" restores it. It reaches the picture through the existing `updateStudioArt`, which keeps the project rules (PNG or WebP under 60 KB).
+
+This did not need a new proposal operation: a picture is a project asset, not part of the program, so the program-proposal contract is untouched. The vector `@agorix/art-document` package stays as the base for descriptions of a drawing for screen readers and for editable shapes later, if sessions with children show they are wanted.

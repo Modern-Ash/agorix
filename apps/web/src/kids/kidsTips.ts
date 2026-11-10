@@ -192,6 +192,17 @@ const CATEGORY_TIPS: Readonly<Record<string, Tip>> = {
 const t = (es: string, en: string): Tip => ({ es, en });
 
 export const TIP_RULES: readonly TipRule[] = [
+  // Ori's ideas for a picture (#1308): each button carries its own sentence, already in the locale.
+  {
+    match: (c) =>
+      c.matches("button") &&
+      (c.closest(".kids-art-variation") !== null ||
+        (c.getAttribute("data-testid") ?? "").startsWith("art-variation")),
+    tip: (c) => {
+      const sentence = c.getAttribute("title") ?? "";
+      return { es: sentence, en: sentence };
+    },
+  },
   // The copy-script panel (#1311): each button carries its own sentence, already in the locale.
   {
     match: (c) => c.closest(".kids-copy-script") !== null && c.matches("button"),
