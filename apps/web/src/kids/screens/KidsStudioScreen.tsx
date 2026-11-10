@@ -1712,6 +1712,11 @@ export function KidsStudioScreen({
     /** Ori's idea applied to a copy, only to listen to it: the child's program is untouched. */
     readonly candidate: ProjectProgram;
   } | null>(null);
+  // Ori's ideas land in the character's first script, so the screen shows that one while it has an
+  // idea to look at (nothing is hidden: the ghost blocks appear where they would go).
+  useEffect(() => {
+    if (oriIdea || intentPlan || compoundOri) setActiveSlot(1);
+  }, [oriIdea, intentPlan, compoundOri]);
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
   const [quantityGuess, setQuantityGuess] = useState<number | null>(null);

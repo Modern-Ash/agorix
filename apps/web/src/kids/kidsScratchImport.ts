@@ -1,5 +1,9 @@
 import {
+  MUSIC_BEATS,
   PEN_TRANSPARENCIES,
+  type ExtensionId,
+  type MusicDrum,
+  type MusicInstrument,
   type ClockPart,
   type PenShade,
   SCHEMA_VERSION,
@@ -27,7 +31,9 @@ import {
 import { penColorOfHex } from "./kidsBackdropZones.js";
 import {
   STUDIO_EDGE_CONDITION,
+  STUDIO_NOTES,
   STUDIO_PEN_SIZES,
+  STUDIO_TEMPOS,
   cloneScriptId,
   extraScriptId,
   MAX_STUDIO_EXTRA_SCRIPTS,
@@ -74,6 +80,31 @@ const CLOCK_PART_OF_SCRATCH: Readonly<Record<string, ClockPart>> = {
 function shadeOf(value: number): PenShade {
   return value < 40 ? "darker" : value > 60 ? "lighter" : "normal";
 }
+
+/** Scratch's drum numbers (1 snare, 2 bass, 5 and 6 hi-hats, 8 clap) to the scene's four drums. */
+const DRUM_OF_SCRATCH: Readonly<Record<string, MusicDrum>> = {
+  "1": "snare",
+  "2": "kick",
+  "5": "hat",
+  "6": "hat",
+  "8": "clap",
+};
+
+/** Scratch's instrument numbers to the scene's four, by family. */
+const INSTRUMENT_OF_SCRATCH: Readonly<Record<string, MusicInstrument>> = {
+  "1": "piano",
+  "2": "piano",
+  "3": "piano",
+  "4": "guitar",
+  "5": "guitar",
+  "6": "guitar",
+  "12": "flute",
+  "13": "flute",
+  "16": "bell",
+  "17": "bell",
+  "18": "bell",
+  "19": "bell",
+};
 
 const MAX_SPRITES = 12;
 const MESSAGES = ["hola", "vamos", "listo"] as const;
@@ -152,6 +183,7 @@ class Converter {
   readonly messages = new Map<string, string>();
   readonly spriteActorIds = new Map<string, string>();
   usesPen = false;
+  usesMusic = false;
   blocks = new Map<string, ScratchBlock>();
 
   drop(what: string): void {
@@ -716,6 +748,41 @@ class Converter {
         );
         return { type: "changeVolume", delta: this.adjust(Math.round(clamped), delta) };
       }
+      case "music_playNoteForBeats": {
+        const note = num("NOTE");
+        const beats = num("BEATS");
+        if (note === undefined || beats === undefined) return missing();
+        this.usesMusic = true;
+        return {
+          type: "playNote",
+          note: this.adjust(nearest(note, STUDIO_NOTES), note),
+          beats: this.adjust(nearest(beats, MUSIC_BEATS), beats),
+        };
+      }
+      case "music_playDrumForBeats": {
+        const beats = num("BEATS");
+        if (beats === undefined) return missing();
+        const drum = DRUM_OF_SCRATCH[this.menu(block, "DRUM") ?? ""];
+        this.usesMusic = true;
+        if (drum === undefined) this.adjusted += 1;
+        return {
+          type: "playDrum",
+          drum: drum ?? "snare",
+          beats: this.adjust(nearest(beats, MUSIC_BEATS), beats),
+        };
+      }
+      case "music_setTempo": {
+        const tempo = num("TEMPO");
+        if (tempo === undefined) return missing();
+        this.usesMusic = true;
+        return { type: "setTempo", bpm: this.adjust(nearest(tempo, STUDIO_TEMPOS), tempo) };
+      }
+      case "music_setInstrument": {
+        const instrument = INSTRUMENT_OF_SCRATCH[this.menu(block, "INSTRUMENT") ?? ""];
+        this.usesMusic = true;
+        this.adjusted += 1;
+        return { type: "setInstrument", instrument: instrument ?? "piano" };
+      }
       case "sensing_resettimer":
         return { type: "resetTimer" };
       case "pen_clear":
@@ -1037,7 +1104,12 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
       statements: [],
     })),
   };
-  const draft: ProjectProgram = converter.usesPen ? { ...withData, extensions: ["pen"] } : withData;
+  const extensions = [
+    ...(converter.usesPen ? ["pen"] : []),
+    ...(converter.usesMusic ? ["music"] : []),
+  ];
+  const draft: ProjectProgram =
+    extensions.length > 0 ? { ...withData, extensions: extensions as ExtensionId[] } : withData;
   const legal = [...scripts, ...cloneScripts, ...extraScripts].map((script, position) =>
     legalize(script, draft, position, converter),
   );
