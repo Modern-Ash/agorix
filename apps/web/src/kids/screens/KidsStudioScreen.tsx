@@ -168,6 +168,7 @@ import { processKidsImage } from "../kidsImage.js";
 import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { KidsCopyScript } from "./KidsCopyScript.js";
+import { KidsArtVariation } from "./KidsArtVariation.js";
 import { microphoneLevelAllowed, startLevelMeter, type LevelMeter } from "../kidsLevelMeter.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
 import { loadKidsMastery } from "../kidsMastery.js";
@@ -600,6 +601,10 @@ const COPY = {
     ownCostumes: "Mis disfraces",
     ownBackdrops: "Mis fondos",
     edit: "Editar",
+    oriIdeas: "Ideas de Ori",
+    oriIdeasTip: "Ver ideas de Ori para cambiar este dibujo",
+    undoArt: "Volver al dibujo de antes",
+    undoArtTip: "Deshacer la última idea de Ori y recuperar tu dibujo",
     forward: "Traer adelante",
     backward: "Enviar atrás",
   },
@@ -916,6 +921,10 @@ const COPY = {
     ownCostumes: "My costumes",
     ownBackdrops: "My backdrops",
     edit: "Edit",
+    oriIdeas: "Ori's ideas",
+    oriIdeasTip: "See Ori's ideas for changing this drawing",
+    undoArt: "Go back to the drawing from before",
+    undoArtTip: "Undo the last Ori idea and get your drawing back",
     forward: "Bring forward",
     backward: "Send backward",
   },
@@ -1448,6 +1457,11 @@ export function KidsStudioScreen({
   const [error, setError] = useState(false);
   const [exportingMedia, setExportingMedia] = useState(false);
   const customImagesEnabled = useKidsFlag("customImages");
+  // Ori's ideas for one of the child's own pictures, and the picture before the last one was used.
+  const [variationFor, setVariationFor] = useState<string | null>(null);
+  const [artUndo, setArtUndo] = useState<{ readonly id: string; readonly previous: string } | null>(
+    null,
+  );
   const [drawingKind, setDrawingKind] = useState<"costume" | "backdrop" | null>(
     initialDraw ?? null,
   );
@@ -2516,6 +2530,36 @@ export function KidsStudioScreen({
         setRun(null);
         setFrame(null);
       }
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  /** One of Ori's ideas for a picture, used by the child: the old picture is kept to bring back. */
+  function useArtVariation(assetId: string, dataUrl: string) {
+    const previous = creative.assets?.find((asset) => asset.id === assetId)?.source;
+    if (!customImagesEnabled || previous === undefined) return;
+    try {
+      updateStudioArt(id, assetId, dataUrl, store);
+      setArtUndo({ id: assetId, previous });
+      setPlacementRevision((value) => value + 1);
+      setRun(null);
+      setFrame(null);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function undoArtVariation() {
+    if (!artUndo) return;
+    try {
+      updateStudioArt(id, artUndo.id, artUndo.previous, store);
+      setArtUndo(null);
+      setPlacementRevision((value) => value + 1);
+      setRun(null);
+      setFrame(null);
       setError(false);
     } catch {
       setError(true);
@@ -5159,6 +5203,18 @@ export function KidsStudioScreen({
                             >
                               {copy.edit}
                             </button>
+                            {oriSuggestions ? (
+                              <button
+                                type="button"
+                                className="kids-button"
+                                aria-label={`${copy.oriIdeas} ${asset.name}`}
+                                title={copy.oriIdeasTip}
+                                data-testid="art-variation-open"
+                                onClick={() => setVariationFor(asset.id)}
+                              >
+                                {copy.oriIdeas}
+                              </button>
+                            ) : null}
                           </span>
                         ))}
                       </div>
@@ -5186,11 +5242,49 @@ export function KidsStudioScreen({
                             >
                               {copy.edit}
                             </button>
+                            {oriSuggestions ? (
+                              <button
+                                type="button"
+                                className="kids-button"
+                                aria-label={`${copy.oriIdeas} ${asset.name}`}
+                                title={copy.oriIdeasTip}
+                                data-testid="art-variation-open"
+                                onClick={() => setVariationFor(asset.id)}
+                              >
+                                {copy.oriIdeas}
+                              </button>
+                            ) : null}
                           </span>
                         ))}
                       </div>
                     ) : null}
                   </div>
+                ) : null}
+                {editorTab === "costumes" && customImagesEnabled && oriSuggestions && variationFor
+                  ? (() => {
+                      const art = creative.assets?.find((asset) => asset.id === variationFor);
+                      return art ? (
+                        <KidsArtVariation
+                          key={`${art.id}-${art.source.length}`}
+                          source={art.source}
+                          name={art.name}
+                          locale={locale}
+                          onUse={(dataUrl) => useArtVariation(art.id, dataUrl)}
+                          onClose={() => setVariationFor(null)}
+                        />
+                      ) : null;
+                    })()
+                  : null}
+                {editorTab === "costumes" && artUndo ? (
+                  <button
+                    type="button"
+                    className="kids-button"
+                    data-testid="art-variation-undo"
+                    title={copy.undoArtTip}
+                    onClick={undoArtVariation}
+                  >
+                    {copy.undoArt}
+                  </button>
                 ) : null}
                 {editorTab === "costumes" && customImagesEnabled && drawingKind ? (
                   <KidsDrawArt
