@@ -2536,3 +2536,43 @@ test("free scene builds a condition on the colour under the character and keeps 
     .click();
   await expect(page.getByText(/Si sobre el color verde/).first()).toBeVisible();
 });
+
+test("Ori's idea for a drawing is shown beside it, changes nothing until used, and can be undone", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
+  await page
+    .getByLabel("Agregar disfraz desde imagen")
+    .setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await expect(page.getByRole("group", { name: "Mis disfraces" })).toContainText("Mi disfraz 1");
+  const art = () =>
+    page
+      .locator(".kids-studio-stage-actor .kids-art-image")
+      .evaluate((el) => getComputedStyle(el).backgroundImage);
+  const before = await art();
+  await page.getByTestId("art-variation-open").first().click();
+  await page.getByTestId("art-variation-hue").click();
+  await expect(page.getByTestId("art-variation-compare")).toBeVisible();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  // Looking at the idea changes nothing.
+  expect(await art()).toBe(before);
+  await page.getByTestId("art-variation-use").click();
+  await expect.poll(art).not.toBe(before);
+  await page.getByTestId("art-variation-undo").click();
+  await expect.poll(art).toBe(before);
+});
