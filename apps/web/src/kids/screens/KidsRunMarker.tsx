@@ -68,6 +68,9 @@ export function KidsRunMarker({
       return first.statement;
     return undefined;
   })();
+  const shared = review?.proposal.operations.find(
+    (operation) => operation.type === "addSharedProcedure",
+  );
   return (
     <section className="kids-ori-noticed" data-finding-kind={finding.kind}>
       <button
@@ -135,8 +138,9 @@ export function KidsRunMarker({
             </button>
           ) : null}
           {review &&
-          shown !== undefined &&
-          (shown.type === "broadcast" || shown.type === "show" || shown.type === "repeat") ? (
+          ((shown !== undefined &&
+            (shown.type === "broadcast" || shown.type === "show" || shown.type === "repeat")) ||
+            shared !== undefined) ? (
             <div className="kids-ori-proposal" data-testid="ori-fix">
               <p>{review.proposal.rationale}</p>
               <p className="kids-note">
@@ -146,18 +150,50 @@ export function KidsRunMarker({
               </p>
               <strong data-testid="ori-fix-diff">
                 +{" "}
-                {shown.type === "show"
+                {shared !== undefined
                   ? es
-                    ? "Mostrar"
-                    : "Show"
-                  : shown.type === "repeat"
+                    ? `Bloques para todos: ${shared.procedure.name} (${shared.procedure.body.length} bloques). ${review.proposal.operations.filter((operation) => operation.type === "replaceStatement").length} usos reemplazados.`
+                    : `Block for everyone: ${shared.procedure.name} (${shared.procedure.body.length} blocks). ${review.proposal.operations.filter((operation) => operation.type === "replaceStatement").length} uses replaced.`
+                  : shown?.type === "show"
                     ? es
-                      ? `Repetir ${shown.count} veces: ${shown.body.length} ${shown.body.length === 1 ? "bloque" : "bloques"}`
-                      : `Repeat ${shown.count} times: ${shown.body.length} ${shown.body.length === 1 ? "block" : "blocks"}`
-                    : shown.type === "broadcast"
-                      ? `${es ? "Enviar mensaje" : "Broadcast message"}: ${shown.message}`
-                      : ""}
+                      ? "Mostrar"
+                      : "Show"
+                    : shown?.type === "repeat"
+                      ? es
+                        ? `Repetir ${shown.count} veces: ${shown.body.length} ${shown.body.length === 1 ? "bloque" : "bloques"}`
+                        : `Repeat ${shown.count} times: ${shown.body.length} ${shown.body.length === 1 ? "block" : "blocks"}`
+                      : shown?.type === "broadcast"
+                        ? `${es ? "Enviar mensaje" : "Broadcast message"}: ${shown.message}`
+                        : ""}
               </strong>
+              {shared !== undefined ? (
+                <div
+                  className="kids-ori-proposal-diff"
+                  aria-label={es ? "Cambios propuestos" : "Proposed changes"}
+                >
+                  <p>{es ? "Dentro del bloque para todos:" : "Inside the block for everyone:"}</p>
+                  <ol>
+                    {shared.procedure.body.map((item, index) => (
+                      <li key={index}>{item.type}</li>
+                    ))}
+                  </ol>
+                  <p>
+                    {es
+                      ? "Se reemplazan estos grupos en el programa:"
+                      : "These groups in the program are replaced:"}
+                  </p>
+                  <ul>
+                    {review.proposal.operations
+                      .filter((operation) => operation.type === "replaceStatement")
+                      .map((operation, index) => (
+                        <li key={operation.nodeId}>
+                          {es ? `Grupo ${index + 1}` : `Group ${index + 1}`} → {es ? "Usar" : "Use"}
+                          : {shared.procedure.name}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ) : null}
               <div className="kids-ori-actions">
                 <button
                   type="button"
