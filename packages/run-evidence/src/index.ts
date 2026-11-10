@@ -22,7 +22,9 @@ export type FindingKind =
   | "workingAgainstEachOther"
   | "loopNeverEnds"
   | "repeatedBlocks"
-  | "repeatedApart";
+  | "repeatedApart"
+  | "wordNeverSet"
+  | "copiesAtLimit";
 
 /** Which loop did not end. */
 export type LoopKindFound = "forever" | "repeatUntil" | "waitUntil";
@@ -106,6 +108,13 @@ function walk(
       });
     for (const [name, nested] of childrenOf(statement)) visitChildren(nested, `${nodeId}/${name}`);
   });
+}
+
+/** A statement without the blocks nested inside it, so each block is looked at once. */
+function childless(statement: Statement): unknown {
+  const copy: Record<string, unknown> = { ...(statement as unknown as Record<string, unknown>) };
+  for (const key of ["body", "then", "else"]) delete copy[key];
+  return copy;
 }
 
 function statementAt(program: ProjectProgram, nodeId: string): Statement | undefined {
@@ -478,7 +487,63 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
     });
   });
 
-  // 9. The learner's guess did not match what happened.
+  // 9. A word that blocks read but nothing ever put anything in: it is always empty.
+  const wordsWritten = new Set<string>();
+  const wordReads = new Map<string, { nodeId: string; scriptIndex: number }[]>();
+  program.scripts.forEach((script, scriptIndex) =>
+    walk(script.statements, `scripts[${scriptIndex}]`, (statement, nodeId) => {
+      if (statement.type === "setText" || statement.type === "askText")
+        wordsWritten.add(statement.variableId);
+      // The word a statement reads, other than the one it writes: found in its own shape.
+      const shape = JSON.stringify(
+        statement.type === "setText" ? statement.value : childless(statement),
+      );
+      for (const match of shape.matchAll(/"type":"textVariable","variableId":"([^"]+)"/g)) {
+        const list = wordReads.get(match[1]!) ?? [];
+        list.push({ nodeId, scriptIndex });
+        wordReads.set(match[1]!, list);
+      }
+    }),
+  );
+  for (const [variableId, reads] of wordReads) {
+    if (wordsWritten.has(variableId)) continue;
+    const first = reads[0]!;
+    const script = program.scripts[first.scriptIndex]!;
+    const actorId = actorsOfScript(creative, script)[0] ?? "";
+    if (!wants(actorId)) continue;
+    // Said out loud in this run is a mistake worth pointing at; never reached is only likely.
+    const ranAt = run.trace.findIndex((entry) =>
+      reads.some((read) => read.nodeId === entry.nodeId),
+    );
+    out.push({
+      id: `wordNeverSet:${variableId}`,
+      kind: "wordNeverSet",
+      actorId,
+      nodeIds: [first.nodeId],
+      counts: { reads: reads.length },
+      ...(ranAt < 0 ? {} : { traceIndex: ranAt }),
+      confidence: ranAt < 0 ? 0.4 : 0.75,
+    });
+  }
+
+  // 10. Copies that were not made because the run already holds as many as it may.
+  const refused = run.trace.findIndex((entry) => entry.note?.startsWith("createCopies: limit of"));
+  if (refused >= 0 && wants(run.trace[refused]!.actorId))
+    out.push({
+      id: `copiesAtLimit:${run.trace[refused]!.nodeId}`,
+      kind: "copiesAtLimit",
+      actorId: run.trace[refused]!.actorId,
+      nodeIds: [run.trace[refused]!.nodeId],
+      counts: {
+        refused: run.trace.filter((entry) => entry.note?.startsWith("createCopies: limit of"))
+          .length,
+        alive: run.actors.length,
+      },
+      traceIndex: refused,
+      confidence: 0.8,
+    });
+
+  // 11. The learner's guess did not match what happened.
   if (input.predictionMatched === false && final)
     out.push({
       id: "predictionMismatch",

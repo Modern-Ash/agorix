@@ -264,6 +264,7 @@ import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsSoundPicker } from "./KidsSoundPicker.js";
 import { KidsRecordedSounds } from "./KidsRecordedSounds.js";
 import { microphoneAllowed } from "../kidsRecorder.js";
+import { artWordsKey, describeArt } from "../kidsArtDescription.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 import { OriFace } from "./OriFace.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
@@ -1462,6 +1463,7 @@ export function KidsStudioScreen({
   const customImagesEnabled = useKidsFlag("customImages");
   // Ori's ideas for one of the child's own pictures, and the picture before the last one was used.
   const [variationFor, setVariationFor] = useState<string | null>(null);
+  const [artWords, setArtWords] = useState<Readonly<Record<string, string>>>({});
   const [artUndo, setArtUndo] = useState<{ readonly id: string; readonly previous: string } | null>(
     null,
   );
@@ -2124,11 +2126,12 @@ export function KidsStudioScreen({
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
   const stageBackdrop = backdropOfStage(shownStage?.backdropId, backdropId);
-  const stageArt = customImagesEnabled
+  const stageArtAsset = customImagesEnabled
     ? creative.assets?.find(
         (asset) => asset.id === shownStage?.backdropId && asset.source.startsWith("data:"),
-      )?.source
+      )
     : undefined;
+  const stageArt = stageArtAsset?.source;
   const ownCostumes =
     creative.assets?.filter(
       (asset) => asset.kind === "costume" && asset.source.startsWith("data:"),
@@ -2142,6 +2145,25 @@ export function KidsStudioScreen({
   );
   const recordedOf = (soundId: string) =>
     recordedSounds.find((asset) => asset.id === soundId)?.source;
+  // What each of the child's own pictures looks like, in words, worked out here from its pixels.
+  const artAsked = useRef(new Set<string>());
+  useEffect(() => {
+    if (!customImagesEnabled) return;
+    for (const asset of [...ownCostumes, ...ownBackdrops]) {
+      const key = artWordsKey(asset.id, asset.source, locale);
+      if (artAsked.current.has(key)) continue;
+      artAsked.current.add(key);
+      void describeArt(
+        asset.source,
+        asset.kind === "backdrop" ? "backdrop" : "costume",
+        locale,
+      ).then((words) => {
+        if (words !== null) setArtWords((known) => ({ ...known, [key]: words }));
+      });
+    }
+  }, [customImagesEnabled, ownCostumes, ownBackdrops, locale]);
+  const wordsOfArt = (asset: { readonly id: string; readonly source: string }) =>
+    artWords[artWordsKey(asset.id, asset.source, locale)];
   const codeTabs: readonly CodeTab[] = ageBand
     ? codeTabsForBand(ageBand, showMoreLanguages)
     : ["agorix", "python", "node", "java"];
@@ -4222,7 +4244,11 @@ export function KidsStudioScreen({
               imageOverride={stageArt}
               className="kids-studio-stage"
               role="group"
-              label={copy.stage}
+              label={
+                stageArtAsset
+                  ? `${copy.stage}. ${wordsOfArt(stageArtAsset) ?? ""}`.trim()
+                  : copy.stage
+              }
               onPointerDown={(event) => {
                 if (event.target === event.currentTarget)
                   event.currentTarget.setPointerCapture(event.pointerId);
@@ -4292,13 +4318,14 @@ export function KidsStudioScreen({
                 const y =
                   dragPreview?.id === item.id ? dragPreview.y : (final?.world.sprite.y ?? item.y);
                 const sprite = final?.world.sprite;
-                const costumeArt = customImagesEnabled
+                const costumeAsset = customImagesEnabled
                   ? creative.assets?.find(
                       (asset) =>
                         asset.id === (sprite?.costumeId ?? item.costumeId) &&
                         asset.source.startsWith("data:"),
-                    )?.source
+                    )
                   : undefined;
+                const costumeArt = costumeAsset?.source;
                 if (sprite?.visible === false) return null;
                 const copyScale = ((sprite?.size ?? 100) / 100) * 0.7;
                 return (
@@ -4452,7 +4479,11 @@ export function KidsStudioScreen({
                         <KidsSprite
                           slot={{ kind: "gallery", id: characterId }}
                           imageOverride={costumeArt}
-                          label={item.name}
+                          label={
+                            costumeAsset
+                              ? `${item.name}. ${wordsOfArt(costumeAsset) ?? ""}`.trim()
+                              : item.name
+                          }
                         />
                       </span>
                       {sprite?.bubble ? (
@@ -5228,6 +5259,11 @@ export function KidsStudioScreen({
                             >
                               {asset.name}
                             </button>
+                            {wordsOfArt(asset) ? (
+                              <span className="kids-sr-only" data-testid="art-words">
+                                {wordsOfArt(asset)}
+                              </span>
+                            ) : null}
                             <button
                               type="button"
                               className="kids-button"
@@ -5267,6 +5303,11 @@ export function KidsStudioScreen({
                             >
                               {asset.name}
                             </button>
+                            {wordsOfArt(asset) ? (
+                              <span className="kids-sr-only" data-testid="art-words">
+                                {wordsOfArt(asset)}
+                              </span>
+                            ) : null}
                             <button
                               type="button"
                               className="kids-button"
