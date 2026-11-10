@@ -7,6 +7,7 @@ import {
   type ExtensionId,
   type ProcedureParamId,
   type ProjectProgram,
+  type Procedure,
   type Script,
   type Statement,
 } from "@agorix/program-model";
@@ -55,6 +56,10 @@ export interface ProposalExpectedRuntimeEvidence {
 }
 
 export type ProposalOperation =
+  | {
+      readonly type: "addSharedProcedure";
+      readonly procedure: Procedure;
+    }
   | {
       /**
        * Adds a whole script after the project's others. Only a copy script (the one a character's
@@ -353,6 +358,7 @@ function collectPacks(value: unknown, into: Set<ExtensionId>): void {
 type MutableProjectProgram = {
   schema: ProjectProgram["schema"];
   extensions?: ExtensionId[];
+  sharedProcedures?: Procedure[];
   scripts: Array<{
     id: string;
     trigger: ProjectProgram["scripts"][number]["trigger"];
@@ -706,6 +712,10 @@ function applyProposalOperations(
   const mutable = structuredClone(acceptedProgram) as MutableProjectProgram;
   for (const operation of proposal.operations) {
     switch (operation.type) {
+      case "addSharedProcedure": {
+        mutable.sharedProcedures = [...(mutable.sharedProcedures ?? []), operation.procedure];
+        break;
+      }
       case "addScript": {
         mutable.scripts.push(
           structuredClone(operation.script) as MutableProjectProgram["scripts"][number],
@@ -1071,6 +1081,8 @@ function nodeIdsForOperation(
   operation: ProposalOperation,
 ): readonly string[] {
   switch (operation.type) {
+    case "addSharedProcedure":
+      return [`sharedProcedures[${program.sharedProcedures?.length ?? 0}]`];
     case "addScript":
       return operation.script.statements.map(
         (_statement, index) => `scripts[${program.scripts.length}]/statements[${index}]`,
@@ -1273,6 +1285,15 @@ function assertSource(source: ProposalSource): void {
 function assertOperation(operation: ProposalOperation, path: string): void {
   assertPlainObject(operation, path);
   switch (operation.type) {
+    case "addSharedProcedure":
+      assertAllowedKeys(operation, path, ["type", "procedure"]);
+      assertPlainObject(operation.procedure, `${path}.procedure`);
+      validateProgram({
+        schema: SCHEMA_VERSION,
+        scripts: [],
+        sharedProcedures: [operation.procedure],
+      });
+      return;
     case "addScript": {
       assertAllowedKeys(operation, path, ["type", "script"]);
       assertPlainObject(operation.script, `${path}.script`);
