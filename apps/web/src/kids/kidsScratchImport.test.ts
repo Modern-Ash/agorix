@@ -341,3 +341,88 @@ describe("Scratch variables that hold words", () => {
     expect(report.dropped.some((item) => item.what.includes("data_setvariableto"))).toBe(true);
   });
 });
+
+describe("Scratch pen, timer and value hats", () => {
+  function sprite(blocks: Record<string, unknown>) {
+    return {
+      targets: [
+        { isStage: true, name: "Stage", variables: {}, blocks: {} },
+        {
+          isStage: false,
+          name: "Cat",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          blocks,
+        },
+      ],
+    };
+  }
+  const chain = (...opcodes: [string, Record<string, unknown>?][]) => {
+    const blocks: Record<string, unknown> = {
+      hat: block("event_whenflagclicked", { next: "b0", topLevel: true }),
+    };
+    opcodes.forEach(([opcode, extra], index) => {
+      blocks[`b${index}`] = block(opcode, {
+        ...(index + 1 < opcodes.length ? { next: `b${index + 1}` } : {}),
+        ...(extra ?? {}),
+      });
+    });
+    return blocks;
+  };
+
+  it("maps pen size, colour, transparency and shade to the pen's closed lists", () => {
+    const { program } = convertScratchProject(
+      sprite({
+        m: block("pen_menu_colorParam", { fields: { colorParam: ["transparency", null] } }),
+        ...chain(
+          ["pen_penDown"],
+          ["pen_setPenSizeTo", { inputs: { SIZE: lit(2) } }],
+          ["pen_setPenColorToColor", { inputs: { COLOR: [1, [9, "#ff0000"]] } }],
+          [
+            "pen_setPenColorParamTo",
+            {
+              inputs: { COLOR_PARAM: [1, "m"], VALUE: lit(60) },
+            },
+          ],
+          ["pen_setPenShadeToNumber", { inputs: { SHADE: lit(90) } }],
+        ),
+      }),
+    );
+    const types = program.scripts[0]!.statements.map((statement) => statement.type);
+    expect(types).toContain("setPenSize");
+    expect(types).toContain("setPenColor");
+    expect(types).toContain("setPenShade");
+    expect(types).toContain("setPenTransparency");
+    expect(program.extensions).toContain("pen");
+    expect(
+      program.scripts[0]!.statements.find((item) => item.type === "setPenShade"),
+    ).toMatchObject({ shade: "lighter" });
+  });
+
+  it("reads reset timer", () => {
+    const { program } = convertScratchProject(sprite(chain(["sensing_resettimer"])));
+    expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
+      "resetTimer",
+    ]);
+  });
+
+  it("turns 'when timer > N' and 'when loudness > N' into the nearest hat the scene offers", () => {
+    const hat = (menu: string, value: number) =>
+      convertScratchProject(
+        sprite({
+          hat: block("event_whengreaterthan", {
+            fields: { WHENGREATERTHANMENU: [menu, null] },
+            inputs: { VALUE: lit(value) },
+            next: "step",
+            topLevel: true,
+          }),
+          step: block("motion_movesteps", { inputs: { STEPS: lit(10) } }),
+        }),
+      ).program.scripts[0]!.trigger;
+    expect(hat("TIMER", 4)).toEqual({ type: "onTimerOver", seconds: 3 });
+    expect(hat("LOUDNESS", 45)).toEqual({ type: "onLoudnessOver", level: 50 });
+  });
+});

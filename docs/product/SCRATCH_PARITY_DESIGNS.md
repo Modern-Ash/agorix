@@ -150,3 +150,7 @@ The Scratch importer now keeps a variable as a **word variable** (up to three, t
 ## Status: pen shade (#1306)
 
 Stamp and pen transparency were already in. The pen now also has a **shade**, `setPenShade { shade }` from the closed list lighter, normal, darker (normal is the colour as chosen). It stays inside the pen pack (ADR 0011): the validator marks the pen as used, the world keeps the shade on the pen and on each segment drawn while it is set, and the stage pulls the colour a third of the way to white or black. A free number is not offered, so a trail stays easy to read. The Scratch importer still reports the pen shade blocks as left out. All four code views and the block editor read the same canonical statement.
+
+## Status: Scratch import fidelity (#1312), increment 1
+
+The importer now also reads blocks the scene already had but the importer did not map: pen size, pen colour (a swatch becomes the nearest pen colour), pen transparency and brightness or shade (to the three shades), reset timer, and the hats "when timer > N" and "when loudness > N" (to the nearest value the scene offers). Each snapped value counts as adjusted in the report. No `.sb3` corpus exists, so the hit rate is still not measured; this increment closes the gap by comparing the opcode list with what the scene supports. Still left out and reported: "when backdrop switches to", ask and wait, costume and backdrop switching, effects, volume, lists, and custom blocks.
