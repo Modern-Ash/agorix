@@ -521,6 +521,8 @@ const COPY = {
     presetTouch: "tocando otro personaje",
     presetTimer: "pasaron los segundos",
     presetSize: "creció más de lo normal",
+    presetCostume: "lleva otro disfraz que el primero",
+    presetBackdrop: "el fondo no es el primero",
     presetLoud: "hay mucho ruido",
     presetColor: "está sobre el color",
     listening: "Escuchando el volumen del micrófono mientras jugás",
@@ -842,6 +844,8 @@ const COPY = {
     presetTouch: "touching another character",
     presetTimer: "the seconds passed",
     presetSize: "grew bigger than usual",
+    presetCostume: "wears a costume other than the first",
+    presetBackdrop: "the backdrop is not the first",
     presetLoud: "it gets loud",
     presetColor: "is over the colour",
     listening: "Listening to the microphone volume while you play",
@@ -1061,6 +1065,10 @@ function expressionLabel(
   if (value.type === "touchingStageEdge")
     return locale === "es" ? "tocando borde" : "touching edge";
   if (value.type === "sizePercent") return locale === "es" ? "tamaño" : "size";
+  if (value.type === "costumeNumber")
+    return locale === "es" ? "número de disfraz" : "costume number";
+  if (value.type === "backdropNumber")
+    return locale === "es" ? "número de fondo" : "backdrop number";
   if (value.type === "loudness") return locale === "es" ? "volumen" : "loudness";
   if (value.type === "touchingColor")
     return `${locale === "es" ? "sobre el color" : "over the colour"} ${PEN_COLOR_NAME[locale][value.color]}`;
@@ -1144,7 +1152,16 @@ function programReadsLoudness(program: unknown): boolean {
 }
 
 type ConditionPreset =
-  "key" | "edge" | "touch" | "timer" | "mouse" | "size" | "loud" | `color:${PenColor}`;
+  | "key"
+  | "edge"
+  | "touch"
+  | "timer"
+  | "mouse"
+  | "size"
+  | "costume"
+  | "backdrop"
+  | "loud"
+  | `color:${PenColor}`;
 
 function waitingAskTextId(result: MultiActorRunResult | null): AskTextPromptId | null {
   const note = result?.trace.find(
@@ -2834,6 +2851,18 @@ export function KidsStudioScreen({
         type: "greaterThan",
         left: { type: "sizePercent" },
         right: { type: "numericLiteral", value: 100 },
+      };
+    if (preset === "costume")
+      return {
+        type: "greaterThan",
+        left: { type: "costumeNumber" },
+        right: { type: "numericLiteral", value: 1 },
+      };
+    if (preset === "backdrop")
+      return {
+        type: "greaterThan",
+        left: { type: "backdropNumber" },
+        right: { type: "numericLiteral", value: 1 },
       };
     if (preset === "touch")
       return targetActorId ? { type: "touchingActor", actorId: targetActorId } : null;
@@ -7221,6 +7250,12 @@ export function KidsStudioScreen({
                         ) : null}
                         <option value="timer">{copy.presetTimer}</option>
                         <option value="size">{copy.presetSize}</option>
+                        {ownCostumes.length > 0 ? (
+                          <option value="costume">{copy.presetCostume}</option>
+                        ) : null}
+                        {ownBackdrops.length > 0 ? (
+                          <option value="backdrop">{copy.presetBackdrop}</option>
+                        ) : null}
                         {PEN_COLORS.map((color) => (
                           <option key={color} value={`color:${color}`}>
                             {copy.presetColor} {copy.penColors[color]}

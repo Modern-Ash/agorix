@@ -125,7 +125,9 @@ describe("runtime operation allowlist", () => {
     expect([...RUNTIME_EXPRESSION_OPERATIONS].sort()).toEqual([
       "add",
       "and",
+      "backdropNumber",
       "booleanLiteral",
+      "costumeNumber",
       "direction",
       "distanceToActor",
       "divide",

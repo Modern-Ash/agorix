@@ -27,7 +27,7 @@ import {
   type RuntimeEvent,
 } from "./multiActor.js";
 import { COPIES_CAP, advanceCopiesWorld, copiesMoving, liveCopies } from "./copies.js";
-import { copyRoom, isCloneId, liveClones, makeClones } from "./clones.js";
+import { copyRoom, isCloneId, liveClones, makeClones, orderOptions } from "./clones.js";
 import { cloneWorldState, createWorldState, drawPenTrail, type WorldState } from "./world.js";
 
 /** Scratch-like frame rate: each live script runs at most one statement per tick. */
@@ -227,6 +227,7 @@ export function createLiveRuntime(
       event: programEventForRuntimeEvent(event),
       ...(isCloneId(actor.id) ? { isClone: true } : {}),
       ...(creative.colorZones === undefined ? {} : { colorZones: creative.colorZones }),
+      ...orderOptions(creative, actor.id),
       ...(options.randomSeed === undefined ? {} : { randomSeed: options.randomSeed }),
       get sensorActors() {
         return sensors(actor);

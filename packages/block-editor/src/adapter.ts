@@ -103,6 +103,8 @@ export type BlockType =
   | "sensing_timer"
   | "sensing_key_down"
   | "sensing_loudness"
+  | "sensing_costume_number"
+  | "sensing_backdrop_number"
   | "sensing_mouse_x"
   | "sensing_mouse_y"
   | "sensing_mouse_down"
@@ -409,6 +411,10 @@ function expressionFromBlock(
       return { type: "keyDown", key: stringField(block, "key", path) };
     case "sensing_loudness":
       return { type: "loudness" };
+    case "sensing_costume_number":
+      return { type: "costumeNumber" };
+    case "sensing_backdrop_number":
+      return { type: "backdropNumber" };
     case "sensing_mouse_x":
       return { type: "mouseX" };
     case "sensing_mouse_y":
@@ -1019,6 +1025,10 @@ function expressionToBlock(
       return { id, type: "sensing_key_down", fields: { key: expression.key } };
     case "loudness":
       return { id, type: "sensing_loudness" };
+    case "costumeNumber":
+      return { id, type: "sensing_costume_number" };
+    case "backdropNumber":
+      return { id, type: "sensing_backdrop_number" };
     case "mouseX":
       return { id, type: "sensing_mouse_x" };
     case "mouseY":

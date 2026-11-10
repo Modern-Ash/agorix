@@ -122,6 +122,10 @@ export interface ExecutionOptions {
    * backdrop that is not listed has no colours, so touching a colour is false there.
    */
   readonly colorZones?: Readonly<Record<string, readonly ColorZone[]>>;
+  /** The costume ids of the acting character, in order: its costume number counts from 1 here. */
+  readonly costumeOrder?: readonly string[];
+  /** The backdrop ids in order: the backdrop number counts from 1 here. */
+  readonly backdropOrder?: readonly string[];
   /** Loudness 0 to 100 measured by the caller (a number, never sound); 0 when absent. */
   readonly loudness?: number;
   /** True when this activation runs as a copy born from "copies that run their own script". */
@@ -403,6 +407,10 @@ function evaluateExpression(
         state.event === `key:${expression.key}` ||
         state.options.keysDown?.includes(expression.key) === true
       );
+    case "costumeNumber":
+      return (state.options.costumeOrder?.indexOf(state.world.sprite.costumeId ?? "") ?? -1) + 1;
+    case "backdropNumber":
+      return (state.options.backdropOrder?.indexOf(state.world.backdropId ?? "") ?? -1) + 1;
     case "loudness": {
       const level = state.options.loudness;
       return level !== undefined && Number.isFinite(level)

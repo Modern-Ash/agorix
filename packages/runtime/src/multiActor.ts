@@ -16,7 +16,7 @@ import {
   type RunOutcome,
 } from "./execute.js";
 import { COPIES_CAP, liveCopies, settleCopiesWorld } from "./copies.js";
-import { copyRoom, isCloneId, liveClones, makeClones } from "./clones.js";
+import { copyRoom, isCloneId, liveClones, makeClones, orderOptions } from "./clones.js";
 import { cloneWorldState, createWorldState, type WorldState } from "./world.js";
 
 export interface MultiActorRuntimeActor {
@@ -528,6 +528,7 @@ export function runMultiActorProgram(
           ...(options.pointer === undefined ? {} : { pointer: options.pointer }),
           ...(options.loudness === undefined ? {} : { loudness: options.loudness }),
           ...(creative.colorZones === undefined ? {} : { colorZones: creative.colorZones }),
+          ...orderOptions(creative, actor.id),
           ...(options.choices === undefined ? {} : { choices: options.choices }),
           ...(options.answers === undefined ? {} : { answers: options.answers }),
         });

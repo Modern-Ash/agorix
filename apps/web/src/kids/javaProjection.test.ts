@@ -215,7 +215,15 @@ const statements: Statement[] = [
               right: {
                 type: "and",
                 left: { type: "greaterThan", left: { type: "sizePercent" }, right: num(100) },
-                right: { type: "greaterThan", left: { type: "loudness" }, right: num(30) },
+                right: {
+                  type: "and",
+                  left: { type: "greaterThan", left: { type: "loudness" }, right: num(30) },
+                  right: {
+                    type: "and",
+                    left: { type: "greaterThan", left: { type: "costumeNumber" }, right: num(1) },
+                    right: { type: "greaterThan", left: { type: "backdropNumber" }, right: num(1) },
+                  },
+                },
               },
             },
             then: [{ type: "show" }],

@@ -2583,3 +2583,33 @@ test("Ori's idea for a drawing is shown beside it, changes nothing until used, a
   await page.getByTestId("art-variation-undo").click();
   await expect.poll(art).toBe(before);
 });
+
+test("the costume number is offered only once the child has a picture of their own", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  const first = page.getByLabel("Primera condición");
+  await expect(first.locator('option[value="costume"]')).toHaveCount(0);
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
+  await page
+    .getByLabel("Agregar disfraz desde imagen")
+    .setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await expect(page.getByRole("group", { name: "Mis disfraces" })).toContainText("Mi disfraz 1");
+  await expect(first.locator('option[value="costume"]')).toHaveCount(1);
+  await page.getByRole("tab", { name: /Código/ }).click();
+  await first.selectOption("costume");
+  await page.getByLabel("Unir con").selectOption("none");
+  await page.getByTestId("compound-if").click();
+  await expect(page.getByText(/número de disfraz/).first()).toBeVisible();
+});

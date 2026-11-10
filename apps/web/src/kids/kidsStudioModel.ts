@@ -277,6 +277,8 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
     value.type === "direction" ||
     value.type === "sizePercent" ||
     value.type === "loudness" ||
+    value.type === "costumeNumber" ||
+    value.type === "backdropNumber" ||
     value.type === "timer" ||
     value.type === "mouseX" ||
     value.type === "mouseY"
@@ -851,9 +853,15 @@ export function creativeForStudio(
     })),
     ...customAssets,
   ];
+  // "Costume number" counts from the character's own costume, then the child's pictures in order.
+  const costumeOrders: Record<string, readonly string[]> = {};
+  const ownCostumeIds = customAssets
+    .filter((item) => item.kind === "costume")
+    .map((item) => item.id);
   const actors = mainScripts(program).map((script, position) => {
     const actor = actorOfScript(script.id)!;
     const id = studioActorId(actor.index, actor.characterId);
+    costumeOrders[id] = [`costume:${actor.characterId}`, ...ownCostumeIds];
     const saved = positions[id];
     return {
       id,
@@ -901,6 +909,11 @@ export function creativeForStudio(
       assets,
       actors,
       colorZones: BACKDROP_COLOR_ZONES,
+      costumeOrders,
+      backdropOrder: [
+        `backdrop:${backdropId}`,
+        ...customAssets.filter((item) => item.kind === "backdrop").map((item) => item.id),
+      ],
       stage: {
         backdropId: customAssets.some(
           (asset) => asset.kind === "backdrop" && asset.id === art.stageBackdropId,

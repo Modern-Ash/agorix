@@ -82,6 +82,19 @@ export interface LoudnessExpression {
   readonly type: "loudness";
 }
 
+/**
+ * Which costume the character wears, as a whole number counted from 1 in the order the project
+ * lists the character's costumes; 0 when the project lists none for it.
+ */
+export interface CostumeNumberExpression {
+  readonly type: "costumeNumber";
+}
+
+/** Which backdrop the stage shows, counted from 1 in the project's backdrop order; 0 when unlisted. */
+export interface BackdropNumberExpression {
+  readonly type: "backdropNumber";
+}
+
 /** Coordinates and pressed state captured from the stage for this run. */
 export interface MouseXExpression {
   readonly type: "mouseX";
@@ -280,6 +293,8 @@ export type Expression =
   | TimerExpression
   | KeyDownExpression
   | LoudnessExpression
+  | CostumeNumberExpression
+  | BackdropNumberExpression
   | MouseXExpression
   | MouseYExpression
   | MouseDownExpression

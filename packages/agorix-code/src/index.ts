@@ -669,6 +669,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "key " + expression.key + " is down";
     case "loudness":
       return "loudness";
+    case "costumeNumber":
+      return "costume number";
+    case "backdropNumber":
+      return "backdrop number";
     case "mouseX":
       return "mouse x";
     case "mouseY":
