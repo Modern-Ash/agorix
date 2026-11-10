@@ -1,7 +1,16 @@
-import type { Expression, ProjectProgram, Script, Statement, Trigger } from "@agorix/program-model";
+import type {
+  Expression,
+  ProjectAsset,
+  ProjectProgram,
+  Script,
+  Statement,
+  Trigger,
+} from "@agorix/program-model";
 import {
   KIDS_GALLERY_BACKDROPS,
   KIDS_GALLERY_CHARACTERS,
+  isGalleryBackdropId,
+  isGalleryCharacterId,
   type KidsGalleryBackdropId,
 } from "./kidsGallery.js";
 import type { Locale } from "../i18n.js";
@@ -10,6 +19,7 @@ import {
   actorOfScript,
   cloneActorOfScript,
   creativeForStudio,
+  type StudioArt,
   extraActorOfScript,
   studioActorId,
   validateStudioProgram,
@@ -37,6 +47,27 @@ export interface ScratchExport {
 }
 
 type Json = Record<string, unknown>;
+
+/** A picture of the child's, as a PNG a Scratch project can hold. */
+export interface ScratchPicture {
+  readonly png: Uint8Array;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The child's own pictures and recordings, with the PNG of each picture already made. */
+export interface ScratchExportArt extends StudioArt {
+  readonly pictures?: ReadonlyMap<string, ScratchPicture>;
+}
+
+interface Names {
+  readonly variable: (id: string) => string | undefined;
+  readonly sprite: (actorId: string) => string | undefined;
+  readonly costume: (id: string) => string | undefined;
+  readonly backdrop: (id: string) => string | undefined;
+  readonly sound: (id: string) => string | undefined;
+  readonly broadcast: (message: string) => string;
+}
 
 const KEY_NAME: Readonly<Record<string, string>> = {
   Space: "space",
@@ -90,10 +121,18 @@ class Emitter {
   private next = 0;
   constructor(
     private readonly counter: Counter,
-    private readonly variableName: (id: string) => string | undefined,
-    private readonly spriteName: (actorId: string) => string | undefined,
-    private readonly broadcastId: (message: string) => string,
+    private readonly names: Names,
   ) {}
+
+  private variableName(id: string) {
+    return this.names.variable(id);
+  }
+  private spriteName(id: string) {
+    return this.names.sprite(id);
+  }
+  private broadcastId(message: string) {
+    return this.names.broadcast(message);
+  }
 
   private id(): string {
     this.next += 1;
@@ -632,6 +671,37 @@ class Emitter {
         return this.with("sound_changevolumeby", parent, { VOLUME: statement.delta });
       case "stopSounds":
         return this.with("sound_stopallsounds", parent, {});
+      case "playSound": {
+        // Only the child's own recordings are real audio files; the scene's built-in sounds are not.
+        const name = this.names.sound(statement.soundId);
+        if (name === undefined) return null;
+        const made = this.block("sound_play", parent);
+        (made.block["inputs"] as Json)["SOUND_MENU"] = [
+          1,
+          this.menu(made.id, "sound_sounds_menu", "SOUND_MENU", name),
+        ];
+        return made.id;
+      }
+      case "switchCostume": {
+        const name = this.names.costume(statement.costumeId);
+        if (name === undefined) return null;
+        const made = this.block("looks_switchcostumeto", parent);
+        (made.block["inputs"] as Json)["COSTUME"] = [
+          1,
+          this.menu(made.id, "looks_costume", "COSTUME", name),
+        ];
+        return made.id;
+      }
+      case "switchBackdrop": {
+        const name = this.names.backdrop(statement.backdropId);
+        if (name === undefined) return null;
+        const made = this.block("looks_switchbackdropto", parent);
+        (made.block["inputs"] as Json)["BACKDROP"] = [
+          1,
+          this.menu(made.id, "looks_backdrops", "BACKDROP", name),
+        ];
+        return made.id;
+      }
       case "penDown":
         return this.with("pen_penDown", parent, {});
       case "penUp":
@@ -746,6 +816,16 @@ class Emitter {
           fields: { WHENGREATERTHANMENU: ["LOUDNESS", null] },
           inputs: { VALUE: [1, [4, String(trigger.level)]] },
         };
+      case "onBackdropSwitch": {
+        const name = this.names.backdrop(trigger.backdropId);
+        return name === undefined
+          ? null
+          : {
+              opcode: "event_whenbackdropswitchesto",
+              fields: { BACKDROP: [name, null] },
+              inputs: {},
+            };
+      }
       case "onCloneStart":
         return { opcode: "control_start_as_clone", fields: {}, inputs: {} };
       default:
@@ -761,6 +841,43 @@ function svg(width: number, height: number, body: string): PackedFile & { assetI
   return { name: "", bytes, assetId: md5Hex(bytes) };
 }
 
+/** The bytes of a `data:` URL; null when it is not base64. */
+export function bytesOfDataUrl(url: string): Uint8Array | null {
+  const match = /^data:[^;,]+;base64,([A-Za-z0-9+/]+={0,2})$/.exec(url);
+  if (match === null) return null;
+  const raw = atob(match[1]!);
+  return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+}
+
+/** Sample rate and count of a PCM WAV; null when the header is not one we can describe. */
+function wavFacts(bytes: Uint8Array): { rate: number; samples: number } | null {
+  if (bytes.length < 44) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const tag = (at: number) => String.fromCharCode(...bytes.subarray(at, at + 4));
+  if (tag(0) !== "RIFF" || tag(8) !== "WAVE") return null;
+  let rate = 0;
+  let frame = 0;
+  for (let at = 12; at + 8 <= bytes.length;) {
+    const size = view.getUint32(at + 4, true);
+    if (tag(at) === "fmt ") {
+      rate = view.getUint32(at + 12, true);
+      frame = (view.getUint16(at + 10, true) * view.getUint16(at + 22, true)) / 8;
+    }
+    if (tag(at) === "data")
+      return rate > 0 && frame > 0 ? { rate, samples: Math.floor(size / frame) } : null;
+    at += 8 + size + (size % 2);
+  }
+  return null;
+}
+
+/** Referenced ids of one kind (`costume:nova`, `backdrop:forest`) written anywhere in the program. */
+function referenced(program: ProjectProgram, kind: "costume" | "backdrop"): string[] {
+  const found = new Set<string>();
+  for (const match of JSON.stringify(program).matchAll(new RegExp(`"${kind}:([a-z0-9-]+)"`, "g")))
+    found.add(`${kind}:${match[1]}`);
+  return [...found];
+}
+
 export function exportScratchProject(
   rawProgram: ProjectProgram,
   backdropId: KidsGalleryBackdropId,
@@ -768,11 +885,13 @@ export function exportScratchProject(
   positions: Readonly<
     Record<string, { x: number; y: number; direction?: number; size?: number }>
   > = {},
+  art: ScratchExportArt = {},
 ): ScratchExport {
   const program = validateStudioProgram(rawProgram);
-  const creative = creativeForStudio(program, backdropId, locale, positions);
+  const creative = creativeForStudio(program, backdropId, locale, positions, [], art);
   const counter = new Counter();
   const actors = creative.actors ?? [];
+  const ownAssets = (creative.assets ?? []).filter((item) => item.source.startsWith("data:"));
 
   // Scratch needs a unique name for each sprite.
   const used = new Set<string>();
@@ -795,40 +914,173 @@ export function exportScratchProject(
   };
 
   const files: PackedFile[] = [];
-  const asset = (file: PackedFile & { assetId: string }) => {
-    const md5ext = `${file.assetId}.svg`;
-    if (!files.some((item) => item.name === md5ext))
-      files.push({ name: md5ext, bytes: file.bytes });
-    return { assetId: file.assetId, md5ext };
+  const addFile = (bytes: Uint8Array, ext: string) => {
+    const assetId = md5Hex(bytes);
+    const md5ext = `${assetId}.${ext}`;
+    if (!files.some((item) => item.name === md5ext)) files.push({ name: md5ext, bytes });
+    return { assetId, md5ext };
+  };
+  const asset = (file: PackedFile) => addFile(file.bytes, "svg");
+  const uniqueNames = (wanted: string[]): string[] => {
+    const seen = new Set<string>();
+    return wanted.map((raw) => {
+      let name = raw.slice(0, 40) || "item";
+      for (let n = 2; seen.has(name); n += 1) name = `${raw.slice(0, 36)} ${n}`;
+      seen.add(name);
+      return name;
+    });
   };
 
-  const backdrop = KIDS_GALLERY_BACKDROPS.find((item) => item.id === backdropId)!;
-  const backdropAsset = asset(
-    svg(
-      480,
-      360,
-      `<rect width="480" height="360" fill="${backdrop.sky}"/><rect y="220" width="480" height="140" fill="${backdrop.ground}"/>`,
+  // Backdrops: the scene's own, any other gallery one a block names, then the child's pictures.
+  const galleryBackdrops = [
+    `backdrop:${backdropId}`,
+    ...referenced(program, "backdrop").filter(
+      (id) => isGalleryBackdropId(id.slice(9)) && id !== `backdrop:${backdropId}`,
+    ),
+  ];
+  const ownBackdrops = ownAssets.filter(
+    (item) => item.kind === "backdrop" && art.pictures?.has(item.id),
+  );
+  for (const item of ownAssets)
+    if ((item.kind === "backdrop" || item.kind === "costume") && !art.pictures?.has(item.id))
+      counter.miss("a picture that could not be converted");
+  const backdropList = [
+    ...galleryBackdrops.map((id) => ({ id, own: undefined as ProjectAsset | undefined })),
+    ...ownBackdrops.map((item) => ({ id: item.id, own: item as ProjectAsset | undefined })),
+  ];
+  const backdropNames = uniqueNames(
+    backdropList.map(
+      ({ id, own }) =>
+        own?.name ??
+        (() => {
+          const found = KIDS_GALLERY_BACKDROPS.find((item) => `backdrop:${item.id}` === id);
+          return found ? (locale === "es" ? found.es : found.en) : "backdrop";
+        })(),
     ),
   );
+  const backdropName = new Map(backdropList.map((item, at) => [item.id, backdropNames[at]!]));
+  const stageCostumes = backdropList.map(({ id, own }) => {
+    const name = backdropName.get(id)!;
+    if (own !== undefined) {
+      const picture = art.pictures!.get(own.id)!;
+      return {
+        name,
+        dataFormat: "png",
+        bitmapResolution: Math.max(1, Math.round(picture.width / 480)),
+        ...addFile(picture.png, "png"),
+        rotationCenterX: picture.width / 2,
+        rotationCenterY: picture.height / 2,
+      };
+    }
+    const gallery = KIDS_GALLERY_BACKDROPS.find((item) => `backdrop:${item.id}` === id)!;
+    return {
+      name,
+      dataFormat: "svg",
+      ...asset(
+        svg(
+          480,
+          360,
+          `<rect width="480" height="360" fill="${gallery.sky}"/><rect y="220" width="480" height="140" fill="${gallery.ground}"/>`,
+        ),
+      ),
+      rotationCenterX: 240,
+      rotationCenterY: 180,
+    };
+  });
+  const currentBackdrop = Math.max(
+    0,
+    backdropList.findIndex((item) => item.id === creative.stage?.backdropId),
+  );
+
+  // The child's recordings: real audio files, shared by every sprite so any of them can play one.
+  const soundAssets = ownAssets.filter((item) => item.kind === "sound");
+  const soundNames = uniqueNames(soundAssets.map((item) => item.name));
+  const soundName = new Map(soundAssets.map((item, at) => [item.id, soundNames[at]!]));
+  const soundEntries: Json[] = [];
+  for (const [at, item] of soundAssets.entries()) {
+    const bytes = bytesOfDataUrl(item.source);
+    const facts = bytes === null ? null : wavFacts(bytes);
+    if (bytes === null || facts === null) {
+      counter.miss("a recording that is not a WAV");
+      soundName.delete(item.id);
+      continue;
+    }
+    soundEntries.push({
+      name: soundNames[at]!,
+      dataFormat: "wav",
+      format: "",
+      rate: facts.rate,
+      sampleCount: facts.samples,
+      ...addFile(bytes, "wav"),
+    });
+  }
 
   const sprites: Json[] = [];
   actors.forEach((actor, index) => {
     const character = KIDS_GALLERY_CHARACTERS.find(
       (item) => `actor:studio-${index + 1}-${item.id}` === actor.id,
     );
-    const picture = asset(
-      svg(
-        96,
-        96,
-        `<circle cx="48" cy="48" r="44" fill="${character?.color ?? "#dce9ff"}"/><text x="48" y="64" font-size="48" text-anchor="middle">${character?.glyph ?? ""}</text>`,
+    // Costumes: the character's own picture, the other characters' a block names, then the child's.
+    const galleryCostumes = [
+      `costume:${character?.id ?? ""}`,
+      ...referenced(program, "costume").filter(
+        (id) => isGalleryCharacterId(id.slice(8)) && id !== `costume:${character?.id}`,
+      ),
+    ];
+    const ownCostumes = ownAssets.filter(
+      (item) => item.kind === "costume" && art.pictures?.has(item.id),
+    );
+    const costumeList = [
+      ...galleryCostumes.map((id) => ({ id, own: undefined as ProjectAsset | undefined })),
+      ...ownCostumes.map((item) => ({ id: item.id, own: item as ProjectAsset | undefined })),
+    ];
+    const costumeNames = uniqueNames(
+      costumeList.map(
+        ({ id, own }) =>
+          own?.name ??
+          (() => {
+            const found = KIDS_GALLERY_CHARACTERS.find((item) => `costume:${item.id}` === id);
+            return found ? (locale === "es" ? found.es : found.en) : "costume";
+          })(),
       ),
     );
-    const emitter = new Emitter(
-      counter,
-      (id) => variables.get(id),
-      (actorId) => names.get(actorId),
-      broadcastId,
-    );
+    const costumeName = new Map(costumeList.map((item, at) => [item.id, costumeNames[at]!]));
+    const costumes = costumeList.map(({ id, own }) => {
+      const name = costumeName.get(id)!;
+      if (own !== undefined) {
+        const picture = art.pictures!.get(own.id)!;
+        return {
+          name,
+          dataFormat: "png",
+          bitmapResolution: 1,
+          ...addFile(picture.png, "png"),
+          rotationCenterX: picture.width / 2,
+          rotationCenterY: picture.height / 2,
+        };
+      }
+      const gallery = KIDS_GALLERY_CHARACTERS.find((item) => `costume:${item.id}` === id);
+      return {
+        name,
+        dataFormat: "svg",
+        ...asset(
+          svg(
+            96,
+            96,
+            `<circle cx="48" cy="48" r="44" fill="${gallery?.color ?? "#dce9ff"}"/><text x="48" y="64" font-size="48" text-anchor="middle">${gallery?.glyph ?? ""}</text>`,
+          ),
+        ),
+        rotationCenterX: 48,
+        rotationCenterY: 48,
+      };
+    });
+    const emitter = new Emitter(counter, {
+      variable: (id) => variables.get(id),
+      sprite: (actorId) => names.get(actorId),
+      costume: (id) => costumeName.get(id),
+      backdrop: (id) => backdropName.get(id),
+      sound: (id) => soundName.get(id),
+      broadcast: broadcastId,
+    });
     let row = 0;
     for (const script of program.scripts as readonly Script[]) {
       const own =
@@ -844,17 +1096,12 @@ export function exportScratchProject(
       broadcasts: {},
       blocks: emitter.blocks,
       comments: {},
-      currentCostume: 0,
-      costumes: [
-        {
-          name: "costume1",
-          dataFormat: "svg",
-          ...picture,
-          rotationCenterX: 48,
-          rotationCenterY: 48,
-        },
-      ],
-      sounds: [],
+      currentCostume: Math.max(
+        0,
+        costumeList.findIndex((item) => item.id === actor.costumeId),
+      ),
+      costumes,
+      sounds: soundEntries,
       volume: 100,
       layerOrder: index + 1,
       visible: actor.visible !== false,
@@ -884,16 +1131,8 @@ export function exportScratchProject(
     broadcasts,
     blocks: {},
     comments: {},
-    currentCostume: 0,
-    costumes: [
-      {
-        name: "backdrop1",
-        dataFormat: "svg",
-        ...backdropAsset,
-        rotationCenterX: 240,
-        rotationCenterY: 180,
-      },
-    ],
+    currentCostume: currentBackdrop,
+    costumes: stageCostumes,
     sounds: [],
     volume: 100,
     layerOrder: 0,

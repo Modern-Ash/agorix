@@ -94,9 +94,9 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
     }
   }
 
-  function downloadScratch(id: string) {
+  async function downloadScratch(id: string) {
     try {
-      const exported = exportScratchStudioProject(id, locale, store);
+      const exported = await exportScratchStudioProject(id, locale, store);
       const blob = new Blob([exported.bytes as BlobPart], { type: "application/x.scratch.sb3" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -107,8 +107,8 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
       const left = exported.report.left.reduce((sum, item) => sum + item.count, 0);
       setMessage(
         locale === "es"
-          ? `Exporté ${exported.report.blocksExported} bloque(s) a Scratch.${left > 0 ? ` No pude escribir ${left} (sonidos propios, preguntas, listas y bloques propios todavía no).` : ""}`
-          : `Exported ${exported.report.blocksExported} block(s) to Scratch.${left > 0 ? ` I could not write ${left} (own sounds, questions, lists and own blocks are not there yet).` : ""}`,
+          ? `Exporté ${exported.report.blocksExported} bloque(s) a Scratch.${left > 0 ? ` No pude escribir ${left} (los sonidos de la escena, preguntas, listas y bloques propios todavía no).` : ""}`
+          : `Exported ${exported.report.blocksExported} block(s) to Scratch.${left > 0 ? ` I could not write ${left} (the scene's built-in sounds, questions, lists and own blocks are not there yet).` : ""}`,
       );
     } catch {
       setMessage(
@@ -296,7 +296,7 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
                 type="button"
                 className="kids-button"
                 data-testid="export-scratch"
-                onClick={() => downloadScratch(project.id)}
+                onClick={() => void downloadScratch(project.id)}
               >
                 {locale === "es" ? "Exportar a Scratch" : "Export to Scratch"}
               </button>

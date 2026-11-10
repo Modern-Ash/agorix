@@ -201,3 +201,42 @@ test("a scene can be exported as a Scratch .sb3 and imported back (#1312)", asyn
   await report.getByRole("button", { name: "Abrir la escena" }).click();
   await expect(page.locator(".kids-program-block").first()).toContainText("Mover");
 });
+
+test("the child's own drawing goes into the .sb3 as a PNG costume (#1312)", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
+  await page.getByRole("button", { name: "Dibujar disfraz" }).click();
+  const canvas = page.getByRole("img", { name: "Lienzo para dibujar" });
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = await canvas.boundingBox();
+  await page.mouse.click(bounds!.x + 80, bounds!.y + 80);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("group", { name: "Mis disfraces" })).toBeVisible();
+  await page.getByRole("button", { name: "Volver a Crear" }).click();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByTestId("export-scratch")
+    .click();
+  const file = await download;
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync((await file.path())!);
+  // The zip holds project.json and a PNG for the child's drawing: its bytes start with the PNG mark.
+  const text = bytes.toString("latin1");
+  expect(text).toContain("project.json");
+  expect(text).toMatch(/[0-9a-f]{32}\.png/);
+  expect(bytes.includes(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe(true);
+});
