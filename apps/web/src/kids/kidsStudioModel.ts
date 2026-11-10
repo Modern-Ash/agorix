@@ -60,6 +60,12 @@ import { validKidsImageDataUrl } from "./kidsImages.js";
 const SCRIPT = /^studio-actor-([1-9][0-9]?)-([a-z]+)$/;
 /** The second script of a character: the one each of its copies starts with (issue #1311). */
 const CLONE_SCRIPT = /^studio-actor-([1-9][0-9]?)-([a-z]+)-clone$/;
+/**
+ * A character's extra scripts (issue #1363): up to two after its own, each started by a different
+ * event, so it can answer more than one thing (a key for each arrow, the flag and a key).
+ */
+const EXTRA_SCRIPT = /^studio-actor-([1-9][0-9]?)-([a-z]+)-s([23])$/;
+export const MAX_STUDIO_EXTRA_SCRIPTS = 2;
 export const MAX_STUDIO_ACTORS = 12;
 
 export type StudioStatement = Extract<
@@ -476,10 +482,17 @@ export function studioBlocksUsed(program: ProjectProgram, actorId: string): numb
     const actor = actorOfScript(item.id);
     return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
   });
+  const extras = program.scripts
+    .filter((item) => {
+      const extra = extraActorOfScript(item.id);
+      return extra !== null && studioActorId(extra.index, extra.characterId) === actorId;
+    })
+    .reduce((sum, item) => sum + statementCount(item.statements), 0);
   return script === undefined
     ? 0
     : statementCount(script.statements) +
-        (script.procedures ?? []).reduce((sum, item) => sum + statementCount(item.body), 0);
+        (script.procedures ?? []).reduce((sum, item) => sum + statementCount(item.body), 0) +
+        extras;
 }
 
 export function studioActorId(index: number, characterId: KidsGalleryCharacterId): string {
@@ -492,6 +505,25 @@ function scriptId(index: number, characterId: KidsGalleryCharacterId): string {
 
 export function cloneScriptId(index: number, characterId: KidsGalleryCharacterId): string {
   return `studio-actor-${index}-${characterId}-clone`;
+}
+
+export function extraScriptId(
+  index: number,
+  characterId: KidsGalleryCharacterId,
+  slot: 2 | 3,
+): string {
+  return `studio-actor-${index}-${characterId}-s${slot}`;
+}
+
+/** The character and slot (2 or 3) an extra script belongs to; null for any other script id. */
+export function extraActorOfScript(
+  id: string,
+): { index: number; characterId: KidsGalleryCharacterId; slot: 2 | 3 } | null {
+  const match = EXTRA_SCRIPT.exec(id);
+  if (!match || !isGalleryCharacterId(match[2])) return null;
+  const index = Number(match[1]);
+  if (index > 99) return null;
+  return { index, characterId: match[2], slot: Number(match[3]) as 2 | 3 };
 }
 
 /** The character a copy script belongs to; null for any other script id. */
@@ -792,7 +824,8 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
         script.statements.some((statement) => !checked(statement, program))
       );
     }) ||
-    !validCloneScripts(program)
+    !validCloneScripts(program) ||
+    !validExtraScripts(program)
   )
     throw new RangeError("program is outside Kids studio");
   return program;
@@ -800,7 +833,9 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
 
 /** The scripts of the characters themselves, without the scripts their copies start with. */
 export function mainScripts(program: ProjectProgram): readonly Script[] {
-  return program.scripts.filter((script) => cloneActorOfScript(script.id) === null);
+  return program.scripts.filter(
+    (script) => cloneActorOfScript(script.id) === null && extraActorOfScript(script.id) === null,
+  );
 }
 
 /**
@@ -810,7 +845,9 @@ export function mainScripts(program: ProjectProgram): readonly Script[] {
  */
 function validCloneScripts(program: ProjectProgram): boolean {
   const mains = mainScripts(program);
-  const clones = program.scripts.slice(mains.length);
+  const clones = program.scripts
+    .slice(mains.length)
+    .filter((script) => extraActorOfScript(script.id) === null);
   if (mains.some((script, index) => program.scripts[index] !== script)) return false;
   const seen = new Set<number>();
   return clones.every((script) => {
@@ -923,7 +960,15 @@ export function creativeForStudio(
           isGalleryCharacterId(art.actorCostumes[id]!.slice(8)))
           ? art.actorCostumes![id]!
           : `costume:${actor.characterId}`,
-      scripts: [script.id],
+      scripts: [
+        script.id,
+        ...program.scripts
+          .filter((item) => {
+            const extra = extraActorOfScript(item.id);
+            return extra !== null && extra.index === actor.index;
+          })
+          .map((item) => item.id),
+      ],
     };
   });
   const ids = actors.map((actor) => actor.id);
@@ -974,7 +1019,10 @@ export function addStudioActor(
         trigger: { type: "greenFlag" },
         statements: [],
       },
-      ...program.scripts.filter((script) => cloneActorOfScript(script.id) !== null),
+      ...program.scripts.filter(
+        (script) =>
+          cloneActorOfScript(script.id) !== null || extraActorOfScript(script.id) !== null,
+      ),
     ],
   });
   return recordCanonicalTransaction(history, { label: "add studio actor", after: next }).history;
@@ -1067,6 +1115,68 @@ export function wrapStudioTail(
 /** The editing target of a character's copy script: its actor id and this suffix (#1311). */
 export const CLONE_TARGET_SUFFIX = ":clone";
 
+/**
+ * A character's extra scripts, after its own and after any copy script: one per slot with no gap,
+ * each with its own event (never the copy hat, never one the character already answers), no custom
+ * blocks, and together with the character's own script within the block limit.
+ */
+function validExtraScripts(program: ProjectProgram): boolean {
+  const mains = mainScripts(program);
+  const extras = program.scripts.filter((script) => extraActorOfScript(script.id) !== null);
+  const slots = new Map<number, number[]>();
+  const triggers = new Map<number, Set<string>>();
+  for (const script of extras) {
+    const target = extraActorOfScript(script.id)!;
+    const main = mains[target.index - 1];
+    const owner = main === undefined ? null : actorOfScript(main.id);
+    if (
+      main === undefined ||
+      owner === null ||
+      owner.characterId !== target.characterId ||
+      script.trigger.type === "onCloneStart" ||
+      !checkedTrigger(script.trigger) ||
+      (script.procedures?.length ?? 0) > 0 ||
+      !script.statements.every((statement) => checked(statement, program))
+    )
+      return false;
+    const seen = triggers.get(target.index) ?? new Set([JSON.stringify(main.trigger)]);
+    const key = JSON.stringify(script.trigger);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    triggers.set(target.index, seen);
+    slots.set(target.index, [...(slots.get(target.index) ?? []), target.slot]);
+  }
+  for (const [index, found] of slots) {
+    // Slot 2 first, then 3, so a character never has a gap or a repeat.
+    if (found.some((slot, at) => slot !== at + 2)) return false;
+    const main = mains[index - 1]!;
+    const used =
+      statementCount(main.statements) +
+      (main.procedures ?? []).reduce((sum, item) => sum + statementCount(item.body), 0) +
+      extras
+        .filter((script) => extraActorOfScript(script.id)!.index === index)
+        .reduce((sum, script) => sum + statementCount(script.statements), 0);
+    if (used > MAX_STUDIO_BLOCKS) return false;
+  }
+  return true;
+}
+
+export const EXTRA_TARGET_PREFIX = ":script-";
+
+/** The name an extra script is edited through, like `studioCloneTarget` for the copy script. */
+export function studioExtraTarget(actorId: string, slot: 2 | 3): string {
+  return `${actorId}${EXTRA_TARGET_PREFIX}${slot}`;
+}
+
+function splitExtraTarget(actorId: string): { actor: string; slot: 2 | 3 } | null {
+  const at = actorId.lastIndexOf(EXTRA_TARGET_PREFIX);
+  if (at < 0) return null;
+  const slot = actorId.slice(at + EXTRA_TARGET_PREFIX.length);
+  return slot === "2" || slot === "3"
+    ? { actor: actorId.slice(0, at), slot: Number(slot) as 2 | 3 }
+    : null;
+}
+
 export function studioCloneTarget(actorId: string): string {
   return `${actorId}${CLONE_TARGET_SUFFIX}`;
 }
@@ -1077,6 +1187,16 @@ function isCloneTarget(actorId: string): boolean {
 
 /** The script a character, or its copy script (`studioCloneTarget`), is edited through. */
 function scriptIndexOfActor(program: ProjectProgram, actorId: string): number {
+  const extra = splitExtraTarget(actorId);
+  if (extra !== null)
+    return program.scripts.findIndex((script) => {
+      const found = extraActorOfScript(script.id);
+      return (
+        found !== null &&
+        found.slot === extra.slot &&
+        studioActorId(found.index, found.characterId) === extra.actor
+      );
+    });
   const copies = isCloneTarget(actorId);
   const wanted = copies ? actorId.slice(0, -CLONE_TARGET_SUFFIX.length) : actorId;
   return program.scripts.findIndex((script) => {
@@ -1117,6 +1237,55 @@ export function addStudioCloneScript(history: EditorHistory, actorId: string): E
     ],
   });
   return recordCanonicalTransaction(history, { label: "add copy script", after: next }).history;
+}
+
+/** The extra scripts a character has, in slot order, each named for editing like the copy script. */
+export function studioExtraScripts(
+  program: ProjectProgram,
+  actorId: string,
+): readonly { readonly slot: 2 | 3; readonly target: string; readonly script: Script }[] {
+  return ([2, 3] as const).flatMap((slot) => {
+    const script = program.scripts[scriptIndexOfActor(program, studioExtraTarget(actorId, slot))];
+    return script === undefined ? [] : [{ slot, target: studioExtraTarget(actorId, slot), script }];
+  });
+}
+
+/** Give a character one more script, started by an event it does not answer yet, empty. */
+export function addStudioScript(
+  history: EditorHistory,
+  actorId: string,
+  trigger: Trigger,
+): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const main = program.scripts[scriptIndexOfActor(program, actorId)];
+  const owner = main === undefined ? null : actorOfScript(main.id);
+  const have = studioExtraScripts(program, actorId).length;
+  if (owner === null || have >= MAX_STUDIO_EXTRA_SCRIPTS || !checkedTrigger(trigger))
+    throw new RangeError("unknown studio actor, or it has the most scripts allowed");
+  const next = validateStudioProgram({
+    ...program,
+    scripts: [
+      ...program.scripts,
+      {
+        id: extraScriptId(owner.index, owner.characterId, (have + 2) as 2 | 3),
+        trigger,
+        statements: [],
+      },
+    ],
+  });
+  return recordCanonicalTransaction(history, { label: "add script", after: next }).history;
+}
+
+/** Take away the last extra script of a character; the blocks in it go with it. */
+export function removeStudioScript(history: EditorHistory, actorId: string): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const last = studioExtraScripts(program, actorId).at(-1);
+  if (last === undefined) throw new RangeError("that character has no extra script");
+  const next = validateStudioProgram({
+    ...program,
+    scripts: program.scripts.filter((script) => script !== last.script),
+  });
+  return recordCanonicalTransaction(history, { label: "remove script", after: next }).history;
 }
 
 function withoutCopyScripts(statements: readonly Statement[]): Statement[] {
