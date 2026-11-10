@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { acceptProposal, rejectProposal } from "@agorix/proposals";
-import type { ProjectProgram } from "@agorix/program-model";
+import type { ProjectProgram, Statement } from "@agorix/program-model";
 import type { Finding } from "@agorix/run-evidence";
 import type { Locale } from "../../i18n.js";
 import type { AgeBand } from "../kidsAgeBand.js";
@@ -27,6 +27,7 @@ export function KidsRunMarker({
   onDecision,
   onShown,
   onRephrased,
+  describeBlock,
 }: {
   readonly finding: Finding;
   readonly program: ProjectProgram;
@@ -43,6 +44,8 @@ export function KidsRunMarker({
   readonly onShown: () => void;
   /** The learner asked for another way to say it and got one. */
   readonly onRephrased: () => void;
+  /** The same child-facing block label shown by the editor. */
+  readonly describeBlock: (statement: Statement) => string;
 }) {
   const [rephrase, setRephrase] = useState<RephraseResult | "loading" | null>(null);
   const [unavailable, setUnavailable] = useState(rephraseUnavailable);
@@ -174,7 +177,7 @@ export function KidsRunMarker({
                   <p>{es ? "Dentro del bloque para todos:" : "Inside the block for everyone:"}</p>
                   <ol>
                     {shared.procedure.body.map((item, index) => (
-                      <li key={index}>{item.type}</li>
+                      <li key={index}>{describeBlock(item)}</li>
                     ))}
                   </ol>
                   <p>
