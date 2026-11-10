@@ -309,6 +309,8 @@ test("Ori previews a shared block for groups repeated apart and applies it only 
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("button", { name: /Ori vio algo/ }).click();
   await expect(page.getByTestId("ori-fix-diff")).toContainText("Bloques para todos");
+  await expect(page.locator(".kids-ori-proposal-diff ol")).toContainText("Mover");
+  await expect(page.locator(".kids-ori-proposal-diff ol")).toContainText("Girar");
   await expect(page.locator(".kids-program-block")).toHaveCount(8);
   await page.getByRole("button", { name: "Usar este cambio" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(5);
