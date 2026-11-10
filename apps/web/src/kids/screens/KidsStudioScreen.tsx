@@ -4926,6 +4926,7 @@ export function KidsStudioScreen({
                 key={`${noticed.id}-${runCount}`}
                 finding={noticed}
                 program={history.current}
+                describeBlock={blockLabel}
                 onApplyProgram={(next, label) => {
                   try {
                     persist(recordCanonicalTransaction(history, { label, after: next }).history);
