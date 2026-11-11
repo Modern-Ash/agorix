@@ -7,6 +7,7 @@ import {
   STUDIO_X_RANGE,
   STUDIO_Y_RANGE,
   STUDIO_EFFECT_DELTAS,
+  isStudioKey,
   STUDIO_POINT_DIRECTIONS,
   STUDIO_REPEAT_COUNTS,
   STUDIO_SIZE_DELTAS,
@@ -142,7 +143,6 @@ export type StudioStatement = Extract<
   }
 >;
 
-const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
 export const STUDIO_EDGE_CONDITION = {
   type: "touchingStageEdge",
@@ -219,8 +219,7 @@ function checkedTrigger(trigger: Trigger): boolean {
   return (
     trigger.type === "greenFlag" ||
     trigger.type === "onActorClicked" ||
-    (trigger.type === "onKeyPressed" &&
-      STUDIO_KEYS.includes(trigger.key as (typeof STUDIO_KEYS)[number])) ||
+    (trigger.type === "onKeyPressed" && isStudioKey(trigger.key)) ||
     (trigger.type === "onMessage" &&
       STUDIO_MESSAGES.includes(trigger.message as (typeof STUDIO_MESSAGES)[number])) ||
     (trigger.type === "onTimerOver" && [1, 2, 3, 5, 10].includes(trigger.seconds)) ||
@@ -359,8 +358,7 @@ function checkedCondition(
   arity = 0,
   depth = 0,
 ): boolean {
-  if (value.type === "keyDown")
-    return STUDIO_KEYS.includes(value.key as (typeof STUDIO_KEYS)[number]);
+  if (value.type === "keyDown") return isStudioKey(value.key);
   if (value.type === "mouseDown") return true;
   if (value.type === "touchingColor")
     return (PEN_COLORS as readonly string[]).includes(value.color);

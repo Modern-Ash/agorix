@@ -76,6 +76,11 @@ const KEY_NAME: Readonly<Record<string, string>> = {
   ArrowDown: "down arrow",
   ArrowLeft: "left arrow",
   ArrowRight: "right arrow",
+  Enter: "enter",
+  // Letters and digits are written the same in Scratch and here.
+  ...Object.fromEntries(
+    [..."abcdefghijklmnopqrstuvwxyz0123456789"].map((key) => [key, key] as const),
+  ),
 };
 const PEN_HEX: Readonly<Record<string, string>> = {
   dark: "#252342",

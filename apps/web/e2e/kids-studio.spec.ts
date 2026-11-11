@@ -2920,3 +2920,76 @@ test("Ori offers to ask a word and keep it in the list, using the child's own wo
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
 });
+
+test("a character answers the letters a Scratch child reaches for, such as W, with the real keyboard (#1315)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedStorage(page, {
+    "agorix.locale": "es",
+    "agorix.kids.progress.v1": JSON.stringify({
+      onboarded: true,
+      avatar: "🐸",
+      stars: 0,
+      done: {},
+    }),
+  });
+  await page.goto("/kids");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  // A second script that waits for the W key.
+  await page.getByTestId("script-add").click();
+  await page.getByRole("combobox", { name: "Cuando" }).selectOption("onKeyPressed");
+  const keyChoice = page.getByRole("combobox", { name: "Al pulsar" });
+  await expect(keyChoice.locator("option")).toHaveCount(42);
+  await keyChoice.selectOption("w");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await page.getByTestId("script-tab-1").click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The first run has finished before we look at where the character is.
+  await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
+  const actor = page.locator(".kids-studio-stage-actor").first();
+  await expect.poll(async () => actor.getAttribute("style")).toBeTruthy();
+  const before = await actor.getAttribute("style");
+  // Not the key the script waits for: nothing moves.
+  await page.keyboard.press("q");
+  await expect(actor).toHaveAttribute("style", before!);
+  // The key it waits for, capital or not: the character moves.
+  await page.keyboard.press("w");
+  await expect.poll(async () => actor.getAttribute("style")).not.toBe(before);
+  // The key it was chosen by is shown as a capital, and the program says which key.
+  await page.getByTestId("script-tab-2").click();
+  await expect(keyChoice).toHaveValue("w");
+  await expect(keyChoice.locator("option:checked")).toHaveText("W");
+});
+
+test("pressing Enter on a focused control is that control's own press, not a key for the program (#1315)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedStorage(page, {
+    "agorix.locale": "es",
+    "agorix.kids.progress.v1": JSON.stringify({
+      onboarded: true,
+      avatar: "🐸",
+      stars: 0,
+      done: {},
+    }),
+  });
+  await page.goto("/kids");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  // The first script waits for Enter and moves the character.
+  await page.getByRole("combobox", { name: "Cuando" }).selectOption("onKeyPressed");
+  await page.getByRole("combobox", { name: "Al pulsar" }).selectOption("Enter");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
+  const actor = page.locator(".kids-studio-stage-actor").first();
+  const before = await actor.getAttribute("style");
+  // Enter on a button presses the button; the program does not also hear it.
+  await page.getByRole("button", { name: "Reiniciar" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(actor).toHaveAttribute("style", before!);
+});

@@ -37,7 +37,7 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
   const es = locale === "es";
   const young = band === "6-8";
   const name = finding.event?.name ?? "";
-  const key = KEY_NAMES[locale][name] ?? name;
+  const key = KEY_NAMES[locale][name] ?? (name.length === 1 ? name.toUpperCase() : name);
   const yes = finding.counts["yes"] ?? 0;
   const no = finding.counts["no"] ?? 0;
   switch (finding.kind) {

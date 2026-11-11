@@ -25,7 +25,12 @@ import {
   STUDIO_SHIFT_AMOUNTS,
   STUDIO_TURN_AMOUNTS,
   STUDIO_WAIT_SECONDS,
+  STUDIO_KEYS,
+  isStudioKey,
   studioEffectValues,
+  studioKeyLabel,
+  studioKeyOfEvent,
+  type StudioKey,
 } from "../kidsStudioChoices.js";
 import {
   studioCategories,
@@ -1025,7 +1030,6 @@ const COPY = {
   },
 } as const;
 
-const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
 
 /** The events a new script of a character starts with, the first one it does not answer yet. */
@@ -1438,7 +1442,7 @@ export function KidsStudioScreen({
   const [choicePromptId, setChoicePromptId] = useState<ChoicePromptId>("path");
   const [volume, setVolume] = useState(100);
   const [volumeChange, setVolumeChange] = useState(-10);
-  const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
+  const [eventKey, setEventKey] = useState<StudioKey>("Space");
   const [limitHit, setLimitHit] = useState<"blocks" | "actors" | null>(null);
   const [eventSeconds, setEventSeconds] = useState(3);
   const [eventLevel, setEventLevel] = useState(30);
@@ -1469,7 +1473,7 @@ export function KidsStudioScreen({
   const [randomDecimal, setRandomDecimal] = useState(false);
   const [compareCalculation, setCompareCalculation] = useState(false);
   const [sensorTargetId, setSensorTargetId] = useState("");
-  const [senseKey, setSenseKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
+  const [senseKey, setSenseKey] = useState<StudioKey>("Space");
   const [timerSeconds, setTimerSeconds] = useState(3);
   const [heldKeys, setHeldKeys] = useState<string[]>([]);
   const pointerRef = useRef({ x: 0, y: 0, down: false });
@@ -1691,6 +1695,18 @@ export function KidsStudioScreen({
   );
   const scriptIndexOfActor = script === undefined ? -1 : history.current.scripts.indexOf(script);
   const blocksUsed = studioBlocksUsed(history.current, activeActorId);
+  // The keys that can be held while playing: the five a child reaches for first, and any other
+  // key the program waits for or asks about, so the list stays short.
+  const usedKeys = new Set(
+    [...JSON.stringify(history.current.scripts).matchAll(/"key":"([^"]+)"/g)].map(
+      (match) => match[1],
+    ),
+  );
+  const heldKeyChoices = STUDIO_KEYS.filter(
+    (key) =>
+      ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key) ||
+      usedKeys.has(key),
+  );
   const selectedTextId = history.current.textVariables?.some((item) => item.id === textVarId)
     ? textVarId
     : (history.current.textVariables?.[0]?.id ?? textVarId);
@@ -2486,7 +2502,7 @@ export function KidsStudioScreen({
   }, [run]);
 
   function fireKey(key: string) {
-    if (!run || !STUDIO_KEYS.includes(key as (typeof STUDIO_KEYS)[number])) return;
+    if (!run || !isStudioKey(key)) return;
     if (liveRef.current) {
       liveRef.current.fire({ type: "keyPressed", key });
       setPlaying(true);
@@ -2543,8 +2559,20 @@ export function KidsStudioScreen({
         event.target instanceof HTMLTextAreaElement
       )
         return;
-      if (event.code === "Space" || event.key.startsWith("Arrow"))
-        fireKey(event.code === "Space" ? "Space" : event.key);
+      // A key a block can wait for. Held modifiers (the browser's own shortcuts) are left alone.
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const key = studioKeyOfEvent(event);
+      if (key === null) return;
+      // Enter on a focused button or link is that control's own press, not a key for the program;
+      // a letter or a digit does nothing to a control, so it counts wherever the focus is (after
+      // pressing Play the focus is still on the Play button).
+      if (
+        key === "Enter" &&
+        event.target instanceof Element &&
+        event.target.closest("button, a, summary, [role='button'], [contenteditable='true']")
+      )
+        return;
+      fireKey(key);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -5816,14 +5844,14 @@ export function KidsStudioScreen({
                       <select
                         value={script.trigger.key}
                         onChange={(event) => {
-                          const key = event.target.value as (typeof STUDIO_KEYS)[number];
+                          const key = event.target.value as StudioKey;
                           setEventKey(key);
                           persist(trySetTrigger(scriptTarget, { type: "onKeyPressed", key }));
                         }}
                       >
                         {STUDIO_KEYS.map((key) => (
                           <option key={key} value={key}>
-                            {key}
+                            {studioKeyLabel(key)}
                           </option>
                         ))}
                       </select>
@@ -7554,20 +7582,18 @@ export function KidsStudioScreen({
                   {copy.senseKey}{" "}
                   <select
                     value={senseKey}
-                    onChange={(event) =>
-                      setSenseKey(event.target.value as (typeof STUDIO_KEYS)[number])
-                    }
+                    onChange={(event) => setSenseKey(event.target.value as StudioKey)}
                   >
                     {STUDIO_KEYS.map((key) => (
                       <option key={key} value={key}>
-                        {key}
+                        {studioKeyLabel(key)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <div role="group" aria-label={copy.heldKeys}>
                   <strong>{copy.heldKeys}</strong>
-                  {STUDIO_KEYS.map((key) => (
+                  {heldKeyChoices.map((key) => (
                     <label key={key}>
                       <input
                         type="checkbox"
@@ -7580,7 +7606,7 @@ export function KidsStudioScreen({
                           )
                         }
                       />{" "}
-                      {key}
+                      {studioKeyLabel(key)}
                     </label>
                   ))}
                 </div>

@@ -37,3 +37,39 @@ export const STUDIO_NAME_MAX_LENGTH = 20;
 export function inStudioRange(value: number, range: StudioRange): boolean {
   return Number.isInteger(value) && value >= range.min && value <= range.max;
 }
+
+/**
+ * The keys a program can wait for or ask about: space, the arrows, Enter, every letter and every
+ * digit, as Scratch offers. A letter is written in lower case and a digit as itself, so the same
+ * key is the same string for a block, a held key and a pressed key.
+ */
+export const STUDIO_KEYS = [
+  "Space",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Enter",
+  ..."abcdefghijklmnopqrstuvwxyz".split(""),
+  ..."0123456789".split(""),
+] as const;
+export type StudioKey = (typeof STUDIO_KEYS)[number];
+
+export function isStudioKey(value: unknown): value is StudioKey {
+  return (STUDIO_KEYS as readonly unknown[]).includes(value);
+}
+
+/** The Studio key a physical key press is, or null when it is not one the Studio offers. */
+export function studioKeyOfEvent(event: {
+  readonly code: string;
+  readonly key: string;
+}): StudioKey | null {
+  const key =
+    event.code === "Space" ? "Space" : event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  return isStudioKey(key) ? key : null;
+}
+
+/** A key as a child reads it: letters and digits in capitals, the rest by their names. */
+export function studioKeyLabel(key: string): string {
+  return key.length === 1 ? key.toUpperCase() : key;
+}
