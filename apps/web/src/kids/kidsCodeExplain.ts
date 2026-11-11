@@ -103,7 +103,12 @@ const DOC: Partial<Record<Statement["type"], Doc>> = {
   },
   stopSounds: { name: t("para todos los sonidos", "stops every sound") },
   bounceOnEdge: { name: t("rebota si toca el borde", "bounces if it touches the edge") },
-  goToTarget: { name: t("va al azar o hacia el ratón", "goes to a random place or to the mouse") },
+  goToTarget: {
+    name: t(
+      "va al azar, hacia el ratón o hacia otro personaje",
+      "goes to a random place, to the mouse or to another character",
+    ),
+  },
 };
 
 /** The first-level pieces of an argument list: commas inside quotes or brackets do not split. */

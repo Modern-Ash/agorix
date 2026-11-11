@@ -649,7 +649,13 @@ function statementFromBlock(
     case "motion_go_to_target":
       return {
         type: "goToTarget",
-        target: stringField(block, "target", path) as "random" | "mouse",
+        target: stringField(block, "target", path) as "random" | "mouse" | "actor",
+        ...(block.fields?.["actorId"] === undefined
+          ? {}
+          : { actorId: stringField(block, "actorId", path) }),
+        ...(block.fields?.["seconds"] === undefined
+          ? {}
+          : { seconds: numberField(block, "seconds", path) }),
       };
     case "motion_set_x":
       return { type: "setX", x: numberField(block, "x", path) };
@@ -1223,7 +1229,15 @@ function statementToBlock(
         },
       };
     case "goToTarget":
-      return { id, type: "motion_go_to_target", fields: { target: statement.target } };
+      return {
+        id,
+        type: "motion_go_to_target",
+        fields: {
+          target: statement.target,
+          ...(statement.actorId === undefined ? {} : { actorId: statement.actorId }),
+          ...(statement.seconds === undefined ? {} : { seconds: statement.seconds }),
+        },
+      };
     case "setX":
       return { id, type: "motion_set_x", fields: { x: statement.x } };
     case "setY":

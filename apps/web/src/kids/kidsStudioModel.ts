@@ -590,8 +590,21 @@ function checked(
       [2, 3, 5].includes(statement.count) &&
       (statement.rule === "spread" || statement.rule === "fall" || statement.rule === "follow")
     );
-  if (statement.type === "goToTarget")
-    return statement.target === "random" || statement.target === "mouse";
+  if (statement.type === "goToTarget") {
+    if (
+      statement.seconds !== undefined &&
+      !(STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds)
+    )
+      return false;
+    if (statement.target === "actor")
+      return program.scripts.some((script) => {
+        const actor = actorOfScript(script.id);
+        return (
+          actor !== null && studioActorId(actor.index, actor.characterId) === statement.actorId
+        );
+      });
+    return statement.actorId === undefined;
+  }
   if (statement.type === "setX") return inStudioRange(statement.x, STUDIO_X_RANGE);
   if (statement.type === "setY") return inStudioRange(statement.y, STUDIO_Y_RANGE);
   if (statement.type === "changeX")

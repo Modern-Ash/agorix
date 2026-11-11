@@ -507,15 +507,20 @@ class Emitter {
           },
         );
       case "goToTarget": {
-        const made = this.block("motion_goto", parent);
-        (made.block["inputs"] as Json)["TO"] = [
+        const place =
+          statement.target === "random"
+            ? "_random_"
+            : statement.target === "mouse"
+              ? "_mouse_"
+              : this.spriteName(statement.actorId ?? "");
+        if (place === undefined) return null;
+        const glide = statement.seconds !== undefined;
+        const made = this.block(glide ? "motion_glideto" : "motion_goto", parent);
+        const inputs = made.block["inputs"] as Json;
+        if (glide) inputs["SECS"] = [1, [4, String(statement.seconds)]];
+        inputs["TO"] = [
           1,
-          this.menu(
-            made.id,
-            "motion_goto_menu",
-            "TO",
-            statement.target === "random" ? "_random_" : "_mouse_",
-          ),
+          this.menu(made.id, glide ? "motion_glideto_menu" : "motion_goto_menu", "TO", place),
         ];
         return made.id;
       }

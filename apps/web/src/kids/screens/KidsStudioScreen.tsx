@@ -345,6 +345,8 @@ const COPY = {
     copyScriptByOri: "Guion de las copias que propone Ori",
     goToRandom: "Ir a un lugar al azar",
     goToMouse: "Ir al puntero",
+    goToActor: "Ir a",
+    glideToActor: "Deslizarse 1 s a",
     messageAndWait: "Enviar mensaje y esperar",
     setX: "Fijar x",
     setY: "Fijar y",
@@ -701,6 +703,8 @@ const COPY = {
     copyScriptByOri: "Copy script Ori suggests",
     goToRandom: "Go to a random spot",
     goToMouse: "Go to the pointer",
+    goToActor: "Go to",
+    glideToActor: "Glide 1 s to",
     messageAndWait: "Broadcast message and wait",
     setX: "Set x",
     setY: "Set y",
@@ -3179,8 +3183,19 @@ export function KidsStudioScreen({
               ? copy.copiesFall
               : copy.copiesFollow
         }${statement.withScript === true ? ` · ${copy.copiesWithScript}` : ""}`;
-      case "goToTarget":
-        return statement.target === "random" ? copy.goToRandom : copy.goToMouse;
+      case "goToTarget": {
+        const place =
+          statement.target === "random"
+            ? copy.goToRandom
+            : statement.target === "mouse"
+              ? copy.goToMouse
+              : `${statement.seconds === undefined ? copy.goToActor : copy.glideToActor}: ${
+                  creative.actors?.find((item) => item.id === statement.actorId)?.name ?? "?"
+                }`;
+        return statement.target !== "actor" && statement.seconds !== undefined
+          ? `${place} (${statement.seconds} s)`
+          : place;
+      }
       case "setX":
         return `${copy.setX}: ${statement.x}`;
       case "setY":
@@ -6757,6 +6772,30 @@ export function KidsStudioScreen({
                     ))}
                   </select>
                 </KidsPaletteBlock>
+                {pointTarget ? (
+                  <KidsPaletteBlock
+                    tone="motion"
+                    actions={[
+                      {
+                        label: `${copy.goToActor} ${pointTarget.name}`,
+                        block: "goToTarget",
+                        onAdd: () =>
+                          add({ type: "goToTarget", target: "actor", actorId: pointTarget.id }),
+                      },
+                      {
+                        label: `${copy.glideToActor} ${pointTarget.name}`,
+                        block: "goToTarget",
+                        onAdd: () =>
+                          add({
+                            type: "goToTarget",
+                            target: "actor",
+                            actorId: pointTarget.id,
+                            seconds: 1,
+                          }),
+                      },
+                    ]}
+                  />
+                ) : null}
                 {pointTarget ? (
                   <KidsPaletteBlock
                     tone="motion"

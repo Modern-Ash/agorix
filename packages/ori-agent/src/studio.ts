@@ -561,7 +561,11 @@ function closedIdeaBlock(statement: Statement): boolean {
     case "bounceOnEdge":
       return true;
     case "goToTarget":
-      return statement.target === "random" || statement.target === "mouse";
+      return (
+        (statement.target === "random" || statement.target === "mouse") &&
+        statement.actorId === undefined &&
+        statement.seconds === undefined
+      );
     case "createCopies":
       return (
         statement.withScript !== true &&

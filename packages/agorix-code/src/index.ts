@@ -234,7 +234,14 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent +
-          (statement.target === "random" ? "go to random position" : "go to mouse pointer") +
+          (statement.seconds === undefined
+            ? "go to "
+            : "glide " + formatNumber(statement.seconds) + " secs to ") +
+          (statement.target === "random"
+            ? "random position"
+            : statement.target === "mouse"
+              ? "mouse pointer"
+              : JSON.stringify(statement.actorId)) +
           "\n",
       );
       return;

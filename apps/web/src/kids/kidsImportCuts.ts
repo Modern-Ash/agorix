@@ -119,8 +119,8 @@ export const CUT_IDEAS: Readonly<Record<CutKind, CutIdea>> = {
     en: "That condition has no block in the scene.",
   },
   goto: {
-    es: "«Ir a otro objeto» o «deslizarse a» no se trajo. Ori puede proponerte ir a un lugar al azar.",
-    en: "“Go to another object” or “glide to” did not come across. Ori can offer to go to a random spot.",
+    es: "Ir o deslizarse hacia algo que no está en el proyecto no se trajo. Ori puede proponerte ir a un lugar al azar.",
+    en: "Going or gliding to something that is not in the project did not come across. Ori can offer to go to a random spot.",
     intent: "scratchGoTo",
   },
   sound: {
