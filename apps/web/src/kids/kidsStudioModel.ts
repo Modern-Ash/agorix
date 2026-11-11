@@ -1623,6 +1623,63 @@ export function createStudioProcedure(
   });
 }
 
+/**
+ * Turn the last blocks of a script into a block made for everyone (a shared one) and a call to it.
+ * It is how a character's second or third script gets a custom block of its own making: those
+ * scripts keep no blocks of their own, but any script can call a shared one. The new block's name
+ * must differ from the shared ones that exist.
+ */
+export function createSharedStudioProcedure(
+  history: EditorHistory,
+  actorId: string,
+  count: number,
+  name: string,
+  numbers: readonly string[] = [],
+): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const index = scriptIndexOfActor(program, actorId);
+  const script = program.scripts[index];
+  if (!script) throw new RangeError("unknown studio actor");
+  if (numbers.length > PARAM_IDS.length) throw new RangeError("custom block number limit");
+  if (!Number.isInteger(count) || count < 1 || script.statements.length < count)
+    throw new RangeError("invalid custom block group");
+  const existing = program.sharedProcedures ?? [];
+  if (existing.length >= MAX_STUDIO_SHARED) throw new RangeError("shared block limit");
+  if (existing.some((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase()))
+    throw new RangeError("a shared block already has that name");
+  const taken = new Set(existing.map((item) => item.id));
+  let n = 1;
+  while (taken.has(`shared-${n}`)) n += 1;
+  const id = `shared-${n}`;
+  const procedure: Procedure = {
+    id,
+    name,
+    ...(numbers.length === 0
+      ? {}
+      : { params: numbers.map((title, at) => ({ id: PARAM_IDS[at]!, name: title })) }),
+    body: script.statements.slice(-count),
+  };
+  const scripts = [...program.scripts];
+  scripts[index] = {
+    ...script,
+    statements: [
+      ...script.statements.slice(0, -count),
+      withArgs(
+        { type: "callProcedure", procedureId: id },
+        numbers.map(() => 0),
+      ),
+    ],
+  };
+  return recordCanonicalTransaction(history, {
+    label: "create shared custom block",
+    after: validateStudioProgram({
+      ...program,
+      sharedProcedures: [...existing, procedure],
+      scripts,
+    }),
+  }).history;
+}
+
 export function renameStudioProcedure(
   history: EditorHistory,
   actorId: string,

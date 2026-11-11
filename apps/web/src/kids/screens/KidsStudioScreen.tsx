@@ -216,6 +216,7 @@ import {
   deleteStudioSharedProcedure,
   studioSharedProcedures,
   createStudioProcedure,
+  createSharedStudioProcedure,
   deleteStudioProcedure,
   duplicateStudioStatement,
   moveStudioStatement,
@@ -570,6 +571,9 @@ const COPY = {
     event: "Cuando",
     onPlay: "Al jugar",
     scriptsLabel: "Guiones del personaje",
+    makeBlockForAll: "Hacer bloque para todos",
+    makeBlockForAllNote:
+      "En este guion el bloque se hace para todos los personajes: cualquier guion puede usarlo.",
     scriptTab: "Guion",
     addScript: "+ Otro guion",
     addScriptTip: "Dar al personaje otro guion que empieza con otro evento",
@@ -913,6 +917,9 @@ const COPY = {
     event: "When",
     onPlay: "When played",
     scriptsLabel: "Character scripts",
+    makeBlockForAll: "Make block for everyone",
+    makeBlockForAllNote:
+      "In this script the block is made for everyone: any script of any character can use it.",
     scriptTab: "Script",
     addScript: "+ Another script",
     addScriptTip: "Give the character another script that starts with another event",
@@ -7032,25 +7039,38 @@ export function KidsStudioScreen({
                 <button
                   type="button"
                   className="kids-button"
-                  disabled={
-                    slot !== 1 || !blockName.trim() || (script?.statements.length ?? 0) < groupCount
-                  }
+                  disabled={!blockName.trim() || (script?.statements.length ?? 0) < groupCount}
                   onClick={() => {
+                    // The second and third scripts keep no blocks of their own: the block they
+                    // make is made for everyone, and any script can use it.
                     authorBlock(() =>
-                      createStudioProcedure(
-                        history,
-                        activeActorId,
-                        groupCount,
-                        blockName.trim(),
-                        blockNumbers,
-                      ),
+                      slot === 1
+                        ? createStudioProcedure(
+                            history,
+                            activeActorId,
+                            groupCount,
+                            blockName.trim(),
+                            blockNumbers,
+                          )
+                        : createSharedStudioProcedure(
+                            history,
+                            scriptTarget,
+                            groupCount,
+                            blockName.trim(),
+                            blockNumbers,
+                          ),
                     );
                     setBlockName("");
                     setBlockNumbers([]);
                   }}
                 >
-                  {copy.makeBlock}
+                  {slot === 1 ? copy.makeBlock : copy.makeBlockForAll}
                 </button>
+                {slot !== 1 ? (
+                  <p className="kids-note" data-testid="make-block-for-all-note">
+                    {copy.makeBlockForAllNote}
+                  </p>
+                ) : null}
                 <ul className="kids-studio-my-blocks">
                   {script?.procedures?.map((item) => {
                     const uses = studioProcedureUses(history.current, activeActorId, item.id);

@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { expect, test, type Page } from "./fixtures.js";
+import { expect, seedStorage, test, type Page } from "./fixtures.js";
 import {
   createOriStudioInput,
   evaluateOriStudioOutput,
@@ -2750,4 +2750,44 @@ test("Ori still gives ideas when a character has two scripts, and an idea goes t
   await expect(page.getByRole("button", { name: "Lluvia que cae y desaparece" })).toHaveCount(0);
   await page.getByTestId("script-tab-1").click();
   await expect(page.getByRole("button", { name: "Lluvia que cae y desaparece" })).toBeVisible();
+});
+
+test("a block made in a second script is made for everyone, and the first script can use it (#1363)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedStorage(page, {
+    "agorix.locale": "es",
+    "agorix.kids.progress.v1": JSON.stringify({
+      onboarded: true,
+      avatar: "🐸",
+      stars: 0,
+      done: {},
+    }),
+  });
+  await page.goto("/kids");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByTestId("script-add").click();
+  await expect(page.getByTestId("script-tab-2")).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Cuadrado");
+  // On this script the block is made for everyone, and it says so.
+  await expect(page.getByTestId("make-block-for-all-note")).toBeVisible();
+  await page.getByRole("button", { name: "Hacer bloque para todos" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await expect(page.locator(".kids-program-block").first()).toContainText("Usar: Cuadrado");
+  // The first script can use it.
+  await page.getByTestId("script-tab-1").click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByRole("button", { name: "+ Usar: Cuadrado" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  // One undo takes the call back.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
 });

@@ -5,6 +5,7 @@ import {
   MAX_STUDIO_EXTRA_SCRIPTS,
   addStudioActor,
   addStudioScript,
+  createSharedStudioProcedure,
   appendStudioStatement,
   createStudioProgram,
   creativeForStudio,
@@ -143,5 +144,68 @@ describe("every view of the program shows every script of a character (#1363)", 
       expect(text, project.name).toContain("ArrowRight");
       expect(text, project.name).toContain("ArrowLeft");
     }
+  });
+});
+
+describe("a block made from a second or third script (#1363)", () => {
+  const withMoves = () => {
+    let history = addStudioScript(start(), nova, right);
+    for (let n = 0; n < 3; n += 1)
+      history = appendStudioStatement(history, studioExtraTarget(nova, 2), {
+        type: "move",
+        steps: 20,
+      });
+    return history;
+  };
+
+  it("makes the last blocks a block for everyone and puts a call in their place", () => {
+    const history = createSharedStudioProcedure(
+      withMoves(),
+      studioExtraTarget(nova, 2),
+      2,
+      "Avanzar",
+    );
+    const program = validateStudioProgram(history.current);
+    expect(program.sharedProcedures).toHaveLength(1);
+    expect(program.sharedProcedures![0]).toMatchObject({ id: "shared-1", name: "Avanzar" });
+    expect(program.sharedProcedures![0]!.body).toHaveLength(2);
+    const extra = studioExtraScripts(program, nova)[0]!.script;
+    expect(extra.statements.map((statement) => statement.type)).toEqual(["move", "callProcedure"]);
+    // Still no blocks of its own on the script, and the character's first script can use it too.
+    expect(extra.procedures).toBeUndefined();
+    const creative = creativeForStudio(program, "forest", "es");
+    const x = runMultiActorProgram(program, creative, {
+      events: [{ type: "keyPressed", key: "ArrowRight" }],
+    }).actors[0]!.world.sprite.x;
+    const origin = runMultiActorProgram(program, creative).actors[0]!.world.sprite.x;
+    expect(x - origin).toBe(60);
+  });
+
+  it("refuses a name a shared block already has, a group that is too big, and the limit", () => {
+    const first = createSharedStudioProcedure(
+      withMoves(),
+      studioExtraTarget(nova, 2),
+      1,
+      "Avanzar",
+    );
+    expect(() =>
+      createSharedStudioProcedure(first, studioExtraTarget(nova, 2), 1, "avanzar"),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSharedStudioProcedure(withMoves(), studioExtraTarget(nova, 2), 9, "Mucho"),
+    ).toThrow(RangeError);
+  });
+
+  it("takes numbers like any custom block", () => {
+    const history = createSharedStudioProcedure(
+      withMoves(),
+      studioExtraTarget(nova, 2),
+      1,
+      "Pasos",
+      ["Cuántos"],
+    );
+    expect(validateStudioProgram(history.current).sharedProcedures![0]!.params).toEqual([
+      { id: "p1", name: "Cuántos" },
+    ]);
   });
 });
