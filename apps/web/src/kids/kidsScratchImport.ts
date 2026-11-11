@@ -641,6 +641,15 @@ class Converter {
         const layer = this.menu(block, "FRONT_BACK");
         return { type: "goToLayer", layer: layer === "back" ? "back" : "front" };
       }
+      case "looks_goforwardbackwardlayers": {
+        const direction = this.menu(block, "FORWARD_BACKWARD");
+        const layers = num("NUM");
+        if (layers === undefined || (direction !== "forward" && direction !== "backward"))
+          return missing();
+        const steps = Math.max(1, Math.min(3, Math.round(layers)));
+        if (steps !== layers) this.adjusted += 1;
+        return { type: "goToLayer", layer: direction, steps };
+      }
       case "control_wait": {
         const seconds = num("DURATION");
         if (seconds === undefined) return missing();

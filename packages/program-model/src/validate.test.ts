@@ -685,3 +685,26 @@ describe("mouse sensors", () => {
     }
   });
 });
+
+describe("goToLayer with steps", () => {
+  const check = (statement: unknown) =>
+    validateProgram({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    } as never);
+
+  it("takes steps only for forward and backward", () => {
+    expect(() => check({ type: "goToLayer", layer: "forward", steps: 2 })).not.toThrow();
+    expect(() => check({ type: "goToLayer", layer: "backward", steps: 10 })).not.toThrow();
+    expect(() => check({ type: "goToLayer", layer: "front" })).not.toThrow();
+    for (const bad of [
+      { type: "goToLayer", layer: "forward" },
+      { type: "goToLayer", layer: "forward", steps: 0 },
+      { type: "goToLayer", layer: "forward", steps: 11 },
+      { type: "goToLayer", layer: "backward", steps: 1.5 },
+      { type: "goToLayer", layer: "front", steps: 1 },
+      { type: "goToLayer", layer: "middle" },
+    ])
+      expect(() => check(bad), JSON.stringify(bad)).toThrow();
+  });
+});

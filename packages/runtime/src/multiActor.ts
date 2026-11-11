@@ -1,3 +1,4 @@
+import { reorderActors } from "./stageOrder.js";
 import {
   validateProgram,
   validateProjectCreativeState,
@@ -553,9 +554,7 @@ export function runMultiActorProgram(
           if (entry.statementType === "goToLayer") {
             const statement = statementAtNodeId(script, entry.nodeId);
             if (statement?.type === "goToLayer") {
-              const rest = stage.actorOrder.filter((id) => id !== actor.id);
-              stage.actorOrder =
-                statement.layer === "front" ? [...rest, actor.id] : [actor.id, ...rest];
+              stage.actorOrder = reorderActors(stage.actorOrder, actor.id, statement);
             }
           }
           if (entry.statementType === "switchBackdrop") {

@@ -269,3 +269,7 @@ A script can wait for, and a condition can ask about, **space, the four arrows, 
 ## Status: math functions (Scratch parity)
 
 `mathFunction` gains sqrt, sin, cos, tan, asin, acos, atan, ln, log (base 10), exp (e^) and pow10 (10^) beside abs/round/floor/ceiling. Angles are in degrees and sin/cos/tan are rounded to 10 decimals, as in Scratch. Where Scratch has no number (square root of a negative, log of 0, tan 90) the answer is 0 rather than a run error. Carried by the validator, runtime, four code views, block editor, Studio function picker, and the Scratch importer/exporter (`operator_round`, `operator_mathop`).
+
+## Status: go forward/backward layers (Scratch parity)
+
+`goToLayer` gains `layer: "forward" | "backward"` with a whole `steps` (1–10; Studio accepts 1–3). The stage order moves the character that many places and stops at either end (`reorderActors`, shared by the live and batch runtimes). Java shows it as `moveLayers(direction, steps)`; the Scratch importer/exporter use `looks_goforwardbackwardlayers` (imported counts above 3 are adjusted and reported).

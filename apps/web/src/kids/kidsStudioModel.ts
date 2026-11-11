@@ -665,7 +665,9 @@ function checked(
   if (statement.type === "setPan")
     return (STUDIO_PANS as readonly number[]).includes(statement.pan);
   if (statement.type === "goToLayer")
-    return statement.layer === "front" || statement.layer === "back";
+    return statement.layer === "front" || statement.layer === "back"
+      ? statement.steps === undefined
+      : Number.isInteger(statement.steps) && statement.steps! >= 1 && statement.steps! <= 3;
   if (statement.type === "nextCostume")
     return (
       statement.costumeIds.length >= 2 &&

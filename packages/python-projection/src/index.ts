@@ -465,7 +465,11 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + "go_to_layer(" + JSON.stringify(statement.layer) + ")\n",
+        indent +
+          "go_to_layer(" +
+          JSON.stringify(statement.layer) +
+          (statement.steps === undefined ? "" : ", " + statement.steps) +
+          ")\n",
       );
       return;
     case "callProcedure":

@@ -494,10 +494,14 @@ export interface BounceOnEdgeStatement {
   readonly type: "bounceOnEdge";
 }
 
-/** Reorders the stage only; it never changes which character runs first. */
+/**
+ * Reorders the stage only; it never changes which character runs first. "forward" and "backward"
+ * move the character that many places (Scratch: go forward/backward N layers) and carry `steps`.
+ */
 export interface GoToLayerStatement {
   readonly type: "goToLayer";
-  readonly layer: "front" | "back";
+  readonly layer: "front" | "back" | "forward" | "backward";
+  readonly steps?: number;
 }
 
 export type GraphicEffect = "color" | "ghost" | "brightness";

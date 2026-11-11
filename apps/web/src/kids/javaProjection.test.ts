@@ -54,6 +54,8 @@ const statements: Statement[] = [
   { type: "pointTowards", actorId: "actor:other" },
   { type: "bounceOnEdge" },
   { type: "goToLayer", layer: "front" },
+  { type: "goToLayer", layer: "forward", steps: 2 },
+  { type: "goToLayer", layer: "backward", steps: 1 },
   { type: "setEffect", effect: "color", value: 25 },
   { type: "changeEffect", effect: "ghost", delta: 25 },
   { type: "clearEffects" },

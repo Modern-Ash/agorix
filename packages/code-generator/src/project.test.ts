@@ -443,6 +443,22 @@ describe("layers", () => {
     expect(result.code).toContain('sprite.goToLayer("front");');
     expectValidRanges(result);
   });
+
+  it("projects goToLayer with steps", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "goToLayer", layer: "forward", steps: 2 }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const result = projectProgram(program);
+    expect(result.code).toContain('sprite.goToLayer("forward", 2);');
+    expectValidRanges(result);
+  });
 });
 
 describe("glide", () => {

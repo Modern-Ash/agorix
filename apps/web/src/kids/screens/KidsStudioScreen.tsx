@@ -370,6 +370,8 @@ const COPY = {
     bounceOnEdge: "Rebotar en el borde",
     layerFront: "Pasar al frente",
     layerBack: "Pasar al fondo",
+    layerForward: "Subir una capa",
+    layerBackward: "Bajar una capa",
     dirRight: "derecha",
     dirDown: "abajo",
     dirLeft: "izquierda",
@@ -741,6 +743,8 @@ const COPY = {
     bounceOnEdge: "Bounce on edge",
     layerFront: "Go to front",
     layerBack: "Go to back",
+    layerForward: "Go forward a layer",
+    layerBackward: "Go back a layer",
     dirRight: "right",
     dirDown: "down",
     dirLeft: "left",
@@ -3244,7 +3248,11 @@ export function KidsStudioScreen({
       case "bounceOnEdge":
         return copy.bounceOnEdge;
       case "goToLayer":
-        return statement.layer === "front" ? copy.layerFront : copy.layerBack;
+        return statement.layer === "front"
+          ? copy.layerFront
+          : statement.layer === "back"
+            ? copy.layerBack
+            : `${statement.layer === "forward" ? copy.layerForward : copy.layerBackward}${(statement.steps ?? 1) > 1 ? ` ×${statement.steps}` : ""}`;
       case "switchCostume":
         return `${copy.costume}: ${galleryCharacterName(characterOfCostume(statement.costumeId, "nova"), locale)}`;
       case "switchBackdrop":
@@ -6878,6 +6886,21 @@ export function KidsStudioScreen({
                       label: copy.layerBack,
                       block: "goToLayer",
                       onAdd: () => add({ type: "goToLayer", layer: "back" }),
+                    },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.layerForward,
+                      block: "goToLayer",
+                      onAdd: () => add({ type: "goToLayer", layer: "forward", steps: 1 }),
+                    },
+                    {
+                      label: copy.layerBackward,
+                      block: "goToLayer",
+                      onAdd: () => add({ type: "goToLayer", layer: "backward", steps: 1 }),
                     },
                   ]}
                 />

@@ -160,3 +160,19 @@ test("distance to the mouse is saved in a variable and shows its value", async (
   await page.getByRole("button", { name: "+ Si toca el ratón: mover", exact: true }).click();
   await expect(page.locator(".kids-program-block").last()).toContainText("tocando el ratón");
 });
+
+test("go up or down a layer reorders the characters on the stage", async ({ page }) => {
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("button", { name: "+ Bajar una capa", exact: true }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("Bajar una capa");
+  const order = () =>
+    page
+      .locator(".kids-studio-stage-actor")
+      .evaluateAll((nodes) => nodes.map((node) => (node as HTMLElement).style.zIndex));
+  const before = await order();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect.poll(order).not.toEqual(before);
+  await page.getByRole("button", { name: "+ Subir una capa", exact: true }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("Subir una capa");
+});
