@@ -114,6 +114,11 @@ const KEYS: Readonly<Record<string, string>> = {
   "down arrow": "ArrowDown",
   "left arrow": "ArrowLeft",
   "right arrow": "ArrowRight",
+  enter: "Enter",
+  // Letters and digits are written the same in Scratch and here.
+  ...Object.fromEntries(
+    [..."abcdefghijklmnopqrstuvwxyz0123456789"].map((key) => [key, key] as const),
+  ),
 };
 /** A text the scene keeps as a word: at most 20 letters and no control characters. */
 export function wordOf(value: string): Expression | undefined {

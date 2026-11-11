@@ -88,12 +88,13 @@ describe("Escena libre input sensors", () => {
 
   it("rejects a key outside the studio set and a timer outside a number slot", () => {
     const history = createEditorHistory(createStudioProgram("nova"));
-    expect(() =>
-      appendStudioStatement(history, nova, {
-        type: "if",
-        condition: { type: "keyDown", key: "Enter" },
-        then: [{ type: "move", steps: 40 }],
-      }),
-    ).toThrow();
+    for (const key of ["Shift", "F5", "A", "ab"])
+      expect(() =>
+        appendStudioStatement(history, nova, {
+          type: "if",
+          condition: { type: "keyDown", key },
+          then: [{ type: "move", steps: 40 }],
+        }),
+      ).toThrow();
   });
 });
