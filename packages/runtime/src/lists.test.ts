@@ -50,6 +50,81 @@ describe("lists (issue #468)", () => {
     expect(result.world.lists?.["l"]?.items).toEqual([10, 30]);
   });
 
+  it("clears items, reports the first matching position, and changes list visibility", () => {
+    const result = run(
+      [
+        store({ type: "listIndexOf", listId: "l", value: num(20) }),
+        { type: "hideList", listId: "l" },
+        { type: "listClear", listId: "l" },
+        { type: "showList", listId: "l" },
+      ],
+      [10, 20, 20],
+    );
+    expect(result.world.variables?.["r"]?.value).toBe(2);
+    expect(result.world.lists?.["l"]).toEqual({ items: [], visible: true });
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "setVariable",
+      "hideList",
+      "listClear",
+      "showList",
+    ]);
+    expect(
+      run([store({ type: "listIndexOf", listId: "l", value: num(9) })], [1]).world.variables?.["r"]
+        ?.value,
+    ).toBe(0);
+  });
+
+  it("contains controls a condition and matches words without case", () => {
+    const mixed: ProjectProgram = {
+      ...program([], [], true),
+      lists: [{ id: "l", name: "items", initialItems: ["Pera", 3], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "listContains",
+                listId: "l",
+                value: { type: "textLiteral", value: "pera" },
+              },
+              then: [
+                store({
+                  type: "listIndexOf",
+                  listId: "l",
+                  value: { type: "textLiteral", value: "PERA" },
+                }),
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(runProgram(mixed, createWorldState()).world.variables?.["r"]?.value).toBe(1);
+    const absent: ProjectProgram = {
+      ...mixed,
+      scripts: [
+        {
+          ...mixed.scripts[0]!,
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "listContains",
+                listId: "l",
+                value: { type: "textLiteral", value: "missing" },
+              },
+              then: [store(num(9))],
+            },
+          ],
+        },
+      ],
+    };
+    expect(runProgram(absent, createWorldState()).world.variables?.["r"]?.value).toBe(0);
+  });
+
   it("inserts before a one-based position and replaces an existing item", () => {
     const result = run(
       [

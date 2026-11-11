@@ -205,6 +205,26 @@ describe("a scene with a list that holds numbers or words round-trips (design: w
           value: { type: "listLength", listId: "studio-list-1" },
         },
         { type: "setVariable", variableId: "studio-var-1", value: at(2) },
+        {
+          type: "setVariable",
+          variableId: "studio-var-1",
+          value: {
+            type: "listIndexOf",
+            listId: "studio-list-1",
+            value: { type: "textLiteral", value: "pera" },
+          },
+        },
+        {
+          type: "if",
+          condition: {
+            type: "listContains",
+            listId: "studio-list-1",
+            value: { type: "textLiteral", value: "uva" },
+          },
+          then: [{ type: "showList", listId: "studio-list-1" }],
+        },
+        { type: "hideList", listId: "studio-list-1" },
+        { type: "listClear", listId: "studio-list-1" },
       ]),
     ],
     {
@@ -233,6 +253,10 @@ describe("a scene with a list that holds numbers or words round-trips (design: w
       "data_deleteoflist",
       "data_itemoflist",
       "data_lengthoflist",
+      "data_itemnumoflist",
+      "data_listcontainsitem",
+      "data_showlist",
+      "data_hidelist",
     ])
       expect(opcodes).toContain(wanted);
     const add = Object.values(project.targets[1]!.blocks).find(

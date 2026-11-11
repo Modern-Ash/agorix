@@ -142,12 +142,17 @@ export type BlockType =
   | "variables_change"
   | "variables_show"
   | "variables_hide"
+  | "lists_show"
+  | "lists_hide"
   | "lists_add"
+  | "lists_clear"
   | "lists_remove_at"
   | "lists_insert_at"
   | "lists_replace_at"
   | "lists_item"
   | "lists_length"
+  | "lists_contains"
+  | "lists_index_of"
   | "literal_boolean"
   | "literal_number";
 
@@ -516,6 +521,19 @@ function expressionFromBlock(
       };
     case "lists_length":
       return { type: "listLength", listId: stringField(block, "listId", path) };
+    case "lists_contains":
+    case "lists_index_of": {
+      const listId = stringField(block, "listId", path);
+      const value = expressionFromBlock(
+        requiredInput(block, "value", path),
+        `${nodeId}/value`,
+        `${path}.inputs.value`,
+        mapping,
+      );
+      return block.type === "lists_contains"
+        ? { type: "listContains", listId, value }
+        : { type: "listIndexOf", listId, value };
+    }
     case "procedures_param":
       return { type: "param", paramId: stringField(block, "paramId", path) as ProcedureParamId };
     case "operator_add":
@@ -891,6 +909,12 @@ function statementFromBlock(
           mapping,
         ),
       };
+    case "lists_clear":
+      return { type: "listClear", listId: stringField(block, "listId", path) };
+    case "lists_show":
+      return { type: "showList", listId: stringField(block, "listId", path) };
+    case "lists_hide":
+      return { type: "hideList", listId: stringField(block, "listId", path) };
     case "lists_remove_at":
       return {
         type: "listRemoveAt",
@@ -1117,6 +1141,14 @@ function expressionToBlock(
       };
     case "listLength":
       return { id, type: "lists_length", fields: { listId: expression.listId } };
+    case "listContains":
+    case "listIndexOf":
+      return {
+        id,
+        type: expression.type === "listContains" ? "lists_contains" : "lists_index_of",
+        fields: { listId: expression.listId },
+        inputs: { value: expressionToBlock(expression.value, `${nodeId}/value`, mapping) },
+      };
     case "param":
       return { id, type: "procedures_param", fields: { paramId: expression.paramId } };
     case "add":
@@ -1447,6 +1479,12 @@ function statementToBlock(
         fields: { listId: statement.listId },
         inputs: { value: expressionToBlock(statement.value, `${nodeId}/value`, mapping) },
       };
+    case "listClear":
+      return { id, type: "lists_clear", fields: { listId: statement.listId } };
+    case "showList":
+      return { id, type: "lists_show", fields: { listId: statement.listId } };
+    case "hideList":
+      return { id, type: "lists_hide", fields: { listId: statement.listId } };
     case "listRemoveAt":
       return {
         id,

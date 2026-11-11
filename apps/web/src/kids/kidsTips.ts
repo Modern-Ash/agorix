@@ -158,7 +158,13 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
   },
   showVariable: { es: "Mostrar la variable en el escenario", en: "Show the variable on the stage" },
   hideVariable: { es: "Esconder la variable", en: "Hide the variable" },
+  showList: { es: "Mostrar la lista en el escenario", en: "Show the list on the stage" },
+  hideList: { es: "Esconder la lista del escenario", en: "Hide the list from the stage" },
   listAdd: { es: "Agregar algo al final de la lista", en: "Add something to the end of the list" },
+  listClear: {
+    es: "Borrar todos los elementos de la lista",
+    en: "Remove every item from the list",
+  },
   listRemoveAt: { es: "Sacar algo de la lista", en: "Take something out of the list" },
   listInsertAt: {
     es: "Meter algo en un lugar de la lista",
@@ -468,6 +474,12 @@ export const TIP_RULES: readonly TipRule[] = [
   { match: named(/^\+ (Cambiar valor|Change value)/), tip: BLOCK_TIPS["changeVariable"]! },
   { match: named(/^\+ (Mostrar variable|Show variable)/), tip: BLOCK_TIPS["showVariable"]! },
   { match: named(/^\+ (Ocultar variable|Hide variable)/), tip: BLOCK_TIPS["hideVariable"]! },
+  { match: named(/^\+ (Mostrar lista|Show list)/), tip: BLOCK_TIPS["showList"]! },
+  { match: named(/^\+ (Ocultar lista|Hide list)/), tip: BLOCK_TIPS["hideList"]! },
+  {
+    match: named(/^\+ (Borrar todo de la lista|Delete all of list)/),
+    tip: BLOCK_TIPS["listClear"]!,
+  },
   { match: named(/^\+ (Agregar número|Add number)/), tip: BLOCK_TIPS["listAdd"]! },
   { match: named(/^\+ (Agregar palabra|Add word)/), tip: BLOCK_TIPS["listAdd"]! },
   { match: named(/^\+ (Insertar palabra|Insert word)/), tip: BLOCK_TIPS["listInsertAt"]! },

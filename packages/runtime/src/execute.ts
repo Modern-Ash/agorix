@@ -41,6 +41,8 @@ import {
   setTextWorld,
   setTextVisibilityWorld,
   listAddWorld,
+  listClearWorld,
+  listIndexOfWorld,
   listRemoveAtWorld,
   listInsertAtWorld,
   listReplaceAtWorld,
@@ -51,6 +53,7 @@ import {
   playSoundWorld,
   sayWorld,
   setVariableVisibilityWorld,
+  setListVisibilityWorld,
   setVariableWorld,
   setSpriteSizeWorld,
   setEffectWorld,
@@ -631,6 +634,20 @@ function evaluateExpression(
     }
     case "listLength":
       return getListLengthWorld(state.world, expression.listId);
+    case "listIndexOf":
+      return listIndexOfWorld(
+        state.world,
+        expression.listId,
+        listItemOf(evaluateExpression(expression.value, `${path}.value`, state)),
+      );
+    case "listContains":
+      return (
+        listIndexOfWorld(
+          state.world,
+          expression.listId,
+          listItemOf(evaluateExpression(expression.value, `${path}.value`, state)),
+        ) > 0
+      );
     case "listItem": {
       const index = coerceNumber(evaluateExpression(expression.index, `${path}.index`, state));
       const item = getListItemWorld(state.world, expression.listId, index);
@@ -891,6 +908,9 @@ function* executeStatement(
       state.world = next;
       break;
     }
+    case "listClear":
+      state.world = listClearWorld(state.world, statement.listId);
+      break;
     case "listRemoveAt": {
       const index = evaluateNumber(statement.index, `${path}.index`, state);
       const next = listRemoveAtWorld(state.world, statement.listId, index);
@@ -1048,6 +1068,14 @@ function* executeStatement(
       break;
     case "hideVariable":
       state.world = setVariableVisibilityWorld(state.world, statement.variableId, false);
+      break;
+    case "showList":
+    case "hideList":
+      state.world = setListVisibilityWorld(
+        state.world,
+        statement.listId,
+        statement.type === "showList",
+      );
       break;
     case "repeat": {
       if (!Number.isInteger(statement.count)) {

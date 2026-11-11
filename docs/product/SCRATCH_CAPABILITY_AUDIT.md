@@ -110,6 +110,12 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre now exposes one-based insert and replace at positions 1–10, plus a bounded whole-number random expression for a variable. Insertion before item 1 works on an empty list; position `length + 1` appends. Invalid positions and a full 100-item list leave state unchanged with a runtime note. A seeded run reproduces the same random result.
 - The canonical validator, deterministic runtime, block adapter and Agorix Code, Python and TypeScript projections recognize the two new list operations. Tests cover valid and invalid indexes, full lists, code projection, visual authoring and reopen. More general list expressions, sensing, custom procedures and extensions remain open.
 
+## List queries, clear and visibility (next #538 increment)
+
+- Escena libre offers Delete all, Contains and Item # of for bounded lists of numbers or words. Item # is one-based and returns zero when absent; word matching ignores case. Show list and Hide list change the watcher after execution without changing list contents.
+- These blocks use the canonical program and deterministic runtime, and project to Agorix Code, TypeScript, Python and Java. Scratch import/export preserves the corresponding list blocks, including Delete all as `data_deleteoflist` with `all` in its index slot. Tests cover validation, runtime results, visual block round-trip, Scratch round-trip and a browser run.
+- The visual palette keeps the existing limits of three lists, 100 items per list and 20 characters per word. General Scratch list indexing and unbounded list operations remain outside this increment.
+
 ## Sound volume and variable watchers (next #538 increment)
 
 - Escena libre exposes bounded Set volume and Change volume blocks. They update the canonical program, the deterministic runtime and the generated code. A gallery sound played from the run trace uses the volume recorded at that sound block; the stage shows the final volume after Jugar.

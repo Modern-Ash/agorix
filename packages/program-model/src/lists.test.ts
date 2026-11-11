@@ -36,6 +36,36 @@ describe("list validation (issue #468)", () => {
     expect(validateProgram(ok)).toEqual(ok);
   });
 
+  it("validates list queries, clear, and watcher visibility", () => {
+    const ok = base(
+      { lists: [list], variables: [{ id: "r", name: "r", initialValue: 0, visible: true }] },
+      [
+        { type: "showList", listId: "l" },
+        { type: "hideList", listId: "l" },
+        { type: "listClear", listId: "l" },
+        {
+          type: "setVariable",
+          variableId: "r",
+          value: { type: "listIndexOf", listId: "l", value: { type: "numericLiteral", value: 2 } },
+        },
+        {
+          type: "if",
+          condition: {
+            type: "listContains",
+            listId: "l",
+            value: { type: "textLiteral", value: "x" },
+          },
+          then: [{ type: "showList", listId: "l" }],
+        },
+      ],
+    );
+    expect(validateProgram(ok)).toEqual(ok);
+    for (const type of ["showList", "hideList", "listClear"] as const)
+      expect(() => validateProgram(base({ lists: [list] }, [{ type, listId: "missing" }]))).toThrow(
+        ProgramValidationError,
+      );
+  });
+
   it("accepts a list that holds numbers and words, as Scratch does", () => {
     const mixed = base({ lists: [{ ...list, initialItems: [1, "hola", "3", ""] }] });
     expect(validateProgram(mixed)).toEqual(mixed);

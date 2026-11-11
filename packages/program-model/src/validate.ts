@@ -513,6 +513,18 @@ function validateExpression(input: unknown, path: string, state: ValidationState
         listId: assertKnownListId(input.listId, `${path}.listId`, state),
         index: validateExpression(input.index, `${path}.index`, state),
       };
+    case "listContains":
+      return {
+        type: "listContains",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+        value: validateExpression(input.value, `${path}.value`, state),
+      };
+    case "listIndexOf":
+      return {
+        type: "listIndexOf",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+        value: validateExpression(input.value, `${path}.value`, state),
+      };
     case "listLength":
       return {
         type: "listLength",
@@ -1069,6 +1081,11 @@ function validateStatement(
         listId: assertKnownListId(input.listId, `${path}.listId`, state),
         value: validateExpression(input.value, `${path}.value`, state),
       };
+    case "listClear":
+      return {
+        type: "listClear",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+      };
     case "listRemoveAt":
       return {
         type: "listRemoveAt",
@@ -1092,6 +1109,12 @@ function validateStatement(
       return {
         type: "hideVariable",
         variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+      };
+    case "showList":
+    case "hideList":
+      return {
+        type: input.type === "showList" ? "showList" : "hideList",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
       };
     case "repeat": {
       if (typeof input.count !== "number") {

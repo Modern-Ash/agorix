@@ -13,6 +13,27 @@ describe("list blocks (issue #468)", () => {
           trigger: { type: "onStart" },
           statements: [
             { type: "listAdd", listId: "l", value: { type: "listLength", listId: "l" } },
+            { type: "showList", listId: "l" },
+            { type: "hideList", listId: "l" },
+            { type: "listClear", listId: "l" },
+            {
+              type: "listAdd",
+              listId: "l",
+              value: {
+                type: "listIndexOf",
+                listId: "l",
+                value: { type: "numericLiteral", value: 1 },
+              },
+            },
+            {
+              type: "if",
+              condition: {
+                type: "listContains",
+                listId: "l",
+                value: { type: "numericLiteral", value: 2 },
+              },
+              then: [{ type: "showList", listId: "l" }],
+            },
             {
               type: "listRemoveAt",
               listId: "l",

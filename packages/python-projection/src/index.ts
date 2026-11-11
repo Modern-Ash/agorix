@@ -530,6 +530,20 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           ")\n",
       );
       return;
+    case "listClear":
+      writeMapped(writer, nodeId, indent + listIdentifier(writer, statement.listId) + ".clear()\n");
+      return;
+    case "showList":
+    case "hideList":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          (statement.type === "showList" ? "show_list(" : "hide_list(") +
+          JSON.stringify(statement.listId) +
+          ")\n",
+      );
+      return;
     case "listRemoveAt":
       writeMapped(
         writer,
@@ -961,6 +975,22 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "listLength":
       return "len(" + listIdentifier(writer, expression.listId) + ")";
+    case "listContains":
+      return (
+        "list_contains(" +
+        listIdentifier(writer, expression.listId) +
+        ", " +
+        expressionText(writer, expression.value, nodeId + "/value") +
+        ")"
+      );
+    case "listIndexOf":
+      return (
+        "list_index_of(" +
+        listIdentifier(writer, expression.listId) +
+        ", " +
+        expressionText(writer, expression.value, nodeId + "/value") +
+        ")"
+      );
     case "param":
       return paramText(writer, expression.paramId);
     case "randomInteger":

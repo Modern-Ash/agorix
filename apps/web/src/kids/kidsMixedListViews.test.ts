@@ -22,6 +22,18 @@ const program: ProjectProgram = {
       trigger: { type: "onStart" },
       statements: [
         { type: "listAdd", listId: "l", value: word("hola") },
+        { type: "showList", listId: "l" },
+        { type: "hideList", listId: "l" },
+        {
+          type: "setVariable",
+          variableId: "n",
+          value: { type: "listIndexOf", listId: "l", value: word("hola") },
+        },
+        {
+          type: "if",
+          condition: { type: "listContains", listId: "l", value: word("a") },
+          then: [{ type: "listClear", listId: "l" }],
+        },
         { type: "setText", variableId: "t", value: at(1) },
         {
           type: "if",
@@ -45,6 +57,9 @@ describe("the code views of a list that holds numbers and words", () => {
     expect(text).toContain('palabras = ["a", 2]');
     expect(text).toContain('list_add(palabras, "hola")');
     expect(text).toContain('== "uno"');
+    expect(text).toContain('list_index_of(palabras, "hola")');
+    expect(text).toContain('list_contains(palabras, "a")');
+    expect(text).toContain("palabras.clear()");
   });
 
   it("Agorix code writes them the same way", () => {
@@ -52,6 +67,8 @@ describe("the code views of a list that holds numbers and words", () => {
     expect(text).toContain('list "Palabras" = "a", 2');
     expect(text).toContain('add "hola" to "Palabras"');
     expect(text).toContain('= "uno"');
+    expect(text).toContain('item # of "hola" in "Palabras"');
+    expect(text).toContain('delete all of "Palabras"');
   });
 
   it("TypeScript writes them the same way", () => {
@@ -59,5 +76,8 @@ describe("the code views of a list that holds numbers and words", () => {
     expect(text).toContain('const palabras = ["a", 2];');
     expect(text).toContain('listAdd(palabras, "hola");');
     expect(text).toContain('=== "uno"');
+    expect(text).toContain('listIndexOf(palabras, "hola")');
+    expect(text).toContain('listContains(palabras, "a")');
+    expect(text).toContain("listClear(palabras)");
   });
 });
