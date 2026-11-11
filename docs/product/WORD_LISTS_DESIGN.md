@@ -1,48 +1,56 @@
-# Lists of words: a design to decide
+# Lists that hold numbers or words
 
-Not built. Today a list holds **numbers only**. A child who comes from Scratch will want lists of words (names, a shopping list, a quiz with several answers), and the Scratch importer and exporter leave them out for that reason. This says what exists, what a word list would touch, and the four decisions that are the owner's, with a recommendation for each. Nothing is written until they are decided.
+Decided (owner, 2026-11-11): **one kind of list that holds numbers or words, as Scratch does.** This replaces the first proposal, which kept word lists apart. It says what that means for the model and for the child, the rules that keep a child's words safe, what it touches, and the increments. Nothing is built yet.
 
 ## What exists
 
-- **Word values** (#1319): up to three text variables, each at most 20 letters with no control characters, empty at the start. A child sets them with a short word, with another word variable, or with what they type (`askText`). They show in the same "Data after Play" panel as the numbers.
-- **Number lists:** up to three, empty at the start, up to 100 numbers, with add, remove at, insert at, replace at, item of and length.
-- **Privacy rules that already hold:** a word the child writes stays on the device. The input Ori's model sees is built from block kinds and closed choices only (`createOriStudioInput`), never values. Findings sent to a provider carry kinds and counts only. A typed answer is kept only in the local input log of the run so a replay is exact.
+- **Word values** (#1319): up to three text variables, each at most 20 letters with no control characters, empty at the start, shown in the same "Data after Play" panel as the numbers.
+- **Lists:** up to three, empty at the start in the scene, up to 100 items, **numbers only**, with add, remove at, insert at, replace at, item of and length.
+- **Privacy rules that already hold:** a word the child writes stays on the device. The input Ori's model sees is built from block kinds and closed choices only. Findings sent to a provider carry kinds and counts only. A typed answer is kept only in the local input log of the run.
 
-## The new thing a word list would be
+## What changes
 
-A list whose items are words of the same kind as a word variable (at most 20 letters, no control characters). It is empty at the start, like every list and word value in the scene, so **a word list never puts a child's text in the program**: the items exist only while the program runs. That is different from a word typed into a "say" block, which is part of the program today. Exporting a scene (`.agorix` or `.sb3`) therefore carries the list's name and no items.
+A list item may be a **number or a word** (a word: at most 20 letters, no control characters, the same rule as a word variable). The list statements and reporters stay the same (`listAdd`, `listRemoveAt`, `listInsertAt`, `listReplaceAt`, `listItem`, `listLength`); what widens is what they may hold and carry:
 
-## Decisions
+- The value of an add, insert or replace may be a number or a word (a word typed into the block, a word variable, a join).
+- `listItem` gives back whatever the item is.
+- Because Scratch lists are mixed too, the importer and the exporter map them one to one.
 
-**1. A separate kind of list, or one list that holds numbers or words?**
-Recommended: **separate** (`wordLists`, next to `textVariables`, as word variables are next to number variables). The scene already splits numbers and words this way, so a block never has to ask "is this item a number or a word?", the validator and the runtime keep one type per list, and the code views can write the item type plainly. The cost is a second set of blocks for the child. The alternative (typed lists) is closer to Scratch but spreads a "number or word" check through every block, reporter and projection.
+### One rule for using a number as a word and a word as a number
 
-**2. How big?**
-Recommended: **up to 3 word lists** (their own count, not shared with the number lists), **up to 20 items** each, **each item up to 20 letters**. Smaller than the number lists on purpose: a child's text takes room on a small screen and is read, not summed. The panel shows the first 10 items and "and N more".
+The cost of mixed lists is that an item can land where the other kind was expected. The runtime decides it in **one place**, with Scratch's rules, so no block has to ask:
 
-**3. How do words get in?**
-Recommended: from what the child **types** (the answer of an ask block, stored in a word variable, then "add this word to the list"), from **another word variable**, and from a **short word typed into the block** (the same allowance as a word variable today). No word comes from Ori, a file or the network.
+- A number used as a word is written with its digits ("12").
+- A word used as a number is its value if it reads as a number ("12"), and 0 if it does not.
+- Two items are equal when they are the same number, or the same word letter for letter ignoring capitals; a number and a word are equal only if the word reads as that number.
 
-**4. Where does the child's text appear?**
-Recommended: **the same "Data after Play" panel** that already shows word variables, as plain text (never as markup), truncated as above. No new surface, no text in the trace as a string the model reads (the trace records that a word was added and its length, as it does for a typed answer), no text in a finding or in anything sent out.
+The Studio checks (`checkedNumber`, `checkedText`) accept `listItem` in both kinds of slot, and the four code views write the item as the plain value, since the target languages also coerce or hold mixed lists.
+
+## Rules for a child's words (decided with the first proposal, unchanged)
+
+- **A list never puts a child's text in the program.** It is empty at the start, so the items exist only while the program runs. A word typed into an add block is part of the program like a word typed into a "say" block today; the list's contents are not. A scene exported as `.agorix` or `.sb3` carries the list's name and no items. (The core model may hold starting items; the Studio refuses them, as it does for numbers.)
+- **No text in the trace as a string a model reads.** The trace records that an item was added and, for a word, its length, as it does for a typed answer. A finding or anything sent out carries kinds and counts only.
+- **Where the words appear:** the same "Data after Play" panel, as plain text (never as markup), the first items shown and "and N more" after a fixed number of characters. No new surface.
+- **Where the words come from:** what the child types (an ask block's answer, kept in a word variable), another word variable, or a short word typed into the block. Never Ori, a file or the network. (A Scratch import brings a list's items only as far as the scene's starting rule allows: empty.)
+- **Moderation is out of scope**, as for word variables: the scene bounds length and characters, it does not judge words.
+
+## Caps (as recommended; say if you want others)
+
+At most **3 lists** (unchanged), **100 items** (unchanged), **20 letters** per word. The panel shortens a long list by characters, not by item count, so a list of numbers keeps showing as it does today.
 
 ## What it touches
 
-A word list needs its own statements and reporters in every layer, which is why it is a design and not a slice: the program model and validator, the runtime and its world state, the stage and the Data panel, the block editor, the four code views, the proposals pack map, the Studio palette and its tooltips, Ori's findings (a list nothing was ever added to, as `wordNeverSet` does for a word), the Scratch importer (`data_*list` blocks on a word list) and the Scratch exporter (lists are not written today). About a dozen packages and folders.
+The program model and validator (items may be words, with the word rule), the runtime and its world state (the item type, the one coercion rule, the trace without text), the stage's Data panel, the block editor and the Studio palette (an add block that takes a number or a word, with tooltips and accessibility), the four code views, Ori's findings (a list nothing was ever added to), the Scratch importer (`data_*list` blocks) and the Scratch exporter (lists are not written today). No new statement kinds, so the proposals pack map and the closed idea contract do not change.
 
 ## Increments, each a reviewable change
 
-1. Model, validator and runtime, no interface: the list, the blocks, the caps, the failure paths.
+1. Model, validator and runtime: mixed items, the coercion rule, the word rule, the trace without text, with tests for success and failure, and the existing numeric lists unchanged. No interface.
 2. The four code views and the block editor, with the correspondence tests.
-3. The Studio: palette, the Data panel, tooltips, accessibility, keyboard.
+3. The Studio: the add block with a number or a word, the Data panel, tooltips, accessibility, keyboard.
 4. Ori's finding and the Scratch importer.
-5. The Scratch exporter, so a scene with a word list round-trips.
-
-## What I need from the owner
-
-Pick, or change, the four recommendations above. If the answer to 1 is "typed lists", the plan changes shape (one list type, a "number or word" check in every block) and I would write that variant before building.
+5. The Scratch exporter, so a scene with a list round-trips.
 
 ## Risks to name
 
-- **A child's words are shown back in a panel.** The rules above keep them on the device and out of every finding, but this is the first list whose contents are child text, so it deserves the same privacy review the typed answer got (#1304).
-- **Moderation is out of scope.** The scene does not judge what a child types; it only bounds its length and characters. If that is not acceptable for lists, it is not acceptable for word variables either, and that is a separate decision.
+- **Mixed lists make comparisons and arithmetic depend on the one coercion rule.** It is the same rule Scratch uses, written and tested in one function, but a child who adds "3" and 3 to a list will see them behave alike. That is Scratch's behaviour and the point of choosing it.
+- **A child's words are shown back in a panel.** The rules above keep them on the device and out of every finding, but this is the first list whose contents can be child text, so it gets the privacy review the typed answer got (#1304) before increment 3.
