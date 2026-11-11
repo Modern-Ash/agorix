@@ -407,10 +407,81 @@ describe("Java projection corpus", () => {
 
   it("keeps the support API list in step with the stub it compiles against", () => {
     const declared = [
-      ...JAVA_SUPPORT_STUB.matchAll(/^\s+(?:void|double|boolean|String) (\w+)\(/gm),
+      ...JAVA_SUPPORT_STUB.matchAll(/^\s+(?:void|double|boolean|String|Object) (\w+)\(/gm),
     ].map((match) => match[1]);
     expect([...declared].sort()).toEqual([...JAVA_SUPPORT_API].sort());
   });
+
+  it.skipIf(!hasJavac)(
+    "a list that holds words compiles, and a list of numbers stays as it was",
+    () => {
+      const word = (value: string): Expression => ({ type: "textLiteral", value });
+      const at = (listId: string, index: number): Expression => ({
+        type: "listItem",
+        listId,
+        index: { type: "numericLiteral", value: index },
+      });
+      const mixed: ProjectProgram = {
+        schema: SCHEMA_VERSION,
+        variables: [{ id: "n", name: "n", initialValue: 0, visible: false }],
+        textVariables: [{ id: "t", name: "t", initialValue: "", visible: false }],
+        lists: [
+          { id: "l", name: "Palabras", initialItems: [], visible: true },
+          { id: "m", name: "Numeros", initialItems: [1, 2], visible: false },
+          { id: "p", name: "Copia", initialItems: [], visible: false },
+        ],
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              { type: "listAdd", listId: "l", value: word("hola") },
+              { type: "listAdd", listId: "l", value: { type: "numericLiteral", value: 3 } },
+              {
+                type: "listInsertAt",
+                listId: "l",
+                index: { type: "numericLiteral", value: 1 },
+                value: word("uno"),
+              },
+              {
+                type: "listReplaceAt",
+                listId: "l",
+                index: { type: "numericLiteral", value: 2 },
+                value: at("m", 1),
+              },
+              { type: "setText", variableId: "t", value: at("l", 1) },
+              {
+                type: "setVariable",
+                variableId: "n",
+                value: { type: "add", left: at("l", 3), right: at("m", 2) },
+              },
+              {
+                type: "if",
+                condition: { type: "equals", left: at("l", 1), right: word("uno") },
+                then: [
+                  { type: "listAdd", listId: "m", value: { type: "numericLiteral", value: 5 } },
+                ],
+              },
+              { type: "listAdd", listId: "l", value: at("l", 1) },
+              // A list fed from a list that holds words holds words too.
+              { type: "listAdd", listId: "p", value: at("l", 2) },
+            ],
+          },
+        ],
+      };
+      const text = projectJava(mixed).text;
+      expect(text).toContain("java.util.ArrayList<Object> palabras");
+      expect(text).toContain("java.util.ArrayList<Double> numeros");
+      expect(text).toContain("wordListInsertAt(");
+      expect(text).toContain("java.util.ArrayList<Object> copia");
+      // Words are compared as words, not as the number 0.
+      expect(text).toContain("valuesEqual(");
+      expect(text).toContain("java.util.ArrayList<Object> copia");
+      const result = javac(text);
+      expect(result.output).toBe("");
+      expect(result.ok).toBe(true);
+    },
+  );
 
   it.skipIf(!hasJavac)("is valid Java that compiles against the support API", () => {
     for (const [name, program] of [
