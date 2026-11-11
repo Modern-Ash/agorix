@@ -1,5 +1,5 @@
 // agora-allowlist-file: end-to-end test of the one microphone level meter (issue #1304); fake microphone.
-import { expect, test, type Page } from "./fixtures.js";
+import { expect, seedStorage, test, type Page } from "./fixtures.js";
 import { clickCreateScene } from "./helpers.js";
 
 test.use({
@@ -13,16 +13,16 @@ test.use({
 
 async function openScene(page: Page, levelSwitch: boolean) {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/kids");
-  await page.evaluate((on) => {
-    localStorage.clear();
-    localStorage.setItem("agorix.locale", "es");
-    if (on) localStorage.setItem("agorix.kids.microphoneLevel.v1", "on");
-    localStorage.setItem(
-      "agorix.kids.progress.v1",
-      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
-    );
-  }, levelSwitch);
+  await seedStorage(page, {
+    "agorix.locale": "es",
+    ...(levelSwitch ? { "agorix.kids.microphoneLevel.v1": "on" } : {}),
+    "agorix.kids.progress.v1": JSON.stringify({
+      onboarded: true,
+      avatar: "🐸",
+      stars: 0,
+      done: {},
+    }),
+  });
   await page.addInitScript(() => {
     const tracks: MediaStreamTrack[] = [];
     const w = window as unknown as { __tracks: MediaStreamTrack[]; __asked: unknown[] };
@@ -36,7 +36,7 @@ async function openScene(page: Page, levelSwitch: boolean) {
       return stream;
     };
   });
-  await page.reload();
+  await page.goto("/kids");
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await clickCreateScene(page);
 }

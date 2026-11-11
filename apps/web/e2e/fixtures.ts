@@ -1,4 +1,4 @@
-import { test as base } from "@playwright/test";
+import { test as base, type Page } from "@playwright/test";
 
 export * from "@playwright/test";
 
@@ -49,3 +49,28 @@ export const test = plainTest.extend({
     await use(context);
   },
 });
+
+/**
+ * Starts the page from clean storage with the given entries, **before the app first runs**.
+ *
+ * The older way (open the page, clear and set storage, reload) races the page that is already
+ * running: under load it can write its own state, rewrite the address or pick its language after
+ * the test changed storage, so the reload comes up in English, on the map, or in another route
+ * (#1230, #1317: the same specs failed on and off in CI). Seeding in an init script leaves no
+ * running page to race. It runs once per tab, so a later reload keeps what the page saved.
+ */
+export async function seedStorage(page: Page, entries: Record<string, string>): Promise<void> {
+  await page.addInitScript((seed) => {
+    try {
+      if (window.sessionStorage.getItem("agorix.e2e.seeded") !== null) return;
+      window.sessionStorage.setItem("agorix.e2e.seeded", "1");
+      window.localStorage.clear();
+      // What the shared fixture above sets for every page, restored after the clear.
+      window.localStorage.setItem("agorix.kids.palette.view.v1", "all");
+      window.localStorage.setItem("agorix.kids.palette.contextual.v1", "1");
+      for (const [key, value] of Object.entries(seed)) window.localStorage.setItem(key, value);
+    } catch {
+      // Storage can be unavailable in a test that blocks it on purpose.
+    }
+  }, entries);
+}

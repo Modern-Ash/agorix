@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./fixtures.js";
+import { expect, seedStorage, test, type Page } from "./fixtures.js";
 
 // Issue #359: tablets and phones never clip primary controls and offer 44px touch targets.
 // `hasTouch` makes `(pointer: coarse)` match, which is what a real tablet reports at 1180px.
@@ -27,12 +27,8 @@ for (const viewport of VIEWPORTS) {
 
 async function openFresh(page: Page, width: number, height: number) {
   await page.setViewportSize({ width, height });
+  await seedStorage(page, { "agorix.locale": "es" });
   await page.goto("/advanced");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("agorix.locale", "es");
-  });
-  await page.reload();
   await expect(page.locator(".learning-layout")).toBeVisible();
 }
 

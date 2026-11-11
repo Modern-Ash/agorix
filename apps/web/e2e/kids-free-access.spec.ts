@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures.js";
+import { expect, seedStorage, test } from "./fixtures.js";
 import { STUDIO_BLOCK_CATEGORY } from "../src/kids/kidsPaletteCatalog.js";
 import { clickCreateScene } from "./helpers.js";
 
@@ -47,14 +47,11 @@ for (const [name, viewport] of [
 ] as const) {
   test(`the create deep link shows one free path on ${name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.goto("/kids");
-    await page.evaluate((progress) => {
-      localStorage.clear();
-      localStorage.setItem("agorix.locale", "es");
-      localStorage.setItem("agorix.kids.progress.v1", JSON.stringify(progress));
-    }, PROGRESS);
+    await seedStorage(page, {
+      "agorix.locale": "es",
+      "agorix.kids.progress.v1": JSON.stringify(PROGRESS),
+    });
     await page.goto("/kids#/crear");
-    await page.reload();
     await expect(page.getByRole("heading", { name: "Crear", exact: true })).toBeVisible();
     await expect(
       page
