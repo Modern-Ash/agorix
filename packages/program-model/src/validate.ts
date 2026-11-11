@@ -39,6 +39,7 @@ import {
   MUSIC_TEMPO_MIN,
   MUSIC_TEMPO_MAX,
   MUSIC_PITCH_MAX,
+  LAYER_STEPS_MAX,
   MUSIC_PAN_MAX,
   MAX_NESTING_DEPTH,
   EVENT_KEY_MAX_LENGTH,
@@ -869,10 +870,34 @@ function validateStatement(
         pan: wholeNumber(input.pan, -MUSIC_PAN_MAX, MUSIC_PAN_MAX, `${path}.pan`),
       };
     case "goToLayer":
-      if (input.layer !== "front" && input.layer !== "back") {
-        fail("INVALID_FIELD_TYPE", `${path}.layer`, 'expected "front" or "back"', input.layer);
+      if (
+        input.layer !== "front" &&
+        input.layer !== "back" &&
+        input.layer !== "forward" &&
+        input.layer !== "backward"
+      ) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.layer`,
+          'expected "front", "back", "forward" or "backward"',
+          input.layer,
+        );
       }
-      return { type: "goToLayer", layer: input.layer };
+      if (input.layer === "front" || input.layer === "back") {
+        if (input.steps !== undefined)
+          fail(
+            "INVALID_FIELD_TYPE",
+            `${path}.steps`,
+            "only forward and backward take steps",
+            input.steps,
+          );
+        return { type: "goToLayer", layer: input.layer };
+      }
+      return {
+        type: "goToLayer",
+        layer: input.layer,
+        steps: wholeNumber(input.steps, 1, LAYER_STEPS_MAX, `${path}.steps`),
+      };
     case "bounceOnEdge":
       return { type: "bounceOnEdge" };
     case "say":

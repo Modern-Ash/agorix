@@ -369,7 +369,14 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(writer, nodeId, indent + "set pan " + statement.pan + "\n");
       return;
     case "goToLayer":
-      writeMapped(writer, nodeId, indent + "go to " + statement.layer + " layer\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          (statement.steps === undefined
+            ? "go to " + statement.layer + " layer\n"
+            : "go " + statement.layer + " " + statement.steps + " layers\n"),
+      );
       return;
     case "callProcedure":
       writeMapped(

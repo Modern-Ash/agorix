@@ -745,15 +745,17 @@ function statementFromBlock(
       return { type: "setPan", pan: numberField(block, "pan", path) };
     case "looks_go_to_layer": {
       const layer = stringField(block, "layer", path);
-      if (layer !== "front" && layer !== "back") {
+      if (layer !== "front" && layer !== "back" && layer !== "forward" && layer !== "backward") {
         throw new BlockEditorAdapterError(
           "INVALID_FIELD_TYPE",
           path,
-          'expected "front" or "back"',
+          'expected "front", "back", "forward" or "backward"',
           layer,
         );
       }
-      return { type: "goToLayer", layer };
+      return layer === "forward" || layer === "backward"
+        ? { type: "goToLayer", layer, steps: numberField(block, "steps", path) }
+        : { type: "goToLayer", layer };
     }
     case "motion_glide_to":
       return {
@@ -1324,7 +1326,14 @@ function statementToBlock(
     case "setPan":
       return { id, type: "music_set_pan", fields: { pan: statement.pan } };
     case "goToLayer":
-      return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
+      return {
+        id,
+        type: "looks_go_to_layer",
+        fields:
+          statement.steps === undefined
+            ? { layer: statement.layer }
+            : { layer: statement.layer, steps: statement.steps },
+      };
     case "callProcedure":
       return {
         id,

@@ -56,6 +56,9 @@ export const MUSIC_TEMPO_MIN = 60;
 export const MUSIC_TEMPO_MAX = 180;
 export const MUSIC_PITCH_MAX = 12;
 export const MUSIC_PAN_MAX = 100;
+
+/** Most places a character can move through the stage order in one block. */
+export const LAYER_STEPS_MAX = 10;
 /** Active calls above this depth end the run as budget-exceeded; recursion is allowed below it. */
 export const PROCEDURE_MAX_CALL_DEPTH = 16;
 

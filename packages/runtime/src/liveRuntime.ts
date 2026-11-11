@@ -1,3 +1,4 @@
+import { reorderActors } from "./stageOrder.js";
 import {
   CLOCK_PARTS,
   validateProgram,
@@ -336,8 +337,7 @@ export function createLiveRuntime(
     if (raw.statementType === "goToLayer") {
       const statement = statementAtNodeId(single, raw.nodeId);
       if (statement?.type === "goToLayer") {
-        const rest = stage.actorOrder.filter((id) => id !== actor.id);
-        stage.actorOrder = statement.layer === "front" ? [...rest, actor.id] : [actor.id, ...rest];
+        stage.actorOrder = reorderActors(stage.actorOrder, actor.id, statement);
       }
     }
     if (raw.statementType === "switchBackdrop") {

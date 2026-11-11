@@ -604,6 +604,13 @@ class Emitter {
       case "changeSize":
         return this.with("looks_changesizeby", parent, { CHANGE: statement.delta });
       case "goToLayer":
+        if (statement.steps !== undefined)
+          return this.with(
+            "looks_goforwardbackwardlayers",
+            parent,
+            { NUM: statement.steps },
+            { FORWARD_BACKWARD: [statement.layer, null] },
+          );
         return this.with(
           "looks_gotofrontback",
           parent,

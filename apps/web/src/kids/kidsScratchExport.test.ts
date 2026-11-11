@@ -123,6 +123,8 @@ describe("a wide scene round-trips through the importer (#1312)", () => {
         { type: "hide" },
         { type: "changeSize", delta: 25 },
         { type: "goToLayer", layer: "back" },
+        { type: "goToLayer", layer: "forward", steps: 2 },
+        { type: "goToLayer", layer: "backward", steps: 1 },
         { type: "setEffect", effect: "ghost", value: 50 },
         { type: "changeEffect", effect: "color", delta: 25 },
         { type: "clearEffects" },

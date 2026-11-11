@@ -54,6 +54,7 @@ export const JAVA_SUPPORT_API = [
   "pointTowards",
   "bounceOnEdge",
   "goToLayer",
+  "moveLayers",
   "setEffect",
   "changeEffect",
   "clearEffects",
@@ -161,6 +162,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void pointTowards(String actor) {}
     void bounceOnEdge() {}
     void goToLayer(String layer) {}
+    void moveLayers(String direction, int steps) {}
     void setEffect(String effect, double value) {}
     void changeEffect(String effect, double delta) {}
     void clearEffects() {}
@@ -713,7 +715,11 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
     case "bounceOnEdge":
       return line("bounceOnEdge()");
     case "goToLayer":
-      return line(`goToLayer(${literal(node.layer)})`);
+      return line(
+        node.steps === undefined
+          ? `goToLayer(${literal(node.layer)})`
+          : `moveLayers(${literal(node.layer)}, ${node.steps})`,
+      );
     case "setEffect":
       return line(`setEffect(${literal(node.effect)}, ${number(node.value)})`);
     case "changeEffect":

@@ -441,7 +441,10 @@ function projectStatement(
       write(writer, `${pad}music.setPan(${statement.pan});\n`);
       return;
     case "goToLayer":
-      write(writer, `${pad}sprite.goToLayer(${JSON.stringify(statement.layer)});\n`);
+      write(
+        writer,
+        `${pad}sprite.goToLayer(${JSON.stringify(statement.layer)}${statement.steps === undefined ? "" : `, ${statement.steps}`});\n`,
+      );
       return;
     case "callProcedure":
       write(
