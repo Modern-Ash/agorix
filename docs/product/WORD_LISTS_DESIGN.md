@@ -54,3 +54,8 @@ The program model and validator (items may be words, with the word rule), the ru
 
 - **Mixed lists make comparisons and arithmetic depend on the one coercion rule.** It is the same rule Scratch uses, written and tested in one function, but a child who adds "3" and 3 to a list will see them behave alike. That is Scratch's behaviour and the point of choosing it.
 - **A child's words are shown back in a panel.** The rules above keep them on the device and out of every finding, but this is the first list whose contents can be child text, so it gets the privacy review the typed answer got (#1304) before increment 3.
+
+## Status
+
+**Increment 1 is built** (model, validator and runtime, no interface; PR #1373). A list item is a number or a word. In the engine a word is at most 40 characters, the same limit as every other text in a program; the 20 letters of the caps above are what the Studio will let a child type, enforced in the Studio's own checks (increment 3), as for word variables. The runtime keeps a number as a number, a word as a word (clipped), and turns true or false into the word. Reading is by the rules the runtime already had for variables and words: a word that reads as a number is that number, any other word is 0 where a number is wanted, a number is its digits where a word is wanted, and two words are equal ignoring capitals. The four code views write a word as a quoted literal in a list's starting items; writing items inside blocks is increment 2. The Studio still declares lists empty, so no word from a child is ever in a program.
+
