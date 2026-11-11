@@ -6717,6 +6717,27 @@ button.kids-band-chip {
 .kids-ori-noticed-panel p {
   margin: 0 0 8px;
 }
+/* Ori's quiet mark on the block, script or tab it noticed something about. */
+.kids-ori-block-mark {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6b3fd0;
+  font: inherit;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+.kids-ori-block-mark:hover,
+.kids-ori-block-mark:focus-visible {
+  background: #f4efff;
+}
+.kids-ori-script-mark {
+  font-size: 0.95rem;
+  border: 1px dashed #6b3fd0;
+}
 .kids-program-block[data-finding="true"],
 .kids-program-drop[data-finding="true"] {
   outline: 3px solid #f2a33a;

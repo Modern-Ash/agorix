@@ -239,11 +239,15 @@ export const TIP_RULES: readonly TipRule[] = [
     tip: t("Tu franja de edad: qué te muestra la app", "Your age band: what the app shows you"),
   },
   {
-    match: named(/^(Guion|Script) [123]$/),
+    match: named(/^(Guion|Script) [123]\b/),
     tip: t(
       "Elegir qué guion del personaje ves y editás",
       "Choose which script of the character you see and edit",
     ),
+  },
+  {
+    match: (c) => c.classList.contains("kids-ori-block-mark"),
+    tip: t("Ori notó algo aquí: tocá para ver qué", "Ori noticed something here: tap to see what"),
   },
   {
     match: named(/^\+ (Otro guion|Another script)$/),
