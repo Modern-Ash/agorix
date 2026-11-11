@@ -264,6 +264,12 @@ function checkedText(value: Expression, program: ProjectProgram, depth = 0): boo
       (checkedText(value.right, program, depth + 1) ||
         checkedNumber(value.right, program, depth + 1))
     );
+  // An item of a list may be a word (a list holds numbers or words): read as a word it is one.
+  if (value.type === "listItem")
+    return (
+      program.lists?.some((item) => item.id === value.listId) === true &&
+      checkedStudioIndex(value.index)
+    );
   if (value.type === "letterOf")
     return (
       value.index.type === "numericLiteral" &&
@@ -273,6 +279,11 @@ function checkedText(value: Expression, program: ProjectProgram, depth = 0): boo
       checkedText(value.value, program, depth + 1)
     );
   return false;
+}
+
+/** What a list may take: a number, or a word (a short one typed in, a word variable, an item). */
+function checkedListItem(value: Expression, program: ProjectProgram, arity: number): boolean {
+  return checkedNumber(value, program, 0, arity) || checkedText(value, program);
 }
 
 function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, arity = 0): boolean {
@@ -719,7 +730,7 @@ function checked(
   if (statement.type === "listAdd")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      checkedNumber(statement.value, program, 0, arity)
+      checkedListItem(statement.value, program, arity)
     );
   if (statement.type === "listRemoveAt")
     return (
@@ -730,7 +741,7 @@ function checked(
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
       checkedStudioIndex(statement.index) &&
-      checkedNumber(statement.value, program, 0, arity)
+      checkedListItem(statement.value, program, arity)
     );
   if (statement.type === "repeat")
     return (

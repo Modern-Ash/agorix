@@ -101,3 +101,28 @@ describe("Ori on the script the child has open (#1363)", () => {
     expect(() => proposeOriStudioIntent(context, "rainFalls")).not.toThrow();
   });
 });
+
+describe("what Ori's model is given never holds a child's words (design: word lists)", () => {
+  it("is built from block kinds and closed choices only", () => {
+    const withWords: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      lists: [{ id: "l", name: "Compras", initialItems: [], visible: true }],
+      scripts: [
+        {
+          id: "studio-actor-1-nova",
+          trigger: { type: "greenFlag" },
+          statements: [
+            { type: "listAdd", listId: "l", value: { type: "textLiteral", value: "secretito" } },
+            { type: "say", text: "mi secreto", seconds: 2 },
+          ],
+        },
+      ],
+    };
+    const input = JSON.stringify(
+      createOriStudioInput({ actorId: "actor:studio-1-nova", locale: "es", program: withWords }),
+    );
+    expect(input).not.toContain("secretito");
+    expect(input).not.toContain("mi secreto");
+    expect(input).not.toContain("Compras");
+  });
+});

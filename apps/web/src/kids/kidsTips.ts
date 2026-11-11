@@ -465,6 +465,12 @@ export const TIP_RULES: readonly TipRule[] = [
   { match: named(/^\+ (Mostrar variable|Show variable)/), tip: BLOCK_TIPS["showVariable"]! },
   { match: named(/^\+ (Ocultar variable|Hide variable)/), tip: BLOCK_TIPS["hideVariable"]! },
   { match: named(/^\+ (Agregar número|Add number)/), tip: BLOCK_TIPS["listAdd"]! },
+  { match: named(/^\+ (Agregar palabra|Add word)/), tip: BLOCK_TIPS["listAdd"]! },
+  { match: named(/^\+ (Insertar palabra|Insert word)/), tip: BLOCK_TIPS["listInsertAt"]! },
+  {
+    match: named(/^\+ (Cambiar por palabra|Replace with word)/),
+    tip: BLOCK_TIPS["listReplaceAt"]!,
+  },
   { match: named(/^\+ (Quitar elemento|Remove item)/), tip: BLOCK_TIPS["listRemoveAt"]! },
   { match: named(/^\+ (Insertar número|Insert number)/), tip: BLOCK_TIPS["listInsertAt"]! },
   { match: named(/^\+ (Cambiar elemento|Replace item)/), tip: BLOCK_TIPS["listReplaceAt"]! },
