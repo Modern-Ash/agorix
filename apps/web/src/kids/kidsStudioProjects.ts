@@ -1,4 +1,9 @@
-import { exportScratchProject, type ScratchExport } from "./kidsScratchExport.js";
+import {
+  exportScratchProject,
+  type ScratchExport,
+  type ScratchPicture,
+} from "./kidsScratchExport.js";
+import { decodeInBrowser, scratchPictureOf, type PictureDecoder } from "./kidsScratchPictures.js";
 import type { ScratchImportResult } from "./kidsScratchImport.js";
 import {
   parseAgorixProject,
@@ -502,12 +507,13 @@ export function exportStudioProject(
 }
 
 /** A saved scene as a Scratch `.sb3`, with the report of what Scratch could not hold. */
-export function exportScratchStudioProject(
+export async function exportScratchStudioProject(
   id: string,
   locale: Locale,
   store: ProjectStore = new ProjectStore(),
   storage: StudioStorage | undefined = browserStorage(),
-): ScratchExport {
+  decode: PictureDecoder = decodeInBrowser,
+): Promise<ScratchExport> {
   if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
   const saved = store.load(id);
   const backdropId =
@@ -518,7 +524,22 @@ export function exportScratchStudioProject(
       { x: actor.x, y: actor.y, direction: actor.direction, size: actor.size },
     ]),
   );
-  return exportScratchProject(saved.program, backdropId, locale, positions);
+  // The child's own pictures and recordings go with the scene; a picture is made into a PNG.
+  const assets = studioArtAssets(
+    saved.metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
+  );
+  const pictures = new Map<string, ScratchPicture>();
+  for (const asset of assets) {
+    if (asset.kind === "sound") continue;
+    const picture = await scratchPictureOf(asset.source, decode);
+    if (picture !== null) pictures.set(asset.id, picture);
+  }
+  return exportScratchProject(saved.program, backdropId, locale, positions, {
+    assets,
+    actorCostumes: costumeMap(saved.metadata.actors?.items),
+    stageBackdropId: saved.metadata.stage?.backdropId,
+    pictures,
+  });
 }
 
 export function importStudioProject(
