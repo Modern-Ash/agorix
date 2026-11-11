@@ -1263,9 +1263,15 @@ function validateList(input: unknown, path: string, state: ValidationState): Pro
       input.initialItems.length,
     );
   }
-  const initialItems = input.initialItems.map((item, index) => {
+  const initialItems = input.initialItems.map((item, index): number | string => {
+    if (typeof item === "string") return checkTextValue(item, `${path}.initialItems[${index}]`);
     if (typeof item !== "number") {
-      fail("INVALID_FIELD_TYPE", `${path}.initialItems[${index}]`, "expected a number", item);
+      fail(
+        "INVALID_FIELD_TYPE",
+        `${path}.initialItems[${index}]`,
+        "expected a number or a word",
+        item,
+      );
     }
     checkBounds(item, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX, `${path}.initialItems[${index}]`);
     return item;

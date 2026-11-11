@@ -57,8 +57,11 @@ export interface TextState {
   readonly visible: boolean;
 }
 
+/** A list item: a number or a word, as in Scratch. */
+export type ListItem = number | string;
+
 export interface ListState {
-  readonly items: readonly number[];
+  readonly items: readonly ListItem[];
   readonly visible: boolean;
 }
 
@@ -218,7 +221,13 @@ function normalizeLists(
       continue;
     }
     normalized[key] = {
-      items: (list.items ?? []).slice(0, LIST_MAX_ITEMS).map((item) => normalizeCoordinate(item)),
+      items: (list.items ?? [])
+        .slice(0, LIST_MAX_ITEMS)
+        .map((item) =>
+          typeof item === "string"
+            ? item.slice(0, TEXT_VALUE_MAX_LENGTH)
+            : normalizeCoordinate(item),
+        ),
       visible: list.visible ?? false,
     };
   }
@@ -822,7 +831,7 @@ export function getListItemWorld(
   world: WorldState,
   listId: string,
   index: number,
-): number | undefined {
+): ListItem | undefined {
   const items = world.lists?.[listId]?.items;
   const at = Math.trunc(index);
   return items === undefined || !Number.isFinite(index) || at < 1 || at > items.length
@@ -834,7 +843,7 @@ export function getListLengthWorld(world: WorldState, listId: string): number {
   return world.lists?.[listId]?.items.length ?? 0;
 }
 
-function withList(world: WorldState, listId: string, items: readonly number[]): WorldState {
+function withList(world: WorldState, listId: string, items: readonly ListItem[]): WorldState {
   const previous = world.lists?.[listId];
   return createWorldState({
     ...world,
@@ -842,11 +851,19 @@ function withList(world: WorldState, listId: string, items: readonly number[]): 
   });
 }
 
-/** Returns the same world when the list is full; the caller records a note. */
-export function listAddWorld(world: WorldState, listId: string, value: number): WorldState {
-  if (!Number.isFinite(value)) {
-    throw new RangeError(`list item must be finite: ${value}`);
+/** A number must be finite; a word must fit the text limit. */
+function assertListItem(value: ListItem): void {
+  if (typeof value === "string") {
+    if (value.length > TEXT_VALUE_MAX_LENGTH)
+      throw new RangeError(`list word is longer than ${TEXT_VALUE_MAX_LENGTH} characters`);
+    return;
   }
+  if (!Number.isFinite(value)) throw new RangeError(`list item must be finite: ${value}`);
+}
+
+/** Returns the same world when the list is full; the caller records a note. */
+export function listAddWorld(world: WorldState, listId: string, value: ListItem): WorldState {
+  assertListItem(value);
   const items = world.lists?.[listId]?.items ?? [];
   return items.length >= LIST_MAX_ITEMS ? world : withList(world, listId, [...items, value]);
 }
@@ -868,9 +885,9 @@ export function listInsertAtWorld(
   world: WorldState,
   listId: string,
   index: number,
-  value: number,
+  value: ListItem,
 ): WorldState {
-  if (!Number.isFinite(value)) throw new RangeError(`list item must be finite: ${value}`);
+  assertListItem(value);
   const items = world.lists?.[listId]?.items;
   if (
     items === undefined ||
@@ -888,9 +905,9 @@ export function listReplaceAtWorld(
   world: WorldState,
   listId: string,
   index: number,
-  value: number,
+  value: ListItem,
 ): WorldState {
-  if (!Number.isFinite(value)) throw new RangeError(`list item must be finite: ${value}`);
+  assertListItem(value);
   const items = world.lists?.[listId]?.items;
   if (items === undefined || !Number.isInteger(index) || index < 1 || index > items.length)
     return world;

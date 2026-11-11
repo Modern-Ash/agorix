@@ -36,6 +36,11 @@ describe("list validation (issue #468)", () => {
     expect(validateProgram(ok)).toEqual(ok);
   });
 
+  it("accepts a list that holds numbers and words, as Scratch does", () => {
+    const mixed = base({ lists: [{ ...list, initialItems: [1, "hola", "3", ""] }] });
+    expect(validateProgram(mixed)).toEqual(mixed);
+  });
+
   it("keeps programs without lists unchanged (no lists key)", () => {
     expect("lists" in validateProgram(base({}))).toBe(false);
   });
@@ -60,7 +65,9 @@ describe("list validation (issue #468)", () => {
         },
       ]),
       base({ lists: [list, list] }),
-      base({ lists: [{ ...list, initialItems: ["x"] }] }),
+      base({ lists: [{ ...list, initialItems: ["x".repeat(41)] }] }),
+      base({ lists: [{ ...list, initialItems: [true] }] }),
+      base({ lists: [{ ...list, initialItems: [{ word: "x" }] }] }),
       base({ lists: [{ ...list, initialItems: [Number.NaN] }] }),
       base({ lists: [{ ...list, initialItems: [2_000_000] }] }),
       base({ lists: [{ ...list, initialItems: Array.from({ length: 101 }, () => 1) }] }),

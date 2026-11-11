@@ -314,6 +314,15 @@ function coerceText(value: ExpressionValue): string {
   return String(Math.round(value * 100) / 100);
 }
 
+/**
+ * What a list keeps of a value: a number stays a number, a word stays a word (clipped), and a
+ * true or false becomes the word. The one place that decides it, as for variables and words.
+ */
+function listItemOf(value: ExpressionValue): number | string {
+  if (typeof value === "number") return normalizeRuntimeNumber(value, "list item");
+  return clipText(coerceText(value));
+}
+
 function clipText(text: string): string {
   return text.slice(0, TEXT_VALUE_MAX_LENGTH);
 }
@@ -815,7 +824,7 @@ function* executeStatement(
       state.world = changeSpriteSizeWorld(state.world, statement.delta);
       break;
     case "listAdd": {
-      const value = evaluateNumber(statement.value, `${path}.value`, state);
+      const value = listItemOf(evaluateExpression(statement.value, `${path}.value`, state));
       const next = listAddWorld(state.world, statement.listId, value);
       if (next === state.world) addNote(state, `list-full:${statement.listId}:${path}`);
       state.world = next;
@@ -832,7 +841,7 @@ function* executeStatement(
     case "listInsertAt":
     case "listReplaceAt": {
       const index = evaluateNumber(statement.index, `${path}.index`, state);
-      const value = evaluateNumber(statement.value, `${path}.value`, state);
+      const value = listItemOf(evaluateExpression(statement.value, `${path}.value`, state));
       const next =
         statement.type === "listInsertAt"
           ? listInsertAtWorld(state.world, statement.listId, index, value)

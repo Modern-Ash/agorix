@@ -696,7 +696,7 @@ function projectText(program: ProjectProgram): {
   for (const list of program.lists ?? []) {
     write(
       writer,
-      `const ${formatListName(context, list.id, `lists/${list.id}`)} = [${list.initialItems.map(formatNumber).join(", ")}];\n`,
+      `const ${formatListName(context, list.id, `lists/${list.id}`)} = [${list.initialItems.map((item) => (typeof item === "string" ? JSON.stringify(item) : formatNumber(item))).join(", ")}];\n`,
     );
     if (list.visible) {
       write(writer, `showList(${JSON.stringify(list.name)});\n`);
