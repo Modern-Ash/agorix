@@ -398,10 +398,78 @@ export const ORI_IMPORT_INTENTS = ["scratchGoTo", "scratchMove", "scratchSound"]
  */
 export const ORI_SENSOR_INTENTS = ["reactKey", "reactMouse", "reactEdge", "reactTouch"] as const;
 
+/**
+ * Ideas for the scene's lists and words, each from blocks the child already has: ask a word and put
+ * it in the list, read the first item into a word, keep how many items there are. The words always
+ * come from the child (what they type), never from Ori. Offered by the Studio only while the
+ * program does not do that yet.
+ */
+export const ORI_LIST_INTENTS = ["listAsk", "listFirst", "listCount"] as const;
+
 export type OriStudioIntent =
   | (typeof ORI_STUDIO_INTENTS)[number]
   | (typeof ORI_IMPORT_INTENTS)[number]
-  | (typeof ORI_SENSOR_INTENTS)[number];
+  | (typeof ORI_SENSOR_INTENTS)[number]
+  | (typeof ORI_LIST_INTENTS)[number];
+
+export function isListIntent(value: string): value is (typeof ORI_LIST_INTENTS)[number] {
+  return (ORI_LIST_INTENTS as readonly string[]).includes(value);
+}
+
+/**
+ * The blocks of a list idea, using the first word, number and list the scene has. It throws when
+ * the scene lacks what the idea needs, so an idea is never made for a scene it does not fit.
+ */
+function listIdeaBlocks(
+  intent: (typeof ORI_LIST_INTENTS)[number],
+  program: ProjectProgram,
+): Statement[] {
+  const list = program.lists?.[0];
+  const word = program.textVariables?.[0];
+  const number = program.variables?.[0];
+  if (list === undefined) throw new Error("a list idea needs a list");
+  const first: Expression = {
+    type: "listItem",
+    listId: list.id,
+    index: { type: "numericLiteral", value: 1 },
+  };
+  if (intent === "listAsk") {
+    if (word === undefined) throw new Error("this idea needs a word");
+    return [
+      { type: "askText", promptId: "word", variableId: word.id },
+      {
+        type: "listAdd",
+        listId: list.id,
+        value: { type: "textVariable", variableId: word.id },
+      },
+    ];
+  }
+  if (intent === "listFirst") {
+    if (word === undefined) throw new Error("this idea needs a word");
+    return [{ type: "setText", variableId: word.id, value: first }];
+  }
+  if (number === undefined) throw new Error("this idea needs a number");
+  return [
+    {
+      type: "setVariable",
+      variableId: number.id,
+      value: { type: "listLength", listId: list.id },
+    },
+  ];
+}
+
+/** Whether a block is one of the list ideas, written exactly as Ori writes it for this scene. */
+function closedListIdea(statement: Statement, program: ProjectProgram): boolean {
+  return ORI_LIST_INTENTS.some((intent) => {
+    try {
+      return listIdeaBlocks(intent, program).some(
+        (block) => JSON.stringify(block) === JSON.stringify(statement),
+      );
+    } catch {
+      return false;
+    }
+  });
+}
 
 /** The stage-edge condition the Studio accepts (the same four numbers as the scene's own block). */
 const EDGE_CONDITION = {
@@ -521,6 +589,7 @@ function allowedForIntent(
   script: Script,
   copyScript: boolean,
   others: readonly string[] = [],
+  program?: ProjectProgram,
 ): boolean {
   return (
     allowed(statement, script) ||
@@ -538,12 +607,19 @@ function allowedForIntent(
     (statement.type === "playDrum" && [0.5, 1].includes(statement.beats)) ||
     (statement.type === "setInstrument" && statement.instrument !== undefined) ||
     (statement.type === "setTempo" && [90, 120].includes(statement.bpm)) ||
-    (statement.type === "if" && closedSensorIf(statement, others))
+    (statement.type === "if" && closedSensorIf(statement, others)) ||
+    (program !== undefined && closedListIdea(statement, program))
   );
 }
 
 const INTENT_BLOCKS: Readonly<
-  Record<Exclude<OriStudioIntent, (typeof ORI_SENSOR_INTENTS)[number]>, readonly Statement[]>
+  Record<
+    Exclude<
+      OriStudioIntent,
+      (typeof ORI_SENSOR_INTENTS)[number] | (typeof ORI_LIST_INTENTS)[number]
+    >,
+    readonly Statement[]
+  >
 > = {
   melody: [
     { type: "setInstrument", instrument: "bell" },
@@ -715,8 +791,13 @@ function intentBlocks(
   locale: "es" | "en",
   copyScript: boolean,
   others: readonly string[] = [],
+  program?: ProjectProgram,
 ): readonly Statement[] {
   if (isSensorIntent(intent)) return [sensorBlock(intent, others)];
+  if (isListIntent(intent)) {
+    if (program === undefined) throw new Error("a list idea needs the scene");
+    return listIdeaBlocks(intent, program);
+  }
   if (intent === "greet")
     return GREETINGS[locale].map((text) => ({ type: "say" as const, text, seconds: 2 }));
   // Rain and a crowd: when the character has a copy script, each copy lives by it.
@@ -731,7 +812,8 @@ export function isOriStudioIntent(value: unknown): value is OriStudioIntent {
   return (
     (ORI_STUDIO_INTENTS as readonly unknown[]).includes(value) ||
     (ORI_IMPORT_INTENTS as readonly unknown[]).includes(value) ||
-    (ORI_SENSOR_INTENTS as readonly unknown[]).includes(value)
+    (ORI_SENSOR_INTENTS as readonly unknown[]).includes(value) ||
+    (ORI_LIST_INTENTS as readonly unknown[]).includes(value)
   );
 }
 
@@ -752,6 +834,7 @@ export function proposeOriStudioIntent(
     context.locale,
     hasCopyScript(selected),
     otherActors(selected.program, context.actorId),
+    selected.program,
   );
   const first = selected.script.statements.length;
   if (first + statements.length > MAX_STATEMENTS) throw new Error("not enough room");
@@ -834,6 +917,7 @@ export function validateOriStudioIntentProposal(
           selected.script,
           copyScript,
           otherActors(selected.program, context.actorId),
+          selected.program,
         ),
     ) ||
     proposal.affectedActorIds?.join() !== context.actorId ||

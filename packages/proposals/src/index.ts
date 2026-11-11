@@ -1371,8 +1371,38 @@ function procedureAritiesForStatement(statement: Statement): Map<string, number>
   return arities;
 }
 
+/**
+ * The words (text variables) and lists a statement refers to, found anywhere in it. Like the
+ * number variables, they are only given a stand-in declaration for the shape check; whether they
+ * really exist is checked against the actual program when the proposal is applied.
+ */
+function wordAndListIdsForStatement(statement: Statement): {
+  readonly words: readonly string[];
+  readonly lists: readonly string[];
+} {
+  const words = new Set<string>();
+  const lists = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) return value.forEach(visit);
+    if (typeof value !== "object" || value === null) return;
+    const node = value as Record<string, unknown>;
+    if (typeof node["listId"] === "string") lists.add(node["listId"]);
+    if (
+      (node["type"] === "textVariable" ||
+        node["type"] === "setText" ||
+        node["type"] === "askText") &&
+      typeof node["variableId"] === "string"
+    )
+      words.add(node["variableId"]);
+    Object.values(node).forEach(visit);
+  };
+  visit(statement);
+  return { words: [...words], lists: [...lists] };
+}
+
 function probeProgramForStatement(statement: Statement): ProjectProgram {
   const variableIds = variableIdsForStatement(statement);
+  const { words, lists } = wordAndListIdsForStatement(statement);
   // A call is checked here only for shape; whether the block really exists, and whether its number
   // of arguments matches, is checked against the actual script when the proposal is applied.
   const procedures = [...procedureAritiesForStatement(statement)].map(([id, arity]) => ({
@@ -1403,6 +1433,14 @@ function probeProgramForStatement(statement: Statement): ProjectProgram {
             visible: true,
           })),
         }),
+    ...(words.length === 0
+      ? {}
+      : {
+          textVariables: words.map((id) => ({ id, name: id, initialValue: "", visible: true })),
+        }),
+    ...(lists.length === 0
+      ? {}
+      : { lists: lists.map((id) => ({ id, name: id, initialItems: [], visible: true })) }),
     scripts: [
       {
         id: "probe",
