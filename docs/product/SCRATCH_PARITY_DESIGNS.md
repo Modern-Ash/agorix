@@ -212,3 +212,9 @@ What is written: movement, looks, size, effects, layers, waits, loops, if and if
 What is not written, and counted in the message after the export: the scene's built-in sounds (they are synthesized, not audio files), questions with a prompt, lists and custom blocks. The standard pictures of the characters are still stand-ins drawn from the glyph and colour.
 
 Found on the way: the importer read "point in direction 90" (Scratch's right) as 180 (left) in the scene. Fixed, with a test.
+
+## Correction: Ori and several scripts per character (#1363)
+
+When more than one script per character landed, Ori's Studio checks still counted a character's extra scripts (`studio-actor-N-<character>-s2` and `-s3`) as characters of their own, did not recognise their ids, and refused the whole scene as outside the Studio. So in any scene where a character had a second script, **asking Ori for an idea failed**, for every character. The tests did not cover Ori in such a scene. Fixed: Ori's checks treat a character's extra scripts as part of that character, and the review lists every script a character owns.
+
+Ori's goals from the closed list now work on the script the child has open: the context can name the script (`scriptId`; absent means the character's first), the ghost blocks appear in that script, one undo takes the idea back, and switching tabs drops an idea made for another script. The ideas that bring a script for the copies are for the first script only. The idea Ori's model offers and the "and / or" idea still land in the first script, and the screen jumps to Script 1 while one of them is shown; the model request to the server is unchanged.

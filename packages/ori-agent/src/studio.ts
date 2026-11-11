@@ -21,6 +21,8 @@ import type { OriTextModel } from "./index.js";
 export const ORI_STUDIO_VERSION = "agorix/ori-studio/v2";
 export interface OriStudioContext {
   readonly actorId: string;
+  /** The character's script Ori works on; absent means its first one. */
+  readonly scriptId?: string;
   readonly locale: "es" | "en";
   readonly program: ProjectProgram;
 }
@@ -32,19 +34,44 @@ export interface OriStudioDecision {
 
 const SCRIPT_ID = /^studio-actor-([1-9][0-9]?)-([a-z]+)$/;
 const CLONE_SCRIPT_ID = /^studio-actor-[1-9][0-9]?-[a-z]+-clone$/;
+/** A character's second and third scripts (issue #1363). */
+const EXTRA_SCRIPT_ID = /^studio-actor-[1-9][0-9]?-[a-z]+-s[23]$/;
 const MAX_OUTPUT_CHARS = 4096;
 const MAX_SCRIPTS = 12;
 const MAX_STATEMENTS = 60;
 
 function actorIdForScript(id: string): string {
-  return `actor:${id.replace(/^studio-actor-/, "studio-")}`;
+  return `actor:${id.replace(/-(clone|s[23])$/, "").replace(/^studio-actor-/, "studio-")}`;
+}
+
+/** Every script a character owns, for the review: its own, its extra ones, and its copy script. */
+function actorsOf(
+  program: ProjectProgram,
+  withCopyScript: boolean,
+): { id: string; scripts: string[] }[] {
+  const mains = program.scripts.filter(
+    (script) => !CLONE_SCRIPT_ID.test(script.id) && !EXTRA_SCRIPT_ID.test(script.id),
+  );
+  return mains.map((main) => ({
+    id: actorIdForScript(main.id),
+    scripts: [
+      main.id,
+      ...program.scripts
+        .filter((script) => EXTRA_SCRIPT_ID.test(script.id) && script.id.startsWith(`${main.id}-`))
+        .map((script) => script.id),
+      ...(withCopyScript ? [`${main.id}-clone`] : []),
+    ],
+  }));
 }
 
 function target(context: OriStudioContext) {
   if (context.locale !== "es" && context.locale !== "en") throw new Error("invalid locale");
   const program = validateProgram(context.program);
   // A character's copy script (issue #1311) is never the one Ori edits; it only has to be there.
-  const characters = program.scripts.filter((script) => !CLONE_SCRIPT_ID.test(script.id));
+  // A character's extra scripts (#1363) belong to it: they are not characters of their own.
+  const characters = program.scripts.filter(
+    (script) => !CLONE_SCRIPT_ID.test(script.id) && !EXTRA_SCRIPT_ID.test(script.id),
+  );
   if (
     characters.length < 1 ||
     characters.length > MAX_SCRIPTS ||
@@ -63,11 +90,24 @@ function target(context: OriStudioContext) {
     })
   )
     throw new Error("program is outside Kids studio");
-  const index = program.scripts.findIndex(
-    (script) => actorIdForScript(script.id) === context.actorId,
+  const mainIndex = program.scripts.findIndex(
+    (script) =>
+      !CLONE_SCRIPT_ID.test(script.id) &&
+      !EXTRA_SCRIPT_ID.test(script.id) &&
+      actorIdForScript(script.id) === context.actorId,
   );
-  if (index < 0) throw new Error("actor is outside Kids studio");
-  return { program, index, script: program.scripts[index]! };
+  if (mainIndex < 0) throw new Error("actor is outside Kids studio");
+  // Ori works on the script the child has open; by default the character's first one.
+  const index =
+    context.scriptId === undefined
+      ? mainIndex
+      : program.scripts.findIndex(
+          (script) =>
+            script.id === context.scriptId && actorIdForScript(script.id) === context.actorId,
+        );
+  if (index < 0 || CLONE_SCRIPT_ID.test(program.scripts[index]!.id))
+    throw new Error("script is outside Kids studio");
+  return { program, index, script: program.scripts[index]!, main: program.scripts[mainIndex]! };
 }
 
 const PROCEDURE_ID = /^proc-[1-9][0-9]*-[1-9][0-9]*$/;
@@ -224,10 +264,7 @@ export function validateOriStudioProposal(context: OriStudioContext, raw: unknow
   )
     throw new Error("proposal outside studio allow-list");
   return createProposalReview(selected.program, proposal, {
-    actors: selected.program.scripts.map((script) => ({
-      id: actorIdForScript(script.id),
-      scripts: [script.id],
-    })),
+    actors: actorsOf(selected.program, false),
   });
 }
 
@@ -403,8 +440,8 @@ function closedIdeaBlock(statement: Statement): boolean {
 }
 
 /** Whether the character the idea is for has the script its copies start with. */
-function hasCopyScript(selected: { program: ProjectProgram; script: Script }): boolean {
-  return selected.program.scripts.some((script) => script.id === `${selected.script.id}-clone`);
+function hasCopyScript(selected: { program: ProjectProgram; main: Script }): boolean {
+  return selected.program.scripts.some((script) => script.id === `${selected.main.id}-clone`);
 }
 
 function allowedForIntent(statement: Statement, script: Script, copyScript: boolean): boolean {
@@ -624,6 +661,9 @@ export function proposeOriStudioIntent(
   const adds = COPY_SCRIPTS[intent];
   // An idea that brings its own copy script is only for a character that has none yet.
   if (adds !== undefined && hasCopyScript(selected)) throw new Error("copy script already exists");
+  // The copy script belongs to the character's first script.
+  if (adds !== undefined && selected.script !== selected.main)
+    throw new Error("copy script ideas are for the first script");
   const statements = intentBlocks(intent, context.locale, hasCopyScript(selected));
   const first = selected.script.statements.length;
   if (first + statements.length > MAX_STATEMENTS) throw new Error("not enough room");
@@ -632,7 +672,7 @@ export function proposeOriStudioIntent(
     adds === undefined
       ? undefined
       : {
-          id: `${selected.script.id}-clone`,
+          id: `${selected.main.id}-clone`,
           trigger: { type: "onCloneStart" as const },
           statements: [...adds],
         };
@@ -691,7 +731,7 @@ export function validateOriStudioIntentProposal(
     proposal.operations.length > 8 ||
     (added !== undefined &&
       (hasCopyScript(selected) ||
-        added.id !== `${selected.script.id}-clone` ||
+        added.id !== `${selected.main.id}-clone` ||
         added.trigger.type !== "onCloneStart" ||
         (added.procedures?.length ?? 0) > 0 ||
         added.statements.length < 1 ||
@@ -718,16 +758,7 @@ export function validateOriStudioIntentProposal(
   )
     throw new Error("proposal outside studio allow-list");
   return createProposalReview(selected.program, proposal, {
-    actors: selected.program.scripts.flatMap((script) =>
-      CLONE_SCRIPT_ID.test(script.id)
-        ? []
-        : [
-            {
-              id: actorIdForScript(script.id),
-              // A character owns its script and, if it will have one, its copy script.
-              scripts: [script.id, `${script.id}-clone`],
-            },
-          ],
-    ),
+    // A character owns its scripts and, if it will have one, its copy script.
+    actors: actorsOf(selected.program, true),
   });
 }
