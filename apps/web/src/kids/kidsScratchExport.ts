@@ -1,5 +1,6 @@
 import type {
   Expression,
+  MathFunction,
   ProjectAsset,
   ProjectProgram,
   Script,
@@ -69,6 +70,9 @@ interface Names {
   readonly sound: (id: string) => string | undefined;
   readonly broadcast: (message: string) => string;
 }
+
+const scratchMathName = (name: MathFunction): string =>
+  name === "exp" ? "e ^" : name === "pow10" ? "10 ^" : name;
 
 const KEY_NAME: Readonly<Record<string, string>> = {
   Space: "space",
@@ -331,6 +335,16 @@ class Emitter {
           expression.right,
           parent,
         );
+      case "mathFunction": {
+        const rounds = expression.function === "round";
+        const made = this.block(rounds ? "operator_round" : "operator_mathop", parent, {
+          ...(rounds ? {} : { fields: { OPERATOR: [scratchMathName(expression.function), null] } }),
+        });
+        const operand = this.value(expression.value, made.id);
+        if (operand === null) return null;
+        (made.block["inputs"] as Json)["NUM"] = operand;
+        return made.id;
+      }
       case "randomInteger":
         return this.binary(
           "operator_random",

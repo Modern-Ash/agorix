@@ -2993,3 +2993,27 @@ test("pressing Enter on a focused control is that control's own press, not a key
   await page.keyboard.press("Enter");
   await expect(actor).toHaveAttribute("style", before!);
 });
+
+test("free scene takes a square root with the new math functions", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Raiz");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("16");
+  await page.getByRole("button", { name: "+ Fijar valor" }).click();
+  await page.getByRole("combobox", { name: "Función" }).selectOption("sqrt");
+  await page.getByRole("button", { name: "+ Fijar con función" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Raiz: 4")).toBeVisible();
+});
