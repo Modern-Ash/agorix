@@ -88,7 +88,9 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
       "lists/" + list.id,
       listIdentifier(writer, list.id) +
         " = [" +
-        list.initialItems.map(formatNumber).join(", ") +
+        list.initialItems
+          .map((item) => (typeof item === "string" ? JSON.stringify(item) : formatNumber(item)))
+          .join(", ") +
         "]\n",
     );
     if (list.visible) {

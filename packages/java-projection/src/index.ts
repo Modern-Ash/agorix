@@ -825,7 +825,9 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     const initial =
       list.initialItems.length === 0
         ? "new java.util.ArrayList<>()"
-        : `new java.util.ArrayList<>(java.util.List.of(${list.initialItems.map(doubleLiteral).join(", ")}))`;
+        : `new java.util.ArrayList<>(java.util.List.of(${list.initialItems
+            .map((item) => (typeof item === "string" ? literal(item) : doubleLiteral(item)))
+            .join(", ")}))`;
     mapped(
       writer,
       `lists/${list.id}`,

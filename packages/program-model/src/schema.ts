@@ -960,11 +960,15 @@ export interface ProgramTextVariable {
   readonly visible: boolean;
 }
 
-/** A list of numbers with a visible watcher flag, declared like a variable. */
+/**
+ * A list with a visible watcher flag, declared like a variable. An item is a number or a word, as
+ * in Scratch; the runtime has one rule for using one as the other (see `coerceNumber` and
+ * `coerceText`). A word is at most TEXT_VALUE_MAX_LENGTH characters.
+ */
 export interface ProgramList {
   readonly id: string;
   readonly name: string;
-  readonly initialItems: readonly number[];
+  readonly initialItems: readonly (number | string)[];
   readonly visible: boolean;
 }
 
