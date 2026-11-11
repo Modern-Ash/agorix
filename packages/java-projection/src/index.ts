@@ -83,6 +83,11 @@ export const JAVA_SUPPORT_API = [
   "listInsertAt",
   "listReplaceAt",
   "listItem",
+  "wordListInsertAt",
+  "wordListReplaceAt",
+  "wordListItem",
+  "textOf",
+  "valuesEqual",
   "joinText",
   "letterOf",
   "containsText",
@@ -173,14 +178,19 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void showVariable(String name) {}
     void hideVariable(String name) {}
     void showList(String name) {}
-    void listRemoveAt(java.util.List<Double> list, double index) {}
+    void listRemoveAt(java.util.List<?> list, double index) {}
     void listInsertAt(java.util.List<Double> list, double index, double value) {}
     void listReplaceAt(java.util.List<Double> list, double index, double value) {}
     double listItem(java.util.List<Double> list, double index) { return 0; }
+    void wordListInsertAt(java.util.List<Object> list, double index, Object value) {}
+    void wordListReplaceAt(java.util.List<Object> list, double index, Object value) {}
+    Object wordListItem(java.util.List<Object> list, double index) { return ""; }
+    double numberOf(Object value) { return 0; }
+    boolean valuesEqual(Object left, Object right) { return false; }
+    String textOf(Object value) { return String.valueOf(value); }
     String joinText(String left, String right) { return left + right; }
     String letterOf(double index, String text) { return ""; }
     boolean containsText(String text, String part) { return false; }
-    double numberOf(String text) { return 0; }
     void penDown() {}
     void penUp() {}
     void setPenColor(String color) {}
@@ -226,11 +236,13 @@ interface Writer {
   diagnostics: LanguageProjectionDiagnostic[];
   variableNames: ReadonlyMap<string, string>;
   listNames: ReadonlyMap<string, string>;
+  /** Lists that hold words as well as numbers; Java gets an `Object` list for each. */
+  mixedLists: ReadonlySet<string>;
   procedureNames: ReadonlyMap<string, string>;
   paramNames: ReadonlyMap<string, string> | undefined;
 }
 
-type Kind = "number" | "boolean" | "text";
+type Kind = "number" | "boolean" | "text" | "mixed";
 
 const INDENT = "    ";
 
@@ -387,7 +399,7 @@ function handlerName(trigger: Trigger): string {
 // --- expressions -----------------------------------------------------------------------------
 
 /** Whether an expression is a number or a true/false value, as the canonical runtime coerces them. */
-function kindOf(expression: Expression): Kind {
+function kindOf(writer: Writer, expression: Expression): Kind {
   switch (expression.type) {
     case "touchingGoal":
     case "touchingActor":
@@ -411,6 +423,8 @@ function kindOf(expression: Expression): Kind {
     case "join":
     case "letterOf":
       return "text";
+    case "listItem":
+      return writer.mixedLists.has(expression.listId) ? "mixed" : "number";
     default:
       return "number";
   }
@@ -418,20 +432,53 @@ function kindOf(expression: Expression): Kind {
 
 function asNumber(writer: Writer, expression: Expression, nodeId: string): string {
   const text = expressionText(writer, expression, nodeId);
-  const kind = kindOf(expression);
-  return kind === "boolean" ? `(${text} ? 1 : 0)` : kind === "text" ? `numberOf(${text})` : text;
+  const kind = kindOf(writer, expression);
+  return kind === "boolean"
+    ? `(${text} ? 1 : 0)`
+    : kind === "text" || kind === "mixed"
+      ? `numberOf(${text})`
+      : text;
 }
 
 function asBoolean(writer: Writer, expression: Expression, nodeId: string): string {
   const text = expressionText(writer, expression, nodeId);
-  const kind = kindOf(expression);
-  return kind === "boolean" ? text : kind === "text" ? `(!${text}.isEmpty())` : `(${text} != 0)`;
+  const kind = kindOf(writer, expression);
+  return kind === "boolean"
+    ? text
+    : kind === "text"
+      ? `(!${text}.isEmpty())`
+      : kind === "mixed"
+        ? `(!textOf(${text}).isEmpty())`
+        : `(${text} != 0)`;
 }
 
 /** Words as Java text: a number or a true/false value is written out as digits or words. */
 function asText(writer: Writer, expression: Expression, nodeId: string): string {
   const text = expressionText(writer, expression, nodeId);
-  return kindOf(expression) === "text" ? text : `String.valueOf(${text})`;
+  const kind = kindOf(writer, expression);
+  return kind === "text" ? text : kind === "mixed" ? `textOf(${text})` : `String.valueOf(${text})`;
+}
+
+/** A value as Java holds it when the kind is not known: a word, a number boxed, or true or false as a word. */
+function asValue(writer: Writer, expression: Expression, nodeId: string): string {
+  const text = expressionText(writer, expression, nodeId);
+  const kind = kindOf(writer, expression);
+  return kind === "boolean"
+    ? `String.valueOf(${text})`
+    : kind === "number"
+      ? `(double) ${text}`
+      : text;
+}
+
+/** What goes into a list that holds words as well as numbers: a word, or a number boxed. */
+function asItem(writer: Writer, expression: Expression, nodeId: string): string {
+  const text = expressionText(writer, expression, nodeId);
+  const kind = kindOf(writer, expression);
+  return kind === "text" || kind === "mixed"
+    ? text
+    : kind === "boolean"
+      ? `String.valueOf(${text})`
+      : `(double) ${text}`;
 }
 
 function paramText(writer: Writer, id: string): string {
@@ -526,8 +573,17 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return sides("<=", expression.left, expression.right, "number");
     case "greaterOrEqual":
       return sides(">=", expression.left, expression.right, "number");
-    case "equals":
-      return sides("==", expression.left, expression.right, "number");
+    case "equals": {
+      // Words are the same when they match ignoring capitals, as in Scratch: a plain `==` on
+      // numbers would call every pair of words equal.
+      const wordy = [expression.left, expression.right].some((side) => {
+        const kind = kindOf(writer, side);
+        return kind === "text" || kind === "mixed";
+      });
+      return wordy
+        ? `valuesEqual(${asValue(writer, expression.left, `${nodeId}/left`)}, ${asValue(writer, expression.right, `${nodeId}/right`)})`
+        : sides("==", expression.left, expression.right, "number");
+    }
     case "and":
       return sides("&&", expression.left, expression.right, "boolean");
     case "or":
@@ -546,7 +602,7 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
     case "randomInteger":
       return `randomInteger(${asNumber(writer, expression.min, `${nodeId}/min`)}, ${asNumber(writer, expression.max, `${nodeId}/max`)})`;
     case "listItem":
-      return `listItem(${listName(writer, expression.listId)}, ${asNumber(writer, expression.index, `${nodeId}/index`)})`;
+      return `${writer.mixedLists.has(expression.listId) ? "wordListItem" : "listItem"}(${listName(writer, expression.listId)}, ${asNumber(writer, expression.index, `${nodeId}/index`)})`;
     case "listLength":
       return `${listName(writer, expression.listId)}.size()`;
     default: {
@@ -693,17 +749,24 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
     case "hideVariable":
       return line(`hideVariable(${literal(variableName(writer, node.variableId))})`);
     case "listAdd":
-      return line(`${listName(writer, node.listId)}.add((double) ${num(node.value, "value")})`);
+      return line(
+        writer.mixedLists.has(node.listId)
+          ? `${listName(writer, node.listId)}.add(${asItem(writer, node.value, `${nodeId}/value`)})`
+          : `${listName(writer, node.listId)}.add((double) ${num(node.value, "value")})`,
+      );
     case "listRemoveAt":
       return line(`listRemoveAt(${listName(writer, node.listId)}, ${num(node.index, "index")})`);
     case "listInsertAt":
+    case "listReplaceAt": {
+      const mixed = writer.mixedLists.has(node.listId);
+      const call = `${mixed ? "wordList" : "list"}${node.type === "listInsertAt" ? "InsertAt" : "ReplaceAt"}`;
+      const value = mixed
+        ? asItem(writer, node.value, `${nodeId}/value`)
+        : num(node.value, "value");
       return line(
-        `listInsertAt(${listName(writer, node.listId)}, ${num(node.index, "index")}, ${num(node.value, "value")})`,
+        `${call}(${listName(writer, node.listId)}, ${num(node.index, "index")}, ${value})`,
       );
-    case "listReplaceAt":
-      return line(
-        `listReplaceAt(${listName(writer, node.listId)}, ${num(node.index, "index")}, ${num(node.value, "value")})`,
-      );
+    }
     case "penDown":
       return line("penDown()");
     case "penUp":
@@ -791,6 +854,45 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
   }
 }
 
+/**
+ * Lists that hold a word somewhere: a word in the starting items, or a word (or an item read from
+ * such a list) added, inserted or put in place. Java is typed, so these get an `Object` list.
+ */
+function mixedListsOf(program: ProjectProgram): ReadonlySet<string> {
+  const mixed = new Set<string>();
+  for (const list of program.lists ?? [])
+    if (list.initialItems.some((item) => typeof item === "string")) mixed.add(list.id);
+  const probe = { mixedLists: mixed } as unknown as Writer;
+  const writes: { listId: string; value: Expression }[] = [];
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) return value.forEach(visit);
+    if (typeof value !== "object" || value === null) return;
+    const node = value as Record<string, unknown>;
+    if (
+      (node["type"] === "listAdd" ||
+        node["type"] === "listInsertAt" ||
+        node["type"] === "listReplaceAt") &&
+      typeof node["listId"] === "string"
+    )
+      writes.push({ listId: node["listId"], value: node["value"] as Expression });
+    Object.values(node).forEach(visit);
+  };
+  visit(program.scripts);
+  visit(program.sharedProcedures);
+  // A list that is fed from a mixed list is mixed too, so repeat until nothing more joins.
+  for (let again = true; again;) {
+    again = false;
+    for (const write of writes) {
+      const kind = kindOf(probe, write.value);
+      if ((kind === "text" || kind === "mixed") && !mixed.has(write.listId)) {
+        mixed.add(write.listId);
+        again = true;
+      }
+    }
+  }
+  return mixed;
+}
+
 /** Display-only Java view. The canonical program remains the runtime authority. */
 export function projectJava(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
@@ -804,6 +906,7 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     diagnostics: [],
     variableNames: allNames,
     listNames: namesFor(validated.lists, new Set(allNames.values())),
+    mixedLists: mixedListsOf(validated),
     procedureNames: new Map(),
     paramNames: undefined,
   };
@@ -822,6 +925,7 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     );
   }
   for (const list of validated.lists ?? []) {
+    const mixed = writer.mixedLists.has(list.id);
     const initial =
       list.initialItems.length === 0
         ? "new java.util.ArrayList<>()"
@@ -831,7 +935,7 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     mapped(
       writer,
       `lists/${list.id}`,
-      `${INDENT}java.util.ArrayList<Double> ${listName(writer, list.id)} = ${initial};\n`,
+      `${INDENT}java.util.ArrayList<${mixed ? "Object" : "Double"}> ${listName(writer, list.id)} = ${initial};\n`,
     );
   }
   const methods = new Set<string>();
