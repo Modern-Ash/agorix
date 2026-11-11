@@ -2722,3 +2722,32 @@ test("a character answers two events with two scripts, and both survive reopenin
   await expect(page.getByTestId("script-tab-2")).toHaveCount(0);
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
 });
+
+test("Ori still gives ideas when a character has two scripts, and an idea goes to the open script (#1363)", async ({
+  page,
+}) => {
+  await openStudio(page, "9-12");
+  // A second script, then Ori's goal on it.
+  await page.getByTestId("script-add").click();
+  await expect(page.getByTestId("script-tab-2")).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
+  await page.getByRole("button", { name: "Saltar" }).click();
+  await expect(page.getByTestId("intent-card")).toContainText("Ori propone 3 bloques");
+  // The ghost blocks are in the script that is open, and nothing is added until it is used.
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByTestId("intent-card").getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  // Script 1 did not get them.
+  await page.getByTestId("script-tab-1").click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByTestId("script-tab-2").click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  // One undo takes the whole idea back.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  // Ideas with a script of their own for the copies are for the first script only.
+  await expect(page.getByRole("button", { name: "Lluvia que cae y desaparece" })).toHaveCount(0);
+  await page.getByTestId("script-tab-1").click();
+  await expect(page.getByRole("button", { name: "Lluvia que cae y desaparece" })).toBeVisible();
+});

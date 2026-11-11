@@ -1714,11 +1714,12 @@ export function KidsStudioScreen({
     /** Ori's idea applied to a copy, only to listen to it: the child's program is untouched. */
     readonly candidate: ProjectProgram;
   } | null>(null);
-  // Ori's ideas land in the character's first script, so the screen shows that one while it has an
-  // idea to look at (nothing is hidden: the ghost blocks appear where they would go).
+  // Ori's goals (the closed list) work on the script that is open. The idea Ori's model offers and
+  // the "and / or" idea land in the character's first script, so the screen shows that one while it
+  // has one of those to look at (nothing is hidden: the ghost blocks appear where they would go).
   useEffect(() => {
-    if (oriIdea || intentPlan || compoundOri) setActiveSlot(1);
-  }, [oriIdea, intentPlan, compoundOri]);
+    if (oriIdea || compoundOri) setActiveSlot(1);
+  }, [oriIdea, compoundOri]);
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
   const [quantityGuess, setQuantityGuess] = useState<number | null>(null);
@@ -2523,6 +2524,7 @@ export function KidsStudioScreen({
       if (free === undefined) return;
       const next = addStudioScript(history, activeActorId, free);
       persist(next);
+      setIntentPlan(null);
       setActiveSlot((extraScripts.length + 2) as 2 | 3);
       setEventTaken(false);
     } catch {
@@ -2533,6 +2535,7 @@ export function KidsStudioScreen({
   function removeScript() {
     try {
       persist(removeStudioScript(history, activeActorId));
+      setIntentPlan(null);
       setActiveSlot(1);
       setEventTaken(false);
     } catch {
@@ -3456,7 +3459,12 @@ export function KidsStudioScreen({
   /** A goal from the closed list becomes a short reviewable sequence; nothing is applied yet. */
   function startIntent(intent: OriStudioIntent) {
     try {
-      const context = { actorId: activeActorId, locale, program: history.current };
+      const context = {
+        actorId: activeActorId,
+        ...(slot === 1 || script === undefined ? {} : { scriptId: script.id }),
+        locale,
+        program: history.current,
+      };
       const proposal = proposeOriStudioIntent(context, intent);
       const review = validateOriStudioIntentProposal(context, proposal);
       setOriIdea(null);
@@ -3512,7 +3520,12 @@ export function KidsStudioScreen({
       return;
     }
     try {
-      const context = { actorId: activeActorId, locale, program: history.current };
+      const context = {
+        actorId: activeActorId,
+        ...(slot === 1 || script === undefined ? {} : { scriptId: script.id }),
+        locale,
+        program: history.current,
+      };
       const review = validateOriStudioIntentProposal(
         context,
         proposeOriStudioIntent(context, intentPlan.intent),
@@ -5670,6 +5683,8 @@ export function KidsStudioScreen({
                         onClick={() => {
                           setActiveSlot(item as 1 | 2 | 3);
                           setEventTaken(false);
+                          // An idea was made for the script that was open.
+                          setIntentPlan(null);
                         }}
                       >
                         {copy.scriptTab} {item}
@@ -8817,7 +8832,7 @@ export function KidsStudioScreen({
                         (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)) &&
                         // The ideas that bring their own copy script are for a character without one.
                         (oriIdeaCopyScript(intent) === undefined ||
-                          !hasStudioCloneScript(history.current, activeActorId)),
+                          (slot === 1 && !hasStudioCloneScript(history.current, activeActorId))),
                     ),
                     // What a Scratch import left out: shown only in a scene that came from one.
                     ...importedIntents,
