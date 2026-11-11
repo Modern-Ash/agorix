@@ -160,3 +160,90 @@ describe("a wide scene round-trips through the importer (#1312)", () => {
     expect(back.program.extensions).toEqual(["pen", "music"]);
   });
 });
+
+describe("a scene with a list that holds numbers or words round-trips (design: word lists)", () => {
+  const at = (index: number) =>
+    ({
+      type: "listItem",
+      listId: "studio-list-1",
+      index: { type: "numericLiteral", value: index },
+    }) as const;
+  const withList = program(
+    [
+      nova([
+        // Scratch variables have no type: a word variable comes back as one when it is set to a word.
+        {
+          type: "setText",
+          variableId: "studio-text-1",
+          value: { type: "textLiteral", value: "kiwi" },
+        },
+        { type: "listAdd", listId: "studio-list-1", value: { type: "textLiteral", value: "pera" } },
+        { type: "listAdd", listId: "studio-list-1", value: { type: "numericLiteral", value: 3 } },
+        {
+          type: "listInsertAt",
+          listId: "studio-list-1",
+          index: { type: "numericLiteral", value: 1 },
+          value: { type: "textLiteral", value: "uva" },
+        },
+        {
+          type: "listReplaceAt",
+          listId: "studio-list-1",
+          index: { type: "numericLiteral", value: 2 },
+          value: { type: "textVariable", variableId: "studio-text-1" },
+        },
+        {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: { type: "numericLiteral", value: 3 },
+        },
+        { type: "setText", variableId: "studio-text-1", value: at(1) },
+        {
+          type: "setVariable",
+          variableId: "studio-var-1",
+          value: { type: "listLength", listId: "studio-list-1" },
+        },
+        { type: "setVariable", variableId: "studio-var-1", value: at(2) },
+      ]),
+    ],
+    {
+      variables: [{ id: "studio-var-1", name: "Cuantas", initialValue: 0, visible: true }],
+      textVariables: [{ id: "studio-text-1", name: "Fruta", initialValue: "", visible: true }],
+      lists: [{ id: "studio-list-1", name: "Compras", initialItems: [], visible: true }],
+    },
+  );
+
+  it("writes the list on the stage, empty, and every list block with its list named", async () => {
+    const { bytes, report } = exportScratchProject(withList, "forest", "es");
+    expect(report.left).toEqual([]);
+    const project = (await readScratchProject(bytes.buffer as ArrayBuffer)) as {
+      targets: {
+        isStage: boolean;
+        lists: Record<string, [string, unknown[]]>;
+        blocks: Record<string, { opcode: string; fields: Record<string, unknown[]> }>;
+      }[];
+    };
+    expect(project.targets[0]!.lists).toEqual({ "studio-list-1": ["Compras", []] });
+    const opcodes = Object.values(project.targets[1]!.blocks).map((block) => block.opcode);
+    for (const wanted of [
+      "data_addtolist",
+      "data_insertatlist",
+      "data_replaceitemoflist",
+      "data_deleteoflist",
+      "data_itemoflist",
+      "data_lengthoflist",
+    ])
+      expect(opcodes).toContain(wanted);
+    const add = Object.values(project.targets[1]!.blocks).find(
+      (block) => block.opcode === "data_addtolist",
+    )!;
+    expect(add.fields["LIST"]).toEqual(["Compras", "studio-list-1"]);
+  });
+
+  it("comes back through the importer as the same blocks, words and numbers alike", async () => {
+    const { bytes } = exportScratchProject(withList, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.lists).toEqual(withList.lists);
+    expect(back.program.scripts[0]!.statements).toEqual(withList.scripts[0]!.statements);
+  });
+});

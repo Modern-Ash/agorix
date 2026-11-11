@@ -209,7 +209,7 @@ What is written: movement, looks, size, effects, layers, waits, loops, if and if
 
 **The child's own pictures and recordings go with the scene.** Each sprite's costumes are its character's picture, any other character's picture a block switches to, then the child's drawings in the order they were made; the stage has the scene's backdrop, any other one a block names, then the child's own. A drawing is written as a PNG (a PNG is used as it is; a WebP is redrawn on a canvas on this device, because Scratch does not open WebP). A recording is written as the WAV it already is, with its rate and length, and added to every sprite so any of them can play it. Switching costume or backdrop, playing a recording, and the backdrop hat are now written. A picture the browser could not convert is reported, not dropped silently.
 
-What is not written, and counted in the message after the export: the scene's built-in sounds (they are synthesized, not audio files), questions with a prompt, lists and custom blocks. The standard pictures of the characters are still stand-ins drawn from the glyph and colour.
+What is not written, and counted in the message after the export: the scene's built-in sounds (they are synthesized, not audio files), questions with a prompt and custom blocks. The standard pictures of the characters are still stand-ins drawn from the glyph and colour.
 
 Found on the way: the importer read "point in direction 90" (Scratch's right) as 180 (left) in the scene. Fixed, with a test.
 
@@ -226,3 +226,7 @@ A character's second and third scripts keep no custom blocks of their own (the v
 ## Status: Scratch lists in the importer (word lists, increment 4)
 
 The importer now keeps up to three Scratch lists (from the stage first) as the scene's lists, which start empty, and reads "add to", "insert at", "replace item of" and "delete of" a list, and the reporters "item of" and "length of". An item may be a number or a short word, as in Scratch: text typed in that reads as a number becomes the number, any other text of up to 20 letters is a word, and a number or word variable and an item of a list are kept as such. Left out and reported: a Scratch list's starting items (the scene's lists start empty), a fourth list, a position that is not a whole number from 1 to 10, "delete all", and a word longer than 20 letters. The corpus goes from 71 to 73 of 91 statements, now counting the list blocks of the "custom blocks" project.
+
+## Status: Scratch lists in the exporter (word lists, increment 5)
+
+A scene's lists are written to the `.sb3`: on the stage (they belong to the whole scene), empty as in the scene, with every list block written as the Scratch block it matches (add, insert, replace, delete, item of, length of) and the list named in its field. A scene with a list that holds numbers and words exports and imports back to the same blocks (tested), including words, numbers, word variables and items read into a variable. One limit of Scratch itself: variables have no type, so a word variable comes back as one only if the program sets it to a word; one fed only from a list item comes back as a number variable.
