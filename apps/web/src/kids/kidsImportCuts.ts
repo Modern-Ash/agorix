@@ -52,7 +52,7 @@ export function cutKindOf(reason: string): CutKind {
   if (reason.includes("(a condition the scene has no block for)")) return "condition";
   if (/^looks_(switch|next)(costume|backdrop)/.test(reason)) return "costume";
   if (reason.startsWith("sensing_askandwait")) return "ask";
-  if (/^data_.*list|^data_itemoflist|^data_lengthoflist/.test(reason)) return "lists";
+  if (/^list "|^data_.*list/.test(reason)) return "lists";
   if (reason.startsWith("procedures_")) return "customBlocks";
   if (reason.startsWith("pen_")) return "pen";
   if (/^looks_(set|change)effect/.test(reason)) return "effect";
@@ -90,8 +90,8 @@ export const CUT_IDEAS: Readonly<Record<CutKind, CutIdea>> = {
     en: "“Ask and wait” did not come across. In the scene you can ask with a phrase from the list.",
   },
   lists: {
-    es: "Las listas de palabras todavía no están; las listas de números sí.",
-    en: "Lists of words are not here yet; lists of numbers are.",
+    es: "Algunas cosas de las listas no se trajeron: la escena tiene tres listas que empiezan vacías, y no tiene «quitar todo» ni posiciones más allá de la 10. Sí podés agregar, insertar, cambiar, quitar y leer elementos, números o palabras.",
+    en: "Some list things did not come across: the scene has three lists that start empty, and no “delete all” or positions past 10. You can add, insert, replace, remove and read items, numbers or words.",
   },
   customBlocks: {
     es: "Los bloques propios de Scratch no se traen. Podés hacer los tuyos en «Mis bloques».",

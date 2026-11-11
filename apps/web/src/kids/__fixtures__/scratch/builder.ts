@@ -121,6 +121,8 @@ export interface SpriteSpec {
   readonly direction?: number;
   readonly size?: number;
   readonly variables?: Readonly<Record<string, readonly [string, number | string]>>;
+  /** Lists the sprite declares: id to [name, starting items]. */
+  readonly lists?: Readonly<Record<string, readonly [string, readonly (number | string)[]]>>;
   /** Each script is a stack whose first node is the hat. */
   readonly scripts: readonly (readonly Node[])[];
 }
@@ -145,7 +147,7 @@ export function scratchProject(
       isStage,
       name: spec.name,
       variables: spec.variables ?? {},
-      lists: {},
+      lists: spec.lists ?? {},
       blocks: compiler.blocks,
       ...(isStage
         ? {}

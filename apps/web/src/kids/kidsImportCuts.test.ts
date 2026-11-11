@@ -38,7 +38,8 @@ describe("what an import left out, said by Ori (#1312)", () => {
     expect(cutKindOf("motion_glideto")).toBe("goto");
     expect(cutKindOf("looks_nextcostume")).toBe("costume");
     expect(cutKindOf("sensing_askandwait")).toBe("ask");
-    expect(cutKindOf("data_addtolist")).toBe("lists");
+    expect(cutKindOf("data_deletealloflist")).toBe("lists");
+    expect(cutKindOf('list "Compras" (more than three)')).toBe("lists");
     expect(cutKindOf("procedures_call")).toBe("customBlocks");
     expect(cutKindOf("sound_playuntildone")).toBe("sound");
     expect(cutKindOf("something_unknown")).toBe("other");

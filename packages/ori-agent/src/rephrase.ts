@@ -31,6 +31,7 @@ const KINDS: ReadonlySet<string> = new Set([
   "workingAgainstEachOther",
   "loopNeverEnds",
   "wordNeverSet",
+  "listNeverFilled",
   "copiesAtLimit",
 ]);
 const EVENT_TYPES: ReadonlySet<string> = new Set([
@@ -141,6 +142,7 @@ const MAY_MENTION: Readonly<Record<string, Record<OriLocale, readonly string[]>>
   soundSilent: { es: ["volumen", "sonido"], en: ["volume", "sound"] },
   loopNeverEnds: { es: ["por siempre", "repetir", "esperar"], en: ["forever", "repeat", "wait"] },
   wordNeverSet: { es: ["preguntar"], en: ["ask"] },
+  listNeverFilled: { es: ["agregar"], en: ["add"] },
 };
 
 const TU_FORMS =

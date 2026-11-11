@@ -78,3 +78,5 @@ What this review found and does **not** change, for the owner to decide:
 - **Moderation** stays out of scope: the scene bounds the length and the characters of a word, it does not judge it.
 
 What is not done yet: comparing a word with a word in a condition ("if item 1 is this word") has no block, as for word variables today (there is "contains"); and the Scratch importer and exporter and Ori's finding are increments 4 and 5.
+
+**Increment 4 is built** (Ori's finding and the Scratch importer). Ori now notices a list that blocks read an item from and nothing ever adds or inserts into, and a list that starts with items is not that: "This list is empty because nothing ever put anything in. Try Add word or Add number", in both languages and both age bands. The finding carries the kind and the count of reads only, never an item (tested for what a provider is given). The importer reads Scratch lists as described in `SCRATCH_PARITY_DESIGNS.md`. Left for increment 5: the exporter writes lists.

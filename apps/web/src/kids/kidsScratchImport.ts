@@ -180,6 +180,8 @@ class Converter {
   readonly variableIds = new Map<string, string>();
   /** Scratch variables that hold words, by name, with the scene's text variable they become. */
   readonly textIds = new Map<string, string>();
+  /** Scratch lists by name, with the scene's list they become (up to three). */
+  readonly listIds = new Map<string, string>();
   readonly messages = new Map<string, string>();
   readonly spriteActorIds = new Map<string, string>();
   usesPen = false;
@@ -266,6 +268,23 @@ class Converter {
       case "data_variable": {
         const name = block.fields["VARIABLE"]?.[0];
         return typeof name === "string" ? this.variable(name) : undefined;
+      }
+      case "data_itemoflist": {
+        const listId = this.listOf(block);
+        const index = this.listPosition(block, "INDEX");
+        if (listId === undefined || index === undefined) {
+          this.drop("data_itemoflist (a list the scene did not keep, or a position it cannot use)");
+          return undefined;
+        }
+        return { type: "listItem", listId, index };
+      }
+      case "data_lengthoflist": {
+        const listId = this.listOf(block);
+        if (listId === undefined) {
+          this.drop("data_lengthoflist (a list the scene did not keep)");
+          return undefined;
+        }
+        return { type: "listLength", listId };
       }
       case "motion_xposition":
         return { type: "xPosition" };
@@ -791,6 +810,38 @@ class Converter {
       case "pen_stamp":
         this.usesPen = true;
         return { type: "stamp" };
+      case "data_addtolist":
+      case "data_insertatlist":
+      case "data_replaceitemoflist":
+      case "data_deleteoflist": {
+        const listId = this.listOf(block);
+        if (listId === undefined) {
+          this.drop(`${block.opcode} (a list the scene did not keep)`);
+          return undefined;
+        }
+        if (block.opcode === "data_addtolist") {
+          const value = this.listValue(block, "ITEM");
+          if (value === undefined) {
+            this.drop("data_addtolist (an item the scene cannot hold)");
+            return undefined;
+          }
+          return { type: "listAdd", listId, value };
+        }
+        const index = this.listPosition(block, "INDEX");
+        if (index === undefined) {
+          this.drop(`${block.opcode} (a position the scene cannot use)`);
+          return undefined;
+        }
+        if (block.opcode === "data_deleteoflist") return { type: "listRemoveAt", listId, index };
+        const value = this.listValue(block, "ITEM");
+        if (value === undefined) {
+          this.drop(`${block.opcode} (an item the scene cannot hold)`);
+          return undefined;
+        }
+        return block.opcode === "data_insertatlist"
+          ? { type: "listInsertAt", listId, index, value }
+          : { type: "listReplaceAt", listId, index, value };
+      }
       case "data_setvariableto":
       case "data_changevariableby": {
         const name = block.fields["VARIABLE"]?.[0];
@@ -824,9 +875,65 @@ class Converter {
     }
   }
 
+  /** The scene's list a Scratch list field names; undefined when it was not kept. */
+  listOf(block: ScratchBlock): string | undefined {
+    const name = block.fields["LIST"]?.[0];
+    return typeof name === "string" ? this.listIds.get(name) : undefined;
+  }
+
+  /** A position the scene's list blocks take: a whole number from 1 to 10. */
+  listPosition(block: ScratchBlock, name: string): Expression | undefined {
+    const value = this.number(block, name);
+    return value !== undefined && Number.isInteger(value) && value >= 1 && value <= 10
+      ? { type: "numericLiteral", value }
+      : undefined;
+  }
+
+  /**
+   * What goes into a list, as Scratch lists are mixed: a number or a short word typed in, a number
+   * or word variable, or an item of a list. Anything else is left behind.
+   */
+  listValue(block: ScratchBlock, name: string): Expression | undefined {
+    const shadow = block.inputs[name]?.[1];
+    if (Array.isArray(shadow) && (shadow as unknown as Primitive)[0] === 12) {
+      const variable = (shadow as unknown as Primitive)[1];
+      if (typeof variable !== "string") return undefined;
+      const text = this.textIds.get(variable);
+      return text === undefined
+        ? this.variable(variable)
+        : { type: "textVariable", variableId: text };
+    }
+    if (typeof shadow === "string") {
+      const inner = this.blocks.get(shadow);
+      if (inner?.opcode === "data_variable") {
+        const variable = inner.fields["VARIABLE"]?.[0];
+        if (typeof variable !== "string") return undefined;
+        const text = this.textIds.get(variable);
+        return text === undefined
+          ? this.variable(variable)
+          : { type: "textVariable", variableId: text };
+      }
+      return inner === undefined ? undefined : this.reporter(inner);
+    }
+    const typed = this.literal(block, name);
+    if (typed === undefined) return undefined;
+    const asNumber = Number(typed);
+    if (typed.trim() !== "" && Number.isFinite(asNumber))
+      return {
+        type: "numericLiteral",
+        value: this.adjust(Math.max(-100, Math.min(100, Math.round(asNumber * 10) / 10)), asNumber),
+      };
+    return wordOf(typed);
+  }
+
   /** A short word the scene can keep: a text of at most 20 letters, or another word variable. */
   wordExpression(block: ScratchBlock, name: string): Expression | undefined {
     const reference = block.inputs[name]?.[1];
+    if (Array.isArray(reference) && (reference as unknown as Primitive)[0] === 12) {
+      const variable = (reference as unknown as Primitive)[1];
+      const id = typeof variable === "string" ? this.textIds.get(variable) : undefined;
+      return id === undefined ? undefined : { type: "textVariable", variableId: id };
+    }
     if (typeof reference === "string") {
       const inner = this.blocks.get(reference);
       if (inner?.opcode === "data_variable") {
@@ -834,6 +941,7 @@ class Converter {
         const id = typeof variable === "string" ? this.textIds.get(variable) : undefined;
         return id === undefined ? undefined : { type: "textVariable", variableId: id };
       }
+      if (inner?.opcode === "data_itemoflist") return this.reporter(inner);
       return undefined;
     }
     const value = this.literal(block, name);
@@ -1003,6 +1111,24 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   for (const word of words.slice(3))
     converter.drop(`word variable "${word.name}" (more than three)`);
 
+  // Up to three lists, from the stage first. A list holds numbers or words, as in Scratch; the
+  // scene's lists start empty, so a Scratch list's starting items are left behind and said so.
+  const listNames: string[] = [];
+  for (const target of [stage, ...sprites]) {
+    const declared = isRecord(target?.["lists"]) ? target["lists"] : {};
+    for (const entry of Object.values(declared)) {
+      const name = Array.isArray(entry) ? entry[0] : undefined;
+      if (typeof name !== "string" || !DATA_NAME.test(name) || listNames.includes(name)) continue;
+      listNames.push(name);
+      if (listNames.length <= 3) {
+        converter.listIds.set(name, `studio-list-${listNames.length}`);
+        const items: unknown = Array.isArray(entry) ? entry[1] : undefined;
+        if (Array.isArray(items) && items.length > 0)
+          converter.drop(`list "${name}" (its starting items: the scene's lists start empty)`);
+      } else converter.drop(`list "${name}" (more than three)`);
+    }
+  }
+
   const scripts: Script[] = [];
   const cloneScripts: Script[] = [];
   const extraScripts: Script[] = [];
@@ -1095,10 +1221,17 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
     initialValue: "",
     visible: true,
   }));
+  const lists = [...converter.listIds.values()].map((id, index) => ({
+    id,
+    name: listNames[index]!,
+    initialItems: [] as number[],
+    visible: true,
+  }));
   const withData: ProjectProgram = {
     ...baseline,
     ...(variables.length > 0 ? { variables } : {}),
     ...(textVariables.length > 0 ? { textVariables } : {}),
+    ...(lists.length > 0 ? { lists } : {}),
     scripts: [...scripts, ...cloneScripts, ...extraScripts].map((script) => ({
       ...script,
       statements: [],

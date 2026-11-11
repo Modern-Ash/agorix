@@ -50,6 +50,7 @@ const findings: Finding[] = [
   },
   { ...base, kind: "neverStarted", counts: {}, event: { type: "timer" } },
   { ...base, kind: "neverStarted", counts: {}, event: { type: "loudness" } },
+  { ...base, kind: "listNeverFilled", counts: { reads: 1 } },
 ];
 
 describe("sentences for what Ori noticed", () => {
