@@ -1,5 +1,7 @@
 import {
   evaluateOriStudioOutput,
+  rebaseRedactedProposal,
+  redactProgramForOri,
   validateOriStudioProposal,
   type OriStudioContext,
 } from "@agorix/ori-agent";
@@ -11,7 +13,14 @@ export interface StudioOriOffer {
   readonly proposal?: ProgramProposal;
 }
 
-/** Same-origin model call; every response is revalidated against the current selected actor. */
+/**
+ * Same-origin model call; every response is revalidated against the current selected actor.
+ *
+ * The service is sent the program's shape, not what the child wrote: the text of bubbles, words
+ * typed into blocks and the names of variables, lists and blocks are replaced before the request
+ * leaves the browser (`redactProgramForOri`). The idea that comes back was made for that form, so
+ * it is put back on the child's own program, and checked against it, before anything is shown.
+ */
 export async function requestStudioOri(
   context: OriStudioContext,
   fetchImpl: typeof fetch = fetch,
@@ -26,12 +35,17 @@ export async function requestStudioOri(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ORI_BROWSER_TIMEOUT_MS);
   try {
+    const sent = {
+      actorId: context.actorId,
+      locale: context.locale,
+      program: redactProgramForOri(context.program),
+    };
     const response = await fetchImpl("/api/tutor/studio/ori", {
       method: "POST",
       credentials: "same-origin",
       signal: controller.signal,
       headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify(context),
+      body: JSON.stringify(sent),
     });
     if (!response.ok) return fallback();
     const raw = await response.text();
@@ -47,8 +61,9 @@ export async function requestStudioOri(
     )
       return fallback();
     if (value.proposal === undefined) return { message: value.message };
-    validateOriStudioProposal(context, value.proposal);
-    return { message: value.message, proposal: value.proposal as ProgramProposal };
+    const proposal = rebaseRedactedProposal(context.program, value.proposal as ProgramProposal);
+    validateOriStudioProposal(context, proposal);
+    return { message: value.message, proposal };
   } catch {
     return fallback();
   } finally {

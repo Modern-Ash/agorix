@@ -326,3 +326,4 @@ function assertContext(context: OriAgentContext): void {
   if (context.locale !== "es" && context.locale !== "en") throw new Error("invalid locale");
   validateProgram(context.program);
 }
+export * from "./redact.js";

@@ -481,16 +481,22 @@ describe("Java projection corpus", () => {
       expect(result.output).toBe("");
       expect(result.ok).toBe(true);
     },
+    60_000,
   );
 
-  it.skipIf(!hasJavac)("is valid Java that compiles against the support API", () => {
-    for (const [name, program] of [
-      ["whole vocabulary", everything],
-      ["Escena libre scene", studioScene()],
-    ] as const) {
-      const result = javac(projectJava(program).text);
-      expect(result.output, name).toBe("");
-      expect(result.ok, name).toBe(true);
-    }
-  });
+  it.skipIf(!hasJavac)(
+    "is valid Java that compiles against the support API",
+    () => {
+      for (const [name, program] of [
+        ["whole vocabulary", everything],
+        ["Escena libre scene", studioScene()],
+      ] as const) {
+        const result = javac(projectJava(program).text);
+        expect(result.output, name).toBe("");
+        expect(result.ok, name).toBe(true);
+      }
+      // javac is slow when the whole suite runs at once; the default 5 s is not enough then.
+    },
+    60_000,
+  );
 });
