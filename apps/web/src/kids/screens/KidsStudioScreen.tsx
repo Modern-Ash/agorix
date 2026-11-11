@@ -174,6 +174,7 @@ import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { KidsCopyScript } from "./KidsCopyScript.js";
 import { intentsForCuts, loadImportCuts } from "../kidsImportCuts.js";
+import { listDisplay } from "../kidsListDisplay.js";
 import { KidsArtVariation } from "./KidsArtVariation.js";
 import { microphoneLevelAllowed, startLevelMeter, type LevelMeter } from "../kidsLevelMeter.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
@@ -453,6 +454,14 @@ const COPY = {
     showVariable: "Mostrar variable",
     hideVariable: "Ocultar variable",
     listAdd: "Agregar número",
+    listAddWord: "Agregar palabra",
+    listInsertWord: "Insertar palabra",
+    listReplaceWord: "Cambiar por palabra",
+    listReadWord: "Leer elemento en palabra",
+    listWord: "Palabra para la lista",
+    listWordFrom: "La palabra es",
+    listWordTyped: "la que escribo",
+    listWordOf: "la palabra de",
     listRemove: "Quitar elemento",
     listInsert: "Insertar número",
     listReplace: "Cambiar elemento",
@@ -799,6 +808,14 @@ const COPY = {
     showVariable: "Show variable",
     hideVariable: "Hide variable",
     listAdd: "Add number",
+    listAddWord: "Add word",
+    listInsertWord: "Insert word",
+    listReplaceWord: "Replace with word",
+    listReadWord: "Read item into word",
+    listWord: "Word for the list",
+    listWordFrom: "The word is",
+    listWordTyped: "the one I type",
+    listWordOf: "the word of",
     listRemove: "Remove item",
     listInsert: "Insert number",
     listReplace: "Replace item",
@@ -1124,6 +1141,16 @@ function costumeTurn(
   if (sprite.rotationStyle === "leftRight")
     return Math.cos((sprite.heading * Math.PI) / 180) < -1e-9 ? " scaleX(-1)" : "";
   return sprite.heading ? ` rotate(${sprite.heading}deg)` : "";
+}
+
+/** A value written as a word (a word, a word variable, a join), not a number. */
+function isWordValue(value: Expression): boolean {
+  return (
+    value.type === "textLiteral" ||
+    value.type === "textVariable" ||
+    value.type === "join" ||
+    value.type === "letterOf"
+  );
 }
 
 function expressionLabel(
@@ -1474,6 +1501,9 @@ export function KidsStudioScreen({
   const [variableId, setVariableId] = useState("studio-var-1");
   const [listId, setListId] = useState("studio-list-1");
   const [listIndex, setListIndex] = useState(1);
+  // The word a list block takes: one typed here (a short word), or the word a word variable holds.
+  const [listWord, setListWord] = useState("");
+  const [listWordSource, setListWordSource] = useState("typed");
   const [randomMin, setRandomMin] = useState(1);
   const [randomMax, setRandomMax] = useState(6);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
@@ -3177,12 +3207,12 @@ export function KidsStudioScreen({
       case "hideVariable":
         return `${statement.type === "showVariable" ? copy.showVariable : copy.hideVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"}`;
       case "listAdd":
-        return `${copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
+        return `${isWordValue(statement.value) ? copy.listAddWord : copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
       case "listRemoveAt":
         return `${copy.listRemove}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)}`;
       case "listInsertAt":
       case "listReplaceAt":
-        return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
+        return `${statement.type === "listInsertAt" ? (isWordValue(statement.value) ? copy.listInsertWord : copy.listInsert) : isWordValue(statement.value) ? copy.listReplaceWord : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
       case "forever":
@@ -5238,11 +5268,12 @@ export function KidsStudioScreen({
                 {history.current.lists?.map((item) => (
                   <p key={item.id}>
                     {item.name}:{" "}
-                    {(
+                    {listDisplay(
                       shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[
                         item.id
-                      ]?.items ?? item.initialItems
-                    ).join(", ") || "—"}
+                      ]?.items ?? item.initialItems,
+                      locale,
+                    )}
                   </p>
                 ))}
               </div>
@@ -8691,6 +8722,109 @@ export function KidsStudioScreen({
                     >
                       + {copy.listReplace}
                     </button>
+                    <label>
+                      {copy.listWordFrom}{" "}
+                      <select
+                        value={
+                          listWordSource === "typed" ||
+                          history.current.textVariables?.some((item) => item.id === listWordSource)
+                            ? listWordSource
+                            : "typed"
+                        }
+                        onChange={(event) => setListWordSource(event.target.value)}
+                      >
+                        <option value="typed">{copy.listWordTyped}</option>
+                        {history.current.textVariables?.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {copy.listWordOf} {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {listWordSource === "typed" ||
+                    !history.current.textVariables?.some((item) => item.id === listWordSource) ? (
+                      <label>
+                        {copy.listWord}{" "}
+                        <input
+                          type="text"
+                          maxLength={STUDIO_WORD_MAX_LENGTH}
+                          value={listWord}
+                          onChange={(event) =>
+                            // A word is short and has no control characters.
+                            setListWord(
+                              event.target.value
+                                .replace(/\p{Cc}/gu, "")
+                                .slice(0, STUDIO_WORD_MAX_LENGTH),
+                            )
+                          }
+                        />
+                      </label>
+                    ) : null}
+                    {(
+                      [
+                        ["listAdd", copy.listAddWord],
+                        ["listInsertAt", copy.listInsertWord],
+                        ["listReplaceAt", copy.listReplaceWord],
+                      ] as const
+                    ).map(([kind, label]) => {
+                      const typed =
+                        listWordSource === "typed" ||
+                        !history.current.textVariables?.some((item) => item.id === listWordSource);
+                      const wordExpression: Expression = typed
+                        ? { type: "textLiteral", value: listWord.trim() }
+                        : { type: "textVariable", variableId: listWordSource };
+                      const needsIndex = kind !== "listAdd";
+                      return (
+                        <button
+                          key={kind}
+                          type="button"
+                          className="kids-button"
+                          data-kids-block={kind}
+                          data-testid={`${kind}-word`}
+                          disabled={
+                            (typed && listWord.trim() === "") ||
+                            (needsIndex &&
+                              (!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10))
+                          }
+                          onClick={() =>
+                            add(
+                              kind === "listAdd"
+                                ? { type: "listAdd", listId, value: wordExpression }
+                                : {
+                                    type: kind,
+                                    listId,
+                                    index: { type: "numericLiteral", value: listIndex },
+                                    value: wordExpression,
+                                  },
+                            )
+                          }
+                        >
+                          + {label}
+                        </button>
+                      );
+                    })}
+                    {history.current.textVariables?.length ? (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        data-kids-block="setText"
+                        data-testid="list-read-word"
+                        disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
+                        onClick={() =>
+                          add({
+                            type: "setText",
+                            variableId: selectedTextId,
+                            value: {
+                              type: "listItem",
+                              listId,
+                              index: { type: "numericLiteral", value: listIndex },
+                            },
+                          })
+                        }
+                      >
+                        + {copy.listReadWord}
+                      </button>
+                    ) : null}
                     {history.current.variables?.length ? (
                       <>
                         <button

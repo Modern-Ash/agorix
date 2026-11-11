@@ -2791,3 +2791,71 @@ test("a block made in a second script is made for everyone, and the first script
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
 });
+
+test("a list holds the child's words, shows them as text, and keeps the blocks after reopening (#1304)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedStorage(page, {
+    "agorix.locale": "es",
+    "agorix.kids.progress.v1": JSON.stringify({
+      onboarded: true,
+      avatar: "🐸",
+      stars: 0,
+      done: {},
+    }),
+  });
+  await page.goto("/kids");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Compras");
+  await page.getByRole("button", { name: "+ Crear lista" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Fruta");
+  await page.getByRole("button", { name: "+ Crear palabra" }).click();
+
+  // A word is short: the box holds at most 20 letters, and a blank word cannot be added.
+  const word = page.getByRole("textbox", { name: "Palabra para la lista" });
+  await expect(page.getByTestId("listAdd-word")).toBeDisabled();
+  await word.fill("<b>manzana</b> y una pera muy grande");
+  await expect(word).toHaveValue("<b>manzana</b> y una");
+  await word.fill("manzana");
+  await page.getByTestId("listAdd-word").click();
+  await word.fill("pera");
+  await page.getByTestId("listAdd-word").click();
+  await page.getByRole("spinbutton", { name: "Posición (desde 1)" }).fill("1");
+  await word.fill("uva");
+  await page.getByTestId("listInsertAt-word").click();
+  await word.fill("kiwi");
+  await page.getByRole("spinbutton", { name: "Posición (desde 1)" }).fill("3");
+  await page.getByTestId("listReplaceAt-word").click();
+  // Read the second item into the word variable.
+  await page.getByRole("spinbutton", { name: "Posición (desde 1)" }).fill("2");
+  await page.getByTestId("list-read-word").click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(5);
+  await expect(page.locator(".kids-program-block").nth(2)).toContainText(
+    'Insertar palabra: Compras 1 ← "uva"',
+  );
+
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The words appear in the Data panel as plain text, in the order the blocks made.
+  await expect(page.getByText("Compras: uva, manzana, kiwi")).toBeVisible();
+  await expect(page.getByText("Fruta: manzana")).toBeVisible();
+  // A word is text, never markup: nothing was parsed as an element.
+  await expect(page.locator(".kids-studio-watchers b")).toHaveCount(0);
+
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.getByText('Insertar palabra: Compras 1 ← "uva"')).toBeVisible();
+  // The scene was saved without the child's words in the list: it starts empty.
+  await expect(page.getByText("Compras: —")).toBeVisible();
+});

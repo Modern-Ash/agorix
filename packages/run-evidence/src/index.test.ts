@@ -595,3 +595,47 @@ describe("a word nothing ever gave a value, and copies that do not fit (#1303, #
     ).not.toContain("copiesAtLimit");
   });
 });
+
+describe("a child's words in a list never reach a finding (design: word lists)", () => {
+  it("keeps every word out of what is sent to a provider, whatever the findings are", () => {
+    const secret = "secretito";
+    const p: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      lists: [{ id: "l", name: "items", initialItems: [], visible: true }],
+      scripts: [
+        {
+          id: "a",
+          trigger: flag,
+          statements: [
+            { type: "listAdd", listId: "l", value: { type: "textLiteral", value: secret } },
+            {
+              type: "listInsertAt",
+              listId: "l",
+              index: { type: "numericLiteral", value: 1 },
+              value: { type: "textLiteral", value: `${secret}2` },
+            },
+            { type: "move", steps: 20 },
+            { type: "move", steps: 20 },
+            { type: "move", steps: 20 },
+          ],
+        },
+        {
+          id: "b",
+          trigger: { type: "onMessage", message: "hola" },
+          statements: [{ type: "hide" }],
+        },
+      ],
+    };
+    const c = creative([...p.scripts]);
+    const run = runMultiActorProgram(p, c);
+    // The word is in the run's own world (it is the child's own data, on this device)...
+    expect(JSON.stringify(run.actors[0]!.world.lists)).toContain(secret);
+    // ...and in no finding, and in nothing a provider is given.
+    const findings = diagnoseRun({ program: p, creative: c, run });
+    expect(findings.length).toBeGreaterThan(0);
+    for (const finding of findings) {
+      expect(JSON.stringify(finding)).not.toContain(secret);
+      expect(JSON.stringify(toProviderFinding(finding))).not.toContain(secret);
+    }
+  });
+});
