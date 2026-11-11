@@ -225,7 +225,22 @@ export interface ModuloExpression {
   readonly right: Expression;
 }
 
-export type MathFunction = "abs" | "round" | "floor" | "ceiling";
+export type MathFunction =
+  | "abs"
+  | "round"
+  | "floor"
+  | "ceiling"
+  | "sqrt"
+  | "sin"
+  | "cos"
+  | "tan"
+  | "asin"
+  | "acos"
+  | "atan"
+  | "ln"
+  | "log"
+  | "exp"
+  | "pow10";
 
 /** Round half up (toward positive infinity), as Scratch does. */
 export interface MathFunctionExpression {

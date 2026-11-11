@@ -272,6 +272,49 @@ describe("going to another character round-trips (Scratch go to / glide to sprit
   });
 });
 
+describe("math functions round-trip through Scratch's operators", () => {
+  const names = [
+    "abs",
+    "round",
+    "floor",
+    "ceiling",
+    "sqrt",
+    "sin",
+    "cos",
+    "tan",
+    "asin",
+    "acos",
+    "atan",
+    "ln",
+    "log",
+    "exp",
+    "pow10",
+  ] as const;
+  const withMath = program(
+    [
+      nova(
+        names.map((name) => ({
+          type: "setVariable" as const,
+          variableId: "studio-var-1",
+          value: {
+            type: "mathFunction" as const,
+            function: name,
+            value: { type: "numericLiteral" as const, value: 9 },
+          },
+        })),
+      ),
+    ],
+    { variables: [{ id: "studio-var-1", name: "n", initialValue: 0, visible: true }] },
+  );
+
+  it("brings every function back, and reports nothing left behind", async () => {
+    const { bytes, report } = exportScratchProject(withMath, "forest", "es");
+    expect(report.left).toEqual([]);
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(withMath.scripts[0]!.statements);
+  });
+});
+
 describe("touching and distance to the mouse and to a character round-trip", () => {
   const withSensors = program(
     [

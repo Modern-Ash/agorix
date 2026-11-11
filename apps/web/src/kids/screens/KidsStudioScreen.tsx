@@ -152,6 +152,7 @@ import {
   type PenShade,
   type PenTransparency,
   type AskTextPromptId,
+  type MathFunction,
   type ChoicePromptId,
 } from "@agorix/program-model";
 import type {
@@ -434,6 +435,17 @@ const COPY = {
     fnRound: "redondear",
     fnFloor: "hacia abajo",
     fnCeiling: "hacia arriba",
+    fnSqrt: "raíz cuadrada",
+    fnSin: "seno (grados)",
+    fnCos: "coseno (grados)",
+    fnTan: "tangente (grados)",
+    fnAsin: "arcoseno",
+    fnAcos: "arcocoseno",
+    fnAtan: "arcotangente",
+    fnLn: "logaritmo natural",
+    fnLog: "logaritmo (base 10)",
+    fnExp: "e elevado a",
+    fnPow10: "10 elevado a",
     compareOperator: "Comparar",
     compareCalculation: "Comparar con cálculo",
     ifLabel: "Si",
@@ -794,6 +806,17 @@ const COPY = {
     fnRound: "round",
     fnFloor: "round down",
     fnCeiling: "round up",
+    fnSqrt: "square root",
+    fnSin: "sine (degrees)",
+    fnCos: "cosine (degrees)",
+    fnTan: "tangent (degrees)",
+    fnAsin: "arcsine",
+    fnAcos: "arccosine",
+    fnAtan: "arctangent",
+    fnLn: "natural logarithm",
+    fnLog: "logarithm (base 10)",
+    fnExp: "e to the power",
+    fnPow10: "10 to the power",
     compareOperator: "Compare",
     compareCalculation: "Compare with calculation",
     ifLabel: "If",
@@ -1518,7 +1541,7 @@ export function KidsStudioScreen({
   const [wordValue, setWordValue] = useState("");
   const [wordLetter, setWordLetter] = useState("a");
   const [dataValue, setDataValue] = useState(1);
-  const [mathFn, setMathFn] = useState<"abs" | "round" | "floor" | "ceiling">("round");
+  const [mathFn, setMathFn] = useState<MathFunction>("round");
   const [variableId, setVariableId] = useState("studio-var-1");
   const [listId, setListId] = useState("studio-list-1");
   const [listIndex, setListIndex] = useState(1);
@@ -8697,6 +8720,17 @@ export function KidsStudioScreen({
                         <option value="round">{copy.fnRound}</option>
                         <option value="floor">{copy.fnFloor}</option>
                         <option value="ceiling">{copy.fnCeiling}</option>
+                        <option value="sqrt">{copy.fnSqrt}</option>
+                        <option value="sin">{copy.fnSin}</option>
+                        <option value="cos">{copy.fnCos}</option>
+                        <option value="tan">{copy.fnTan}</option>
+                        <option value="asin">{copy.fnAsin}</option>
+                        <option value="acos">{copy.fnAcos}</option>
+                        <option value="atan">{copy.fnAtan}</option>
+                        <option value="ln">{copy.fnLn}</option>
+                        <option value="log">{copy.fnLog}</option>
+                        <option value="exp">{copy.fnExp}</option>
+                        <option value="pow10">{copy.fnPow10}</option>
                       </select>
                     </label>
                     <button

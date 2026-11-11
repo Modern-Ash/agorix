@@ -1,4 +1,5 @@
 import type {
+  MathFunction,
   Expression,
   Procedure,
   ProcedureParamId,
@@ -336,6 +337,49 @@ function pointerPosition(state: MutableRunState): { x: number; y: number } {
   };
 }
 
+/**
+ * Scratch's math reporters. Angles are in degrees. Where Scratch would give a number that is not
+ * one (square root of a negative, log of zero, tan 90) the answer is 0, as a Scratch slot reads it.
+ */
+function applyMathFunction(name: MathFunction, operand: number): number {
+  const rad = (operand * Math.PI) / 180;
+  const deg = (value: number) => (value * 180) / Math.PI;
+  const tenth = (value: number) => Math.round(value * 1e10) / 1e10;
+  const result =
+    name === "abs"
+      ? Math.abs(operand)
+      : name === "round"
+        ? Math.round(operand)
+        : name === "floor"
+          ? Math.floor(operand)
+          : name === "ceiling"
+            ? Math.ceil(operand)
+            : name === "sqrt"
+              ? Math.sqrt(operand)
+              : name === "sin"
+                ? tenth(Math.sin(rad))
+                : name === "cos"
+                  ? tenth(Math.cos(rad))
+                  : name === "tan"
+                    ? Math.abs(operand % 180) === 90
+                      ? 0
+                      : tenth(Math.tan(rad))
+                    : name === "asin"
+                      ? deg(Math.asin(operand))
+                      : name === "acos"
+                        ? deg(Math.acos(operand))
+                        : name === "atan"
+                          ? deg(Math.atan(operand))
+                          : name === "ln"
+                            ? Math.log(operand)
+                            : name === "log"
+                              ? Math.log10(operand)
+                              : name === "exp"
+                                ? Math.exp(operand)
+                                : Math.pow(10, operand);
+  return Number.isFinite(result) ? result : 0;
+}
+
 function normalizeRuntimeNumber(value: number, path: string): number {
   if (!Number.isFinite(value)) {
     throw new RuntimeExecutionError(path, String(value));
@@ -574,15 +618,7 @@ function evaluateExpression(
       );
     case "mathFunction": {
       const operand = coerceNumber(evaluateExpression(expression.value, `${path}.value`, state));
-      const result =
-        expression.function === "abs"
-          ? Math.abs(operand)
-          : expression.function === "round"
-            ? Math.round(operand)
-            : expression.function === "floor"
-              ? Math.floor(operand)
-              : Math.ceil(operand);
-      return normalizeRuntimeNumber(result + 0, path);
+      return normalizeRuntimeNumber(applyMathFunction(expression.function, operand) + 0, path);
     }
     case "not":
       return !coerceBoolean(evaluateExpression(expression.value, `${path}.value`, state));

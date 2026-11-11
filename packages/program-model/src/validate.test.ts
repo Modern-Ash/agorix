@@ -360,13 +360,29 @@ describe("mathFunction expression", () => {
       ],
     }) as never;
   const operand = { type: "numericLiteral", value: -2.5 };
-  it("accepts the four functions and rejects unknown ones or a missing operand", () => {
-    for (const fn of ["abs", "round", "floor", "ceiling"]) {
+  it("accepts every function and rejects unknown ones or a missing operand", () => {
+    for (const fn of [
+      "abs",
+      "round",
+      "floor",
+      "ceiling",
+      "sqrt",
+      "sin",
+      "cos",
+      "tan",
+      "asin",
+      "acos",
+      "atan",
+      "ln",
+      "log",
+      "exp",
+      "pow10",
+    ]) {
       expect(() =>
         validateProgram(withValue({ type: "mathFunction", function: fn, value: operand })),
       ).not.toThrow();
     }
-    for (const fn of ["sqrt", "", 3, undefined]) {
+    for (const fn of ["cbrt", "", 3, undefined]) {
       expect(() =>
         validateProgram(withValue({ type: "mathFunction", function: fn, value: operand })),
       ).toThrow(ProgramValidationError);

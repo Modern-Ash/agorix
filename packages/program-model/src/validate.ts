@@ -310,7 +310,23 @@ function checkEffect(value: unknown, path: string): GraphicEffect {
   return value as GraphicEffect;
 }
 
-const MATH_FUNCTIONS: readonly string[] = ["abs", "round", "floor", "ceiling"];
+const MATH_FUNCTIONS: readonly string[] = [
+  "abs",
+  "round",
+  "floor",
+  "ceiling",
+  "sqrt",
+  "sin",
+  "cos",
+  "tan",
+  "asin",
+  "acos",
+  "atan",
+  "ln",
+  "log",
+  "exp",
+  "pow10",
+];
 
 function validateMathFunctionExpression(
   input: Record<string, unknown>,

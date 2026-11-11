@@ -609,10 +609,24 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return `(!${asBoolean(writer, expression.value, `${nodeId}/value`)})`;
     case "mathFunction": {
       const value = asNumber(writer, expression.value, `${nodeId}/value`);
-      const name = { abs: "abs", round: "round", floor: "floor", ceiling: "ceil" }[
-        expression.function
-      ];
-      return `Math.${name}(${value})`;
+      const call = {
+        abs: `Math.abs(${value})`,
+        round: `Math.round(${value})`,
+        floor: `Math.floor(${value})`,
+        ceiling: `Math.ceil(${value})`,
+        sqrt: `Math.sqrt(${value})`,
+        sin: `Math.sin(Math.toRadians(${value}))`,
+        cos: `Math.cos(Math.toRadians(${value}))`,
+        tan: `Math.tan(Math.toRadians(${value}))`,
+        asin: `Math.toDegrees(Math.asin(${value}))`,
+        acos: `Math.toDegrees(Math.acos(${value}))`,
+        atan: `Math.toDegrees(Math.atan(${value}))`,
+        ln: `Math.log(${value})`,
+        log: `Math.log10(${value})`,
+        exp: `Math.exp(${value})`,
+        pow10: `Math.pow(10, ${value})`,
+      }[expression.function];
+      return call;
     }
     case "random":
       return `random(${asNumber(writer, expression.min, `${nodeId}/min`)}, ${asNumber(writer, expression.max, `${nodeId}/max`)})`;

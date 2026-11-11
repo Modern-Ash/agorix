@@ -188,6 +188,13 @@ const statements: Statement[] = [
     else: [
       { type: "setVariable", variableId: "v", value: { type: "distanceToMouse" } },
       { type: "if", condition: { type: "touchingMouse" }, then: [{ type: "move", steps: 1 }] },
+      ...(
+        ["sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "ln", "log", "exp", "pow10"] as const
+      ).map((name) => ({
+        type: "setVariable" as const,
+        variableId: "v",
+        value: { type: "mathFunction" as const, function: name, value: num(1) },
+      })),
       {
         type: "setVariable",
         variableId: "v",

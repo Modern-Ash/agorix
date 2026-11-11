@@ -1,4 +1,5 @@
 import type {
+  MathFunction,
   Expression,
   ProgramList,
   ProgramVariable,
@@ -240,7 +241,10 @@ function formatExpression(
     case "or":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} || ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "mathFunction":
-      return `Math.${expression.function === "ceiling" ? "ceil" : expression.function}(${formatExpression(expression.value, `${nodeId}/value`, context)})`;
+      return tsMathCall(
+        expression.function,
+        formatExpression(expression.value, `${nodeId}/value`, context),
+      );
     case "not":
       return `(!${formatExpression(expression.value, `${nodeId}/value`, context)})`;
     case "randomInteger":
@@ -793,4 +797,28 @@ export function projectProgramLanguage(program: ProjectProgram): LanguageProject
 export function projectProgram(program: ProjectProgram): ProjectionResult {
   const result = projectProgramLanguage(program);
   return { code: result.text, mapping: firstRangeMapping(result.mapping) };
+}
+
+/** TypeScript text for a math reporter; angles are in degrees, as in Scratch. */
+function tsMathCall(name: MathFunction, value: string): string {
+  switch (name) {
+    case "ceiling":
+      return `Math.ceil(${value})`;
+    case "sin":
+    case "cos":
+    case "tan":
+      return `Math.${name}((${value}) * Math.PI / 180)`;
+    case "asin":
+    case "acos":
+    case "atan":
+      return `(Math.${name}(${value}) * 180 / Math.PI)`;
+    case "ln":
+      return `Math.log(${value})`;
+    case "log":
+      return `Math.log10(${value})`;
+    case "pow10":
+      return `Math.pow(10, ${value})`;
+    default:
+      return `Math.${name}(${value})`;
+  }
 }

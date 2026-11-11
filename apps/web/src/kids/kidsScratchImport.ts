@@ -2,6 +2,7 @@ import {
   MUSIC_BEATS,
   PEN_TRANSPARENCIES,
   type ExtensionId,
+  type MathFunction,
   type MusicDrum,
   type MusicInstrument,
   type ClockPart,
@@ -108,6 +109,24 @@ const INSTRUMENT_OF_SCRATCH: Readonly<Record<string, MusicInstrument>> = {
 
 const MAX_SPRITES = 12;
 const MESSAGES = ["hola", "vamos", "listo"] as const;
+/** Scratch's `[abs] of ()` menu to ours; round is its own Scratch block. */
+const SCRATCH_MATH_NAMES: Readonly<Record<string, MathFunction>> = {
+  abs: "abs",
+  floor: "floor",
+  ceiling: "ceiling",
+  sqrt: "sqrt",
+  sin: "sin",
+  cos: "cos",
+  tan: "tan",
+  asin: "asin",
+  acos: "acos",
+  atan: "atan",
+  ln: "ln",
+  log: "log",
+  "e ^": "exp",
+  "10 ^": "pow10",
+};
+
 const KEYS: Readonly<Record<string, string>> = {
   space: "Space",
   "up arrow": "ArrowUp",
@@ -342,6 +361,17 @@ class Converter {
           operator_mod: "modulo",
         }[block.opcode] as "add" | "subtract" | "multiply" | "divide" | "modulo";
         return { type, left, right };
+      }
+      case "operator_round": {
+        const value = this.numberExpression(block, "NUM");
+        return value === undefined ? undefined : { type: "mathFunction", function: "round", value };
+      }
+      case "operator_mathop": {
+        const name = SCRATCH_MATH_NAMES[this.menu(block, "OPERATOR") ?? ""];
+        const value = name === undefined ? undefined : this.numberExpression(block, "NUM");
+        return name === undefined || value === undefined
+          ? undefined
+          : { type: "mathFunction", function: name, value };
       }
       case "operator_random": {
         const min = this.numberExpression(block, "FROM");
