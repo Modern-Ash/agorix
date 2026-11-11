@@ -261,3 +261,7 @@ A script can wait for, and a condition can ask about, **space, the four arrows, 
 ## Status: go to and glide to another character (Scratch parity)
 
 `goToTarget` now takes `target: "actor"` with an `actorId`, and an optional `seconds` (0–10) that makes it a glide. The runtime goes to the other character's position at the start of the activation (the same snapshot the sensors read) and a glide adds its seconds to the virtual clock; a missing character leaves a note and the character stays put. All four code views, the block editor, the Scratch importer (`motion_goto`/`motion_glideto` to a sprite name) and exporter carry it. Ori's closed idea blocks still offer only random/mouse without seconds.
+
+## Status: math functions (Scratch parity)
+
+`mathFunction` gains sqrt, sin, cos, tan, asin, acos, atan, ln, log (base 10), exp (e^) and pow10 (10^) beside abs/round/floor/ceiling. Angles are in degrees and sin/cos/tan are rounded to 10 decimals, as in Scratch. Where Scratch has no number (square root of a negative, log of 0, tan 90) the answer is 0 rather than a run error. Carried by the validator, runtime, four code views, block editor, Studio function picker, and the Scratch importer/exporter (`operator_round`, `operator_mathop`).
