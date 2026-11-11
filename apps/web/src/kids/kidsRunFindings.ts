@@ -215,6 +215,14 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
         : young
           ? "This word is empty because nothing ever put anything in it. Try “Ask for a word”."
           : "This program uses a word that is never given a value, so it is always empty. You can give it one with “Ask for a word” or “Set the word”.";
+    case "listNeverFilled":
+      return es
+        ? young
+          ? "Esta lista está vacía porque nadie le puso nada. Probá «Agregar palabra» o «Agregar número»."
+          : "Este programa lee un elemento de una lista a la que nunca se le agregó nada, así que siempre está vacía. Podés llenarla con «Agregar palabra», «Agregar número» o «Insertar»."
+        : young
+          ? "This list is empty because nothing ever went into it. Try “Add word” or “Add number”."
+          : "This program reads an item from a list that never gets anything added, so it is always empty. You can fill it with “Add word”, “Add number” or “Insert”.";
     case "copiesAtLimit": {
       const refused = finding.counts["refused"] ?? 1;
       return es

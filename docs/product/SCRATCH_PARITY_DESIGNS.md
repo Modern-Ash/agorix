@@ -169,9 +169,9 @@ There is still no corpus of children's `.sb3` files, so the team wrote ten proje
 | clone-rain    | 9          | 8            | 2       | 2            |
 | timer-race    | 6          | 6            | 2       | 2            |
 | music-box     | 5          | 5            | 1       | 1            |
-| custom-blocks | 7          | 0            | 2       | 1            |
+| custom-blocks | 7          | 2            | 2       | 1            |
 | ghost-story   | 11         | 9            | 3       | 2            |
-| **Total**     | **91**     | **71 (78%)** | **23**  | **21 (91%)** |
+| **Total**     | **91**     | **73 (80%)** | **23**  | **21 (91%)** |
 
 Measured at the end of #1363: with Music mapped and up to three scripts per character, 71 of 91 statements (78%) and 21 of 23 scripts (91%) come across. Before, it was 58 (64%) and 14 (61%). What is left, most to least: lists and "my blocks", "ask and wait", switching costume or backdrop by name, "if/else" on an answer, a pen colour step, a value that comes from another block (a random number inside "go to"), and a second script for an event the character already answers.
 
@@ -222,3 +222,7 @@ Ori's goals from the closed list now work on the script the child has open: the 
 ## Status: custom blocks and the second and third script (#1363)
 
 A character's second and third scripts keep no custom blocks of their own (the validator refuses them), but any script can already call a block made for everyone. So on those tabs the "make a block" button is "Make block for everyone": it turns the last blocks of that script into a shared block and puts a call in their place, in one undoable step, and says so beside the button. The first script still makes its own. The new block is checked like any shared one: its name must differ from the shared names that exist, at most five, and the same limit on numbers. The model function is `createSharedStudioProcedure`.
+
+## Status: Scratch lists in the importer (word lists, increment 4)
+
+The importer now keeps up to three Scratch lists (from the stage first) as the scene's lists, which start empty, and reads "add to", "insert at", "replace item of" and "delete of" a list, and the reporters "item of" and "length of". An item may be a number or a short word, as in Scratch: text typed in that reads as a number becomes the number, any other text of up to 20 letters is a word, and a number or word variable and an item of a list are kept as such. Left out and reported: a Scratch list's starting items (the scene's lists start empty), a fourth list, a position that is not a whole number from 1 to 10, "delete all", and a word longer than 20 letters. The corpus goes from 71 to 73 of 91 statements, now counting the list blocks of the "custom blocks" project.

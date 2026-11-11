@@ -353,6 +353,7 @@ export const SCRATCH_CORPUS: readonly CorpusEntry[] = [
     project: scratchProject([
       {
         name: "Helper",
+        lists: { "l-items": ["items", []] },
         scripts: [
           [
             n("procedures_definition", { in: { custom_block: n("procedures_prototype") } }),

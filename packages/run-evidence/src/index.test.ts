@@ -639,3 +639,50 @@ describe("a child's words in a list never reach a finding (design: word lists)",
     }
   });
 });
+
+describe("a list nothing was ever put in (design: word lists)", () => {
+  const lists = [{ id: "l", name: "items", initialItems: [] as number[], visible: true }];
+  const read = (listId = "l"): Script["statements"][number] => ({
+    type: "say",
+    text: "hola",
+    append: { type: "listItem", listId, index: { type: "numericLiteral", value: 1 } },
+  });
+  const find = (statements: Script["statements"], items: (number | string)[] = []) => {
+    const p: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      lists: [{ ...lists[0]!, initialItems: items }],
+      scripts: [{ id: "a", trigger: flag, statements }],
+    };
+    const c = creative([...p.scripts]);
+    return diagnoseRun({ program: p, creative: c, run: runMultiActorProgram(p, c) }).filter(
+      (item) => item.kind === "listNeverFilled",
+    );
+  };
+
+  it("names a list that is read and never added to, with the count of reads only", () => {
+    const [finding] = find([read(), read()]);
+    expect(finding).toMatchObject({ kind: "listNeverFilled", counts: { reads: 2 } });
+    expect(toProviderFinding(finding!)).toEqual({
+      kind: "listNeverFilled",
+      counts: { reads: 2 },
+    });
+  });
+
+  it("stays quiet when something is added or inserted, or the list starts with items", () => {
+    expect(
+      find([{ type: "listAdd", listId: "l", value: { type: "textLiteral", value: "x" } }, read()]),
+    ).toEqual([]);
+    expect(
+      find([
+        {
+          type: "listInsertAt",
+          listId: "l",
+          index: { type: "numericLiteral", value: 1 },
+          value: { type: "numericLiteral", value: 2 },
+        },
+        read(),
+      ]),
+    ).toEqual([]);
+    expect(find([read()], [1, 2])).toEqual([]);
+  });
+});

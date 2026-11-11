@@ -24,6 +24,7 @@ export type FindingKind =
   | "repeatedBlocks"
   | "repeatedApart"
   | "wordNeverSet"
+  | "listNeverFilled"
   | "copiesAtLimit";
 
 /** Which loop did not end. */
@@ -520,6 +521,47 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
     out.push({
       id: `wordNeverSet:${variableId}`,
       kind: "wordNeverSet",
+      actorId,
+      nodeIds: [first.nodeId],
+      counts: { reads: reads.length },
+      ...(ranAt < 0 ? {} : { traceIndex: ranAt }),
+      confidence: ranAt < 0 ? 0.4 : 0.75,
+    });
+  }
+
+  // 9b. A list that blocks read an item from but nothing ever put anything in: it is always empty.
+  const listsWritten = new Set<string>();
+  const listReads = new Map<string, { nodeId: string; scriptIndex: number }[]>();
+  program.scripts.forEach((script, scriptIndex) =>
+    walk(script.statements, `scripts[${scriptIndex}]`, (statement, nodeId) => {
+      if (statement.type === "listAdd" || statement.type === "listInsertAt")
+        listsWritten.add(statement.listId);
+      for (const match of JSON.stringify(childless(statement)).matchAll(
+        /"type":"listItem","listId":"([^"]+)"/g,
+      )) {
+        const list = listReads.get(match[1]!) ?? [];
+        list.push({ nodeId, scriptIndex });
+        listReads.set(match[1]!, list);
+      }
+    }),
+  );
+  for (const [listId, reads] of listReads) {
+    // A list that starts with items is not empty, even if nothing is added in the run.
+    if (
+      listsWritten.has(listId) ||
+      (program.lists?.find((item) => item.id === listId)?.initialItems.length ?? 0) > 0
+    )
+      continue;
+    const first = reads[0]!;
+    const script = program.scripts[first.scriptIndex]!;
+    const actorId = actorsOfScript(creative, script)[0] ?? "";
+    if (!wants(actorId)) continue;
+    const ranAt = run.trace.findIndex((entry) =>
+      reads.some((read) => read.nodeId === entry.nodeId),
+    );
+    out.push({
+      id: `listNeverFilled:${listId}`,
+      kind: "listNeverFilled",
       actorId,
       nodeIds: [first.nodeId],
       counts: { reads: reads.length },

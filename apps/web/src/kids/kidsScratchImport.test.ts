@@ -507,3 +507,133 @@ describe("Scratch pen, timer and value hats", () => {
     expect(point(180)).toMatchObject({ type: "pointInDirection", degrees: 90 });
   });
 });
+
+describe("Scratch lists, which hold numbers or words (design: word lists)", () => {
+  function listProject(
+    blocks: Record<string, unknown>,
+    lists: Record<string, [string, unknown[]]> = { L1: ["Compras", []] },
+    variables: Record<string, [string, unknown]> = {},
+  ) {
+    return {
+      targets: [
+        { isStage: true, name: "Stage", variables, lists, blocks: {} },
+        {
+          isStage: false,
+          name: "Cat",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          lists: {},
+          blocks,
+        },
+      ],
+    };
+  }
+  const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
+  const onList = { fields: { LIST: ["Compras", "L1"] } };
+
+  it("keeps a list, adds a word and a number, inserts, replaces, and removes", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("a"),
+        a: block("data_addtolist", {
+          ...onList,
+          next: "b",
+          inputs: { ITEM: lit("manzana", 10) },
+        }),
+        b: block("data_addtolist", { ...onList, next: "c", inputs: { ITEM: lit("3", 10) } }),
+        c: block("data_insertatlist", {
+          ...onList,
+          next: "d",
+          inputs: { INDEX: lit(1), ITEM: lit("pera", 10) },
+        }),
+        d: block("data_replaceitemoflist", {
+          ...onList,
+          next: "e",
+          inputs: { INDEX: lit(2), ITEM: lit("uva", 10) },
+        }),
+        e: block("data_deleteoflist", { ...onList, inputs: { INDEX: lit(1) } }),
+      }),
+    );
+    expect(program.lists).toEqual([
+      { id: "studio-list-1", name: "Compras", initialItems: [], visible: true },
+    ]);
+    const types = program.scripts[0]!.statements.map((statement) => statement.type);
+    expect(types).toEqual(["listAdd", "listAdd", "listInsertAt", "listReplaceAt", "listRemoveAt"]);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      value: { type: "textLiteral", value: "manzana" },
+    });
+    // "3" typed into a list is a number, as in Scratch.
+    expect(program.scripts[0]!.statements[1]).toMatchObject({
+      value: { type: "numericLiteral", value: 3 },
+    });
+    expect(report.dropped).toEqual([]);
+  });
+
+  it("reads an item and the length, and keeps a variable as what goes into a list", () => {
+    const { program } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("a"),
+          a: block("data_addtolist", {
+            ...onList,
+            next: "b",
+            inputs: { ITEM: [3, [12, "puntos", "V1"], [10, ""]] },
+          }),
+          b: block("data_setvariableto", {
+            fields: { VARIABLE: ["puntos", "V1"] },
+            inputs: { VALUE: [3, "len", [4, "0"]] },
+          }),
+          len: block("data_lengthoflist", onList),
+        },
+        { L1: ["Compras", []] },
+        { V1: ["puntos", 0] },
+      ),
+    );
+    const [add, set] = program.scripts[0]!.statements;
+    expect(add).toMatchObject({ type: "listAdd", value: { type: "variable" } });
+    expect(set).toMatchObject({ type: "setVariable", value: { type: "listLength" } });
+  });
+
+  it("leaves starting items, a fourth list, a position out of range and 'delete all' behind, and says so", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("a"),
+          a: block("data_insertatlist", {
+            ...onList,
+            next: "b",
+            inputs: { INDEX: lit(50), ITEM: lit("x", 10) },
+          }),
+          b: block("data_deletealloflist", onList),
+        },
+        {
+          L1: ["Compras", ["leche", "pan"]],
+          L2: ["Dos", []],
+          L3: ["Tres", []],
+          L4: ["Cuatro", []],
+        },
+      ),
+    );
+    expect(program.lists).toHaveLength(3);
+    expect(program.lists!.every((list) => list.initialItems.length === 0)).toBe(true);
+    const reasons = report.dropped.map((item) => item.what);
+    expect(reasons.some((what) => what.includes("starting items"))).toBe(true);
+    expect(reasons.some((what) => what.includes("more than three"))).toBe(true);
+    expect(reasons.some((what) => what.startsWith("data_insertatlist"))).toBe(true);
+    expect(reasons).toContain("data_deletealloflist");
+  });
+
+  it("does not keep a word longer than 20 letters", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("a"),
+        a: block("data_addtolist", { ...onList, inputs: { ITEM: lit("x".repeat(30), 10) } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("data_addtolist"))).toBe(true);
+  });
+});
