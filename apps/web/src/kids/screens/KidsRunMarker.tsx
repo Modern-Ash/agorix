@@ -28,6 +28,7 @@ export function KidsRunMarker({
   onShown,
   onRephrased,
   describeBlock,
+  openRequest = 0,
 }: {
   readonly finding: Finding;
   readonly program: ProjectProgram;
@@ -46,6 +47,8 @@ export function KidsRunMarker({
   readonly onRephrased: () => void;
   /** The same child-facing block label shown by the editor. */
   readonly describeBlock: (statement: Statement) => string;
+  /** Raised when the learner taps Ori's mark on the block itself: the sentence opens. */
+  readonly openRequest?: number;
 }) {
   const [rephrase, setRephrase] = useState<RephraseResult | "loading" | null>(null);
   const [unavailable, setUnavailable] = useState(rephraseUnavailable);
@@ -54,6 +57,9 @@ export function KidsRunMarker({
     // Once, when the marker appears for this run.
   }, []);
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (openRequest > 0) setOpen(true);
+  }, [openRequest]);
   const [declined, setDeclined] = useState(false);
   const es = locale === "es";
   const review = (() => {

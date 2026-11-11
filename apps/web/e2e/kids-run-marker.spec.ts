@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures.js";
+import { expect, seedStorage, test } from "./fixtures.js";
 import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -339,4 +339,72 @@ test("Ori notices a word nobody gave a value", async ({ page }) => {
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("button", { name: /Ori vio algo/ }).click();
   await expect(page.locator(".kids-ori-noticed-panel")).toContainText("está vacía");
+});
+
+test("Ori's mark sits on the block it noticed something about, and tapping it opens what it saw", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedStorage(page, {
+    "agorix.locale": "es",
+    "agorix.kids.progress.v1": JSON.stringify({
+      onboarded: true,
+      avatar: "🐸",
+      stars: 0,
+      done: {},
+    }),
+  });
+  await page.goto("/kids");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Si el ratón está pulsado, mover 1" }).click();
+  // Nothing is marked before a run.
+  await expect(page.getByTestId("ori-block-mark")).toHaveCount(0);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The mark is on the block that never held, not on the other one.
+  const mark = page.getByTestId("ori-block-mark");
+  await expect(mark).toHaveCount(1);
+  await expect(page.locator(".kids-program-block").filter({ has: mark })).toContainText(
+    "Si ratón pulsado",
+  );
+  await expect(mark).toHaveAccessibleName("Ver lo que Ori notó aquí");
+  // Tapping it opens the sentence and points at the block, like the marker below the stage.
+  await mark.click();
+  await expect(page.locator(".kids-ori-noticed-panel")).toContainText("dijo que no");
+  await expect(page.locator('.kids-program-block[data-finding="true"]')).toHaveCount(1);
+  // A new run starts clean.
+  await page.getByRole("button", { name: "Reiniciar" }).click();
+  await expect(page.getByTestId("ori-block-mark")).toHaveCount(0);
+});
+
+test("when the finding is in another of the character's scripts, its tab carries the mark", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedStorage(page, {
+    "agorix.locale": "es",
+    "agorix.kids.progress.v1": JSON.stringify({
+      onboarded: true,
+      avatar: "🐸",
+      stars: 0,
+      done: {},
+    }),
+  });
+  await page.goto("/kids");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  // A second script that waits for a message nobody sends, then back to the first script to run.
+  await page.getByTestId("script-add").click();
+  await page.getByRole("combobox", { name: "Cuando" }).selectOption("onMessage");
+  await page.getByTestId("script-tab-1").click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("ori-tab-mark")).toHaveCount(1);
+  await expect(page.getByTestId("script-tab-2")).toContainText("Ver lo que Ori notó aquí");
+  // Going to that script shows the mark on the script (it never started), and the tab no longer
+  // needs one.
+  await page.getByTestId("script-tab-2").click();
+  await expect(page.getByTestId("ori-script-mark")).toHaveCount(1);
+  await expect(page.getByTestId("ori-tab-mark")).toHaveCount(0);
 });

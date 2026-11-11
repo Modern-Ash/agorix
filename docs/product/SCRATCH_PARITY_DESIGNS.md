@@ -230,3 +230,13 @@ The importer now keeps up to three Scratch lists (from the stage first) as the s
 ## Status: Scratch lists in the exporter (word lists, increment 5)
 
 A scene's lists are written to the `.sb3`: on the stage (they belong to the whole scene), empty as in the scene, with every list block written as the Scratch block it matches (add, insert, replace, delete, item of, length of) and the list named in its field. A scene with a list that holds numbers and words exports and imports back to the same blocks (tested), including words, numbers, word variables and items read into a variable. One limit of Scratch itself: variables have no type, so a word variable comes back as one only if the program sets it to a word; one fed only from a list item comes back as a number variable.
+
+## Status: Ori's findings on the block itself
+
+After a run, Ori's quiet marker below the stage still says one sentence about what looks wrong (silence is respect: nothing speaks on its own). It now also puts a small mark where the problem is, so the child does not have to read a description and hunt for the block:
+
+- **On the block** it is about (a ✦ at the end of the block, named "See what Ori noticed here"), when the finding points at one block, such as a condition that never held.
+- **On the script**, a button above the blocks ("See what Ori noticed in this script"), when it is about the whole script, such as one that never started because nobody sends its message.
+- **On the tab** of another of the character's scripts, when the finding is in a script that is not the open one, so a problem in script 2 is not hidden while script 1 is shown.
+
+Tapping a mark opens the same sentence and points at the block, exactly like "Ori noticed something" below the stage; nothing is added to the program by it. A new run clears the marks. The marks are 44 px targets with a tooltip, and the tab's name carries the same words for a screen reader.

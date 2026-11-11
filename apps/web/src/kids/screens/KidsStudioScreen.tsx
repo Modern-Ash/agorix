@@ -581,6 +581,8 @@ const COPY = {
     onPlay: "Al jugar",
     scriptsLabel: "Guiones del personaje",
     makeBlockForAll: "Hacer bloque para todos",
+    oriMark: "Ver lo que Ori notó aquí",
+    oriMarkScript: "Ver lo que Ori notó en este guion",
     makeBlockForAllNote:
       "En este guion el bloque se hace para todos los personajes: cualquier guion puede usarlo.",
     scriptTab: "Guion",
@@ -935,6 +937,8 @@ const COPY = {
     onPlay: "When played",
     scriptsLabel: "Character scripts",
     makeBlockForAll: "Make block for everyone",
+    oriMark: "See what Ori noticed here",
+    oriMarkScript: "See what Ori noticed in this script",
     makeBlockForAllNote:
       "In this script the block is made for everyone: any script of any character can use it.",
     scriptTab: "Script",
@@ -2293,6 +2297,19 @@ export function KidsStudioScreen({
     // history.current is a ref read; the run and the character decide when to look again.
   }, [run, playing, oriSuggestions, activeActorId, locale, creative, loopRun]);
   const [pointedAt, setPointedAt] = useState<{ finding: Finding; run: unknown } | null>(null);
+  const [markerOpenRequest, setMarkerOpenRequest] = useState(0);
+  // Where Ori noticed something, so a small mark can sit on that block, script or tab: quiet, and
+  // where the child is already looking. Tapping it opens the same sentence the marker below has.
+  const noticedScript = noticed ? findingScriptIndex(noticed) : null;
+  const noticedBlock = noticed ? findingBlockIndex(noticed) : null;
+  function showNoticedHere() {
+    if (!noticed) return;
+    setPointedAt({ finding: noticed, run });
+    setMarkerOpenRequest((value) => value + 1);
+    document
+      .querySelector(".kids-ori-noticed")
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
   const pointed = pointedAt !== null && pointedAt.run === run ? pointedAt.finding : null;
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
@@ -5119,6 +5136,7 @@ export function KidsStudioScreen({
                 }}
                 locale={locale}
                 band={ageBand ?? "6-8"}
+                openRequest={markerOpenRequest}
                 onShown={() => bumpIndicator("oriNoticed")}
                 onRephrased={() => bumpIndicator("oriRephrased")}
                 onDecision={(decision) => {
@@ -5726,6 +5744,24 @@ export function KidsStudioScreen({
                         }}
                       >
                         {copy.scriptTab} {item}
+                        {noticed &&
+                        slot !== item &&
+                        noticedScript ===
+                          history.current.scripts.indexOf(
+                            (item === 1
+                              ? history.current.scripts.find(
+                                  (entry) => actor?.scripts?.[0] === entry.id,
+                                )
+                              : extraScripts.find((entry) => entry.slot === item)?.script)!,
+                          ) ? (
+                          <>
+                            {" "}
+                            <span aria-hidden="true" data-testid="ori-tab-mark">
+                              ✦
+                            </span>
+                            <span className="kids-visually-hidden"> — {copy.oriMark}</span>
+                          </>
+                        ) : null}
                       </button>
                     ))}
                     {extraScripts.length < MAX_STUDIO_EXTRA_SCRIPTS ? (
@@ -5926,6 +5962,16 @@ export function KidsStudioScreen({
                       {blocksUsed} {copy.blocksNear} {MAX_STUDIO_BLOCKS}
                     </p>
                   ) : null}
+                  {noticed && noticedScript === scriptIndexOfActor && noticedBlock === null ? (
+                    <button
+                      type="button"
+                      className="kids-ori-block-mark kids-ori-script-mark"
+                      data-testid="ori-script-mark"
+                      onClick={showNoticedHere}
+                    >
+                      <span aria-hidden="true">✦</span> {copy.oriMarkScript}
+                    </button>
+                  ) : null}
                   <ol
                     ref={programRef}
                     className="kids-program-drop"
@@ -6046,6 +6092,19 @@ export function KidsStudioScreen({
                           ⠿
                         </button>
                         <span>{blockLabel(statement)}</span>
+                        {noticed &&
+                        noticedScript === scriptIndexOfActor &&
+                        noticedBlock === index ? (
+                          <button
+                            type="button"
+                            className="kids-ori-block-mark"
+                            data-testid="ori-block-mark"
+                            aria-label={copy.oriMark}
+                            onClick={showNoticedHere}
+                          >
+                            <span aria-hidden="true">✦</span>
+                          </button>
+                        ) : null}
                         {callNumbers(statement, index)}
                         {statement.type === "repeat" ||
                         statement.type === "repeatUntil" ||
