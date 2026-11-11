@@ -2886,3 +2886,37 @@ test("Ori offers a sensor the program does not use yet, shows it first, and stop
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Reaccionar a una tecla" })).toBeVisible();
 });
+
+test("Ori offers to ask a word and keep it in the list, using the child's own words, and only once it is not done (design: word lists)", async ({
+  page,
+}) => {
+  await openStudio(page, "9-12");
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Compras");
+  await page.getByRole("button", { name: "+ Crear lista" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Fruta");
+  await page.getByRole("button", { name: "+ Crear palabra" }).click();
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
+  await expect(page.getByRole("button", { name: "Preguntar y guardar en la lista" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Leer el primero de la lista" })).toBeVisible();
+  await page.getByRole("button", { name: "Preguntar y guardar en la lista" }).click();
+  // Two ghost blocks, nothing added yet.
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(2);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByTestId("intent-card").getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  // The word that goes in the list is the one the child types as the answer, not one of Ori's.
+  await expect(page.locator(".kids-program-block").nth(1)).toContainText(
+    "Agregar palabra: Compras",
+  );
+  await expect(page.locator(".kids-program-block").nth(1)).not.toContainText('"');
+  await expect(page.getByRole("button", { name: "Preguntar y guardar en la lista" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The run waits for the child's answer.
+  await expect(
+    page.getByRole("textbox", { name: /Escribí una palabra|¿Cuál|¿Cómo/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+});

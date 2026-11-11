@@ -86,3 +86,15 @@ What is not done yet: comparing a word with a word in a condition ("if item 1 is
 ## Decision: the Ori request no longer carries the child's words (owner, 2026-11-11)
 
 The review above found that the browser sent the whole program to our own tutor service when asking Ori for an idea, so the words a child typed into blocks travelled there. Decided: blank them. Before the request leaves the browser, `redactProgramForOri` replaces the places a program holds a child's words (the text of a "say" or "think" block, a word typed into a block, the names of variables, words, lists, custom blocks and their numbers, and starting words) with neutral stand-ins, and sends a valid program of the same shape. Ids, block kinds, numbers and closed choices stay, so the service checks an idea exactly as before. The idea that comes back was made for that form, so it is put back on the child's own program only if it was made for exactly the redacted form of it (`rebaseRedactedProposal`), and is then checked against the real program like any idea; otherwise the local reviewable idea is used, as when the service is unavailable. A test guards the next field: if the program schema gains a text field redaction does not know, it fails until the field is redacted or reviewed. This covers the Studio idea request (`/api/tutor/studio/ori`). The other Kids requests carry closed choices or kinds only (`scene-goals`, `goals`, the finding rephrase), and the mission editor's request carries a program of closed blocks; I did not audit the account-link pilot's requests.
+
+## Ori's ideas for lists and words
+
+Ori now also offers three ideas for a scene that has a list, next to the goals in its panel, each made of blocks the child already has and offered **only while the program does not do that yet**:
+
+- **Ask and keep it in the list** (needs a list and a word): asks one of the bundled questions and puts the child's own answer in the list. Two blocks.
+- **Read the first of the list** (needs a list and a word): puts the first item in the word.
+- **Keep how many are in the list** (needs a list and a number): puts the list's length in the number.
+
+Words always come from the child, never from Ori: the ask idea keeps the word the child types as the answer, through the word variable, and Ori writes no word of its own (a test checks the idea has no word block, and that a forged proposal with a typed word is refused). Ori's checks accept these blocks only exactly as Ori writes them for the scene (the scene's first list, word and number, one bundled question), like the sensor ideas. They go through the same path as every idea: ghost blocks with the evidence of what they would do, use, change or reject, one undo.
+
+Making this work needed one fix below Ori: the check that gives a proposed block its shape knew only number variables, so a proposed block that named a word or a list was refused as unknown. It now gives words and lists stand-ins too, as it did for number variables; whether they really exist is still checked against the real program when the proposal is applied (tested: a name the program lacks is refused at review).

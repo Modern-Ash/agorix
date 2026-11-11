@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
+import { SCHEMA_VERSION, type ProjectProgram, type Statement } from "@agorix/program-model";
 import {
   PACKAGE_NAME,
   PROGRAM_PROPOSAL_SCHEMA_VERSION,
@@ -1097,5 +1097,38 @@ describe("adding a copy script (#1311)", () => {
     expect(() =>
       make({ ...copyScript, statements: Array.from({ length: 21 }, () => ({ type: "show" })) }),
     ).toThrow();
+  });
+});
+
+describe("a proposed block that names a word or a list (design: word lists)", () => {
+  it("is checked for shape with stand-ins, and against the real program when it is applied", () => {
+    const real = {
+      schema: SCHEMA_VERSION,
+      textVariables: [{ id: "studio-text-1", name: "Fruta", initialValue: "", visible: true }],
+      lists: [{ id: "studio-list-1", name: "Compras", initialItems: [], visible: true }],
+      scripts: [{ id: "main", trigger: { type: "onStart" as const }, statements: [] }],
+    } satisfies ProjectProgram;
+    const make = (statement: Statement) =>
+      createProgramProposal({
+        id: "p",
+        baseProgram: real,
+        source: { kind: "studio" },
+        purpose: "test",
+        rationale: "test",
+        affectedNodeIds: ["scripts[0]/statements[0]"],
+        operations: [{ type: "appendStatement", scriptIndex: 0, statement }],
+      });
+    const ask: Statement = { type: "askText", promptId: "word", variableId: "studio-text-1" };
+    const add: Statement = {
+      type: "listAdd",
+      listId: "studio-list-1",
+      value: { type: "textVariable", variableId: "studio-text-1" },
+    };
+    expect(() => make(ask)).not.toThrow();
+    expect(() => make(add)).not.toThrow();
+    // The stand-ins only let the shape through: a name the real program lacks is refused at review.
+    const unknown = make({ ...add, listId: "studio-list-9" } as Statement);
+    expect(() => createProposalReview(real, unknown)).toThrow();
+    expect(() => createProposalReview(real, make(add))).not.toThrow();
   });
 });

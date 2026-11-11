@@ -175,7 +175,7 @@ import { useKidsFlag } from "../kidsFlags.js";
 import { KidsCopyScript } from "./KidsCopyScript.js";
 import { intentsForCuts, loadImportCuts } from "../kidsImportCuts.js";
 import { listDisplay } from "../kidsListDisplay.js";
-import { sensorIdeasFor } from "../kidsOriSensors.js";
+import { listIdeasFor, sensorIdeasFor } from "../kidsOriSensors.js";
 import { KidsArtVariation } from "./KidsArtVariation.js";
 import { microphoneLevelAllowed, startLevelMeter, type LevelMeter } from "../kidsLevelMeter.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
@@ -9050,6 +9050,8 @@ export function KidsStudioScreen({
                     ),
                     // A sensor the program does not use yet.
                     ...sensorIdeasFor(history.current),
+                    // A list and a word or number the scene has, that the program does not use yet.
+                    ...listIdeasFor(history.current),
                     // What a Scratch import left out: shown only in a scene that came from one.
                     ...importedIntents,
                   ]}
