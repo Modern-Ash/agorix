@@ -310,7 +310,15 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + (statement.target === "random" ? "go_to_random()" : "go_to_mouse()") + "\n",
+        indent +
+          (statement.seconds === undefined ? "go_to_" : "glide_to_") +
+          (statement.target === "actor" ? "actor" : statement.target) +
+          "(" +
+          [
+            ...(statement.target === "actor" ? [JSON.stringify(statement.actorId)] : []),
+            ...(statement.seconds === undefined ? [] : [formatNumber(statement.seconds)]),
+          ].join(", ") +
+          ")\n",
       );
       return;
     case "setX":

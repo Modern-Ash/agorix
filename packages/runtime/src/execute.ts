@@ -697,6 +697,11 @@ function* executeStatement(
         const x = Math.floor(nextRandomUnit(state) * 321);
         const y = Math.floor(nextRandomUnit(state) * 221) - 100;
         state.world = goToWorld(state.world, x, y);
+      } else if (statement.target === "actor") {
+        const other = state.options.sensorActors?.find((item) => item.id === statement.actorId);
+        if (other === undefined)
+          addNote(state, `goToTarget: no actor ${statement.actorId} on the stage`);
+        else state.world = goToWorld(state.world, other.x, other.y);
       } else {
         const pointer = state.options.pointer;
         const px = pointer !== undefined && Number.isFinite(pointer.x) ? pointer.x : 0;
@@ -707,6 +712,8 @@ function* executeStatement(
           Math.max(-100, Math.min(120, py)),
         );
       }
+      // "Glide": the trip takes its seconds on the run's clock, as a glide to a spot does.
+      if (statement.seconds !== undefined) advanceVirtualClock(state, statement.seconds);
       break;
     }
     case "setX":

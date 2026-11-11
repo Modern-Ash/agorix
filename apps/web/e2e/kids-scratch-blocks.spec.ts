@@ -58,6 +58,23 @@ test("go to a random spot moves the character, and go to the pointer follows the
   await expect(page.locator(".kids-program-block").last()).toContainText("Ir al puntero");
 });
 
+test("go to another character takes the character to where the other one is", async ({ page }) => {
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  const goTo = page.getByRole("button", { name: /^\+ Ir a (?!un lugar|posición|puntero)/ });
+  await goTo.first().click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("Ir a");
+  // The new character is the one being edited; it goes to where the first one stands.
+  const actors = page.locator(".kids-studio-stage-actor");
+  const left = (index: number) =>
+    actors.nth(index).evaluate((node) => (node as HTMLElement).style.left);
+  const before = await left(1);
+  const target = await left(0);
+  expect(target).not.toBe(before);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect.poll(() => left(1)).toBe(target);
+});
+
 test("broadcast and wait is a block of its own and shows as such", async ({ page }) => {
   await openScene(page);
   await page.getByRole("button", { name: "+ Enviar mensaje y esperar", exact: true }).click();

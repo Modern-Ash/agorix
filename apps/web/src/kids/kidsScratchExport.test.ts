@@ -247,3 +247,27 @@ describe("a scene with a list that holds numbers or words round-trips (design: w
     expect(back.program.scripts[0]!.statements).toEqual(withList.scripts[0]!.statements);
   });
 });
+
+describe("going to another character round-trips (Scratch go to / glide to sprite)", () => {
+  const two = program([
+    nova([
+      { type: "goToTarget", target: "actor", actorId: "actor:studio-2-mika" },
+      { type: "goToTarget", target: "actor", actorId: "actor:studio-2-mika", seconds: 1 },
+      { type: "goToTarget", target: "mouse", seconds: 2 },
+    ]),
+    { id: "studio-actor-2-mika", trigger: flag, statements: [] },
+  ]);
+
+  it("names the other sprite in the menu and brings the same blocks back", async () => {
+    const { bytes, report } = exportScratchProject(two, "forest", "es");
+    expect(report.left).toEqual([]);
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    const creative = creativeForStudio(back.program, back.backdropId, "es", back.positions);
+    const second = creative.actors![1]!.id;
+    expect(back.program.scripts[0]!.statements).toEqual([
+      { type: "goToTarget", target: "actor", actorId: second },
+      { type: "goToTarget", target: "actor", actorId: second, seconds: 1 },
+      { type: "goToTarget", target: "mouse", seconds: 2 },
+    ]);
+  });
+});

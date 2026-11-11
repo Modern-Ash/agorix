@@ -538,11 +538,20 @@ class Converter {
         return undefined;
       case "motion_ifonedgebounce":
         return { type: "bounceOnEdge" };
-      case "motion_goto": {
+      case "motion_goto":
+      case "motion_glideto": {
         const target = this.menu(block, "TO");
-        if (target === "_random_") return { type: "goToTarget", target: "random" };
-        if (target === "_mouse_") return { type: "goToTarget", target: "mouse" };
-        this.drop("motion_goto (a sprite as the target)");
+        const glide = block.opcode === "motion_glideto";
+        const seconds = glide ? num("SECS") : undefined;
+        if (glide && seconds === undefined) return missing();
+        const trip = glide
+          ? { seconds: this.adjust(nearest(seconds!, STUDIO_WAIT_SECONDS), seconds) }
+          : {};
+        if (target === "_random_") return { type: "goToTarget", target: "random", ...trip };
+        if (target === "_mouse_") return { type: "goToTarget", target: "mouse", ...trip };
+        const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
+        if (actorId !== undefined) return { type: "goToTarget", target: "actor", actorId, ...trip };
+        this.drop(`${block.opcode} (a sprite that is not in this project)`);
         return undefined;
       }
       case "motion_pointtowards": {

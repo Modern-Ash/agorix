@@ -609,11 +609,52 @@ function validateStatement(
         );
       }
       return { type: "setRotationStyle", style: input.style };
-    case "goToTarget":
-      if (input.target !== "random" && input.target !== "mouse") {
-        fail("INVALID_FIELD_TYPE", `${path}.target`, 'expected "random" or "mouse"', input.target);
+    case "goToTarget": {
+      if (input.target !== "random" && input.target !== "mouse" && input.target !== "actor") {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.target`,
+          'expected "random", "mouse" or "actor"',
+          input.target,
+        );
       }
-      return { type: "goToTarget", target: input.target };
+      if (input.target === "actor") {
+        if (typeof input.actorId !== "string" || input.actorId.length === 0) {
+          fail(
+            "MISSING_FIELD",
+            `${path}.actorId`,
+            "expected the character to go to",
+            input.actorId,
+          );
+        }
+      } else if (input.actorId !== undefined) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.actorId`,
+          "only a trip to a character names one",
+          input.actorId,
+        );
+      }
+      let seconds: number | undefined;
+      if (input.seconds !== undefined) {
+        if (typeof input.seconds !== "number") {
+          fail(
+            "INVALID_FIELD_TYPE",
+            `${path}.seconds`,
+            "expected a number of seconds",
+            input.seconds,
+          );
+        }
+        checkBounds(input.seconds, 0, 10, `${path}.seconds`);
+        seconds = input.seconds;
+      }
+      return {
+        type: "goToTarget",
+        target: input.target,
+        ...(input.target === "actor" ? { actorId: input.actorId as string } : {}),
+        ...(seconds === undefined ? {} : { seconds }),
+      };
+    }
     case "setX": {
       if (typeof input.x !== "number") {
         fail("MISSING_FIELD", `${path}.x`, "expected a number", input.x);

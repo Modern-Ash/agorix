@@ -324,7 +324,16 @@ function projectStatement(
     case "goToTarget":
       write(
         writer,
-        `${pad}sprite.${statement.target === "random" ? "goToRandom" : "goToMouse"}();\n`,
+        `${pad}sprite.${statement.seconds === undefined ? "goTo" : "glideTo"}${
+          statement.target === "random"
+            ? "Random"
+            : statement.target === "mouse"
+              ? "Mouse"
+              : "Actor"
+        }(${[
+          ...(statement.target === "actor" ? [JSON.stringify(statement.actorId)] : []),
+          ...(statement.seconds === undefined ? [] : [formatNumber(statement.seconds)]),
+        ].join(", ")});\n`,
       );
       return;
     case "setX":

@@ -40,6 +40,10 @@ export const JAVA_SUPPORT_API = [
   "createCopiesWithScript",
   "goToRandom",
   "goToMouse",
+  "goToActor",
+  "glideToRandom",
+  "glideToMouse",
+  "glideToActor",
   "setX",
   "setY",
   "changeX",
@@ -141,6 +145,10 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void createCopiesWithScript(int count, String rule) {}
     void goToRandom() {}
     void goToMouse() {}
+    void goToActor(String actor) {}
+    void glideToRandom(double seconds) {}
+    void glideToMouse(double seconds) {}
+    void glideToActor(String actor, double seconds) {}
     void setX(double x) {}
     void setY(double y) {}
     void changeX(double dx) {}
@@ -653,7 +661,14 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
           : `createCopies(${node.count}, ${literal(node.rule)})`,
       );
     case "goToTarget":
-      return line(node.target === "random" ? "goToRandom()" : "goToMouse()");
+      return line(
+        `${node.seconds === undefined ? "goTo" : "glideTo"}${
+          node.target === "random" ? "Random" : node.target === "mouse" ? "Mouse" : "Actor"
+        }(${[
+          ...(node.target === "actor" ? [literal(node.actorId ?? "")] : []),
+          ...(node.seconds === undefined ? [] : [number(node.seconds)]),
+        ].join(", ")})`,
+      );
     case "setX":
       return line(`setX(${number(node.x)})`);
     case "setY":

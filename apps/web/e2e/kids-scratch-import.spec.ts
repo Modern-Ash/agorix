@@ -29,7 +29,13 @@ const PROJECT = {
       blocks: {
         hat: block("event_whenflagclicked", { next: "move", topLevel: true }),
         move: block("motion_movesteps", { next: "glide", inputs: { STEPS: lit(30) } }),
-        glide: block("motion_glideto"),
+        glide: block("motion_glideto", {
+          inputs: { SECS: lit(1), TO: [1, "menu"] },
+        }),
+        menu: block("motion_glideto_menu", {
+          shadow: true,
+          fields: { TO: ["Dragon", null] },
+        }),
       },
     },
   ],
@@ -61,7 +67,7 @@ test("a Scratch project becomes a free scene, with a report of what could not co
   await report.locator("summary").click();
   await expect(report).toContainText("motion_glideto");
   // Ori says why in plain words, and promises the idea will be shown before it is used.
-  await expect(page.getByTestId("cut-explanations")).toContainText("deslizarse a");
+  await expect(page.getByTestId("cut-explanations")).toContainText("deslizarse hacia algo");
   await expect(page.getByTestId("cut-ideas-note")).toContainText("vos decidís");
   await report.getByRole("button", { name: "Abrir la escena" }).click();
   await expect(page.locator(".kids-program-block").first()).toContainText("Mover");

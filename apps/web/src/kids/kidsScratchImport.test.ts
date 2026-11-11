@@ -105,7 +105,7 @@ describe("Scratch import", () => {
   it("reports what it could not bring, by reason", () => {
     const { report } = convertScratchProject(project());
     const reasons = report.dropped.map((item) => item.what);
-    expect(reasons).toContain("motion_glideto");
+    expect(reasons.some((what) => what.startsWith("motion_glideto"))).toBe(true);
   });
 
   it("keeps a second script for another event, and leaves one for an event already answered", () => {

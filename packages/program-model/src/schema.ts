@@ -372,7 +372,7 @@ export interface GoToStatement {
   readonly y: number;
 }
 
-export type GoToTarget = "random" | "mouse";
+export type GoToTarget = "random" | "mouse" | "actor";
 
 /** How the copies of a character arrange themselves: in a row, falling from the top, or trailing it. */
 export type CopyRule = "spread" | "fall" | "follow";
@@ -409,6 +409,10 @@ export interface SetRotationStyleStatement {
 export interface GoToTargetStatement {
   readonly type: "goToTarget";
   readonly target: GoToTarget;
+  /** The character to go to; present exactly when the target is "actor". */
+  readonly actorId?: string;
+  /** Scratch's "glide": the trip takes this many seconds (absent: the character jumps there). */
+  readonly seconds?: number;
 }
 
 /** Sets only the x coordinate; y and heading stay as they are. */
