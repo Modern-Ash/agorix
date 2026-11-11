@@ -240,3 +240,16 @@ After a run, Ori's quiet marker below the stage still says one sentence about wh
 - **On the tab** of another of the character's scripts, when the finding is in a script that is not the open one, so a problem in script 2 is not hidden while script 1 is shown.
 
 Tapping a mark opens the same sentence and points at the block, exactly like "Ori noticed something" below the stage; nothing is added to the program by it. A new run clears the marks. The marks are 44 px targets with a tooltip, and the tab's name carries the same words for a screen reader.
+
+## Status: Ori proposes a sensor the program does not use yet (#1304)
+
+#1304 asks that Ori "propose the missing sensor block as a visible proposal". Read as: in the Ori panel, next to the goals, Ori offers a sensor the child has not tried. Four ideas, each **one "if" block** that asks the scene something and does one small visible thing:
+
+- **React to a key:** if Space is pressed, the character goes down a step.
+- **React to the mouse:** if the mouse is pressed, the character goes to it.
+- **React to the edge:** if the character touches the edge of the stage, it turns.
+- **React to touching another:** if it touches the other character, it hides (only in a scene with two or more characters).
+
+Each idea is offered **only while the program does not use that sensor yet** (key down, mouse down, stage edge, touching a character), so what Ori puts forward is new to the child; once one is used it is no longer offered, and one undo brings it back. They go through the same path as every idea: a ghost block with the evidence of what it would do, use, change or reject, one undo. They work on the script that is open. Ori's checks accept an `if` only if it is exactly one of these four written as Ori writes them (the key, the stage-edge numbers and the other character are fixed), so a model or a forged proposal cannot slip another sensor or reaction in. The four sit in `ORI_SENSOR_INTENTS`, apart from the goals every scene offers, and the Studio's own checks validate each one.
+
+Not done: the issue's other half, "explain why a sensing condition never fired from the trace", already exists as Ori's finding for a condition that never held; ideas for the microphone sensor are left out because it needs the adult's switch.
