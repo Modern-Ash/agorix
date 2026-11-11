@@ -327,6 +327,15 @@ function clipText(text: string): string {
   return text.slice(0, TEXT_VALUE_MAX_LENGTH);
 }
 
+/** The pointer on the stage, kept inside it (the same clamp the mouse x and y reporters use). */
+function pointerPosition(state: MutableRunState): { x: number; y: number } {
+  const { pointer } = state.options;
+  return {
+    x: Math.max(0, Math.min(320, Number.isFinite(pointer?.x) ? pointer!.x : 0)),
+    y: Math.max(-100, Math.min(120, Number.isFinite(pointer?.y) ? pointer!.y : 0)),
+  };
+}
+
 function normalizeRuntimeNumber(value: number, path: string): number {
   if (!Number.isFinite(value)) {
     throw new RuntimeExecutionError(path, String(value));
@@ -375,6 +384,21 @@ function evaluateExpression(
         target !== undefined &&
         target.visible &&
         Math.hypot(state.world.sprite.x - target.x, state.world.sprite.y - target.y) <= 24
+      );
+    }
+    case "touchingMouse": {
+      if (state.world.sprite.visible === false) return false;
+      return (
+        Math.hypot(
+          state.world.sprite.x - pointerPosition(state).x,
+          state.world.sprite.y - pointerPosition(state).y,
+        ) <= 24
+      );
+    }
+    case "distanceToMouse": {
+      const pointer = pointerPosition(state);
+      return normalizeCoordinate(
+        Math.hypot(state.world.sprite.x - pointer.x, state.world.sprite.y - pointer.y),
       );
     }
     case "touchingColor": {
@@ -437,15 +461,9 @@ function evaluateExpression(
         : 0;
     }
     case "mouseX":
-      return Math.max(
-        0,
-        Math.min(320, Number.isFinite(state.options.pointer?.x) ? state.options.pointer!.x : 0),
-      );
+      return pointerPosition(state).x;
     case "mouseY":
-      return Math.max(
-        -100,
-        Math.min(120, Number.isFinite(state.options.pointer?.y) ? state.options.pointer!.y : 0),
-      );
+      return pointerPosition(state).y;
     case "mouseDown":
       return state.options.pointer?.down === true;
     case "booleanLiteral":

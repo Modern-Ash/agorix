@@ -225,6 +225,32 @@ class Emitter {
         return simple("sensing_timer");
       case "loudness":
         return simple("sensing_loudness");
+      case "touchingMouse": {
+        const made = this.block("sensing_touchingobject", parent);
+        (made.block["inputs"] as Json)["TOUCHINGOBJECTMENU"] = [
+          1,
+          this.menu(made.id, "sensing_touchingobjectmenu", "TOUCHINGOBJECTMENU", "_mouse_"),
+        ];
+        return made.id;
+      }
+      case "distanceToActor": {
+        const name = this.spriteName(expression.actorId);
+        if (name === undefined) return null;
+        const made = this.block("sensing_distanceto", parent);
+        (made.block["inputs"] as Json)["DISTANCETOMENU"] = [
+          1,
+          this.menu(made.id, "sensing_distancetomenu", "DISTANCETOMENU", name),
+        ];
+        return made.id;
+      }
+      case "distanceToMouse": {
+        const made = this.block("sensing_distanceto", parent);
+        (made.block["inputs"] as Json)["DISTANCETOMENU"] = [
+          1,
+          this.menu(made.id, "sensing_distancetomenu", "DISTANCETOMENU", "_mouse_"),
+        ];
+        return made.id;
+      }
       case "mouseX":
         return simple("sensing_mousex");
       case "mouseY":

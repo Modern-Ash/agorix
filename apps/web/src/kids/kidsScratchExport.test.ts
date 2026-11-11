@@ -271,3 +271,31 @@ describe("going to another character round-trips (Scratch go to / glide to sprit
     ]);
   });
 });
+
+describe("touching and distance to the mouse and to a character round-trip", () => {
+  const withSensors = program(
+    [
+      nova([
+        { type: "if", condition: { type: "touchingMouse" }, then: [{ type: "move", steps: 20 }] },
+        { type: "setVariable", variableId: "studio-var-1", value: { type: "distanceToMouse" } },
+        {
+          type: "setVariable",
+          variableId: "studio-var-1",
+          value: { type: "distanceToActor", actorId: "actor:studio-2-mika" },
+        },
+      ]),
+      { id: "studio-actor-2-mika", trigger: flag, statements: [] },
+    ],
+    { variables: [{ id: "studio-var-1", name: "n", initialValue: 0, visible: true }] },
+  );
+
+  it("brings the same sensors back", async () => {
+    const { bytes, report } = exportScratchProject(withSensors, "forest", "es");
+    expect(report.left).toEqual([]);
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    const statements = back.program.scripts[0]!.statements;
+    expect(statements[0]).toMatchObject({ condition: { type: "touchingMouse" } });
+    expect(statements[1]).toMatchObject({ value: { type: "distanceToMouse" } });
+    expect(statements[2]).toMatchObject({ value: { type: "distanceToActor" } });
+  });
+});

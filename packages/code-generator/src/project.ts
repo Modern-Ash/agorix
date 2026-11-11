@@ -188,6 +188,10 @@ function formatExpression(
       return "backdropNumber()";
     case "currentTime":
       return `currentTime(${JSON.stringify(expression.part)})`;
+    case "touchingMouse":
+      return "sprite.touchingMouse()";
+    case "distanceToMouse":
+      return "sprite.distanceToMouse()";
     case "mouseX":
       return "mouseX()";
     case "mouseY":

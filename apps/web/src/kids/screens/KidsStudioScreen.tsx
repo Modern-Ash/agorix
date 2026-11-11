@@ -514,6 +514,8 @@ const COPY = {
     saveTimer: "Guardar el tiempo",
     saveMouseX: "Guardar X del ratón",
     saveMouseY: "Guardar Y del ratón",
+    saveMouseDistance: "Guardar distancia al ratón",
+    ifTouchMouse: "Si toca el ratón: mover",
     ifMouseDown: "Si el ratón está pulsado, mover 1",
     presetMouse: "ratón pulsado",
     senseKey: "Tecla a sentir",
@@ -872,6 +874,8 @@ const COPY = {
     saveTimer: "Save the time",
     saveMouseX: "Save mouse X",
     saveMouseY: "Save mouse Y",
+    saveMouseDistance: "Save distance to mouse",
+    ifTouchMouse: "If touching mouse: move",
     ifMouseDown: "If the mouse is down, move 1",
     presetMouse: "mouse pressed",
     senseKey: "Key to sense",
@@ -1199,6 +1203,10 @@ function expressionLabel(
   if (value.type === "touchingColor")
     return `${locale === "es" ? "sobre el color" : "over the colour"} ${PEN_COLOR_NAME[locale][value.color]}`;
   if (value.type === "timer") return locale === "es" ? "tiempo" : "timer";
+  if (value.type === "touchingMouse")
+    return locale === "es" ? "tocando el ratón" : "touching mouse";
+  if (value.type === "distanceToMouse")
+    return locale === "es" ? "distancia al ratón" : "distance to mouse";
   if (value.type === "mouseX") return locale === "es" ? "X del ratón" : "mouse X";
   if (value.type === "mouseY") return locale === "es" ? "Y del ratón" : "mouse Y";
   if (value.type === "mouseDown") return locale === "es" ? "ratón pulsado" : "mouse pressed";
@@ -8514,6 +8522,32 @@ export function KidsStudioScreen({
                       }
                     >
                       + {copy.saveMouseY}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "distanceToMouse" },
+                        })
+                      }
+                    >
+                      + {copy.saveMouseDistance}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "if",
+                          condition: { type: "touchingMouse" },
+                          then: [{ type: "move", steps: 40 }],
+                        })
+                      }
+                    >
+                      + {copy.ifTouchMouse}
                     </button>
                     <button
                       type="button"

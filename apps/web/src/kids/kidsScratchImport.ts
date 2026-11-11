@@ -316,6 +316,12 @@ class Converter {
         return block.fields["NUMBER_NAME"]?.[0] === "number"
           ? { type: "backdropNumber" }
           : undefined;
+      case "sensing_distanceto": {
+        const target = this.menu(block, "DISTANCETOMENU");
+        if (target === "_mouse_") return { type: "distanceToMouse" };
+        const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
+        return actorId === undefined ? undefined : { type: "distanceToActor", actorId };
+      }
       case "sensing_mousex":
         return { type: "mouseX" };
       case "sensing_mousey":
@@ -375,6 +381,7 @@ class Converter {
       case "sensing_touchingobject": {
         const target = this.menu(block, "TOUCHINGOBJECTMENU");
         if (target === "_edge_") return { ...STUDIO_EDGE_CONDITION };
+        if (target === "_mouse_") return { type: "touchingMouse" };
         const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
         return actorId === undefined ? undefined : { type: "touchingActor", actorId };
       }

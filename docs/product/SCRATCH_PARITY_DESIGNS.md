@@ -261,3 +261,7 @@ A script can wait for, and a condition can ask about, **space, the four arrows, 
 ## Status: go to and glide to another character (Scratch parity)
 
 `goToTarget` now takes `target: "actor"` with an `actorId`, and an optional `seconds` (0–10) that makes it a glide. The runtime goes to the other character's position at the start of the activation (the same snapshot the sensors read) and a glide adds its seconds to the virtual clock; a missing character leaves a note and the character stays put. All four code views, the block editor, the Scratch importer (`motion_goto`/`motion_glideto` to a sprite name) and exporter carry it. Ori's closed idea blocks still offer only random/mouse without seconds.
+
+## Status: touching and distance to the mouse (Scratch parity)
+
+`touchingMouse` (within the contact radius, 24, of the pointer) and `distanceToMouse` are expressions with no fields, read from the same clamped pointer as `mouseX`/`mouseY`. The Scratch importer and exporter map them to `sensing_touchingobject`/`sensing_distanceto` with the `_mouse_` menu; `distanceToActor` now round-trips through `sensing_distanceto` as well.

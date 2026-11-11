@@ -696,6 +696,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "backdrop number";
     case "currentTime":
       return "current " + expression.part;
+    case "touchingMouse":
+      return "touching mouse";
+    case "distanceToMouse":
+      return "distance to mouse";
     case "mouseX":
       return "mouse x";
     case "mouseY":

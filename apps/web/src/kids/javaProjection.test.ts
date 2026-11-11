@@ -186,6 +186,8 @@ const statements: Statement[] = [
       },
     ],
     else: [
+      { type: "setVariable", variableId: "v", value: { type: "distanceToMouse" } },
+      { type: "if", condition: { type: "touchingMouse" }, then: [{ type: "move", steps: 1 }] },
       {
         type: "setVariable",
         variableId: "v",

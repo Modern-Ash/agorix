@@ -148,3 +148,15 @@ test("say with a variable shows its value after the text", async ({ page }) => {
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.locator(".kids-studio-bubble")).toContainText(/¡Hola!\s?\d/);
 });
+
+test("distance to the mouse is saved in a variable and shows its value", async ({ page }) => {
+  await openScene(page);
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Cerca");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("button", { name: "+ Guardar distancia al ratón", exact: true }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("distancia al ratón");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText(/^Cerca: \d+/)).toBeVisible();
+  await page.getByRole("button", { name: "+ Si toca el ratón: mover", exact: true }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("tocando el ratón");
+});
