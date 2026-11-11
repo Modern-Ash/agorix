@@ -117,6 +117,16 @@ export interface BackdropNumberExpression {
 }
 
 /** Coordinates and pressed state captured from the stage for this run. */
+/** True while the character is within the contact radius of the pointer (Scratch: touching mouse-pointer). */
+export interface TouchingMouseExpression {
+  readonly type: "touchingMouse";
+}
+
+/** Centre distance to the pointer on the stage (Scratch: distance to mouse-pointer). */
+export interface DistanceToMouseExpression {
+  readonly type: "distanceToMouse";
+}
+
 export interface MouseXExpression {
   readonly type: "mouseX";
 }
@@ -323,6 +333,8 @@ export type Expression =
   | TouchingStageEdgeExpression
   | TouchingColorExpression
   | DistanceToActorExpression
+  | TouchingMouseExpression
+  | DistanceToMouseExpression
   | XPositionExpression
   | DirectionExpression
   | SizePercentExpression

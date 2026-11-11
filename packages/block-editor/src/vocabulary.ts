@@ -485,6 +485,22 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "sensing_touching_mouse",
+    label: "Touching mouse?",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "touching the mouse pointer",
+    createDefaultBlock: (id) => ({ id, type: "sensing_touching_mouse" }),
+  },
+  {
+    type: "sensing_distance_to_mouse",
+    label: "Distance to mouse",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "distance to the mouse pointer",
+    createDefaultBlock: (id) => ({ id, type: "sensing_distance_to_mouse" }),
+  },
+  {
     type: "sensing_mouse_x",
     label: "Mouse X",
     section: "Check",

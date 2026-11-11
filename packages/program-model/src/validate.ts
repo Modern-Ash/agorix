@@ -429,6 +429,10 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "costumeNumber" };
     case "backdropNumber":
       return { type: "backdropNumber" };
+    case "touchingMouse":
+      return { type: "touchingMouse" };
+    case "distanceToMouse":
+      return { type: "distanceToMouse" };
     case "mouseX":
       return { type: "mouseX" };
     case "mouseY":

@@ -166,7 +166,7 @@ test("free scene senses the stage edge and saves distance to a character after r
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   await page.getByRole("textbox", { name: "Nombre" }).fill("Distancia");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
-  await page.getByRole("button", { name: "+ Guardar distancia" }).click();
+  await page.getByRole("button", { name: "+ Guardar distancia", exact: true }).click();
   await page.getByRole("button", { name: "+ Si toca el borde, mover 1" }).click();
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()

@@ -54,6 +54,8 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "backdropNumber",
   "currentTime",
   "timer",
+  "touchingMouse",
+  "distanceToMouse",
   "mouseX",
   "mouseY",
   "distanceToActor",

@@ -797,6 +797,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "backdrop_number()";
     case "currentTime":
       return "current_time(" + JSON.stringify(expression.part) + ")";
+    case "touchingMouse":
+      return "touching_mouse()";
+    case "distanceToMouse":
+      return "distance_to_mouse()";
     case "mouseX":
       return "mouse_x()";
     case "mouseY":

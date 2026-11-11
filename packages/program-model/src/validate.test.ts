@@ -666,3 +666,22 @@ describe("say with a number after the text", () => {
     expect(() => validateProgram(base({ type: "say", text: "x", append: 5 }) as never)).toThrow();
   });
 });
+
+describe("mouse sensors", () => {
+  it("are plain expressions with no fields", () => {
+    for (const type of ["touchingMouse", "distanceToMouse"]) {
+      expect(
+        validateProgram({
+          schema: SCHEMA_VERSION,
+          scripts: [
+            {
+              id: "main",
+              trigger: { type: "onStart" },
+              statements: [{ type: "if", condition: { type }, then: [] }],
+            },
+          ],
+        } as never),
+      ).toBeTruthy();
+    }
+  });
+});

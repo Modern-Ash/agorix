@@ -115,6 +115,8 @@ export const JAVA_SUPPORT_API = [
   "touchingColor",
   "touchingStageEdge",
   "distanceToActor",
+  "touchingMouse",
+  "distanceToMouse",
   "xPosition",
   "direction",
   "yPosition",
@@ -215,6 +217,8 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void setPan(double pan) {}
     boolean touchingGoal() { return false; }
     boolean touchingActor(String actor) { return false; }
+    boolean touchingMouse() { return false; }
+    double distanceToMouse() { return 0; }
     boolean touchingColor(String color) { return false; }
     boolean touchingStageEdge(double minX, double maxX, double minY, double maxY) { return false; }
     double distanceToActor(String actor) { return 0; }
@@ -411,6 +415,7 @@ function kindOf(writer: Writer, expression: Expression): Kind {
   switch (expression.type) {
     case "touchingGoal":
     case "touchingActor":
+    case "touchingMouse":
     case "touchingColor":
     case "touchingStageEdge":
     case "keyDown":
@@ -537,6 +542,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "backdropNumber()";
     case "currentTime":
       return `currentTime(${literal(expression.part)})`;
+    case "touchingMouse":
+      return "touchingMouse()";
+    case "distanceToMouse":
+      return "distanceToMouse()";
     case "mouseX":
       return "mouseX()";
     case "mouseY":

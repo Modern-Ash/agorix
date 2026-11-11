@@ -299,6 +299,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
     value.type === "backdropNumber" ||
     value.type === "currentTime" ||
     value.type === "timer" ||
+    value.type === "distanceToMouse" ||
     value.type === "mouseX" ||
     value.type === "mouseY"
   )
@@ -359,7 +360,7 @@ function checkedCondition(
   depth = 0,
 ): boolean {
   if (value.type === "keyDown") return isStudioKey(value.key);
-  if (value.type === "mouseDown") return true;
+  if (value.type === "mouseDown" || value.type === "touchingMouse") return true;
   if (value.type === "touchingColor")
     return (PEN_COLORS as readonly string[]).includes(value.color);
   if (value.type === "textContains")

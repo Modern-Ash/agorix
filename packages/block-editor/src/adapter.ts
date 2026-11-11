@@ -109,6 +109,8 @@ export type BlockType =
   | "sensing_costume_number"
   | "sensing_backdrop_number"
   | "sensing_current_time"
+  | "sensing_touching_mouse"
+  | "sensing_distance_to_mouse"
   | "sensing_mouse_x"
   | "sensing_mouse_y"
   | "sensing_mouse_down"
@@ -423,6 +425,10 @@ function expressionFromBlock(
       return { type: "backdropNumber" };
     case "sensing_current_time":
       return { type: "currentTime", part: stringField(block, "part", path) as ClockPart };
+    case "sensing_touching_mouse":
+      return { type: "touchingMouse" };
+    case "sensing_distance_to_mouse":
+      return { type: "distanceToMouse" };
     case "sensing_mouse_x":
       return { type: "mouseX" };
     case "sensing_mouse_y":
@@ -1047,6 +1053,10 @@ function expressionToBlock(
       return { id, type: "sensing_backdrop_number" };
     case "currentTime":
       return { id, type: "sensing_current_time", fields: { part: expression.part } };
+    case "touchingMouse":
+      return { id, type: "sensing_touching_mouse" };
+    case "distanceToMouse":
+      return { id, type: "sensing_distance_to_mouse" };
     case "mouseX":
       return { id, type: "sensing_mouse_x" };
     case "mouseY":
