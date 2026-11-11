@@ -62,6 +62,7 @@ export interface ScratchExportArt extends StudioArt {
 
 interface Names {
   readonly variable: (id: string) => string | undefined;
+  readonly list: (id: string) => string | undefined;
   readonly sprite: (actorId: string) => string | undefined;
   readonly costume: (id: string) => string | undefined;
   readonly backdrop: (id: string) => string | undefined;
@@ -229,6 +230,25 @@ class Emitter {
         return simple("looks_costumenumbername", { fields: { NUMBER_NAME: ["number", null] } });
       case "backdropNumber":
         return simple("looks_backdropnumbername", { fields: { NUMBER_NAME: ["number", null] } });
+      case "listItem": {
+        const name = this.names.list(expression.listId);
+        if (name === undefined) return null;
+        const made = this.block("data_itemoflist", parent, {
+          fields: { LIST: [name, expression.listId] },
+        });
+        const index = this.value(expression.index, made.id);
+        if (index === null) return null;
+        (made.block["inputs"] as Json)["INDEX"] = index;
+        return made.id;
+      }
+      case "listLength": {
+        const name = this.names.list(expression.listId);
+        return name === undefined
+          ? null
+          : this.block("data_lengthoflist", parent, {
+              fields: { LIST: [name, expression.listId] },
+            }).id;
+      }
       case "currentTime":
         return simple("sensing_current", {
           fields: { CURRENTMENU: [expression.part.toUpperCase(), null] },
@@ -663,6 +683,27 @@ class Emitter {
           { VARIABLE: [name, statement.variableId] },
         );
       }
+      case "listAdd":
+      case "listInsertAt":
+      case "listReplaceAt":
+      case "listRemoveAt": {
+        const name = this.names.list(statement.listId);
+        if (name === undefined) return null;
+        const slots: Record<string, Expression> = {};
+        if (statement.type !== "listAdd") slots["INDEX"] = statement.index;
+        if (statement.type !== "listRemoveAt") slots["ITEM"] = statement.value;
+        return this.with(
+          {
+            listAdd: "data_addtolist",
+            listInsertAt: "data_insertatlist",
+            listReplaceAt: "data_replaceitemoflist",
+            listRemoveAt: "data_deleteoflist",
+          }[statement.type],
+          parent,
+          slots,
+          { LIST: [name, statement.listId] },
+        );
+      }
       case "resetTimer":
         return this.with("sensing_resettimer", parent, {});
       case "setVolume":
@@ -906,6 +947,8 @@ export function exportScratchProject(
   const variables = new Map<string, string>();
   for (const item of program.variables ?? []) variables.set(item.id, item.name);
   for (const item of program.textVariables ?? []) variables.set(item.id, item.name);
+  const listNames = new Map<string, string>();
+  for (const item of program.lists ?? []) listNames.set(item.id, item.name);
   const broadcasts: Record<string, string> = {};
   const broadcastId = (message: string) => {
     const id = `msg-${message}`;
@@ -1075,6 +1118,7 @@ export function exportScratchProject(
     });
     const emitter = new Emitter(counter, {
       variable: (id) => variables.get(id),
+      list: (id) => listNames.get(id),
       sprite: (actorId) => names.get(actorId),
       costume: (id) => costumeName.get(id),
       backdrop: (id) => backdropName.get(id),
@@ -1115,7 +1159,7 @@ export function exportScratchProject(
   });
 
   // What the scene holds that Scratch has no counterpart for in this version.
-  for (const kind of ["lists", "procedures", "sharedProcedures"] as const) {
+  for (const kind of ["procedures", "sharedProcedures"] as const) {
     const present = (program as unknown as Record<string, unknown[] | undefined>)[kind];
     if (present !== undefined && present.length > 0) counter.miss(kind);
   }
@@ -1127,7 +1171,8 @@ export function exportScratchProject(
       ...(program.variables ?? []).map((item) => [item.id, [item.name, item.initialValue]]),
       ...(program.textVariables ?? []).map((item) => [item.id, [item.name, item.initialValue]]),
     ]),
-    lists: {},
+    // The scene's lists are the whole scene's, so they live on the stage; they start empty.
+    lists: Object.fromEntries((program.lists ?? []).map((item) => [item.id, [item.name, []]])),
     broadcasts,
     blocks: {},
     comments: {},

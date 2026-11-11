@@ -107,8 +107,8 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
       const left = exported.report.left.reduce((sum, item) => sum + item.count, 0);
       setMessage(
         locale === "es"
-          ? `Exporté ${exported.report.blocksExported} bloque(s) a Scratch.${left > 0 ? ` No pude escribir ${left} (los sonidos de la escena, preguntas, listas y bloques propios todavía no).` : ""}`
-          : `Exported ${exported.report.blocksExported} block(s) to Scratch.${left > 0 ? ` I could not write ${left} (the scene's built-in sounds, questions, lists and own blocks are not there yet).` : ""}`,
+          ? `Exporté ${exported.report.blocksExported} bloque(s) a Scratch.${left > 0 ? ` No pude escribir ${left} (los sonidos de la escena, las preguntas y los bloques propios todavía no).` : ""}`
+          : `Exported ${exported.report.blocksExported} block(s) to Scratch.${left > 0 ? ` I could not write ${left} (the scene's built-in sounds, questions and own blocks are not there yet).` : ""}`,
       );
     } catch {
       setMessage(
