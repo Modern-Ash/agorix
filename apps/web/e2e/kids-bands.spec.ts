@@ -44,13 +44,14 @@ for (const profile of BANDS) {
     await page.getByRole("button", { name: "Misión 1" }).click();
     const run = await page.getByRole("button", { name: "Jugar", exact: true }).boundingBox();
     expect(run!.height).toBeGreaterThanOrEqual(44 - 1);
-    // Ori's goals in the Studio: the younger band gets shorter ideas.
+    // Ori's goals in the Studio: the younger band gets shorter ideas. (The three sensor ideas of a
+    // one-character scene are one block each, so every band sees them.)
     await page.getByRole("button", { name: "Volver al mapa" }).click();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
     await clickCreateScene(page);
     await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
     const picker = page.getByRole("group", { name: "¿Qué querés lograr?" });
-    await expect(picker.getByRole("button")).toHaveCount(profile.studioBlocks === 6 ? 15 : 19);
+    await expect(picker.getByRole("button")).toHaveCount(profile.studioBlocks === 6 ? 18 : 22);
     await expect(picker.getByRole("button", { name: "Hacer un cuadrado" })).toHaveCount(
       profile.studioBlocks === 6 ? 0 : 1,
     );

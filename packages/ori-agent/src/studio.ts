@@ -2,6 +2,7 @@ import {
   PROCEDURE_NUMBER_CHOICES,
   procedureNumberUnits,
   validateProgram,
+  type Expression,
   type NumericLiteralExpression,
   type Procedure,
   type ProcedureNumberUnit,
@@ -390,8 +391,79 @@ export const ORI_STUDIO_INTENTS = [
  */
 export const ORI_IMPORT_INTENTS = ["scratchGoTo", "scratchMove", "scratchSound"] as const;
 
+/**
+ * Sensor ideas: one "if" block that asks the scene something (a key, the mouse, the edge, another
+ * character) and does one small visible thing. The Studio offers each only while the program does
+ * not use that sensor yet, so what Ori puts forward is a sensor the child has not tried.
+ */
+export const ORI_SENSOR_INTENTS = ["reactKey", "reactMouse", "reactEdge", "reactTouch"] as const;
+
 export type OriStudioIntent =
-  (typeof ORI_STUDIO_INTENTS)[number] | (typeof ORI_IMPORT_INTENTS)[number];
+  | (typeof ORI_STUDIO_INTENTS)[number]
+  | (typeof ORI_IMPORT_INTENTS)[number]
+  | (typeof ORI_SENSOR_INTENTS)[number];
+
+/** The stage-edge condition the Studio accepts (the same four numbers as the scene's own block). */
+const EDGE_CONDITION = {
+  type: "touchingStageEdge",
+  minX: 0,
+  maxX: 320,
+  minY: -100,
+  maxY: 120,
+} as const;
+const SENSOR_REACTIONS: Readonly<Record<string, Statement>> = {
+  reactKey: { type: "changeY", dy: -80 },
+  reactMouse: { type: "goToTarget", target: "mouse" },
+  reactEdge: { type: "turn", degrees: 90 },
+  reactTouch: { type: "hide" },
+};
+
+export function isSensorIntent(value: string): value is (typeof ORI_SENSOR_INTENTS)[number] {
+  return (ORI_SENSOR_INTENTS as readonly string[]).includes(value);
+}
+
+/** The one "if" of a sensor idea; `others` are the other characters a touch can be about. */
+function sensorBlock(
+  intent: (typeof ORI_SENSOR_INTENTS)[number],
+  others: readonly string[],
+): Statement {
+  const condition: Expression =
+    intent === "reactKey"
+      ? { type: "keyDown", key: "Space" }
+      : intent === "reactMouse"
+        ? { type: "mouseDown" }
+        : intent === "reactEdge"
+          ? { ...EDGE_CONDITION }
+          : { type: "touchingActor", actorId: others[0] ?? "" };
+  if (intent === "reactTouch" && others.length === 0)
+    throw new Error("a touch idea needs another character");
+  return { type: "if", condition, then: [SENSOR_REACTIONS[intent]!] };
+}
+
+/** Whether an appended block is one of the sensor ideas, written exactly as Ori writes them. */
+function closedSensorIf(statement: Statement, others: readonly string[]): boolean {
+  return ORI_SENSOR_INTENTS.some((intent) => {
+    try {
+      return (
+        JSON.stringify(sensorBlock(intent, others)) === JSON.stringify(statement) ||
+        (intent === "reactTouch" &&
+          others.some(
+            (other) => JSON.stringify(sensorBlock(intent, [other])) === JSON.stringify(statement),
+          ))
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+/** The characters of the scene other than the one an idea is for. */
+function otherActors(program: ProjectProgram, actorId: string): string[] {
+  return program.scripts
+    .filter((script) => !CLONE_SCRIPT_ID.test(script.id) && !EXTRA_SCRIPT_ID.test(script.id))
+    .map((script) => actorIdForScript(script.id))
+    .filter((id) => id !== actorId);
+}
 
 /** The closed sounds and notes an idea may use (issue #626): ids and numbers only, no free text. */
 const IDEA_SOUND_IDS = ["kids:win", "kids:sparkle", "kids:bell", "kids:tada"];
@@ -444,7 +516,12 @@ function hasCopyScript(selected: { program: ProjectProgram; main: Script }): boo
   return selected.program.scripts.some((script) => script.id === `${selected.main.id}-clone`);
 }
 
-function allowedForIntent(statement: Statement, script: Script, copyScript: boolean): boolean {
+function allowedForIntent(
+  statement: Statement,
+  script: Script,
+  copyScript: boolean,
+  others: readonly string[] = [],
+): boolean {
   return (
     allowed(statement, script) ||
     // Copies that run the character's own copy script: only when it has one (issue #1311).
@@ -460,11 +537,14 @@ function allowedForIntent(statement: Statement, script: Script, copyScript: bool
       [0.5, 1].includes(statement.beats)) ||
     (statement.type === "playDrum" && [0.5, 1].includes(statement.beats)) ||
     (statement.type === "setInstrument" && statement.instrument !== undefined) ||
-    (statement.type === "setTempo" && [90, 120].includes(statement.bpm))
+    (statement.type === "setTempo" && [90, 120].includes(statement.bpm)) ||
+    (statement.type === "if" && closedSensorIf(statement, others))
   );
 }
 
-const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
+const INTENT_BLOCKS: Readonly<
+  Record<Exclude<OriStudioIntent, (typeof ORI_SENSOR_INTENTS)[number]>, readonly Statement[]>
+> = {
   melody: [
     { type: "setInstrument", instrument: "bell" },
     { type: "playNote", note: 60, beats: 0.5 },
@@ -634,7 +714,9 @@ function intentBlocks(
   intent: OriStudioIntent,
   locale: "es" | "en",
   copyScript: boolean,
+  others: readonly string[] = [],
 ): readonly Statement[] {
+  if (isSensorIntent(intent)) return [sensorBlock(intent, others)];
   if (intent === "greet")
     return GREETINGS[locale].map((text) => ({ type: "say" as const, text, seconds: 2 }));
   // Rain and a crowd: when the character has a copy script, each copy lives by it.
@@ -648,7 +730,8 @@ function intentBlocks(
 export function isOriStudioIntent(value: unknown): value is OriStudioIntent {
   return (
     (ORI_STUDIO_INTENTS as readonly unknown[]).includes(value) ||
-    (ORI_IMPORT_INTENTS as readonly unknown[]).includes(value)
+    (ORI_IMPORT_INTENTS as readonly unknown[]).includes(value) ||
+    (ORI_SENSOR_INTENTS as readonly unknown[]).includes(value)
   );
 }
 
@@ -664,7 +747,12 @@ export function proposeOriStudioIntent(
   // The copy script belongs to the character's first script.
   if (adds !== undefined && selected.script !== selected.main)
     throw new Error("copy script ideas are for the first script");
-  const statements = intentBlocks(intent, context.locale, hasCopyScript(selected));
+  const statements = intentBlocks(
+    intent,
+    context.locale,
+    hasCopyScript(selected),
+    otherActors(selected.program, context.actorId),
+  );
   const first = selected.script.statements.length;
   if (first + statements.length > MAX_STATEMENTS) throw new Error("not enough room");
   const newScriptIndex = selected.program.scripts.length;
@@ -741,7 +829,12 @@ export function validateOriStudioIntentProposal(
       (operation) =>
         operation.type !== "appendStatement" ||
         operation.scriptIndex !== selected.index ||
-        !allowedForIntent(operation.statement, selected.script, copyScript),
+        !allowedForIntent(
+          operation.statement,
+          selected.script,
+          copyScript,
+          otherActors(selected.program, context.actorId),
+        ),
     ) ||
     proposal.affectedActorIds?.join() !== context.actorId ||
     proposal.affectedScriptIds?.join() !==

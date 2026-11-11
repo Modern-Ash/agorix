@@ -2859,3 +2859,30 @@ test("a list holds the child's words, shows them as text, and keeps the blocks a
   // The scene was saved without the child's words in the list: it starts empty.
   await expect(page.getByText("Compras: —")).toBeVisible();
 });
+
+test("Ori offers a sensor the program does not use yet, shows it first, and stops offering it once it is used (#1304)", async ({
+  page,
+}) => {
+  await openStudio(page, "9-12");
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
+  // A scene with one character: key, mouse and edge, but not "touching another" (nobody to touch).
+  await expect(page.getByRole("button", { name: "Reaccionar a una tecla" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reaccionar al ratón" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reaccionar al borde" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reaccionar al tocar a otro" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Reaccionar a una tecla" }).click();
+  // Nothing is added yet: one ghost block, with the evidence of what it would do.
+  await expect(page.getByTestId("intent-card")).toContainText("Ori propone 1 bloques");
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(1);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByTestId("intent-card").getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await expect(page.locator(".kids-program-block").first()).toContainText("Si tecla");
+  // The program uses a key now, so that sensor is no longer "missing".
+  await expect(page.getByRole("button", { name: "Reaccionar a una tecla" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reaccionar al ratón" })).toBeVisible();
+  // One undo takes it back, and the idea is offered again.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reaccionar a una tecla" })).toBeVisible();
+});
