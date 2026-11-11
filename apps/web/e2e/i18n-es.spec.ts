@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures.js";
+import { expect, seedStorage, test } from "./fixtures.js";
 
 // Issue #360: the Spanish UI must not leak English labels (visible text, aria-label, title).
 const ENGLISH_LEAKS = [
@@ -23,12 +23,8 @@ test("the default Kids route starts in Spanish", async ({ page }) => {
 });
 
 test("the Spanish UI has no English labels in text, aria-label or title", async ({ page }) => {
+  await seedStorage(page, { "agorix.locale": "es" });
   await page.goto("/advanced");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("agorix.locale", "es");
-  });
-  await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
   await page
     .getByRole("button", { name: "Mostrar menú" })
