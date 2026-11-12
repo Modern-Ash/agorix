@@ -310,6 +310,18 @@ class Converter {
         }
         return { type: "listLength", listId };
       }
+      case "data_listcontainsitem":
+      case "data_itemnumoflist": {
+        const listId = this.listOf(block);
+        const value = this.listValue(block, "ITEM");
+        if (listId === undefined || value === undefined) {
+          this.drop(`${block.opcode} (a list or item the scene cannot use)`);
+          return undefined;
+        }
+        return block.opcode === "data_listcontainsitem"
+          ? { type: "listContains", listId, value }
+          : { type: "listIndexOf", listId, value };
+      }
       case "motion_xposition":
         return { type: "xPosition" };
       case "motion_yposition":
@@ -393,6 +405,13 @@ class Converter {
 
   booleanBlock(block: ScratchBlock): Expression | undefined {
     switch (block.opcode) {
+      case "data_listcontainsitem": {
+        const listId = this.listOf(block);
+        const value = this.listValue(block, "ITEM");
+        return listId === undefined || value === undefined
+          ? undefined
+          : { type: "listContains", listId, value };
+      }
       case "sensing_keypressed": {
         const key = this.menu(block, "KEY_OPTION")?.toLowerCase();
         const mapped = key === undefined ? undefined : KEYS[key];
@@ -871,6 +890,8 @@ class Converter {
         this.usesPen = true;
         return { type: "stamp" };
       case "data_addtolist":
+      case "data_showlist":
+      case "data_hidelist":
       case "data_insertatlist":
       case "data_replaceitemoflist":
       case "data_deleteoflist": {
@@ -879,6 +900,13 @@ class Converter {
           this.drop(`${block.opcode} (a list the scene did not keep)`);
           return undefined;
         }
+        if (block.opcode === "data_showlist" || block.opcode === "data_hidelist")
+          return { type: block.opcode === "data_showlist" ? "showList" : "hideList", listId };
+        if (
+          block.opcode === "data_deleteoflist" &&
+          this.literal(block, "INDEX")?.toLowerCase() === "all"
+        )
+          return { type: "listClear", listId };
         if (block.opcode === "data_addtolist") {
           const value = this.listValue(block, "ITEM");
           if (value === undefined) {

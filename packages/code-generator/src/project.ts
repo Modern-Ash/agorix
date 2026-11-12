@@ -253,6 +253,10 @@ function formatExpression(
       return `listItem(${formatListName(context, expression.listId, nodeId)}, ${formatExpression(expression.index, `${nodeId}/index`, context)})`;
     case "listLength":
       return `${formatListName(context, expression.listId, nodeId)}.length`;
+    case "listContains":
+      return `listContains(${formatListName(context, expression.listId, nodeId)}, ${formatExpression(expression.value, `${nodeId}/value`, context)})`;
+    case "listIndexOf":
+      return `listIndexOf(${formatListName(context, expression.listId, nodeId)}, ${formatExpression(expression.value, `${nodeId}/value`, context)})`;
     case "param":
       return paramText(context, expression.paramId);
     case "random":
@@ -479,6 +483,13 @@ function projectStatement(
         writer,
         `${pad}listAdd(${formatListName(context, statement.listId, nodeId)}, ${formatExpression(statement.value, `${nodeId}/value`, context)});\n`,
       );
+      return;
+    case "listClear":
+      write(writer, `${pad}listClear(${formatListName(context, statement.listId, nodeId)});\n`);
+      return;
+    case "showList":
+    case "hideList":
+      write(writer, `${pad}${statement.type}(${JSON.stringify(statement.listId)});\n`);
       return;
     case "listRemoveAt":
       write(

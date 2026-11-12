@@ -62,6 +62,7 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "variable",
   "listLength",
   "listItem",
+  "listIndexOf",
   "textLength",
   "randomInteger",
   "random",
@@ -97,6 +98,7 @@ export const SCENE_CONDITION_EXPRESSIONS = [
   "or",
   "not",
   "textContains",
+  "listContains",
 ] as const satisfies readonly ExpressionKind[];
 
 export const EXPRESSIONS_NOT_IN_SCENE = {

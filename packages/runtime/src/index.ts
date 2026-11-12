@@ -80,6 +80,8 @@ export {
   setTextWorld,
   setTextVisibilityWorld,
   listAddWorld,
+  listClearWorld,
+  listIndexOfWorld,
   listRemoveAtWorld,
   listInsertAtWorld,
   listReplaceAtWorld,

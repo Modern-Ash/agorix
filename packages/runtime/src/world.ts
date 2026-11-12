@@ -868,6 +868,22 @@ export function listAddWorld(world: WorldState, listId: string, value: ListItem)
   return items.length >= LIST_MAX_ITEMS ? world : withList(world, listId, [...items, value]);
 }
 
+/** Empties the list; an unknown list is unchanged. */
+export function listClearWorld(world: WorldState, listId: string): WorldState {
+  const items = world.lists?.[listId]?.items;
+  return items === undefined || items.length === 0 ? world : withList(world, listId, []);
+}
+
+/** 1-based place of the first item equal to the value, 0 when there is none; words ignore case. */
+export function listIndexOfWorld(world: WorldState, listId: string, value: ListItem): number {
+  const items = world.lists?.[listId]?.items ?? [];
+  const same = (item: ListItem): boolean =>
+    typeof item === "string" && typeof value === "string"
+      ? item.toLowerCase() === value.toLowerCase()
+      : Number(item) === Number(value);
+  return items.findIndex(same) + 1;
+}
+
 /** Returns the same world when the index is out of range; the caller records a note. */
 export function listRemoveAtWorld(world: WorldState, listId: string, index: number): WorldState {
   const items = world.lists?.[listId]?.items;

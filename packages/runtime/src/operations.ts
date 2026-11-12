@@ -73,8 +73,11 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "changeVariable",
   "showVariable",
   "hideVariable",
+  "showList",
+  "hideList",
   "listAdd",
   "listRemoveAt",
+  "listClear",
   "listInsertAt",
   "listReplaceAt",
   "repeat",
@@ -132,6 +135,8 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "randomInteger",
   "listItem",
   "listLength",
+  "listContains",
+  "listIndexOf",
   "param",
 ] as const);
 
@@ -257,6 +262,10 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
     case "textVariable":
     case "listLength":
     case "param":
+      return;
+    case "listContains":
+    case "listIndexOf":
+      assertExpressionAllowed(expression.value, `${path}.value`);
       return;
   }
 }

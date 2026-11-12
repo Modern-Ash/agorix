@@ -84,6 +84,10 @@ export const JAVA_SUPPORT_API = [
   "showVariable",
   "hideVariable",
   "showList",
+  "hideList",
+  "listClear",
+  "listIndexOf",
+  "listContains",
   "listRemoveAt",
   "listInsertAt",
   "listReplaceAt",
@@ -190,6 +194,18 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void showVariable(String name) {}
     void hideVariable(String name) {}
     void showList(String name) {}
+    void hideList(String name) {}
+    void listClear(java.util.List<?> list) { list.clear(); }
+    double listIndexOf(java.util.List<?> list, Object value) {
+      for (int i = 0; i < list.size(); i++) {
+        Object item = list.get(i);
+        if (item instanceof String && value instanceof String
+            ? ((String) item).equalsIgnoreCase((String) value)
+            : String.valueOf(item).equals(String.valueOf(value))) return i + 1;
+      }
+      return 0;
+    }
+    boolean listContains(java.util.List<?> list, Object value) { return listIndexOf(list, value) > 0; }
     void listRemoveAt(java.util.List<?> list, double index) {}
     void listInsertAt(java.util.List<Double> list, double index, double value) {}
     void listReplaceAt(java.util.List<Double> list, double index, double value) {}
@@ -432,6 +448,7 @@ function kindOf(writer: Writer, expression: Expression): Kind {
     case "or":
     case "not":
     case "textContains":
+    case "listContains":
       return "boolean";
     case "textLiteral":
     case "textVariable":
@@ -638,6 +655,9 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return `${writer.mixedLists.has(expression.listId) ? "wordListItem" : "listItem"}(${listName(writer, expression.listId)}, ${asNumber(writer, expression.index, `${nodeId}/index`)})`;
     case "listLength":
       return `${listName(writer, expression.listId)}.size()`;
+    case "listContains":
+    case "listIndexOf":
+      return `${expression.type === "listContains" ? "listContains" : "listIndexOf"}(${listName(writer, expression.listId)}, ${asItem(writer, expression.value, `${nodeId}/value`)})`;
     default: {
       const unknown = expression as { type?: unknown };
       writer.diagnostics.push(
@@ -792,6 +812,11 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       return line(`showVariable(${literal(variableName(writer, node.variableId))})`);
     case "hideVariable":
       return line(`hideVariable(${literal(variableName(writer, node.variableId))})`);
+    case "showList":
+    case "hideList":
+      return line(`${node.type}(${literal(listName(writer, node.listId))})`);
+    case "listClear":
+      return line(`listClear(${listName(writer, node.listId)})`);
     case "listAdd":
       return line(
         writer.mixedLists.has(node.listId)
@@ -1099,7 +1124,12 @@ export const javaLanguagePack: LanguagePack = {
     "changeVariable",
     "showVariable",
     "hideVariable",
+    "showList",
+    "hideList",
     "listAdd",
+    "listClear",
+    "listContains",
+    "listIndexOf",
     "listRemoveAt",
     "listInsertAt",
     "listReplaceAt",

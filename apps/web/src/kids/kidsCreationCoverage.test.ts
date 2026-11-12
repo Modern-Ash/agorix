@@ -35,6 +35,7 @@ function accepts(program: ProjectProgram): boolean {
 }
 const withCondition = (condition: Expression): ProjectProgram => ({
   ...base,
+  lists: [{ id: "studio-list-1", name: "items", initialItems: [], visible: true }],
   scripts: [
     {
       ...base.scripts[0]!,
@@ -69,6 +70,7 @@ const CONDITION_SAMPLES: Readonly<Record<string, Expression>> = {
     text: { type: "textLiteral", value: "sol" },
     part: { type: "textLiteral", value: "o" },
   },
+  listContains: { type: "listContains", listId: "studio-list-1", value: num(1) },
 };
 
 const TRIGGER_SAMPLES: Readonly<Record<string, Trigger>> = {

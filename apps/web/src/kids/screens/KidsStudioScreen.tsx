@@ -475,6 +475,13 @@ const COPY = {
     changeVariable: "Cambiar valor",
     showVariable: "Mostrar variable",
     hideVariable: "Ocultar variable",
+    showList: "Mostrar lista",
+    hideList: "Ocultar lista",
+    listClear: "Borrar todo de la lista",
+    listContains: "Si la lista contiene el número, mover 1",
+    listIndexOf: "Guardar número de elemento",
+    listContainsWord: "Si la lista contiene la palabra, mover 1",
+    listIndexOfWord: "Guardar número de la palabra",
     listAdd: "Agregar número",
     listAddWord: "Agregar palabra",
     listInsertWord: "Insertar palabra",
@@ -848,6 +855,13 @@ const COPY = {
     changeVariable: "Change value",
     showVariable: "Show variable",
     hideVariable: "Hide variable",
+    showList: "Show list",
+    hideList: "Hide list",
+    listClear: "Delete all of list",
+    listContains: "If list contains number, move 1",
+    listIndexOf: "Save item number",
+    listContainsWord: "If list contains word, move 1",
+    listIndexOfWord: "Save word position",
     listAdd: "Add number",
     listAddWord: "Add word",
     listInsertWord: "Insert word",
@@ -1246,6 +1260,8 @@ function expressionLabel(
     return program.variables?.find((item) => item.id === value.variableId)?.name ?? "?";
   if (value.type === "listLength")
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}.length`;
+  if (value.type === "listContains" || value.type === "listIndexOf")
+    return `${value.type === "listContains" ? (locale === "es" ? "contiene" : "contains") : "#"}(${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}, ${expressionLabel(value.value, program, locale)})`;
   if (value.type === "listItem")
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}[${expressionLabel(value.index, program)}]`;
   if (value.type === "mathFunction")
@@ -3306,6 +3322,11 @@ export function KidsStudioScreen({
       case "showVariable":
       case "hideVariable":
         return `${statement.type === "showVariable" ? copy.showVariable : copy.hideVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"}`;
+      case "showList":
+      case "hideList":
+        return `${statement.type === "showList" ? copy.showList : copy.hideList}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"}`;
+      case "listClear":
+        return `${copy.listClear}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"}`;
       case "listAdd":
         return `${isWordValue(statement.value) ? copy.listAddWord : copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
       case "listRemoveAt":
@@ -5366,17 +5387,24 @@ export function KidsStudioScreen({
                       "—"}
                   </p>
                 ))}
-                {history.current.lists?.map((item) => (
-                  <p key={item.id}>
-                    {item.name}:{" "}
-                    {listDisplay(
-                      shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[
+                {history.current.lists
+                  ?.filter(
+                    (item) =>
+                      (shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[
                         item.id
-                      ]?.items ?? item.initialItems,
-                      locale,
-                    )}
-                  </p>
-                ))}
+                      ]?.visible ?? item.visible) !== false,
+                  )
+                  .map((item) => (
+                    <p key={item.id}>
+                      {item.name}:{" "}
+                      {listDisplay(
+                        shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[
+                          item.id
+                        ]?.items ?? item.initialItems,
+                        locale,
+                      )}
+                    </p>
+                  ))}
               </div>
             ) : null}
             <div className="kids-studio-add">
@@ -8853,6 +8881,23 @@ export function KidsStudioScreen({
                         ))}
                       </select>
                     </label>
+                    {(
+                      [
+                        ["showList", copy.showList],
+                        ["hideList", copy.hideList],
+                        ["listClear", copy.listClear],
+                      ] as const
+                    ).map(([kind, label]) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        className="kids-button"
+                        data-kids-block={kind}
+                        onClick={() => add({ type: kind, listId })}
+                      >
+                        + {label}
+                      </button>
+                    ))}
                     <button
                       type="button"
                       className="kids-button"
@@ -8868,6 +8913,46 @@ export function KidsStudioScreen({
                     >
                       + {copy.listAdd}
                     </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="listContains"
+                      disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                      onClick={() =>
+                        add({
+                          type: "if",
+                          condition: {
+                            type: "listContains",
+                            listId,
+                            value: { type: "numericLiteral", value: dataValue },
+                          },
+                          then: [{ type: "move", steps: 1 }],
+                        })
+                      }
+                    >
+                      + {copy.listContains}
+                    </button>
+                    {history.current.variables?.length ? (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        data-kids-block="listIndexOf"
+                        disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                        onClick={() =>
+                          add({
+                            type: "setVariable",
+                            variableId,
+                            value: {
+                              type: "listIndexOf",
+                              listId,
+                              value: { type: "numericLiteral", value: dataValue },
+                            },
+                          })
+                        }
+                      >
+                        + {copy.listIndexOf}
+                      </button>
+                    ) : null}
                     <label>
                       {copy.listIndex}{" "}
                       <input
@@ -9011,6 +9096,48 @@ export function KidsStudioScreen({
                                     listId,
                                     index: { type: "numericLiteral", value: listIndex },
                                     value: wordExpression,
+                                  },
+                            )
+                          }
+                        >
+                          + {label}
+                        </button>
+                      );
+                    })}
+                    {(
+                      [
+                        ["listContains", copy.listContainsWord],
+                        ["listIndexOf", copy.listIndexOfWord],
+                      ] as const
+                    ).map(([kind, label]) => {
+                      const typed =
+                        listWordSource === "typed" ||
+                        !history.current.textVariables?.some((item) => item.id === listWordSource);
+                      const value: Expression = typed
+                        ? { type: "textLiteral", value: listWord.trim() }
+                        : { type: "textVariable", variableId: listWordSource };
+                      return (
+                        <button
+                          key={kind}
+                          type="button"
+                          className="kids-button"
+                          data-testid={`${kind}-word`}
+                          disabled={
+                            (typed && listWord.trim() === "") ||
+                            (kind === "listIndexOf" && !history.current.variables?.length)
+                          }
+                          onClick={() =>
+                            add(
+                              kind === "listContains"
+                                ? {
+                                    type: "if",
+                                    condition: { type: "listContains", listId, value },
+                                    then: [{ type: "move", steps: 1 }],
+                                  }
+                                : {
+                                    type: "setVariable",
+                                    variableId,
+                                    value: { type: "listIndexOf", listId, value },
                                   },
                             )
                           }

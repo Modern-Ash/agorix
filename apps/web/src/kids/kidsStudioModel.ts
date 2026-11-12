@@ -116,8 +116,11 @@ export type StudioStatement = Extract<
       | "changeVariable"
       | "showVariable"
       | "hideVariable"
+      | "showList"
+      | "hideList"
       | "listAdd"
       | "listRemoveAt"
+      | "listClear"
       | "listInsertAt"
       | "listReplaceAt"
       | "repeat"
@@ -314,6 +317,11 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
     return program.variables?.some((item) => item.id === value.variableId) === true;
   if (value.type === "listLength")
     return program.lists?.some((item) => item.id === value.listId) === true;
+  if (value.type === "listIndexOf")
+    return (
+      program.lists?.some((item) => item.id === value.listId) === true &&
+      checkedListItem(value.value, program, arity)
+    );
   if (value.type === "listItem")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
@@ -363,6 +371,11 @@ function checkedCondition(
   if (value.type === "mouseDown" || value.type === "touchingMouse") return true;
   if (value.type === "touchingColor")
     return (PEN_COLORS as readonly string[]).includes(value.color);
+  if (value.type === "listContains")
+    return (
+      program.lists?.some((item) => item.id === value.listId) === true &&
+      checkedListItem(value.value, program, arity)
+    );
   if (value.type === "textContains")
     return checkedText(value.text, program) && checkedText(value.part, program);
   if (value.type === "touchingStageEdge")
@@ -741,11 +754,15 @@ function checked(
     );
   if (statement.type === "showVariable" || statement.type === "hideVariable")
     return program.variables?.some((item) => item.id === statement.variableId) === true;
+  if (statement.type === "showList" || statement.type === "hideList")
+    return program.lists?.some((item) => item.id === statement.listId) === true;
   if (statement.type === "listAdd")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
       checkedListItem(statement.value, program, arity)
     );
+  if (statement.type === "listClear")
+    return program.lists?.some((item) => item.id === statement.listId) === true;
   if (statement.type === "listRemoveAt")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&

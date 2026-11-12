@@ -433,6 +433,24 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           "\n",
       );
       return;
+    case "listClear":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "delete all of " + listName(writer, statement.listId) + "\n",
+      );
+      return;
+    case "showList":
+    case "hideList":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          (statement.type === "showList" ? "show " : "hide ") +
+          listName(writer, statement.listId) +
+          "\n",
+      );
+      return;
     case "listRemoveAt":
       writeMapped(
         writer,
@@ -858,6 +876,19 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "listLength":
       return "length of " + listName(writer, expression.listId);
+    case "listContains":
+      return (
+        listName(writer, expression.listId) +
+        " contains " +
+        expressionText(writer, expression.value, nodeId + "/value")
+      );
+    case "listIndexOf":
+      return (
+        "item # of " +
+        expressionText(writer, expression.value, nodeId + "/value") +
+        " in " +
+        listName(writer, expression.listId)
+      );
     case "param":
       return paramText(writer, expression.paramId);
     case "randomInteger":

@@ -117,7 +117,20 @@ const statements: Statement[] = [
   },
   { type: "showVariable", variableId: "v" },
   { type: "hideVariable", variableId: "v" },
+  { type: "showList", listId: "l" },
+  { type: "hideList", listId: "l" },
   { type: "listAdd", listId: "l", value: bool(true) },
+  { type: "listClear", listId: "l" },
+  {
+    type: "setVariable",
+    variableId: "v",
+    value: { type: "listIndexOf", listId: "l", value: num(1) },
+  },
+  {
+    type: "if",
+    condition: { type: "listContains", listId: "l", value: num(1) },
+    then: [{ type: "show" }],
+  },
   { type: "listRemoveAt", listId: "l", index: num(1) },
   { type: "listInsertAt", listId: "l", index: num(1), value: { type: "listLength", listId: "l" } },
   {

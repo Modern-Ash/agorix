@@ -327,6 +327,18 @@ export interface ListLengthExpression {
   readonly listId: string;
 }
 
+export interface ListContainsExpression {
+  readonly type: "listContains";
+  readonly listId: string;
+  readonly value: Expression;
+}
+
+export interface ListIndexOfExpression {
+  readonly type: "listIndexOf";
+  readonly listId: string;
+  readonly value: Expression;
+}
+
 export type Expression =
   | TouchingGoalExpression
   | TouchingActorExpression
@@ -371,6 +383,8 @@ export type Expression =
   | ParamExpression
   | ListItemExpression
   | ListLengthExpression
+  | ListContainsExpression
+  | ListIndexOfExpression
   | EqualsExpression
   | AndExpression
   | OrExpression
@@ -775,10 +789,25 @@ export interface HideVariableStatement {
   readonly variableId: string;
 }
 
+export interface ShowListStatement {
+  readonly type: "showList";
+  readonly listId: string;
+}
+
+export interface HideListStatement {
+  readonly type: "hideList";
+  readonly listId: string;
+}
+
 export interface ListAddStatement {
   readonly type: "listAdd";
   readonly listId: string;
   readonly value: Expression;
+}
+
+export interface ListClearStatement {
+  readonly type: "listClear";
+  readonly listId: string;
 }
 
 export interface ListRemoveAtStatement {
@@ -900,7 +929,10 @@ export type Statement =
   | ChangeVariableStatement
   | ShowVariableStatement
   | HideVariableStatement
+  | ShowListStatement
+  | HideListStatement
   | ListAddStatement
+  | ListClearStatement
   | ListRemoveAtStatement
   | ListInsertAtStatement
   | ListReplaceAtStatement

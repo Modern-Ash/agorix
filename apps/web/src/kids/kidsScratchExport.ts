@@ -284,6 +284,20 @@ class Emitter {
               fields: { LIST: [name, expression.listId] },
             }).id;
       }
+      case "listContains":
+      case "listIndexOf": {
+        const name = this.names.list(expression.listId);
+        if (name === undefined) return null;
+        const made = this.block(
+          expression.type === "listContains" ? "data_listcontainsitem" : "data_itemnumoflist",
+          parent,
+          { fields: { LIST: [name, expression.listId] } },
+        );
+        const item = this.value(expression.value, made.id);
+        if (item === null) return null;
+        (made.block["inputs"] as Json)["ITEM"] = item;
+        return made.id;
+      }
       case "currentTime":
         return simple("sensing_current", {
           fields: { CURRENTMENU: [expression.part.toUpperCase(), null] },
@@ -738,6 +752,27 @@ class Emitter {
           parent,
           {},
           { VARIABLE: [name, statement.variableId] },
+        );
+      }
+      case "showList":
+      case "hideList": {
+        const name = this.names.list(statement.listId);
+        if (name === undefined) return null;
+        return this.with(
+          statement.type === "showList" ? "data_showlist" : "data_hidelist",
+          parent,
+          {},
+          { LIST: [name, statement.listId] },
+        );
+      }
+      case "listClear": {
+        const name = this.names.list(statement.listId);
+        if (name === undefined) return null;
+        return this.with(
+          "data_deleteoflist",
+          parent,
+          { INDEX: { type: "textLiteral", value: "all" } },
+          { LIST: [name, statement.listId] },
         );
       }
       case "listAdd":
