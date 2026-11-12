@@ -709,6 +709,7 @@ function projectText(program: ProjectProgram): {
   const writer: Writer = { parts: [], offset: 0, mapping: {} };
   const context = createProjectionContext(program.variables, program.lists, program.textVariables);
   for (const variable of program.variables ?? []) {
+    if (variable.scope === "stage") write(writer, "// Stage variable shared by all characters\n");
     write(
       writer,
       `let ${formatVariableName(context, variable.id, `variables/${variable.id}`)} = ${formatNumber(variable.initialValue)};\n`,

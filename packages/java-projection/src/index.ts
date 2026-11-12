@@ -1002,6 +1002,8 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     paramNames: undefined,
   };
   for (const variable of validated.variables ?? []) {
+    if (variable.scope === "stage")
+      writer.text += `${INDENT}// Stage variable shared by all characters\n`;
     mapped(
       writer,
       `variables/${variable.id}`,

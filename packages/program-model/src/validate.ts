@@ -182,6 +182,7 @@ interface ValidationState {
   nodeCount: number;
   seenIds: Map<string, string>; // id -> first path where it was seen
   variableIds: Set<string>;
+  stageVariableIds: Set<string>;
   textVariableIds: Set<string>;
   listIds: Set<string>;
   /** Custom blocks of the script being validated, shared ones included. */
@@ -413,7 +414,7 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       const property = input.property as (typeof ACTOR_PROPERTIES)[number];
       if (
         actorId === STAGE_ACTOR_ID &&
-        !["backdropNumber", "backdropName", "volume"].includes(property)
+        !["backdropNumber", "backdropName", "volume", "variable"].includes(property)
       )
         fail("INVALID_FIELD_TYPE", `${path}.property`, "not a stage property", property);
       if (actorId !== STAGE_ACTOR_ID && ["backdropNumber", "backdropName"].includes(property))
@@ -431,6 +432,15 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       const variableId = checkText(input.variableId, `${path}.variableId`);
       if (!state.variableIds.has(variableId) && !state.textVariableIds.has(variableId))
         fail("INVALID_REFERENCE", `${path}.variableId`, "unknown actor variable", variableId);
+      if (actorId === STAGE_ACTOR_ID && !state.stageVariableIds.has(variableId))
+        fail("INVALID_REFERENCE", `${path}.variableId`, "unknown Stage variable", variableId);
+      if (actorId !== STAGE_ACTOR_ID && state.stageVariableIds.has(variableId))
+        fail(
+          "INVALID_REFERENCE",
+          `${path}.variableId`,
+          "Stage variable belongs to Stage",
+          variableId,
+        );
       return { type: "actorProperty", actorId, property, variableId };
     }
     case "xPosition":
@@ -1351,7 +1361,16 @@ function validateVariable(input: unknown, path: string, state: ValidationState):
   if (typeof input.visible !== "boolean") {
     fail("MISSING_FIELD", `${path}.visible`, "expected a boolean", input.visible);
   }
-  return { id: input.id, name, initialValue: input.initialValue, visible: input.visible };
+  if (input.scope !== undefined && input.scope !== "stage")
+    fail("INVALID_FIELD_TYPE", `${path}.scope`, "unknown variable scope", input.scope);
+  if (input.scope === "stage") state.stageVariableIds.add(input.id);
+  return {
+    id: input.id,
+    name,
+    initialValue: input.initialValue,
+    visible: input.visible,
+    ...(input.scope === "stage" ? { scope: "stage" as const } : {}),
+  };
 }
 
 function validateTextVariable(
@@ -1641,6 +1660,7 @@ export function validateProgram(input: unknown): ProjectProgram {
     nodeCount: 0,
     seenIds: new Map(),
     variableIds: new Set(),
+    stageVariableIds: new Set(),
     textVariableIds: new Set(),
     listIds: new Set(),
     procedureIds: new Set(),

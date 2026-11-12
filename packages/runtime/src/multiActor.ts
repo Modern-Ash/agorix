@@ -18,7 +18,7 @@ import {
 } from "./execute.js";
 import { COPIES_CAP, liveCopies, settleCopiesWorld } from "./copies.js";
 import { copyRoom, isCloneId, liveClones, makeClones, orderOptions } from "./clones.js";
-import { cloneWorldState, createWorldState, type WorldState } from "./world.js";
+import { cloneWorldState, createWorldState, type VariableState, type WorldState } from "./world.js";
 
 export interface MultiActorRuntimeActor {
   readonly id: string;
@@ -34,6 +34,7 @@ export interface MultiActorRuntimeStage {
   readonly backdropId?: string;
   readonly width?: number;
   readonly height?: number;
+  readonly variables?: Readonly<Record<string, VariableState>>;
 }
 
 export interface MultiActorFrame {
@@ -132,6 +133,35 @@ export interface RuntimeStageMutable {
   width?: number;
   height?: number;
   actorOrder: string[];
+  variables?: Readonly<Record<string, VariableState>>;
+}
+
+export function seedStageVariables(
+  stage: RuntimeStageMutable,
+  program: ProjectProgram,
+  restored?: Readonly<Record<string, VariableState>>,
+): void {
+  const variables = (program.variables ?? []).filter((item) => item.scope === "stage");
+  if (variables.length === 0) return;
+  stage.variables = Object.fromEntries(
+    variables.map((item) => [
+      item.id,
+      restored?.[item.id] ?? { value: item.initialValue, visible: item.visible },
+    ]),
+  );
+}
+
+export function withStageVariables(world: WorldState, stage: RuntimeStageMutable): WorldState {
+  return stage.variables === undefined
+    ? world
+    : { ...world, variables: { ...world.variables, ...stage.variables } };
+}
+
+export function captureStageVariables(world: WorldState, stage: RuntimeStageMutable): void {
+  if (stage.variables === undefined) return;
+  stage.variables = Object.fromEntries(
+    Object.keys(stage.variables).map((id) => [id, world.variables?.[id] ?? stage.variables![id]!]),
+  );
 }
 
 export function defaultActor(): ProjectActor {
@@ -152,6 +182,7 @@ export function cloneRuntimeStage(stage: RuntimeStageMutable): MultiActorRuntime
     ...(stage.backdropId === undefined ? {} : { backdropId: stage.backdropId }),
     ...(stage.width === undefined ? {} : { width: stage.width }),
     ...(stage.height === undefined ? {} : { height: stage.height }),
+    ...(stage.variables === undefined ? {} : { variables: { ...stage.variables } }),
   };
 }
 
@@ -480,6 +511,7 @@ export function runMultiActorProgram(
             ? {}
             : { height: options.initialStage.height }),
         };
+  seedStageVariables(stage, validatedProgram, options.initialStage?.variables);
   const actors = actorsForCreative(creative, stage, options.goal, options.initialWorlds);
   const maxSteps = normalizeMaxSteps(options.maxSteps);
   let stepsUsed = 0;
@@ -516,6 +548,7 @@ export function runMultiActorProgram(
           scriptIndex,
           reason: reasonForActivation(event, script, actor),
         });
+        actor.world = withStageVariables(actor.world, stage);
         if (stage.backdropId !== undefined)
           actor.world = { ...actor.world, backdropId: stage.backdropId };
         const result = runProgram(singleScriptProgram(validatedProgram, script), actor.world, {
@@ -585,6 +618,7 @@ export function runMultiActorProgram(
           let note = entry.note;
           const nodeId = remapNodeId(entry.nodeId, scriptIndex);
           actor.world = cloneWorldState(entry.worldAfter);
+          captureStageVariables(actor.world, stage);
           if (entry.worldAfter.backdropId !== undefined) {
             stage.backdropId = entry.worldAfter.backdropId;
           }

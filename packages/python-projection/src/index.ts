@@ -55,6 +55,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     ),
   };
   for (const variable of validated.variables ?? []) {
+    if (variable.scope === "stage") writer.text += "# Stage variable shared by all characters\n";
     writeMapped(
       writer,
       "variables/" + variable.id,

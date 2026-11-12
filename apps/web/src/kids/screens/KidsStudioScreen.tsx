@@ -465,6 +465,7 @@ const COPY = {
     variable: "Variable",
     list: "Lista",
     newVariable: "Crear variable",
+    newStageVariable: "Nueva variable del Escenario",
     newList: "Crear lista",
     newWord: "Crear palabra",
     wordVariable: "Palabra",
@@ -513,6 +514,7 @@ const COPY = {
     saveStageBackdropNumber: "Guardar número de fondo del Escenario",
     saveStageBackdropName: "Guardar nombre de fondo del Escenario",
     saveStageVolume: "Guardar volumen del Escenario",
+    saveStageVariable: "Guardar variable del Escenario",
     actorPropertyNames: {
       xPosition: "posición X",
       yPosition: "posición Y",
@@ -861,6 +863,7 @@ const COPY = {
     variable: "Variable",
     list: "List",
     newVariable: "Create variable",
+    newStageVariable: "New Stage variable",
     newList: "Create list",
     newWord: "Create word",
     wordVariable: "Word",
@@ -909,6 +912,7 @@ const COPY = {
     saveStageBackdropNumber: "Save Stage backdrop number",
     saveStageBackdropName: "Save Stage backdrop name",
     saveStageVolume: "Save Stage volume",
+    saveStageVariable: "Save Stage variable",
     actorPropertyNames: {
       xPosition: "X position",
       yPosition: "Y position",
@@ -1551,6 +1555,12 @@ export function KidsStudioScreen({
   const [blockRenames, setBlockRenames] = useState<Record<string, string>>({});
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
   const [sourceVariableId, setSourceVariableId] = useState("studio-var-1");
+  const [stageVariableId, setStageVariableId] = useState("studio-var-1");
+  const selectedStageVariableId =
+    history.current.variables?.find((item) => item.id === stageVariableId && item.scope === "stage")
+      ?.id ??
+    history.current.variables?.find((item) => item.scope === "stage")?.id ??
+    "";
   const [mathOperator, setMathOperator] = useState<
     "add" | "subtract" | "multiply" | "divide" | "modulo"
   >("add");
@@ -2427,6 +2437,7 @@ export function KidsStudioScreen({
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
+  const shownStageVariables = selectedFrame?.stage.variables ?? run?.stage.variables;
   const stageBackdrop = backdropOfStage(shownStage?.backdropId, backdropId);
   const stageArtAsset = customImagesEnabled
     ? creative.assets?.find(
@@ -2737,18 +2748,21 @@ export function KidsStudioScreen({
     persist(trySetTrigger(scriptTarget, trigger));
   }
 
-  function createData(kind: "variable" | "list" | "word") {
+  function createData(kind: "variable" | "stageVariable" | "list" | "word") {
     try {
       const name = dataName.trim();
       const next =
-        kind === "variable"
-          ? addStudioVariable(history, name)
+        kind === "variable" || kind === "stageVariable"
+          ? addStudioVariable(history, name, kind === "stageVariable" ? "stage" : undefined)
           : kind === "word"
             ? addStudioText(history, name)
             : addStudioList(history, name);
       persist(next);
       setDataName("");
-      if (kind === "variable") setVariableId(`studio-var-${next.current.variables?.length ?? 1}`);
+      if (kind === "variable" || kind === "stageVariable")
+        setVariableId(`studio-var-${next.current.variables?.length ?? 1}`);
+      if (kind === "stageVariable")
+        setStageVariableId(`studio-var-${next.current.variables?.length ?? 1}`);
       else if (kind === "word")
         setTextVarId(`studio-text-${next.current.textVariables?.length ?? 1}`);
       else setListId(`studio-list-${next.current.lists?.length ?? 1}`);
@@ -5411,10 +5425,20 @@ export function KidsStudioScreen({
               <div className="kids-studio-watchers" aria-label={copy.watchers}>
                 <h3>{copy.watchers}</h3>
                 {history.current.variables
-                  ?.filter((item) => shownWorld?.variables?.[item.id]?.visible !== false)
+                  ?.filter(
+                    (item) =>
+                      (item.scope === "stage"
+                        ? shownStageVariables?.[item.id]
+                        : shownWorld?.variables?.[item.id]
+                      )?.visible !== false,
+                  )
                   .map((item) => (
                     <p key={item.id}>
-                      {item.name}: {shownWorld?.variables?.[item.id]?.value ?? item.initialValue}
+                      {item.name}:{" "}
+                      {(item.scope === "stage"
+                        ? shownStageVariables?.[item.id]
+                        : shownWorld?.variables?.[item.id]
+                      )?.value ?? item.initialValue}
                     </p>
                   ))}
                 {history.current.textVariables?.map((item) => (
@@ -8340,6 +8364,45 @@ export function KidsStudioScreen({
                 >
                   + {copy.saveStageBackdropName}
                 </button>
+                {history.current.variables?.some((item) => item.scope === "stage") ? (
+                  <>
+                    <label>
+                      {copy.newStageVariable}{" "}
+                      <select
+                        aria-label={copy.newStageVariable}
+                        value={selectedStageVariableId}
+                        onChange={(event) => setStageVariableId(event.target.value)}
+                      >
+                        {history.current.variables
+                          .filter((item) => item.scope === "stage")
+                          .map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-testid="stage-variable-read"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId,
+                          value: {
+                            type: "actorProperty",
+                            actorId: STAGE_ACTOR_ID,
+                            property: "variable",
+                            variableId: selectedStageVariableId,
+                          },
+                        })
+                      }
+                    >
+                      + {copy.saveStageVariable}
+                    </button>
+                  </>
+                ) : null}
                 {targetActorId ? (
                   <>
                     <label>
@@ -8397,7 +8460,11 @@ export function KidsStudioScreen({
                     <button
                       type="button"
                       className="kids-button"
-                      disabled={!history.current.variables?.length}
+                      disabled={
+                        !history.current.variables?.length ||
+                        history.current.variables.find((item) => item.id === variableId)?.scope ===
+                          "stage"
+                      }
                       onClick={() =>
                         add({
                           type: "setVariable",
@@ -8535,6 +8602,15 @@ export function KidsStudioScreen({
                   onClick={() => createData("variable")}
                 >
                   + {copy.newVariable}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-testid="create-stage-variable"
+                  disabled={!dataName.trim() || (history.current.variables?.length ?? 0) >= 3}
+                  onClick={() => createData("stageVariable")}
+                >
+                  + {copy.newStageVariable}
                 </button>
                 <button
                   type="button"

@@ -12,6 +12,7 @@ import {
   actorsForCreative,
   cloneRuntimeEvent,
   cloneRuntimeStage,
+  captureStageVariables,
   programEventForRuntimeEvent,
   reasonForActivation,
   remapNodeId,
@@ -19,9 +20,11 @@ import {
   singleScriptProgram,
   snapshotActors,
   stageForCreative,
+  seedStageVariables,
   timerSecondsOf,
   loudnessLevelsOf,
   statementAtNodeId,
+  withStageVariables,
   type MultiActorFrame,
   type MultiActorRunResult,
   type MultiActorScriptActivation,
@@ -166,6 +169,7 @@ export function createLiveRuntime(
   const program = validateProgram(programInput);
   const creative = validateProjectCreativeState(creativeInput, program);
   const stage = stageForCreative(creative);
+  seedStageVariables(stage, program);
   const actors = actorsForCreative(creative, stage, options.goal, undefined);
   const maxSeconds = options.maxSeconds ?? LIVE_MAX_SECONDS;
   const maxEntries = options.maxEntries ?? LIVE_MAX_ENTRIES;
@@ -263,7 +267,7 @@ export function createLiveRuntime(
     };
     const stepper = createScriptStepper(
       singleScriptProgram(program, script),
-      actor.world,
+      withStageVariables(actor.world, stage),
       execution,
     );
     // The stepper seeds the program's variables and lists into the world it starts from.
@@ -309,10 +313,11 @@ export function createLiveRuntime(
 
   function stepActivation(activation: Activation): MultiActorTraceEntry | undefined {
     const { actor, stepper } = activation;
-    stepper.world = actor.world;
+    stepper.world = withStageVariables(actor.world, stage);
     if (randomState !== undefined) stepper.randomState = randomState;
     const result = stepper.step();
     actor.world = cloneWorldState(stepper.world);
+    captureStageVariables(actor.world, stage);
     randomState = stepper.randomState;
     capCopies(actor, actors);
     if (result.kind === "done") {

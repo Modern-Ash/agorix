@@ -1204,7 +1204,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   });
 
   // Up to three variables, from the stage first, then the sprites.
-  const names: string[] = [];
+  const names: { name: string; scope?: "stage"; initialValue: number }[] = [];
   const words: { name: string }[] = [];
   // A variable holds words when it starts as a word or the project sets it to a word.
   const setToWord = new Set<string>();
@@ -1228,22 +1228,34 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
       }
     }
   }
-  for (const target of [stage, ...sprites]) {
+  for (const [targetIndex, target] of [stage, ...sprites].entries()) {
     const variables = isRecord(target?.["variables"]) ? target["variables"] : {};
     for (const entry of Object.values(variables)) {
       const name = Array.isArray(entry) ? entry[0] : undefined;
       if (typeof name !== "string" || !DATA_NAME.test(name)) continue;
-      if (names.includes(name) || words.some((word) => word.name === name)) continue;
+      if (names.some((item) => item.name === name) || words.some((word) => word.name === name))
+        continue;
       const initial: unknown = Array.isArray(entry) ? entry[1] : undefined;
       // The scene's variables always start empty, so a starting word is not kept.
       if (isWord(initial) || setToWord.has(name)) words.push({ name });
-      else names.push(name);
+      else
+        names.push({
+          name,
+          ...(targetIndex === 0 && stage !== undefined ? { scope: "stage" as const } : {}),
+          initialValue:
+            targetIndex === 0 && stage !== undefined && Number.isFinite(Number(initial))
+              ? converter.adjust(
+                  Math.round(Math.max(-100, Math.min(100, Number(initial)))),
+                  initial,
+                )
+              : 0,
+        });
     }
   }
   names
     .slice(0, 3)
-    .forEach((name, index) => converter.variableIds.set(name, `studio-var-${index + 1}`));
-  for (const name of names.slice(3)) converter.drop(`variable "${name}" (more than three)`);
+    .forEach((item, index) => converter.variableIds.set(item.name, `studio-var-${index + 1}`));
+  for (const item of names.slice(3)) converter.drop(`variable "${item.name}" (more than three)`);
   words
     .slice(0, 3)
     .forEach((word, index) => converter.textIds.set(word.name, `studio-text-${index + 1}`));
@@ -1348,11 +1360,12 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   });
   for (let i = MAX_SPRITES; i < sprites.length; i += 1) converter.drop("sprite (more than twelve)");
 
-  const variables = names.slice(0, 3).map((name, index) => ({
+  const variables = names.slice(0, 3).map((item, index) => ({
     id: `studio-var-${index + 1}`,
-    name,
-    initialValue: 0,
+    name: item.name,
+    initialValue: item.initialValue,
     visible: true,
+    ...(item.scope === "stage" ? { scope: "stage" as const } : {}),
   }));
   const textVariables = words.slice(0, 3).map((word, index) => ({
     id: `studio-text-${index + 1}`,
