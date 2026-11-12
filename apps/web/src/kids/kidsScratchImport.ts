@@ -197,6 +197,8 @@ function parseBlock(raw: unknown): ScratchBlock | undefined {
 }
 
 class Converter {
+  /** Canonical actor whose Scratch sprite stack is currently being converted. */
+  currentActorId: string | undefined;
   /** The sprite being read has a "when I start as a clone" script, so its clones keep behaving. */
   spriteHasCloneHat = false;
   /** The stack being read is that script, where "delete this clone" means something. */
@@ -340,14 +342,15 @@ class Converter {
         const part = CLOCK_PART_OF_SCRATCH[String(block.fields["CURRENTMENU"]?.[0]).toUpperCase()];
         return part === undefined ? undefined : { type: "currentTime", part };
       }
-      // Only the number is read; the costume or backdrop name has no counterpart here.
       case "looks_costumenumbername":
-        return block.fields["NUMBER_NAME"]?.[0] === "number"
-          ? { type: "costumeNumber" }
+        if (block.fields["NUMBER_NAME"]?.[0] === "number") return { type: "costumeNumber" };
+        return block.fields["NUMBER_NAME"]?.[0] === "name" && this.currentActorId !== undefined
+          ? { type: "actorProperty", actorId: this.currentActorId, property: "costumeName" }
           : undefined;
       case "looks_backdropnumbername":
-        return block.fields["NUMBER_NAME"]?.[0] === "number"
-          ? { type: "backdropNumber" }
+        if (block.fields["NUMBER_NAME"]?.[0] === "number") return { type: "backdropNumber" };
+        return block.fields["NUMBER_NAME"]?.[0] === "name"
+          ? { type: "actorProperty", actorId: STAGE_ACTOR_ID, property: "backdropName" }
           : undefined;
       case "sensing_distanceto": {
         const target = this.menu(block, "DISTANCETOMENU");
@@ -1071,7 +1074,14 @@ class Converter {
         const id = typeof variable === "string" ? this.textIds.get(variable) : undefined;
         return id === undefined ? undefined : { type: "textVariable", variableId: id };
       }
-      if (inner?.opcode === "data_itemoflist" || inner?.opcode === "sensing_of")
+      if (
+        inner?.opcode === "data_itemoflist" ||
+        inner?.opcode === "sensing_of" ||
+        (inner?.opcode === "looks_costumenumbername" &&
+          inner.fields["NUMBER_NAME"]?.[0] === "name") ||
+        (inner?.opcode === "looks_backdropnumbername" &&
+          inner.fields["NUMBER_NAME"]?.[0] === "name")
+      )
         return this.reporter(inner);
       return undefined;
     }
@@ -1226,6 +1236,16 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
             reporter.fields["PROPERTY"]?.[0] === "backdrop name")
         )
           setToWord.add(variable);
+        if (
+          reporter?.opcode === "looks_costumenumbername" &&
+          reporter.fields["NUMBER_NAME"]?.[0] === "name"
+        )
+          setToWord.add(variable);
+        if (
+          reporter?.opcode === "looks_backdropnumbername" &&
+          reporter.fields["NUMBER_NAME"]?.[0] === "name"
+        )
+          setToWord.add(variable);
       }
     }
   }
@@ -1327,6 +1347,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   };
   used.forEach((sprite, index) => {
     const character = KIDS_GALLERY_CHARACTERS[index % KIDS_GALLERY_CHARACTERS.length]!;
+    converter.currentActorId = studioActorId(index + 1, character.id);
     const blocks = new Map<string, ScratchBlock>();
     const rawBlocks = isRecord(sprite["blocks"]) ? sprite["blocks"] : {};
     for (const [id, value] of Object.entries(rawBlocks)) {
