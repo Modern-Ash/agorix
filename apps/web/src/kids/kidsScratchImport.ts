@@ -327,8 +327,8 @@ class Converter {
           : { type: "listIndexOf", listId, value };
       }
       case "operator_join": {
-        const left = this.boundedTextSource(block, "STRING1");
-        const right = this.boundedTextSource(block, "STRING2");
+        const left = this.boundedJoinSource(block, "STRING1");
+        const right = this.boundedJoinSource(block, "STRING2");
         if (left === undefined || right === undefined) {
           this.drop("operator_join (a word the scene cannot use)");
           return undefined;
@@ -1172,6 +1172,16 @@ class Converter {
         return value;
     }
     return undefined;
+  }
+
+  /** One short word or a bounded number; no nested reporters in Scratch's join slots. */
+  boundedJoinSource(block: ScratchBlock, name: string): Expression | undefined {
+    const reference = block.inputs[name]?.[1];
+    if (typeof reference !== "string" || this.blocks.get(reference)?.opcode === "data_variable") {
+      const number = this.numberExpression(block, name);
+      if (number?.type === "numericLiteral" || number?.type === "variable") return number;
+    }
+    return this.boundedTextSource(block, name);
   }
 
   /** Scratch's `join` in a bubble: fixed text and one bounded number or word after it. */
