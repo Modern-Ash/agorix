@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { SCHEMA_VERSION, type ProjectProgram, type Script } from "@agorix/program-model";
+import {
+  SCHEMA_VERSION,
+  STAGE_ACTOR_ID,
+  type ProjectProgram,
+  type Script,
+} from "@agorix/program-model";
 import { runMultiActorProgram } from "@agorix/runtime";
 import { exportScratchProject } from "./kidsScratchExport.js";
 import { convertScratchProject } from "./kidsScratchImport.js";
@@ -395,6 +400,70 @@ describe("property of another character round-trips through sensing_of", () => {
         },
       },
     ]);
+  });
+});
+
+describe("property of Stage round-trips through sensing_of", () => {
+  it("numbers a gallery backdrop switched by the first character before the second reads it", () => {
+    const scene = program(
+      [
+        nova([{ type: "switchBackdrop", backdropId: "backdrop:garden" }]),
+        {
+          id: "studio-actor-2-mika",
+          trigger: flag,
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "studio-var-1",
+              value: { type: "actorProperty", actorId: STAGE_ACTOR_ID, property: "backdropNumber" },
+            },
+          ],
+        },
+      ],
+      { variables: [{ id: "studio-var-1", name: "Fondo", initialValue: 0, visible: true }] },
+    );
+    const result = runMultiActorProgram(scene, creativeForStudio(scene, "forest", "es"));
+    expect(result.actors[1]?.world.variables?.["studio-var-1"]?.value).toBe(2);
+  });
+
+  it("keeps backdrop number, name and volume with Scratch's Stage menu", async () => {
+    const statements: Script["statements"] = [
+      {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: { type: "actorProperty", actorId: STAGE_ACTOR_ID, property: "backdropNumber" },
+      },
+      {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: { type: "actorProperty", actorId: STAGE_ACTOR_ID, property: "volume" },
+      },
+      {
+        type: "setText",
+        variableId: "studio-text-1",
+        value: { type: "actorProperty", actorId: STAGE_ACTOR_ID, property: "backdropName" },
+      },
+    ];
+    const scene = program([nova(statements)], {
+      variables: [{ id: "studio-var-1", name: "Puntos", initialValue: 0, visible: true }],
+      textVariables: [{ id: "studio-text-1", name: "Fondo", initialValue: "", visible: true }],
+    });
+    const { bytes, report } = exportScratchProject(scene, "forest", "es");
+    expect(report.left).toEqual([]);
+    const project = await open(bytes);
+    expect(
+      Object.values(project.targets[1]!.blocks).filter((block) => block["opcode"] === "sensing_of"),
+    ).toHaveLength(3);
+    expect(
+      Object.values(project.targets[1]!.blocks)
+        .filter((block) => block["opcode"] === "sensing_of_object_menu")
+        .every(
+          (block) => (block["fields"] as Record<string, string[]>)["OBJECT"]?.[0] === "_stage_",
+        ),
+    ).toBe(true);
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(statements);
   });
 });
 

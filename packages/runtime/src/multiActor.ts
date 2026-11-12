@@ -516,6 +516,8 @@ export function runMultiActorProgram(
           scriptIndex,
           reason: reasonForActivation(event, script, actor),
         });
+        if (stage.backdropId !== undefined)
+          actor.world = { ...actor.world, backdropId: stage.backdropId };
         const result = runProgram(singleScriptProgram(validatedProgram, script), actor.world, {
           maxSteps: maxSteps - stepsUsed,
           event: programEventForRuntimeEvent(event),
@@ -564,6 +566,11 @@ export function runMultiActorProgram(
           ...(options.loudness === undefined ? {} : { loudness: options.loudness }),
           ...(options.clock === undefined ? {} : { clock: options.clock }),
           ...(creative.colorZones === undefined ? {} : { colorZones: creative.colorZones }),
+          backdropNames: Object.fromEntries(
+            (creative.assets ?? [])
+              .filter((asset) => asset.kind === "backdrop")
+              .map((asset) => [asset.id, asset.name]),
+          ),
           ...orderOptions(creative, actor.id),
           ...(options.choices === undefined ? {} : { choices: options.choices }),
           ...(options.answers === undefined ? {} : { answers: options.answers }),

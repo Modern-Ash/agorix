@@ -227,6 +227,37 @@ test("free scene reads another character's actual X position after reopening", a
   await expect(page.getByText("Posición: 60")).toBeVisible();
 });
 
+test("free scene reads Stage backdrop after changing it", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("combobox", { name: "Cambiar fondo" }).selectOption({ index: 1 });
+  await page.getByRole("button", { name: "+ Cambiar fondo" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Fondo");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByTestId("stage-backdrop-number").click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Fondo: 2")).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Fondo: 2")).toBeVisible();
+});
+
 test("free scene senses another character and records its own X position after reopening", async ({
   page,
 }) => {

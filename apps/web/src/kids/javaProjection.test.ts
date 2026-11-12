@@ -7,6 +7,7 @@ import { createEditorHistory } from "@agorix/block-editor";
 import { JAVA_SUPPORT_API, JAVA_SUPPORT_STUB, projectJava } from "@agorix/java-projection";
 import {
   SCHEMA_VERSION,
+  STAGE_ACTOR_ID,
   type Expression,
   type NumericLiteralExpression,
   type ProjectProgram,
@@ -131,6 +132,16 @@ const statements: Statement[] = [
     type: "setText",
     variableId: "t",
     value: { type: "actorProperty", actorId: "actor:main", property: "costumeName" },
+  },
+  {
+    type: "setVariable",
+    variableId: "v",
+    value: { type: "actorProperty", actorId: STAGE_ACTOR_ID, property: "backdropNumber" },
+  },
+  {
+    type: "setText",
+    variableId: "t",
+    value: { type: "actorProperty", actorId: STAGE_ACTOR_ID, property: "backdropName" },
   },
   { type: "showList", listId: "l" },
   { type: "hideList", listId: "l" },

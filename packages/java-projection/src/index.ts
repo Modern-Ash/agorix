@@ -122,6 +122,7 @@ export const JAVA_SUPPORT_API = [
   "distanceToActor",
   "actorNumberProperty",
   "actorCostumeName",
+  "stageBackdropName",
   "actorVariableProperty",
   "touchingMouse",
   "distanceToMouse",
@@ -245,6 +246,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     double distanceToActor(String actor) { return 0; }
     double actorNumberProperty(String actor, String property) { return 0; }
     String actorCostumeName(String actor) { return ""; }
+    String stageBackdropName() { return ""; }
     Object actorVariableProperty(String actor, String variable) { return 0; }
     double xPosition() { return 0; }
     double direction() { return 0; }
@@ -464,7 +466,7 @@ function kindOf(writer: Writer, expression: Expression): Kind {
     case "listItem":
       return writer.mixedLists.has(expression.listId) ? "mixed" : "number";
     case "actorProperty":
-      return expression.property === "costumeName"
+      return expression.property === "costumeName" || expression.property === "backdropName"
         ? "text"
         : expression.property === "variable"
           ? "mixed"
@@ -556,9 +558,11 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
     case "actorProperty":
       return expression.property === "costumeName"
         ? `actorCostumeName(${literal(expression.actorId)})`
-        : expression.property === "variable"
-          ? `actorVariableProperty(${literal(expression.actorId)}, ${literal(expression.variableId ?? "")})`
-          : `actorNumberProperty(${literal(expression.actorId)}, ${literal(expression.property)})`;
+        : expression.property === "backdropName"
+          ? "stageBackdropName()"
+          : expression.property === "variable"
+            ? `actorVariableProperty(${literal(expression.actorId)}, ${literal(expression.variableId ?? "")})`
+            : `actorNumberProperty(${literal(expression.actorId)}, ${literal(expression.property)})`;
     case "xPosition":
       return "xPosition()";
     case "direction":

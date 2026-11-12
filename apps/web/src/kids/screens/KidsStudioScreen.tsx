@@ -145,6 +145,7 @@ import {
   PEN_SHADES,
   PEN_TRANSPARENCIES,
   PROCEDURE_PARAMS_MAX,
+  STAGE_ACTOR_ID,
   type MusicBeats,
   type MusicDrum,
   type MusicInstrument,
@@ -509,6 +510,9 @@ const COPY = {
     saveActorCostumeName: "Guardar nombre de disfraz del personaje",
     saveActorVariable: "Guardar variable del personaje",
     saveActorWord: "Guardar palabra del personaje",
+    saveStageBackdropNumber: "Guardar número de fondo del Escenario",
+    saveStageBackdropName: "Guardar nombre de fondo del Escenario",
+    saveStageVolume: "Guardar volumen del Escenario",
     actorPropertyNames: {
       xPosition: "posición X",
       yPosition: "posición Y",
@@ -902,6 +906,9 @@ const COPY = {
     saveActorCostumeName: "Save character costume name",
     saveActorVariable: "Save character variable",
     saveActorWord: "Save character word",
+    saveStageBackdropNumber: "Save Stage backdrop number",
+    saveStageBackdropName: "Save Stage backdrop name",
+    saveStageVolume: "Save Stage volume",
     actorPropertyNames: {
       xPosition: "X position",
       yPosition: "Y position",
@@ -1283,7 +1290,7 @@ function expressionLabel(
   if (value.type === "distanceToActor")
     return `${locale === "es" ? "distancia a" : "distance to"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "actorProperty")
-    return `${value.property === "variable" ? (program.variables?.find((item) => item.id === value.variableId)?.name ?? program.textVariables?.find((item) => item.id === value.variableId)?.name ?? "?") : value.property} ${locale === "es" ? "de" : "of"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
+    return `${value.property === "variable" ? (program.variables?.find((item) => item.id === value.variableId)?.name ?? program.textVariables?.find((item) => item.id === value.variableId)?.name ?? "?") : value.property} ${locale === "es" ? "de" : "of"} ${value.actorId === STAGE_ACTOR_ID ? (locale === "es" ? "Escenario" : "Stage") : galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "numericLiteral") return String(value.value);
   if (value.type === "variable")
     return program.variables?.find((item) => item.id === value.variableId)?.name ?? "?";
@@ -1558,7 +1565,9 @@ export function KidsStudioScreen({
   const [compareCalculation, setCompareCalculation] = useState(false);
   const [sensorTargetId, setSensorTargetId] = useState("");
   const [actorProperty, setActorProperty] =
-    useState<Exclude<ActorProperty, "costumeName" | "variable">>("xPosition");
+    useState<
+      Exclude<ActorProperty, "costumeName" | "variable" | "backdropNumber" | "backdropName">
+    >("xPosition");
   const [senseKey, setSenseKey] = useState<StudioKey>("Space");
   const [timerSeconds, setTimerSeconds] = useState(3);
   const [heldKeys, setHeldKeys] = useState<string[]>([]);
@@ -8274,6 +8283,63 @@ export function KidsStudioScreen({
                   </div>
                 ) : null}
                 <i hidden data-cat-start="logic" />
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-testid="stage-backdrop-number"
+                  disabled={!history.current.variables?.length}
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId,
+                      value: {
+                        type: "actorProperty",
+                        actorId: STAGE_ACTOR_ID,
+                        property: "backdropNumber",
+                      },
+                    })
+                  }
+                >
+                  + {copy.saveStageBackdropNumber}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-testid="stage-volume"
+                  disabled={!history.current.variables?.length}
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId,
+                      value: {
+                        type: "actorProperty",
+                        actorId: STAGE_ACTOR_ID,
+                        property: "volume",
+                      },
+                    })
+                  }
+                >
+                  + {copy.saveStageVolume}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-testid="stage-backdrop-name"
+                  disabled={!history.current.textVariables?.length}
+                  onClick={() =>
+                    add({
+                      type: "setText",
+                      variableId: selectedTextId,
+                      value: {
+                        type: "actorProperty",
+                        actorId: STAGE_ACTOR_ID,
+                        property: "backdropName",
+                      },
+                    })
+                  }
+                >
+                  + {copy.saveStageBackdropName}
+                </button>
                 {targetActorId ? (
                   <>
                     <label>
