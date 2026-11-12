@@ -2573,6 +2573,7 @@ export function KidsStudioScreen({
     let frameId = 0;
     let sawForever = live.result().trace.some((entry) => entry.statementType === "forever");
     const loop = (now: number) => {
+      if (liveRef.current !== live) return;
       const produced = live.advance(Math.min(0.25, (now - last) / 1000));
       last = now;
       for (const entry of produced) {
@@ -5199,6 +5200,7 @@ export function KidsStudioScreen({
                     className="kids-button"
                     onClick={() => {
                       try {
+                        stopLive();
                         choiceAnswers.current = {
                           ...choiceAnswers.current,
                           [pendingChoiceId]: index + 1,
@@ -5230,6 +5232,7 @@ export function KidsStudioScreen({
                 onSubmit={(event) => {
                   event.preventDefault();
                   try {
+                    stopLive();
                     textAnswers.current = {
                       ...textAnswers.current,
                       [pendingAskTextId]: typedAnswer,

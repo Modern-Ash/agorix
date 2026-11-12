@@ -450,7 +450,11 @@ function checkedCondition(
   )
     return false;
   return (
-    checkedNumber(value.left, program, 0, arity) && checkedNumber(value.right, program, 0, arity)
+    (checkedNumber(value.left, program, 0, arity) &&
+      checkedNumber(value.right, program, 0, arity)) ||
+    (value.type === "equals" &&
+      checkedText(value.left, program) &&
+      checkedText(value.right, program))
   );
 }
 
