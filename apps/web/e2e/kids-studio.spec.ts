@@ -297,6 +297,45 @@ test("two characters share a Stage variable after reopening", async ({ page }) =
   await expect(page.getByText("Lectura: 2")).toBeVisible();
 });
 
+test("two characters share a Stage word after reopening", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  const actors = page.getByRole("group", { name: "Personajes" }).getByRole("button");
+  await actors.first().click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Global");
+  await page.getByTestId("create-stage-word").click();
+  await page.getByRole("textbox", { name: "Escribí la palabra" }).fill("Hola");
+  await page.getByRole("button", { name: "+ Guardar palabra", exact: true }).click();
+  await actors.nth(1).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Lectura");
+  await page.getByRole("button", { name: "+ Crear palabra", exact: true }).click();
+  await page.getByTestId("stage-word-read").click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Global: Hola")).toBeVisible();
+  await expect(page.getByText("Lectura: Hola")).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Global: Hola")).toBeVisible();
+  await expect(page.getByText("Lectura: Hola")).toBeVisible();
+});
+
 test("free scene senses another character and records its own X position after reopening", async ({
   page,
 }) => {

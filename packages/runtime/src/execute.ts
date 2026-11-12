@@ -492,7 +492,11 @@ function evaluateExpression(
     case "actorProperty": {
       if (expression.actorId === STAGE_ACTOR_ID) {
         if (expression.property === "variable")
-          return state.world.variables?.[expression.variableId ?? ""]?.value ?? 0;
+          return (
+            state.world.variables?.[expression.variableId ?? ""]?.value ??
+            state.world.texts?.[expression.variableId ?? ""]?.value ??
+            0
+          );
         if (expression.property === "volume") return 100;
         if (expression.property === "backdropNumber")
           return (state.options.backdropOrder?.indexOf(state.world.backdropId ?? "") ?? -1) + 1;

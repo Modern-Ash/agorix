@@ -334,7 +334,7 @@ describe("Scratch variables that hold words", () => {
   it("keeps a word variable as a word, and numbers as numbers", () => {
     const { program } = convertScratchProject(wordProject("Hola"));
     expect(program.textVariables).toEqual([
-      { id: "studio-text-1", name: "name", initialValue: "", visible: true },
+      { id: "studio-text-1", name: "name", initialValue: "Ana", visible: true, scope: "stage" },
     ]);
     expect(program.variables?.map((item) => item.name)).toEqual(["score"]);
     expect(program.scripts[0]!.statements[0]).toEqual({

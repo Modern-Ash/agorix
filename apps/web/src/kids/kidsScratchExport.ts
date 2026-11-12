@@ -1248,7 +1248,8 @@ export function exportScratchProject(
     const emitter = new Emitter(counter, {
       variable: (id) => variables.get(id),
       variableId: (id) =>
-        program.variables?.some((item) => item.id === id && item.scope !== "stage")
+        program.variables?.some((item) => item.id === id && item.scope !== "stage") ||
+        program.textVariables?.some((item) => item.id === id && item.scope !== "stage")
           ? `${actor.id}:${id}`
           : id,
       list: (id) => listNames.get(id),
@@ -1269,7 +1270,7 @@ export function exportScratchProject(
       isStage: false,
       name: names.get(actor.id)!,
       variables: Object.fromEntries(
-        (program.variables ?? [])
+        [...(program.variables ?? []), ...(program.textVariables ?? [])]
           .filter((item) => item.scope !== "stage")
           .map((item) => [`${actor.id}:${item.id}`, [item.name, item.initialValue]]),
       ),
@@ -1308,7 +1309,9 @@ export function exportScratchProject(
       ...(program.variables ?? [])
         .filter((item) => item.scope === "stage")
         .map((item) => [item.id, [item.name, item.initialValue]]),
-      ...(program.textVariables ?? []).map((item) => [item.id, [item.name, item.initialValue]]),
+      ...(program.textVariables ?? [])
+        .filter((item) => item.scope === "stage")
+        .map((item) => [item.id, [item.name, item.initialValue]]),
     ]),
     // The scene's lists are the whole scene's, so they live on the stage; they start empty.
     lists: Object.fromEntries((program.lists ?? []).map((item) => [item.id, [item.name, []]])),

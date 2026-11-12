@@ -404,6 +404,53 @@ describe("property of another character round-trips through sensing_of", () => {
 });
 
 describe("property of Stage round-trips through sensing_of", () => {
+  it("keeps Stage words shared and local words on sprites", async () => {
+    const statements: Script["statements"] = [
+      {
+        type: "setText",
+        variableId: "studio-text-1",
+        value: { type: "textLiteral", value: "Hola" },
+      },
+      {
+        type: "setText",
+        variableId: "studio-text-2",
+        value: {
+          type: "actorProperty",
+          actorId: STAGE_ACTOR_ID,
+          property: "variable",
+          variableId: "studio-text-1",
+        },
+      },
+    ];
+    const scene = program([nova(statements)], {
+      textVariables: [
+        {
+          id: "studio-text-1",
+          name: "Global",
+          initialValue: "Inicio",
+          visible: true,
+          scope: "stage",
+        },
+        { id: "studio-text-2", name: "Local", initialValue: "", visible: true },
+      ],
+    });
+    const { bytes } = exportScratchProject(scene, "forest", "es");
+    const project = (await readScratchProject(bytes.buffer as ArrayBuffer)) as {
+      targets: { variables: Record<string, unknown> }[];
+    };
+    expect(Object.keys(project.targets[0]!.variables)).toEqual(["studio-text-1"]);
+    expect(Object.keys(project.targets[1]!.variables)).toEqual([
+      "actor:studio-1-nova:studio-text-2",
+    ]);
+    const back = convertScratchProject(project);
+    expect(back.program.textVariables).toEqual(scene.textVariables);
+    expect(back.program.scripts[0]!.statements).toEqual(statements);
+    project.targets[0]!.variables["studio-text-1"] = ["Global", "123456789012345678901234"];
+    const bounded = convertScratchProject(project);
+    expect(bounded.program.textVariables?.[0]?.initialValue).toBe("12345678901234567890");
+    expect(bounded.report.blocksAdjusted).toBeGreaterThan(0);
+  });
+
   it("keeps a numeric Stage variable shared and a local variable local", async () => {
     const statements: Script["statements"] = [
       {

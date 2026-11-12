@@ -258,10 +258,17 @@ function checkedText(value: Expression, program: ProjectProgram, depth = 0): boo
   if (depth > 2) return false;
   if (value.type === "actorProperty")
     return (
-      (value.actorId === STAGE_ACTOR_ID && value.property === "backdropName") ||
+      (value.actorId === STAGE_ACTOR_ID &&
+        (value.property === "backdropName" ||
+          (value.property === "variable" &&
+            program.textVariables?.some(
+              (item) => item.id === value.variableId && item.scope === "stage",
+            ) === true))) ||
       ((value.property === "costumeName" ||
         (value.property === "variable" &&
-          program.textVariables?.some((item) => item.id === value.variableId) === true)) &&
+          program.textVariables?.some(
+            (item) => item.id === value.variableId && item.scope !== "stage",
+          ) === true)) &&
         program.scripts.some((script) => {
           const actor = actorOfScript(script.id);
           return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
@@ -869,7 +876,9 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
       (item, index) =>
         item.id !== `studio-text-${index + 1}` ||
         !DATA_NAME.test(item.name) ||
-        item.initialValue !== "" ||
+        (item.scope === "stage"
+          ? item.initialValue.length > STUDIO_WORD_MAX_LENGTH || /\p{Cc}/u.test(item.initialValue)
+          : item.initialValue !== "") ||
         !item.visible,
     ) ||
     program.variables?.some(
@@ -2347,7 +2356,11 @@ export function addStudioVariable(
   }).history;
 }
 
-export function addStudioText(history: EditorHistory, name: string): EditorHistory {
+export function addStudioText(
+  history: EditorHistory,
+  name: string,
+  scope?: "stage",
+): EditorHistory {
   const program = validateStudioProgram(history.current);
   if (
     !DATA_NAME.test(name) ||
@@ -2364,6 +2377,7 @@ export function addStudioText(history: EditorHistory, name: string): EditorHisto
       name,
       initialValue: "",
       visible: true,
+      ...(scope === "stage" ? { scope } : {}),
     },
   ];
   return recordCanonicalTransaction(history, {

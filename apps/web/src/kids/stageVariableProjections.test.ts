@@ -8,6 +8,7 @@ import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 const scene: ProjectProgram = {
   schema: SCHEMA_VERSION,
   variables: [{ id: "score", name: "Score", initialValue: 4, visible: true, scope: "stage" }],
+  textVariables: [{ id: "word", name: "Word", initialValue: "hi", visible: true, scope: "stage" }],
   scripts: [
     {
       id: "main",
@@ -29,5 +30,9 @@ describe("Stage variable code views", () => {
     expect(projectPython(scene).text).toContain("# Stage variable shared by all characters");
     expect(projectProgram(scene).code).toContain("// Stage variable shared by all characters");
     expect(projectJava(scene).text).toContain("// Stage variable shared by all characters");
+    expect(projectAgorixCode(scene).text).toContain('stage text "Word" = "hi"');
+    expect(projectPython(scene).text).toContain("# Stage word shared by all characters");
+    expect(projectProgram(scene).code).toContain("// Stage word shared by all characters");
+    expect(projectJava(scene).text).toContain("// Stage word shared by all characters");
   });
 });

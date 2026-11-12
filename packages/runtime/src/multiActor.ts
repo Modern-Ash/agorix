@@ -18,7 +18,13 @@ import {
 } from "./execute.js";
 import { COPIES_CAP, liveCopies, settleCopiesWorld } from "./copies.js";
 import { copyRoom, isCloneId, liveClones, makeClones, orderOptions } from "./clones.js";
-import { cloneWorldState, createWorldState, type VariableState, type WorldState } from "./world.js";
+import {
+  cloneWorldState,
+  createWorldState,
+  type TextState,
+  type VariableState,
+  type WorldState,
+} from "./world.js";
 
 export interface MultiActorRuntimeActor {
   readonly id: string;
@@ -35,6 +41,7 @@ export interface MultiActorRuntimeStage {
   readonly width?: number;
   readonly height?: number;
   readonly variables?: Readonly<Record<string, VariableState>>;
+  readonly texts?: Readonly<Record<string, TextState>>;
 }
 
 export interface MultiActorFrame {
@@ -134,34 +141,55 @@ export interface RuntimeStageMutable {
   height?: number;
   actorOrder: string[];
   variables?: Readonly<Record<string, VariableState>>;
+  texts?: Readonly<Record<string, TextState>>;
 }
 
 export function seedStageVariables(
   stage: RuntimeStageMutable,
   program: ProjectProgram,
   restored?: Readonly<Record<string, VariableState>>,
+  restoredTexts?: Readonly<Record<string, TextState>>,
 ): void {
   const variables = (program.variables ?? []).filter((item) => item.scope === "stage");
-  if (variables.length === 0) return;
-  stage.variables = Object.fromEntries(
-    variables.map((item) => [
-      item.id,
-      restored?.[item.id] ?? { value: item.initialValue, visible: item.visible },
-    ]),
-  );
+  if (variables.length > 0)
+    stage.variables = Object.fromEntries(
+      variables.map((item) => [
+        item.id,
+        restored?.[item.id] ?? { value: item.initialValue, visible: item.visible },
+      ]),
+    );
+  const texts = (program.textVariables ?? []).filter((item) => item.scope === "stage");
+  if (texts.length > 0)
+    stage.texts = Object.fromEntries(
+      texts.map((item) => [
+        item.id,
+        restoredTexts?.[item.id] ?? { value: item.initialValue, visible: item.visible },
+      ]),
+    );
 }
 
 export function withStageVariables(world: WorldState, stage: RuntimeStageMutable): WorldState {
-  return stage.variables === undefined
-    ? world
-    : { ...world, variables: { ...world.variables, ...stage.variables } };
+  return {
+    ...world,
+    ...(stage.variables === undefined
+      ? {}
+      : { variables: { ...world.variables, ...stage.variables } }),
+    ...(stage.texts === undefined ? {} : { texts: { ...world.texts, ...stage.texts } }),
+  };
 }
 
 export function captureStageVariables(world: WorldState, stage: RuntimeStageMutable): void {
-  if (stage.variables === undefined) return;
-  stage.variables = Object.fromEntries(
-    Object.keys(stage.variables).map((id) => [id, world.variables?.[id] ?? stage.variables![id]!]),
-  );
+  if (stage.variables !== undefined)
+    stage.variables = Object.fromEntries(
+      Object.keys(stage.variables).map((id) => [
+        id,
+        world.variables?.[id] ?? stage.variables![id]!,
+      ]),
+    );
+  if (stage.texts !== undefined)
+    stage.texts = Object.fromEntries(
+      Object.keys(stage.texts).map((id) => [id, world.texts?.[id] ?? stage.texts![id]!]),
+    );
 }
 
 export function defaultActor(): ProjectActor {
@@ -183,6 +211,7 @@ export function cloneRuntimeStage(stage: RuntimeStageMutable): MultiActorRuntime
     ...(stage.width === undefined ? {} : { width: stage.width }),
     ...(stage.height === undefined ? {} : { height: stage.height }),
     ...(stage.variables === undefined ? {} : { variables: { ...stage.variables } }),
+    ...(stage.texts === undefined ? {} : { texts: { ...stage.texts } }),
   };
 }
 
@@ -511,7 +540,12 @@ export function runMultiActorProgram(
             ? {}
             : { height: options.initialStage.height }),
         };
-  seedStageVariables(stage, validatedProgram, options.initialStage?.variables);
+  seedStageVariables(
+    stage,
+    validatedProgram,
+    options.initialStage?.variables,
+    options.initialStage?.texts,
+  );
   const actors = actorsForCreative(creative, stage, options.goal, options.initialWorlds);
   const maxSteps = normalizeMaxSteps(options.maxSteps);
   let stepsUsed = 0;

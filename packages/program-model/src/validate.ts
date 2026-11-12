@@ -183,6 +183,7 @@ interface ValidationState {
   seenIds: Map<string, string>; // id -> first path where it was seen
   variableIds: Set<string>;
   stageVariableIds: Set<string>;
+  stageTextVariableIds: Set<string>;
   textVariableIds: Set<string>;
   listIds: Set<string>;
   /** Custom blocks of the script being validated, shared ones included. */
@@ -432,9 +433,16 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       const variableId = checkText(input.variableId, `${path}.variableId`);
       if (!state.variableIds.has(variableId) && !state.textVariableIds.has(variableId))
         fail("INVALID_REFERENCE", `${path}.variableId`, "unknown actor variable", variableId);
-      if (actorId === STAGE_ACTOR_ID && !state.stageVariableIds.has(variableId))
+      if (
+        actorId === STAGE_ACTOR_ID &&
+        !state.stageVariableIds.has(variableId) &&
+        !state.stageTextVariableIds.has(variableId)
+      )
         fail("INVALID_REFERENCE", `${path}.variableId`, "unknown Stage variable", variableId);
-      if (actorId !== STAGE_ACTOR_ID && state.stageVariableIds.has(variableId))
+      if (
+        actorId !== STAGE_ACTOR_ID &&
+        (state.stageVariableIds.has(variableId) || state.stageTextVariableIds.has(variableId))
+      )
         fail(
           "INVALID_REFERENCE",
           `${path}.variableId`,
@@ -1396,7 +1404,16 @@ function validateTextVariable(
   if (typeof input.visible !== "boolean") {
     fail("MISSING_FIELD", `${path}.visible`, "expected a boolean", input.visible);
   }
-  return { id: input.id, name, initialValue, visible: input.visible };
+  if (input.scope !== undefined && input.scope !== "stage")
+    fail("INVALID_FIELD_TYPE", `${path}.scope`, "unknown text variable scope", input.scope);
+  if (input.scope === "stage") state.stageTextVariableIds.add(input.id);
+  return {
+    id: input.id,
+    name,
+    initialValue,
+    visible: input.visible,
+    ...(input.scope === "stage" ? { scope: "stage" as const } : {}),
+  };
 }
 
 function validateList(input: unknown, path: string, state: ValidationState): ProgramList {
@@ -1661,6 +1678,7 @@ export function validateProgram(input: unknown): ProjectProgram {
     seenIds: new Map(),
     variableIds: new Set(),
     stageVariableIds: new Set(),
+    stageTextVariableIds: new Set(),
     textVariableIds: new Set(),
     listIds: new Set(),
     procedureIds: new Set(),

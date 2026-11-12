@@ -1052,6 +1052,8 @@ export interface ProgramTextVariable {
   readonly name: string;
   readonly initialValue: string;
   readonly visible: boolean;
+  /** Shared by all actors when declared on Scratch's Stage; absent means actor-local. */
+  readonly scope?: "stage";
 }
 
 /**
