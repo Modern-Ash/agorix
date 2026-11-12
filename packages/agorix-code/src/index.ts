@@ -49,7 +49,7 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     writeMapped(
       writer,
       "variables/" + variable.id,
-      "variable " +
+      (variable.scope === "stage" ? "stage variable " : "variable ") +
         variableName(writer, variable.id) +
         " = " +
         formatNumber(variable.initialValue) +

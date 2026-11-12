@@ -404,6 +404,52 @@ describe("property of another character round-trips through sensing_of", () => {
 });
 
 describe("property of Stage round-trips through sensing_of", () => {
+  it("keeps a numeric Stage variable shared and a local variable local", async () => {
+    const statements: Script["statements"] = [
+      {
+        type: "changeVariable",
+        variableId: "studio-var-1",
+        delta: { type: "numericLiteral", value: 1 },
+      },
+      {
+        type: "setVariable",
+        variableId: "studio-var-2",
+        value: {
+          type: "actorProperty",
+          actorId: STAGE_ACTOR_ID,
+          property: "variable",
+          variableId: "studio-var-1",
+        },
+      },
+    ];
+    const scene = program([nova(statements)], {
+      variables: [
+        { id: "studio-var-1", name: "Global", initialValue: 7, visible: true, scope: "stage" },
+        { id: "studio-var-2", name: "Local", initialValue: 0, visible: true },
+      ],
+    });
+    const { bytes, report } = exportScratchProject(scene, "forest", "es");
+    expect(report.left).toEqual([]);
+    const project = (await readScratchProject(bytes.buffer as ArrayBuffer)) as {
+      targets: { variables: Record<string, unknown>; blocks: Record<string, { opcode: string }> }[];
+    };
+    expect(Object.keys(project.targets[0]!.variables)).toEqual(["studio-var-1"]);
+    expect(Object.keys(project.targets[1]!.variables)).toEqual([
+      "actor:studio-1-nova:studio-var-2",
+    ]);
+    expect(
+      Object.values(project.targets[1]!.blocks).some((block) => block.opcode === "sensing_of"),
+    ).toBe(true);
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.variables).toEqual(scene.variables);
+    expect(back.program.scripts[0]!.statements).toEqual(statements);
+    project.targets[0]!.variables["studio-var-1"] = ["Global", 150.5];
+    const bounded = convertScratchProject(project);
+    expect(bounded.program.variables?.[0]?.initialValue).toBe(100);
+    expect(bounded.report.blocksAdjusted).toBeGreaterThan(0);
+  });
+
   it("numbers a gallery backdrop switched by the first character before the second reads it", () => {
     const scene = program(
       [

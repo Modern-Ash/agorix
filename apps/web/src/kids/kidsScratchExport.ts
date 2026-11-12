@@ -64,6 +64,7 @@ export interface ScratchExportArt extends StudioArt {
 
 interface Names {
   readonly variable: (id: string) => string | undefined;
+  readonly variableId: (id: string) => string;
   readonly list: (id: string) => string | undefined;
   readonly sprite: (actorId: string) => string | undefined;
   readonly costume: (id: string) => string | undefined;
@@ -138,6 +139,9 @@ class Emitter {
   private variableName(id: string) {
     return this.names.variable(id);
   }
+  private variableId(id: string) {
+    return this.names.variableId(id);
+  }
   private spriteName(id: string) {
     return this.names.sprite(id);
   }
@@ -183,7 +187,9 @@ class Emitter {
       case "variable":
       case "textVariable": {
         const name = this.variableName(expression.variableId);
-        return name === undefined ? null : [3, [12, name, expression.variableId], [4, "0"]];
+        return name === undefined
+          ? null
+          : [3, [12, name, this.variableId(expression.variableId)], [4, "0"]];
       }
       default: {
         const id = this.reporter(expression, parent);
@@ -771,7 +777,7 @@ class Emitter {
           statement.type === "changeVariable" ? "data_changevariableby" : "data_setvariableto",
           parent,
           { VALUE: slot },
-          { VARIABLE: [name, statement.variableId] },
+          { VARIABLE: [name, this.variableId(statement.variableId)] },
         );
       }
       case "showVariable":
@@ -782,7 +788,7 @@ class Emitter {
           statement.type === "showVariable" ? "data_showvariable" : "data_hidevariable",
           parent,
           {},
-          { VARIABLE: [name, statement.variableId] },
+          { VARIABLE: [name, this.variableId(statement.variableId)] },
         );
       }
       case "showList":
@@ -1241,6 +1247,10 @@ export function exportScratchProject(
     });
     const emitter = new Emitter(counter, {
       variable: (id) => variables.get(id),
+      variableId: (id) =>
+        program.variables?.some((item) => item.id === id && item.scope !== "stage")
+          ? `${actor.id}:${id}`
+          : id,
       list: (id) => listNames.get(id),
       sprite: (actorId) => names.get(actorId),
       costume: (id) => costumeName.get(id),
@@ -1258,7 +1268,11 @@ export function exportScratchProject(
     sprites.push({
       isStage: false,
       name: names.get(actor.id)!,
-      variables: {},
+      variables: Object.fromEntries(
+        (program.variables ?? [])
+          .filter((item) => item.scope !== "stage")
+          .map((item) => [`${actor.id}:${item.id}`, [item.name, item.initialValue]]),
+      ),
       lists: {},
       broadcasts: {},
       blocks: emitter.blocks,
@@ -1291,7 +1305,9 @@ export function exportScratchProject(
     isStage: true,
     name: "Stage",
     variables: Object.fromEntries([
-      ...(program.variables ?? []).map((item) => [item.id, [item.name, item.initialValue]]),
+      ...(program.variables ?? [])
+        .filter((item) => item.scope === "stage")
+        .map((item) => [item.id, [item.name, item.initialValue]]),
       ...(program.textVariables ?? []).map((item) => [item.id, [item.name, item.initialValue]]),
     ]),
     // The scene's lists are the whole scene's, so they live on the stage; they start empty.

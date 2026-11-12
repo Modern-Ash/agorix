@@ -305,12 +305,19 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   if (value.type === "actorProperty")
     return (
       (value.actorId === STAGE_ACTOR_ID &&
-        (value.property === "backdropNumber" || value.property === "volume")) ||
+        (value.property === "backdropNumber" ||
+          value.property === "volume" ||
+          (value.property === "variable" &&
+            program.variables?.some(
+              (item) => item.id === value.variableId && item.scope === "stage",
+            ) === true))) ||
       ((["xPosition", "yPosition", "direction", "size", "costumeNumber", "volume"].includes(
         value.property,
       ) ||
         (value.property === "variable" &&
-          program.variables?.some((item) => item.id === value.variableId) === true)) &&
+          program.variables?.some(
+            (item) => item.id === value.variableId && item.scope !== "stage",
+          ) === true)) &&
         program.scripts.some((script) => {
           const actor = actorOfScript(script.id);
           return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
@@ -869,7 +876,9 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
       (item, index) =>
         item.id !== `studio-var-${index + 1}` ||
         !DATA_NAME.test(item.name) ||
-        item.initialValue !== 0 ||
+        (item.scope === "stage"
+          ? !finiteSmallNumber(item.initialValue)
+          : item.initialValue !== 0) ||
         !item.visible,
     ) ||
     program.lists?.some(
@@ -2310,7 +2319,11 @@ export function setStudioTrigger(
   }).history;
 }
 
-export function addStudioVariable(history: EditorHistory, name: string): EditorHistory {
+export function addStudioVariable(
+  history: EditorHistory,
+  name: string,
+  scope?: "stage",
+): EditorHistory {
   const program = validateStudioProgram(history.current);
   if (
     !DATA_NAME.test(name) ||
@@ -2325,6 +2338,7 @@ export function addStudioVariable(history: EditorHistory, name: string): EditorH
       name,
       initialValue: 0,
       visible: true,
+      ...(scope === "stage" ? { scope } : {}),
     },
   ];
   return recordCanonicalTransaction(history, {
