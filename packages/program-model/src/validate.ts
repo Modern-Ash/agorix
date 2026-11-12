@@ -960,19 +960,18 @@ function validateStatement(
     case "bounceOnEdge":
       return { type: "bounceOnEdge" };
     case "say":
+    case "think": {
+      const append = optionalAppend(input, path, state);
       return {
-        type: "say",
-        text: checkText(input.text, `${path}.text`),
+        type: input.type === "say" ? "say" : "think",
+        text:
+          input.text === "" && append.append !== undefined
+            ? ""
+            : checkText(input.text, `${path}.text`),
         ...optionalBubbleSeconds(input, path),
-        ...optionalAppend(input, path, state),
+        ...append,
       };
-    case "think":
-      return {
-        type: "think",
-        text: checkText(input.text, `${path}.text`),
-        ...optionalBubbleSeconds(input, path),
-        ...optionalAppend(input, path, state),
-      };
+    }
     case "show":
       return { type: "show" };
     case "hide":

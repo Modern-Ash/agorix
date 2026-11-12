@@ -633,7 +633,11 @@ class Emitter {
         const made = this.block(opcode, parent);
         const inputs = made.block["inputs"] as Json;
         if (statement.append === undefined) inputs["MESSAGE"] = [1, [10, statement.text]];
-        else {
+        else if (statement.text === "") {
+          const value = this.value(statement.append, made.id);
+          if (value === null) return null;
+          inputs["MESSAGE"] = value;
+        } else {
           const join = this.binary(
             "operator_join",
             ["STRING1", "STRING2"],

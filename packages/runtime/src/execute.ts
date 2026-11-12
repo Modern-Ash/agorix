@@ -752,7 +752,7 @@ export interface StatementTick {
   readonly at: number;
 }
 
-/** The text of a bubble: the fixed words, then the number after them if there is one. */
+/** The text of a bubble: fixed words followed by an optional runtime value. */
 function bubbleText(
   statement: { readonly text: string; readonly append?: Expression },
   path: string,
@@ -761,7 +761,7 @@ function bubbleText(
   if (statement.append === undefined) return statement.text;
   const value = coerceText(evaluateExpression(statement.append, `${path}.append`, state));
   // One space between the words and the value unless the words already end with one.
-  const gap = /\s$/.test(statement.text) ? "" : " ";
+  const gap = statement.text === "" || /\s$/.test(statement.text) ? "" : " ";
   return statement.text + gap + value;
 }
 
