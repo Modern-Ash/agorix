@@ -269,6 +269,56 @@ describe("Scratch import", () => {
     expect(back.program.scripts[0]!.statements[3]).toEqual(program.scripts[0]!.statements[3]);
   });
 
+  it("keeps numeric join operands typed through runtime and Scratch round-trip", async () => {
+    const scratch = project();
+    const stage = scratch.targets[0] as { variables: Record<string, unknown> };
+    stage.variables["w"] = ["word", "Hola"];
+    stage.variables["result"] = ["result", "Listo"];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "setWord",
+      inputs: { MESSAGE: [3, "speechJoin", [10, ""]] },
+    });
+    blocks["speechJoin"] = block("operator_join", {
+      inputs: {
+        STRING1: [3, [12, "word", "w"], [10, ""]],
+        STRING2: [3, [12, "score", "v1"], [10, ""]],
+      },
+    });
+    blocks["setWord"] = block("data_setvariableto", {
+      next: "rep",
+      fields: { VARIABLE: ["result", "result"] },
+      inputs: { VALUE: [3, "wordJoin", [10, ""]] },
+    });
+    blocks["wordJoin"] = block("operator_join", {
+      inputs: { STRING1: lit(12), STRING2: [3, [12, "word", "w"], [10, ""]] },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("join"))).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "join", left: { type: "textVariable" }, right: { type: "variable" } },
+    });
+    expect(program.scripts[0]!.statements[3]).toMatchObject({
+      type: "setText",
+      value: {
+        type: "join",
+        left: { type: "numericLiteral", value: 12 },
+        right: { type: "textVariable" },
+      },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("Hola0");
+    const resultId = program.textVariables?.find((item) => item.name === "result")?.id;
+    expect(run.actors[0]!.world.texts?.[resultId ?? ""]?.value).toBe("12Hola");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+    expect(back.program.scripts[0]!.statements[3]).toEqual(program.scripts[0]!.statements[3]);
+  });
+
   it("reports and drops a dynamic join with an unsupported source", () => {
     const scratch = project();
     (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = [
