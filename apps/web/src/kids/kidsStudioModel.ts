@@ -28,6 +28,7 @@ import {
   PROCEDURE_NUMBER_DEFAULTS,
   procedureNumberUnits,
   SCHEMA_VERSION,
+  STAGE_ACTOR_ID,
   validateProgram,
   validateProjectCreativeState,
   type ProcedureNumberUnit,
@@ -257,13 +258,14 @@ function checkedText(value: Expression, program: ProjectProgram, depth = 0): boo
   if (depth > 2) return false;
   if (value.type === "actorProperty")
     return (
-      (value.property === "costumeName" ||
+      (value.actorId === STAGE_ACTOR_ID && value.property === "backdropName") ||
+      ((value.property === "costumeName" ||
         (value.property === "variable" &&
           program.textVariables?.some((item) => item.id === value.variableId) === true)) &&
-      program.scripts.some((script) => {
-        const actor = actorOfScript(script.id);
-        return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
-      })
+        program.scripts.some((script) => {
+          const actor = actorOfScript(script.id);
+          return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
+        }))
     );
   if (value.type === "textLiteral")
     return value.value.length <= STUDIO_WORD_MAX_LENGTH && !/\p{Cc}/u.test(value.value);
@@ -302,15 +304,17 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   if (depth > 2) return false;
   if (value.type === "actorProperty")
     return (
-      (["xPosition", "yPosition", "direction", "size", "costumeNumber", "volume"].includes(
+      (value.actorId === STAGE_ACTOR_ID &&
+        (value.property === "backdropNumber" || value.property === "volume")) ||
+      ((["xPosition", "yPosition", "direction", "size", "costumeNumber", "volume"].includes(
         value.property,
       ) ||
         (value.property === "variable" &&
           program.variables?.some((item) => item.id === value.variableId) === true)) &&
-      program.scripts.some((script) => {
-        const actor = actorOfScript(script.id);
-        return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
-      })
+        program.scripts.some((script) => {
+          const actor = actorOfScript(script.id);
+          return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
+        }))
     );
   if (value.type === "param") return arity > 0 && paramInScope(value.paramId, arity);
   if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
@@ -941,6 +945,29 @@ export function createStudioProgram(characterId: KidsGalleryCharacterId): Projec
   });
 }
 
+function switchedGalleryBackdrops(program: ProjectProgram, initialId: string): string[] {
+  const found = new Set<string>();
+  const visit = (statements: readonly Statement[]) => {
+    for (const statement of statements) {
+      if (
+        statement.type === "switchBackdrop" &&
+        statement.backdropId !== initialId &&
+        isGalleryBackdropId(statement.backdropId.slice("backdrop:".length))
+      )
+        found.add(statement.backdropId);
+      if ("body" in statement && Array.isArray(statement.body)) visit(statement.body);
+      if ("then" in statement && Array.isArray(statement.then)) visit(statement.then);
+      if ("else" in statement && Array.isArray(statement.else)) visit(statement.else);
+    }
+  };
+  program.scripts.forEach((script) => {
+    visit(script.statements);
+    script.procedures?.forEach((procedure) => visit(procedure.body));
+  });
+  program.sharedProcedures?.forEach((procedure) => visit(procedure.body));
+  return [...found];
+}
+
 export function creativeForStudio(
   raw: ProjectProgram,
   backdropId: KidsGalleryBackdropId,
@@ -1050,6 +1077,7 @@ export function creativeForStudio(
       costumeOrders,
       backdropOrder: [
         `backdrop:${backdropId}`,
+        ...switchedGalleryBackdrops(program, `backdrop:${backdropId}`),
         ...customAssets.filter((item) => item.kind === "backdrop").map((item) => item.id),
       ],
       stage: {

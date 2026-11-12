@@ -547,6 +547,11 @@ Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks add
 - Each idea only uses the values the scene already allows; the host check refuses any other value or text. A test builds every idea in both languages, accepts it into a scene program and runs it: it must pass the scene's own validation and do something visible or audible.
 - Two ideas Scratch projects love are left out on purpose: a forever loop that follows the mouse, and a score counter. The first would trigger the loop help on Ori's own idea; the second needs a variable the idea cannot declare.
 
+## Stage properties in Scratch's "of" block
+
+- Escena libre can read the Stage's backdrop number, backdrop name and volume from a canonical reporter. A backdrop changed earlier in the run is reflected in the value; gallery and child-drawn backdrops have a stable order. Scratch exchange uses `sensing_of` with `_stage_` and preserves those three properties.
+- The current scene has no Stage scripts or Stage-owned variables. Its volume is therefore 100, and Scratch Stage variables still cannot be imported as Stage properties. Adding global Stage data needs a separate canonical ownership and runtime contract.
+
 ## "How do you say this in code?" (a bridge Scratch does not have)
 
 When the learner asks Ori about a block from the Properties card, Ori's answer now also shows the line of that block in the code the learner is looking at (Agorix Code, Python, TypeScript or Java) and what each part means: the name of the call, and each value ("40: how many steps, 40 is one square"). Loops and conditions get one sentence for the whole line. The line is read from the same block-to-text mapping that highlights the running line, so it always matches the code on screen; the explanation is written from the block's kind, not by a model, so it is always there, offline, in both languages. Agorix Code is shown as it is, since it already reads like a sentence.

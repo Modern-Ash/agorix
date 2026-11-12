@@ -8,6 +8,7 @@ import {
   type ClockPart,
   type PenShade,
   SCHEMA_VERSION,
+  STAGE_ACTOR_ID,
   type Expression,
   type ProjectProgram,
   type Script,
@@ -355,7 +356,12 @@ class Converter {
       }
       case "sensing_of": {
         const target = this.menu(block, "OBJECT");
-        const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
+        const actorId =
+          target === "_stage_"
+            ? STAGE_ACTOR_ID
+            : target === undefined
+              ? undefined
+              : this.spriteActorIds.get(target);
         const rawProperty = block.fields["PROPERTY"]?.[0];
         if (actorId === undefined || typeof rawProperty !== "string") return undefined;
         const property = (
@@ -367,6 +373,8 @@ class Converter {
             "costume #": "costumeNumber",
             "costume name": "costumeName",
             volume: "volume",
+            "backdrop #": "backdropNumber",
+            "backdrop name": "backdropName",
           } as const
         )[
           rawProperty as
@@ -377,6 +385,8 @@ class Converter {
             | "costume #"
             | "costume name"
             | "volume"
+            | "backdrop #"
+            | "backdrop name"
         ];
         if (property !== undefined) return { type: "actorProperty", actorId, property };
         const variableId = this.variableIds.get(rawProperty) ?? this.textIds.get(rawProperty);
@@ -1211,7 +1221,8 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
         const reporter = parseBlock(rawBlocks[input]);
         if (
           reporter?.opcode === "sensing_of" &&
-          reporter.fields["PROPERTY"]?.[0] === "costume name"
+          (reporter.fields["PROPERTY"]?.[0] === "costume name" ||
+            reporter.fields["PROPERTY"]?.[0] === "backdrop name")
         )
           setToWord.add(variable);
       }

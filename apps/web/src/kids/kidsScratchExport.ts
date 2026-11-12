@@ -1,5 +1,6 @@
-import type {
-  Expression,
+import {
+  STAGE_ACTOR_ID,
+  type Expression,
   MathFunction,
   ProjectAsset,
   ProjectProgram,
@@ -248,7 +249,8 @@ class Emitter {
         return made.id;
       }
       case "actorProperty": {
-        const name = this.spriteName(expression.actorId);
+        const name =
+          expression.actorId === STAGE_ACTOR_ID ? "_stage_" : this.spriteName(expression.actorId);
         if (name === undefined) return null;
         const property =
           expression.property === "variable"
@@ -262,6 +264,8 @@ class Emitter {
                   costumeNumber: "costume #",
                   costumeName: "costume name",
                   volume: "volume",
+                  backdropNumber: "backdrop #",
+                  backdropName: "backdrop name",
                 } as const
               )[expression.property];
         if (property === undefined) return null;

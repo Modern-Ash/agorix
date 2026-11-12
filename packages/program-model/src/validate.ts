@@ -9,6 +9,7 @@ import {
   PEN_SHADES,
   PEN_TRANSPARENCIES,
   SCHEMA_VERSION,
+  STAGE_ACTOR_ID,
 } from "./schema.js";
 import { isChoicePromptId } from "./choiceCatalog.js";
 import { isAskTextPromptId } from "./askTextCatalog.js";
@@ -410,6 +411,13 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       if (!ACTOR_PROPERTIES.includes(input.property as (typeof ACTOR_PROPERTIES)[number]))
         fail("INVALID_FIELD_TYPE", `${path}.property`, "unknown actor property", input.property);
       const property = input.property as (typeof ACTOR_PROPERTIES)[number];
+      if (
+        actorId === STAGE_ACTOR_ID &&
+        !["backdropNumber", "backdropName", "volume"].includes(property)
+      )
+        fail("INVALID_FIELD_TYPE", `${path}.property`, "not a stage property", property);
+      if (actorId !== STAGE_ACTOR_ID && ["backdropNumber", "backdropName"].includes(property))
+        fail("INVALID_FIELD_TYPE", `${path}.property`, "not an actor property", property);
       if (property !== "variable") {
         if (input.variableId !== undefined)
           fail(

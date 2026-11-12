@@ -13,7 +13,12 @@ import type {
   StopStatement,
   Trigger,
 } from "@agorix/program-model";
-import { TEXT_VALUE_MAX_LENGTH, type ClockPart, type ColorZone } from "@agorix/program-model";
+import {
+  STAGE_ACTOR_ID,
+  TEXT_VALUE_MAX_LENGTH,
+  type ClockPart,
+  type ColorZone,
+} from "@agorix/program-model";
 import { COPIES_CAP, createCopiesWorld } from "./copies.js";
 import {
   CHOICE_CATALOG,
@@ -132,6 +137,8 @@ export interface ExecutionOptions {
   readonly costumeOrder?: readonly string[];
   /** The backdrop ids in order: the backdrop number counts from 1 here. */
   readonly backdropOrder?: readonly string[];
+  /** Human-readable names of backdrops, by canonical asset id. */
+  readonly backdropNames?: Readonly<Record<string, string>>;
   /** The clock as whole numbers, captured by the caller (never read here); 0 for a part it omits. */
   readonly clock?: Readonly<Partial<Record<ClockPart, number>>>;
   /** Loudness 0 to 100 measured by the caller (a number, never sound); 0 when absent. */
@@ -483,6 +490,14 @@ function evaluateExpression(
           );
     }
     case "actorProperty": {
+      if (expression.actorId === STAGE_ACTOR_ID) {
+        if (expression.property === "volume") return 100;
+        if (expression.property === "backdropNumber")
+          return (state.options.backdropOrder?.indexOf(state.world.backdropId ?? "") ?? -1) + 1;
+        if (expression.property === "backdropName")
+          return state.options.backdropNames?.[state.world.backdropId ?? ""] ?? "";
+        return 0;
+      }
       const target = state.options.sensorActors?.find((actor) => actor.id === expression.actorId);
       if (target === undefined) return 0;
       const sprite = target.world?.sprite;

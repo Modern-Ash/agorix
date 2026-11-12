@@ -1,5 +1,6 @@
 /** Canonical, serializable AST-like representation of learner programs. */
 export const PACKAGE_NAME = "@agorix/program-model";
+export { STAGE_ACTOR_ID } from "./schema.js";
 
 export type {
   ActorProperty,

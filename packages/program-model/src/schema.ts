@@ -49,7 +49,7 @@ export interface DistanceToActorExpression {
   readonly actorId: string;
 }
 
-/** Reads a declared property from another actor's runtime state, as Scratch's "of" reporter. */
+/** Reads an actor or Stage property from runtime state, as Scratch's "of" reporter. */
 export const ACTOR_PROPERTIES = [
   "xPosition",
   "yPosition",
@@ -59,7 +59,11 @@ export const ACTOR_PROPERTIES = [
   "costumeName",
   "volume",
   "variable",
+  "backdropNumber",
+  "backdropName",
 ] as const;
+/** Reserved target for Scratch's Stage in the `sensing_of` reporter. */
+export const STAGE_ACTOR_ID = "__stage__";
 export type ActorProperty = (typeof ACTOR_PROPERTIES)[number];
 export interface ActorPropertyExpression {
   readonly type: "actorProperty";
