@@ -326,6 +326,26 @@ class Converter {
           ? { type: "listContains", listId, value }
           : { type: "listIndexOf", listId, value };
       }
+      case "operator_length": {
+        const value = this.boundedTextSource(block, "STRING");
+        if (value === undefined) this.drop("operator_length (a word the scene cannot use)");
+        return value === undefined ? undefined : { type: "textLength", value };
+      }
+      case "operator_letter_of": {
+        const index = this.number(block, "LETTER");
+        const value = this.boundedTextSource(block, "STRING");
+        if (
+          index === undefined ||
+          !Number.isInteger(index) ||
+          index < 1 ||
+          index > 20 ||
+          value === undefined
+        ) {
+          this.drop("operator_letter_of (a position or word the scene cannot use)");
+          return undefined;
+        }
+        return { type: "letterOf", index: { type: "numericLiteral", value: index }, value };
+      }
       case "motion_xposition":
         return { type: "xPosition" };
       case "motion_yposition":
@@ -1095,6 +1115,7 @@ class Converter {
       if (
         inner?.opcode === "data_itemoflist" ||
         inner?.opcode === "sensing_of" ||
+        inner?.opcode === "operator_letter_of" ||
         (inner?.opcode === "looks_costumenumbername" &&
           inner.fields["NUMBER_NAME"]?.[0] === "name") ||
         (inner?.opcode === "looks_backdropnumbername" &&
@@ -1105,6 +1126,21 @@ class Converter {
     }
     const value = this.literal(block, name);
     return value === undefined ? undefined : wordOf(value);
+  }
+
+  /** A single bounded Scratch word source for letter/length, without nested text operators. */
+  boundedTextSource(block: ScratchBlock, name: string): Expression | undefined {
+    const value = this.wordExpression(block, name);
+    if (value?.type === "textLiteral" || value?.type === "textVariable") return value;
+    if (value?.type === "actorProperty") {
+      if (value.property === "costumeName" || value.property === "backdropName") return value;
+      if (
+        value.property === "variable" &&
+        [...this.textIds.values()].includes(value.variableId ?? "")
+      )
+        return value;
+    }
+    return undefined;
   }
 
   /** Scratch's `join` in a bubble: fixed text and one bounded number or word after it. */

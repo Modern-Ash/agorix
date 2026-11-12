@@ -480,6 +480,21 @@ class Emitter {
           expression.right,
           parent,
         );
+      case "textLength": {
+        const made = this.block("operator_length", parent);
+        const value = this.value(expression.value, made.id);
+        if (value === null) return null;
+        (made.block["inputs"] as Json)["STRING"] = value;
+        return made.id;
+      }
+      case "letterOf":
+        return this.binary(
+          "operator_letter_of",
+          ["LETTER", "STRING"],
+          expression.index,
+          expression.value,
+          parent,
+        );
       default:
         this.counter.miss(expression.type);
         return null;
