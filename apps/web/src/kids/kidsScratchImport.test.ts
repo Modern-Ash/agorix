@@ -558,7 +558,7 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
       }),
     );
     expect(program.lists).toEqual([
-      { id: "studio-list-1", name: "Compras", initialItems: [], visible: true },
+      { id: "studio-list-1", name: "Compras", initialItems: [], visible: true, scope: "stage" },
     ]);
     const types = program.scripts[0]!.statements.map((statement) => statement.type);
     expect(types).toEqual(["listAdd", "listAdd", "listInsertAt", "listReplaceAt", "listRemoveAt"]);
@@ -570,6 +570,25 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
       value: { type: "numericLiteral", value: 3 },
     });
     expect(report.dropped).toEqual([]);
+  });
+
+  it("bounds Stage starting items and reports discarded entries", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {},
+        {
+          L1: ["Compras", ["abcdefghijklmnopqrstuvw", 101.26, ...Array(9).fill("x")]],
+        },
+      ),
+    );
+    expect(program.lists?.[0]).toMatchObject({
+      scope: "stage",
+      initialItems: ["abcdefghijklmnopqrst", 100, ...Array(8).fill("x")],
+    });
+    expect(report.blocksAdjusted).toBeGreaterThan(0);
+    expect(report.dropped.some((item) => item.what.includes("more than ten starting items"))).toBe(
+      true,
+    );
   });
 
   it("reads an item and the length, and keeps a variable as what goes into a list", () => {
@@ -618,9 +637,9 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
       ),
     );
     expect(program.lists).toHaveLength(3);
-    expect(program.lists!.every((list) => list.initialItems.length === 0)).toBe(true);
+    expect(program.lists![0]!.initialItems).toEqual(["leche", "pan"]);
     const reasons = report.dropped.map((item) => item.what);
-    expect(reasons.some((what) => what.includes("starting items"))).toBe(true);
+    expect(reasons.some((what) => what.includes("starting items"))).toBe(false);
     expect(reasons.some((what) => what.includes("more than three"))).toBe(true);
     expect(reasons.some((what) => what.startsWith("data_insertatlist"))).toBe(true);
     expect(reasons).toContain("data_deletealloflist");

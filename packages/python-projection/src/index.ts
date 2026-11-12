@@ -85,6 +85,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     }
   }
   for (const list of validated.lists ?? []) {
+    if (list.scope === "stage") writer.text += "# Stage list shared by all characters\n";
     writeMapped(
       writer,
       "lists/" + list.id,

@@ -235,7 +235,9 @@ describe("a scene with a list that holds numbers or words round-trips (design: w
     {
       variables: [{ id: "studio-var-1", name: "Cuantas", initialValue: 0, visible: true }],
       textVariables: [{ id: "studio-text-1", name: "Fruta", initialValue: "", visible: true }],
-      lists: [{ id: "studio-list-1", name: "Compras", initialItems: [], visible: true }],
+      lists: [
+        { id: "studio-list-1", name: "Compras", initialItems: [], visible: true, scope: "stage" },
+      ],
     },
   );
 
@@ -276,6 +278,58 @@ describe("a scene with a list that holds numbers or words round-trips (design: w
     expect(back.report.dropped).toEqual([]);
     expect(back.program.lists).toEqual(withList.lists);
     expect(back.program.scripts[0]!.statements).toEqual(withList.scripts[0]!.statements);
+  });
+
+  it("keeps a local list on its sprite and a bounded Stage list on the Stage", async () => {
+    const scene = program(
+      [
+        nova([
+          {
+            type: "listAdd",
+            listId: "studio-list-1",
+            value: { type: "textLiteral", value: "uva" },
+          },
+          {
+            type: "listAdd",
+            listId: "studio-list-2",
+            value: { type: "textLiteral", value: "pera" },
+          },
+        ]),
+      ],
+      {
+        lists: [
+          {
+            id: "studio-list-1",
+            name: "Global",
+            initialItems: ["manzana"],
+            visible: true,
+            scope: "stage",
+          },
+          { id: "studio-list-2", name: "Local", initialItems: [], visible: true },
+        ],
+      },
+    );
+    const { bytes } = exportScratchProject(scene, "forest", "es");
+    const project = (await readScratchProject(bytes.buffer as ArrayBuffer)) as {
+      targets: {
+        lists: Record<string, [string, unknown[]]>;
+        blocks: Record<string, { opcode: string; fields: Record<string, unknown[]> }>;
+      }[];
+    };
+    expect(project.targets[0]!.lists).toEqual({ "studio-list-1": ["Global", ["manzana"]] });
+    expect(project.targets[1]!.lists).toEqual({
+      "actor:studio-1-nova:studio-list-2": ["Local", []],
+    });
+    const fields = Object.values(project.targets[1]!.blocks)
+      .filter((block) => block.opcode === "data_addtolist")
+      .map((block) => block.fields["LIST"]);
+    expect(fields).toEqual([
+      ["Global", "studio-list-1"],
+      ["Local", "actor:studio-1-nova:studio-list-2"],
+    ]);
+    const back = convertScratchProject(project);
+    expect(back.program.lists).toEqual(scene.lists);
+    expect(back.program.scripts[0]!.statements).toEqual(scene.scripts[0]!.statements);
   });
 });
 

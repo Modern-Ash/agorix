@@ -66,6 +66,7 @@ interface Names {
   readonly variable: (id: string) => string | undefined;
   readonly variableId: (id: string) => string;
   readonly list: (id: string) => string | undefined;
+  readonly listId: (id: string) => string;
   readonly sprite: (actorId: string) => string | undefined;
   readonly costume: (id: string) => string | undefined;
   readonly backdrop: (id: string) => string | undefined;
@@ -306,7 +307,7 @@ class Emitter {
         const name = this.names.list(expression.listId);
         if (name === undefined) return null;
         const made = this.block("data_itemoflist", parent, {
-          fields: { LIST: [name, expression.listId] },
+          fields: { LIST: [name, this.names.listId(expression.listId)] },
         });
         const index = this.value(expression.index, made.id);
         if (index === null) return null;
@@ -318,7 +319,7 @@ class Emitter {
         return name === undefined
           ? null
           : this.block("data_lengthoflist", parent, {
-              fields: { LIST: [name, expression.listId] },
+              fields: { LIST: [name, this.names.listId(expression.listId)] },
             }).id;
       }
       case "listContains":
@@ -328,7 +329,7 @@ class Emitter {
         const made = this.block(
           expression.type === "listContains" ? "data_listcontainsitem" : "data_itemnumoflist",
           parent,
-          { fields: { LIST: [name, expression.listId] } },
+          { fields: { LIST: [name, this.names.listId(expression.listId)] } },
         );
         const item = this.value(expression.value, made.id);
         if (item === null) return null;
@@ -799,7 +800,7 @@ class Emitter {
           statement.type === "showList" ? "data_showlist" : "data_hidelist",
           parent,
           {},
-          { LIST: [name, statement.listId] },
+          { LIST: [name, this.names.listId(statement.listId)] },
         );
       }
       case "listClear": {
@@ -809,7 +810,7 @@ class Emitter {
           "data_deleteoflist",
           parent,
           { INDEX: { type: "textLiteral", value: "all" } },
-          { LIST: [name, statement.listId] },
+          { LIST: [name, this.names.listId(statement.listId)] },
         );
       }
       case "listAdd":
@@ -830,7 +831,7 @@ class Emitter {
           }[statement.type],
           parent,
           slots,
-          { LIST: [name, statement.listId] },
+          { LIST: [name, this.names.listId(statement.listId)] },
         );
       }
       case "resetTimer":
@@ -1253,6 +1254,10 @@ export function exportScratchProject(
           ? `${actor.id}:${id}`
           : id,
       list: (id) => listNames.get(id),
+      listId: (id) =>
+        program.lists?.some((item) => item.id === id && item.scope !== "stage")
+          ? `${actor.id}:${id}`
+          : id,
       sprite: (actorId) => names.get(actorId),
       costume: (id) => costumeName.get(id),
       backdrop: (id) => backdropName.get(id),
@@ -1274,7 +1279,11 @@ export function exportScratchProject(
           .filter((item) => item.scope !== "stage")
           .map((item) => [`${actor.id}:${item.id}`, [item.name, item.initialValue]]),
       ),
-      lists: {},
+      lists: Object.fromEntries(
+        (program.lists ?? [])
+          .filter((item) => item.scope !== "stage")
+          .map((item) => [`${actor.id}:${item.id}`, [item.name, item.initialItems]]),
+      ),
       broadcasts: {},
       blocks: emitter.blocks,
       comments: {},
@@ -1313,8 +1322,11 @@ export function exportScratchProject(
         .filter((item) => item.scope === "stage")
         .map((item) => [item.id, [item.name, item.initialValue]]),
     ]),
-    // The scene's lists are the whole scene's, so they live on the stage; they start empty.
-    lists: Object.fromEntries((program.lists ?? []).map((item) => [item.id, [item.name, []]])),
+    lists: Object.fromEntries(
+      (program.lists ?? [])
+        .filter((item) => item.scope === "stage")
+        .map((item) => [item.id, [item.name, item.initialItems]]),
+    ),
     broadcasts,
     blocks: {},
     comments: {},

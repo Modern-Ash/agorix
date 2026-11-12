@@ -21,6 +21,7 @@ import { copyRoom, isCloneId, liveClones, makeClones, orderOptions } from "./clo
 import {
   cloneWorldState,
   createWorldState,
+  type ListState,
   type TextState,
   type VariableState,
   type WorldState,
@@ -42,6 +43,7 @@ export interface MultiActorRuntimeStage {
   readonly height?: number;
   readonly variables?: Readonly<Record<string, VariableState>>;
   readonly texts?: Readonly<Record<string, TextState>>;
+  readonly lists?: Readonly<Record<string, ListState>>;
 }
 
 export interface MultiActorFrame {
@@ -142,6 +144,7 @@ export interface RuntimeStageMutable {
   actorOrder: string[];
   variables?: Readonly<Record<string, VariableState>>;
   texts?: Readonly<Record<string, TextState>>;
+  lists?: Readonly<Record<string, ListState>>;
 }
 
 export function seedStageVariables(
@@ -149,6 +152,7 @@ export function seedStageVariables(
   program: ProjectProgram,
   restored?: Readonly<Record<string, VariableState>>,
   restoredTexts?: Readonly<Record<string, TextState>>,
+  restoredLists?: Readonly<Record<string, ListState>>,
 ): void {
   const variables = (program.variables ?? []).filter((item) => item.scope === "stage");
   if (variables.length > 0)
@@ -166,6 +170,14 @@ export function seedStageVariables(
         restoredTexts?.[item.id] ?? { value: item.initialValue, visible: item.visible },
       ]),
     );
+  const lists = (program.lists ?? []).filter((item) => item.scope === "stage");
+  if (lists.length > 0)
+    stage.lists = Object.fromEntries(
+      lists.map((item) => [
+        item.id,
+        restoredLists?.[item.id] ?? { items: [...item.initialItems], visible: item.visible },
+      ]),
+    );
 }
 
 export function withStageVariables(world: WorldState, stage: RuntimeStageMutable): WorldState {
@@ -175,6 +187,7 @@ export function withStageVariables(world: WorldState, stage: RuntimeStageMutable
       ? {}
       : { variables: { ...world.variables, ...stage.variables } }),
     ...(stage.texts === undefined ? {} : { texts: { ...world.texts, ...stage.texts } }),
+    ...(stage.lists === undefined ? {} : { lists: { ...world.lists, ...stage.lists } }),
   };
 }
 
@@ -189,6 +202,10 @@ export function captureStageVariables(world: WorldState, stage: RuntimeStageMuta
   if (stage.texts !== undefined)
     stage.texts = Object.fromEntries(
       Object.keys(stage.texts).map((id) => [id, world.texts?.[id] ?? stage.texts![id]!]),
+    );
+  if (stage.lists !== undefined)
+    stage.lists = Object.fromEntries(
+      Object.keys(stage.lists).map((id) => [id, world.lists?.[id] ?? stage.lists![id]!]),
     );
 }
 
@@ -212,6 +229,7 @@ export function cloneRuntimeStage(stage: RuntimeStageMutable): MultiActorRuntime
     ...(stage.height === undefined ? {} : { height: stage.height }),
     ...(stage.variables === undefined ? {} : { variables: { ...stage.variables } }),
     ...(stage.texts === undefined ? {} : { texts: { ...stage.texts } }),
+    ...(stage.lists === undefined ? {} : { lists: { ...stage.lists } }),
   };
 }
 
@@ -545,6 +563,7 @@ export function runMultiActorProgram(
     validatedProgram,
     options.initialStage?.variables,
     options.initialStage?.texts,
+    options.initialStage?.lists,
   );
   const actors = actorsForCreative(creative, stage, options.goal, options.initialWorlds);
   const maxSteps = normalizeMaxSteps(options.maxSteps);

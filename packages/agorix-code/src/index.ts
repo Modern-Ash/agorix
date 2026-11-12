@@ -85,7 +85,7 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     writeMapped(
       writer,
       "lists/" + list.id,
-      "list " +
+      (list.scope === "stage" ? "stage list " : "list ") +
         listName(writer, list.id) +
         " = " +
         list.initialItems
