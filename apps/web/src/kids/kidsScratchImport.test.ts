@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { runMultiActorProgram } from "@agorix/runtime";
 import { convertScratchProject } from "./kidsScratchImport.js";
+import { exportScratchProject } from "./kidsScratchExport.js";
+import { readScratchProject } from "./kidsScratchZip.js";
 import { creativeForStudio } from "./kidsStudioModel.js";
 
 const lit = (value: string | number, type = 4) => [1, [type, String(value)]];
@@ -343,6 +345,56 @@ describe("Scratch variables that hold words", () => {
       value: { type: "textLiteral", value: "Hola" },
     });
     expect(program.scripts[0]!.statements[1]).toMatchObject({ type: "setVariable" });
+  });
+
+  it.each([
+    ["looks_costumenumbername", "costumeName"],
+    ["looks_backdropnumbername", "backdropName"],
+  ] as const)("imports %s in name mode into a word variable", async (opcode, property) => {
+    const scratch = wordProject("Hola");
+    (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = ["name", 0];
+    const sprite = scratch.targets[1] as { blocks: Record<string, unknown> };
+    sprite.blocks["set"] = block("data_setvariableto", {
+      next: "num",
+      fields: { VARIABLE: ["name", "w"] },
+      inputs: { VALUE: [1, "nameReporter"] },
+    });
+    sprite.blocks["nameReporter"] = block(opcode, { fields: { NUMBER_NAME: ["name", null] } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements[0]).toEqual({
+      type: "setText",
+      variableId: "studio-text-1",
+      value: {
+        type: "actorProperty",
+        actorId: property === "backdropName" ? "__stage__" : "actor:studio-1-nova",
+        property,
+      },
+    });
+    const creative = creativeForStudio(program, "forest", "es");
+    const result = runMultiActorProgram(program, creative);
+    expect(result.stage.texts?.["studio-text-1"]?.value).not.toBe("");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const again = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(again.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+  });
+
+  it("rejects an unknown name reporter mode without inventing a word", () => {
+    const scratch = wordProject("Hola");
+    const sprite = scratch.targets[1] as { blocks: Record<string, unknown> };
+    sprite.blocks["set"] = block("data_setvariableto", {
+      next: "num",
+      fields: { VARIABLE: ["name", "w"] },
+      inputs: { VALUE: [1, "nameReporter"] },
+    });
+    sprite.blocks["nameReporter"] = block("looks_costumenumbername", {
+      fields: { NUMBER_NAME: ["other", null] },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
+      "setVariable",
+    ]);
+    expect(report.dropped.some((item) => item.what.includes("data_setvariableto"))).toBe(true);
   });
 
   it("leaves out a word that is too long, and says so", () => {
