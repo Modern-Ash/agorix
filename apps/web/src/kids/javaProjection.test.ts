@@ -117,6 +117,21 @@ const statements: Statement[] = [
   },
   { type: "showVariable", variableId: "v" },
   { type: "hideVariable", variableId: "v" },
+  {
+    type: "setVariable",
+    variableId: "v",
+    value: { type: "actorProperty", actorId: "actor:main", property: "xPosition" },
+  },
+  {
+    type: "setVariable",
+    variableId: "v",
+    value: { type: "actorProperty", actorId: "actor:main", property: "variable", variableId: "v" },
+  },
+  {
+    type: "setText",
+    variableId: "t",
+    value: { type: "actorProperty", actorId: "actor:main", property: "costumeName" },
+  },
   { type: "showList", listId: "l" },
   { type: "hideList", listId: "l" },
   { type: "listAdd", listId: "l", value: bool(true) },

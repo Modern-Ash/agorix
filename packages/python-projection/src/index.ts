@@ -795,6 +795,15 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return `touching_stage_edge(${formatNumber(expression.minX)}, ${formatNumber(expression.maxX)}, ${formatNumber(expression.minY)}, ${formatNumber(expression.maxY)})`;
     case "distanceToActor":
       return "distance_to_actor(" + JSON.stringify(expression.actorId) + ")";
+    case "actorProperty":
+      return (
+        "actor_property(" +
+        JSON.stringify(expression.actorId) +
+        ", " +
+        JSON.stringify(expression.property) +
+        (expression.variableId === undefined ? "" : ", " + JSON.stringify(expression.variableId)) +
+        ")"
+      );
     case "xPosition":
       return "x_position()";
     case "direction":

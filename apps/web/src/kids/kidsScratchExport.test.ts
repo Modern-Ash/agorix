@@ -298,6 +298,106 @@ describe("going to another character round-trips (Scratch go to / glide to sprit
   });
 });
 
+describe("property of another character round-trips through sensing_of", () => {
+  const actorId = "actor:studio-2-mika";
+  const scene = program(
+    [
+      nova([
+        {
+          type: "setVariable",
+          variableId: "studio-var-1",
+          value: { type: "actorProperty", actorId, property: "xPosition" },
+        },
+        {
+          type: "setVariable",
+          variableId: "studio-var-1",
+          value: {
+            type: "actorProperty",
+            actorId,
+            property: "variable",
+            variableId: "studio-var-1",
+          },
+        },
+        {
+          type: "setText",
+          variableId: "studio-text-1",
+          value: { type: "actorProperty", actorId, property: "costumeName" },
+        },
+        {
+          type: "setText",
+          variableId: "studio-text-1",
+          value: { type: "textLiteral", value: "kiwi" },
+        },
+        {
+          type: "setText",
+          variableId: "studio-text-1",
+          value: {
+            type: "actorProperty",
+            actorId,
+            property: "variable",
+            variableId: "studio-text-1",
+          },
+        },
+      ]),
+      { id: "studio-actor-2-mika", trigger: flag, statements: [] },
+    ],
+    {
+      variables: [{ id: "studio-var-1", name: "Puntos", initialValue: 0, visible: true }],
+      textVariables: [{ id: "studio-text-1", name: "Disfraz", initialValue: "", visible: true }],
+    },
+  );
+
+  it("keeps the selected property, target and declared variable", async () => {
+    const { bytes, report } = exportScratchProject(scene, "forest", "es");
+    expect(report.left).toEqual([]);
+    const project = await open(bytes);
+    expect(
+      Object.values(project.targets[1]!.blocks).filter((block) => block["opcode"] === "sensing_of"),
+    ).toHaveLength(4);
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    const targetId = creativeForStudio(back.program, back.backdropId, "es", back.positions)
+      .actors![1]!.id;
+    expect(back.program.scripts[0]!.statements).toEqual([
+      {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: { type: "actorProperty", actorId: targetId, property: "xPosition" },
+      },
+      {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: {
+          type: "actorProperty",
+          actorId: targetId,
+          property: "variable",
+          variableId: "studio-var-1",
+        },
+      },
+      {
+        type: "setText",
+        variableId: "studio-text-1",
+        value: { type: "actorProperty", actorId: targetId, property: "costumeName" },
+      },
+      {
+        type: "setText",
+        variableId: "studio-text-1",
+        value: { type: "textLiteral", value: "kiwi" },
+      },
+      {
+        type: "setText",
+        variableId: "studio-text-1",
+        value: {
+          type: "actorProperty",
+          actorId: targetId,
+          property: "variable",
+          variableId: "studio-text-1",
+        },
+      },
+    ]);
+  });
+});
+
 describe("math functions round-trip through Scratch's operators", () => {
   const names = [
     "abs",

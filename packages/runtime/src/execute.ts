@@ -148,6 +148,10 @@ export interface ExecutionOptions {
     readonly x: number;
     readonly y: number;
     readonly visible: boolean;
+    readonly world?: WorldState;
+    readonly costumeOrder?: readonly string[];
+    readonly costumeNames?: Readonly<Record<string, string>>;
+    readonly values?: Readonly<Record<string, number | string>>;
   }[];
 }
 
@@ -477,6 +481,34 @@ function evaluateExpression(
         : normalizeCoordinate(
             Math.hypot(state.world.sprite.x - target.x, state.world.sprite.y - target.y),
           );
+    }
+    case "actorProperty": {
+      const target = state.options.sensorActors?.find((actor) => actor.id === expression.actorId);
+      if (target === undefined) return 0;
+      const sprite = target.world?.sprite;
+      switch (expression.property) {
+        case "xPosition":
+          return target.x;
+        case "yPosition":
+          return target.y;
+        case "direction":
+          return sprite?.heading ?? 0;
+        case "size":
+          return sprite?.size ?? 100;
+        case "volume":
+          return target.world?.sounds?.volume ?? 100;
+        case "costumeNumber":
+          return (target.costumeOrder?.indexOf(sprite?.costumeId ?? "") ?? -1) + 1;
+        case "costumeName":
+          return (
+            target.costumeNames?.[sprite?.costumeId ?? ""] ??
+            sprite?.costumeId?.split(":").at(-1) ??
+            ""
+          );
+        case "variable":
+          return target.values?.[expression.variableId ?? ""] ?? 0;
+      }
+      return 0;
     }
     case "xPosition":
       return state.world.sprite.x;

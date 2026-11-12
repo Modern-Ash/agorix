@@ -169,6 +169,8 @@ function formatExpression(
       return `sprite.touchingStageEdge(${formatNumber(expression.minX)}, ${formatNumber(expression.maxX)}, ${formatNumber(expression.minY)}, ${formatNumber(expression.maxY)})`;
     case "distanceToActor":
       return `sprite.distanceToActor(${JSON.stringify(expression.actorId)})`;
+    case "actorProperty":
+      return `actorProperty(${JSON.stringify(expression.actorId)}, ${JSON.stringify(expression.property)}${expression.variableId === undefined ? "" : `, ${JSON.stringify(expression.variableId)}`})`;
     case "xPosition":
       return "sprite.x";
     case "direction":

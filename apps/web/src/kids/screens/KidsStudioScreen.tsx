@@ -156,6 +156,7 @@ import {
   type ChoicePromptId,
 } from "@agorix/program-model";
 import type {
+  ActorProperty,
   Expression,
   Procedure,
   ProcedureParamId,
@@ -503,6 +504,19 @@ const COPY = {
     saveX: "Guardar posición X",
     saveY: "Guardar posición Y",
     touchActor: "Tocando personaje",
+    actorProperty: "Propiedad del personaje",
+    saveActorProperty: "Guardar propiedad del personaje",
+    saveActorCostumeName: "Guardar nombre de disfraz del personaje",
+    saveActorVariable: "Guardar variable del personaje",
+    saveActorWord: "Guardar palabra del personaje",
+    actorPropertyNames: {
+      xPosition: "posición X",
+      yPosition: "posición Y",
+      direction: "dirección",
+      size: "tamaño",
+      costumeNumber: "número de disfraz",
+      volume: "volumen",
+    },
     ifTouchActor: "Si toca, mover 1",
     groupIfTouchActor: "Si toca, ejecutar estos bloques",
     ifTouchEdge: "Si toca el borde, mover 1",
@@ -883,6 +897,19 @@ const COPY = {
     saveX: "Save X position",
     saveY: "Save Y position",
     touchActor: "Touching character",
+    actorProperty: "Character property",
+    saveActorProperty: "Save character property",
+    saveActorCostumeName: "Save character costume name",
+    saveActorVariable: "Save character variable",
+    saveActorWord: "Save character word",
+    actorPropertyNames: {
+      xPosition: "X position",
+      yPosition: "Y position",
+      direction: "direction",
+      size: "size",
+      costumeNumber: "costume number",
+      volume: "volume",
+    },
     ifTouchActor: "If touching, move 1",
     groupIfTouchActor: "If touching, run these blocks",
     ifTouchEdge: "If at edge, move 1",
@@ -1255,6 +1282,8 @@ function expressionLabel(
     return `${locale === "es" ? "tecla" : "key"} ${value.key} ${locale === "es" ? "pulsada" : "down"}`;
   if (value.type === "distanceToActor")
     return `${locale === "es" ? "distancia a" : "distance to"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
+  if (value.type === "actorProperty")
+    return `${value.property === "variable" ? (program.variables?.find((item) => item.id === value.variableId)?.name ?? program.textVariables?.find((item) => item.id === value.variableId)?.name ?? "?") : value.property} ${locale === "es" ? "de" : "of"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "numericLiteral") return String(value.value);
   if (value.type === "variable")
     return program.variables?.find((item) => item.id === value.variableId)?.name ?? "?";
@@ -1528,6 +1557,8 @@ export function KidsStudioScreen({
   const [randomDecimal, setRandomDecimal] = useState(false);
   const [compareCalculation, setCompareCalculation] = useState(false);
   const [sensorTargetId, setSensorTargetId] = useState("");
+  const [actorProperty, setActorProperty] =
+    useState<Exclude<ActorProperty, "costumeName" | "variable">>("xPosition");
   const [senseKey, setSenseKey] = useState<StudioKey>("Space");
   const [timerSeconds, setTimerSeconds] = useState(3);
   const [heldKeys, setHeldKeys] = useState<string[]>([]);
@@ -8258,6 +8289,101 @@ export function KidsStudioScreen({
                         ))}
                       </select>
                     </label>
+                    <label>
+                      {copy.actorProperty}{" "}
+                      <select
+                        value={actorProperty}
+                        onChange={(event) =>
+                          setActorProperty(event.target.value as typeof actorProperty)
+                        }
+                      >
+                        {(
+                          Object.entries(copy.actorPropertyNames) as [
+                            typeof actorProperty,
+                            string,
+                          ][]
+                        ).map(([property, name]) => (
+                          <option key={property} value={property}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-testid="actor-property-number"
+                      disabled={!history.current.variables?.length}
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId,
+                          value: {
+                            type: "actorProperty",
+                            actorId: targetActorId,
+                            property: actorProperty,
+                          },
+                        })
+                      }
+                    >
+                      + {copy.saveActorProperty}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!history.current.variables?.length}
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId,
+                          value: {
+                            type: "actorProperty",
+                            actorId: targetActorId,
+                            property: "variable",
+                            variableId,
+                          },
+                        })
+                      }
+                    >
+                      + {copy.saveActorVariable}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!history.current.textVariables?.length}
+                      onClick={() =>
+                        add({
+                          type: "setText",
+                          variableId: selectedTextId,
+                          value: {
+                            type: "actorProperty",
+                            actorId: targetActorId,
+                            property: "costumeName",
+                          },
+                        })
+                      }
+                    >
+                      + {copy.saveActorCostumeName}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!history.current.textVariables?.length}
+                      onClick={() =>
+                        add({
+                          type: "setText",
+                          variableId: selectedTextId,
+                          value: {
+                            type: "actorProperty",
+                            actorId: targetActorId,
+                            property: "variable",
+                            variableId: selectedTextId,
+                          },
+                        })
+                      }
+                    >
+                      + {copy.saveActorWord}
+                    </button>
                     <button
                       type="button"
                       className="kids-button"

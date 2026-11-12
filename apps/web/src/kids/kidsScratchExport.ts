@@ -247,6 +247,33 @@ class Emitter {
         ];
         return made.id;
       }
+      case "actorProperty": {
+        const name = this.spriteName(expression.actorId);
+        if (name === undefined) return null;
+        const property =
+          expression.property === "variable"
+            ? this.variableName(expression.variableId ?? "")
+            : (
+                {
+                  xPosition: "x position",
+                  yPosition: "y position",
+                  direction: "direction",
+                  size: "size",
+                  costumeNumber: "costume #",
+                  costumeName: "costume name",
+                  volume: "volume",
+                } as const
+              )[expression.property];
+        if (property === undefined) return null;
+        const made = this.block("sensing_of", parent, {
+          fields: { PROPERTY: [property, null] },
+        });
+        (made.block["inputs"] as Json)["OBJECT"] = [
+          1,
+          this.menu(made.id, "sensing_of_object_menu", "OBJECT", name),
+        ];
+        return made.id;
+      }
       case "distanceToMouse": {
         const made = this.block("sensing_distanceto", parent);
         (made.block["inputs"] as Json)["DISTANCETOMENU"] = [

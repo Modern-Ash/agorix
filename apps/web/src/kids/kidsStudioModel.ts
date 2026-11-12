@@ -255,6 +255,16 @@ export const STUDIO_WORD_MAX_LENGTH = 20;
 
 function checkedText(value: Expression, program: ProjectProgram, depth = 0): boolean {
   if (depth > 2) return false;
+  if (value.type === "actorProperty")
+    return (
+      (value.property === "costumeName" ||
+        (value.property === "variable" &&
+          program.textVariables?.some((item) => item.id === value.variableId) === true)) &&
+      program.scripts.some((script) => {
+        const actor = actorOfScript(script.id);
+        return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
+      })
+    );
   if (value.type === "textLiteral")
     return value.value.length <= STUDIO_WORD_MAX_LENGTH && !/\p{Cc}/u.test(value.value);
   if (value.type === "textVariable")
@@ -290,6 +300,18 @@ function checkedListItem(value: Expression, program: ProjectProgram, arity: numb
 
 function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, arity = 0): boolean {
   if (depth > 2) return false;
+  if (value.type === "actorProperty")
+    return (
+      (["xPosition", "yPosition", "direction", "size", "costumeNumber", "volume"].includes(
+        value.property,
+      ) ||
+        (value.property === "variable" &&
+          program.variables?.some((item) => item.id === value.variableId) === true)) &&
+      program.scripts.some((script) => {
+        const actor = actorOfScript(script.id);
+        return actor !== null && studioActorId(actor.index, actor.characterId) === value.actorId;
+      })
+    );
   if (value.type === "param") return arity > 0 && paramInScope(value.paramId, arity);
   if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
   if (

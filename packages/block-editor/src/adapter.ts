@@ -2,6 +2,7 @@ import {
   SCHEMA_VERSION,
   validateProgram,
   type Expression,
+  type ActorProperty,
   type GraphicEffect,
   type MathFunction,
   type NumericLiteralExpression,
@@ -99,6 +100,7 @@ export type BlockType =
   | "sensing_touching_color"
   | "sensing_touching_stage_edge"
   | "sensing_distance_to_actor"
+  | "sensing_actor_property"
   | "sensing_x_position"
   | "sensing_direction"
   | "sensing_y_position"
@@ -410,6 +412,15 @@ function expressionFromBlock(
       };
     case "sensing_distance_to_actor":
       return { type: "distanceToActor", actorId: stringField(block, "actorId", path) };
+    case "sensing_actor_property":
+      return {
+        type: "actorProperty",
+        actorId: stringField(block, "actorId", path),
+        property: stringField(block, "property", path) as ActorProperty,
+        ...(block.fields?.["variableId"] === undefined
+          ? {}
+          : { variableId: stringField(block, "variableId", path) }),
+      };
     case "sensing_x_position":
       return { type: "xPosition" };
     case "sensing_direction":
@@ -1059,6 +1070,16 @@ function expressionToBlock(
       };
     case "distanceToActor":
       return { id, type: "sensing_distance_to_actor", fields: { actorId: expression.actorId } };
+    case "actorProperty":
+      return {
+        id,
+        type: "sensing_actor_property",
+        fields: {
+          actorId: expression.actorId,
+          property: expression.property,
+          ...(expression.variableId === undefined ? {} : { variableId: expression.variableId }),
+        },
+      };
     case "xPosition":
       return { id, type: "sensing_x_position" };
     case "direction":

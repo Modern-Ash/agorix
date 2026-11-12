@@ -405,6 +405,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "sensing_actor_property",
+    label: "Property of character",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "property of character",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "sensing_actor_property",
+      fields: { actorId: "actor:main", property: "xPosition" },
+    }),
+  },
+  {
     type: "sensing_x_position",
     label: "Horizontal position",
     section: "Check",

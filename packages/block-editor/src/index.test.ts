@@ -103,6 +103,7 @@ describe("block-editor", () => {
       "Touching color?",
       "Touching stage edge?",
       "Distance to character",
+      "Property of character",
       "Horizontal position",
       "Vertical position",
       "Size",
@@ -141,7 +142,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(74);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(75);
   });
 
   it("creates safe defaults for every required POC block", () => {

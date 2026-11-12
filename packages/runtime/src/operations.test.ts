@@ -127,6 +127,7 @@ describe("runtime operation allowlist", () => {
       "waitUntil",
     ]);
     expect([...RUNTIME_EXPRESSION_OPERATIONS].sort()).toEqual([
+      "actorProperty",
       "add",
       "and",
       "backdropNumber",

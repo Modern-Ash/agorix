@@ -1,4 +1,5 @@
 import {
+  ACTOR_PROPERTIES,
   CLOCK_PARTS,
   EXTENSION_IDS,
   MUSIC_BEATS,
@@ -404,6 +405,26 @@ function validateExpression(input: unknown, path: string, state: ValidationState
     }
     case "distanceToActor":
       return { type: "distanceToActor", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "actorProperty": {
+      const actorId = checkText(input.actorId, `${path}.actorId`);
+      if (!ACTOR_PROPERTIES.includes(input.property as (typeof ACTOR_PROPERTIES)[number]))
+        fail("INVALID_FIELD_TYPE", `${path}.property`, "unknown actor property", input.property);
+      const property = input.property as (typeof ACTOR_PROPERTIES)[number];
+      if (property !== "variable") {
+        if (input.variableId !== undefined)
+          fail(
+            "INVALID_FIELD_TYPE",
+            `${path}.variableId`,
+            "only variables use variableId",
+            input.variableId,
+          );
+        return { type: "actorProperty", actorId, property };
+      }
+      const variableId = checkText(input.variableId, `${path}.variableId`);
+      if (!state.variableIds.has(variableId) && !state.textVariableIds.has(variableId))
+        fail("INVALID_REFERENCE", `${path}.variableId`, "unknown actor variable", variableId);
+      return { type: "actorProperty", actorId, property, variableId };
+    }
     case "xPosition":
       return { type: "xPosition" };
     case "direction":
