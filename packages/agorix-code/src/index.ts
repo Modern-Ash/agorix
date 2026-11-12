@@ -701,6 +701,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return `touching edge ${formatNumber(expression.minX)}..${formatNumber(expression.maxX)}, ${formatNumber(expression.minY)}..${formatNumber(expression.maxY)}`;
     case "distanceToActor":
       return "distance to " + JSON.stringify(expression.actorId);
+    case "actorProperty":
+      return (
+        (expression.variableId ?? expression.property) + " of " + JSON.stringify(expression.actorId)
+      );
     case "xPosition":
       return "x position";
     case "direction":

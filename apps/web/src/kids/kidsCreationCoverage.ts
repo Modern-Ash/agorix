@@ -59,6 +59,7 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "mouseX",
   "mouseY",
   "distanceToActor",
+  "actorProperty",
   "variable",
   "listLength",
   "listItem",
@@ -81,6 +82,7 @@ export const SCENE_TEXT_EXPRESSIONS = [
   "textVariable",
   "join",
   "letterOf",
+  "actorProperty",
 ] as const satisfies readonly ExpressionKind[];
 
 export const SCENE_CONDITION_EXPRESSIONS = [

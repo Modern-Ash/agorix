@@ -353,6 +353,37 @@ class Converter {
         const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
         return actorId === undefined ? undefined : { type: "distanceToActor", actorId };
       }
+      case "sensing_of": {
+        const target = this.menu(block, "OBJECT");
+        const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
+        const rawProperty = block.fields["PROPERTY"]?.[0];
+        if (actorId === undefined || typeof rawProperty !== "string") return undefined;
+        const property = (
+          {
+            "x position": "xPosition",
+            "y position": "yPosition",
+            direction: "direction",
+            size: "size",
+            "costume #": "costumeNumber",
+            "costume name": "costumeName",
+            volume: "volume",
+          } as const
+        )[
+          rawProperty as
+            | "x position"
+            | "y position"
+            | "direction"
+            | "size"
+            | "costume #"
+            | "costume name"
+            | "volume"
+        ];
+        if (property !== undefined) return { type: "actorProperty", actorId, property };
+        const variableId = this.variableIds.get(rawProperty) ?? this.textIds.get(rawProperty);
+        return variableId === undefined
+          ? undefined
+          : { type: "actorProperty", actorId, property: "variable", variableId };
+      }
       case "sensing_mousex":
         return { type: "mouseX" };
       case "sensing_mousey":
@@ -1029,7 +1060,8 @@ class Converter {
         const id = typeof variable === "string" ? this.textIds.get(variable) : undefined;
         return id === undefined ? undefined : { type: "textVariable", variableId: id };
       }
-      if (inner?.opcode === "data_itemoflist") return this.reporter(inner);
+      if (inner?.opcode === "data_itemoflist" || inner?.opcode === "sensing_of")
+        return this.reporter(inner);
       return undefined;
     }
     const value = this.literal(block, name);
@@ -1175,6 +1207,14 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
       const input = block.inputs["VALUE"]?.[1];
       const value = Array.isArray(input) ? (input as unknown as Primitive)[1] : undefined;
       if (typeof variable === "string" && isWord(value)) setToWord.add(variable);
+      if (typeof variable === "string" && typeof input === "string") {
+        const reporter = parseBlock(rawBlocks[input]);
+        if (
+          reporter?.opcode === "sensing_of" &&
+          reporter.fields["PROPERTY"]?.[0] === "costume name"
+        )
+          setToWord.add(variable);
+      }
     }
   }
   for (const target of [stage, ...sprites]) {

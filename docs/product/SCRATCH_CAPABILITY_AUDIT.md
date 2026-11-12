@@ -116,6 +116,12 @@ Each iteration needs an issue with an observable child journey, success and fail
 - These blocks use the canonical program and deterministic runtime, and project to Agorix Code, TypeScript, Python and Java. Scratch import/export preserves the corresponding list blocks, including Delete all as `data_deleteoflist` with `all` in its index slot. Tests cover validation, runtime results, visual block round-trip, Scratch round-trip and a browser run.
 - The visual palette keeps the existing limits of three lists, 100 items per list and 20 characters per word. General Scratch list indexing and unbounded list operations remain outside this increment.
 
+## Properties of another character (next #538 increment)
+
+- Escena libre can read a selected character's X, Y, direction, size, costume number, costume name, volume or a declared number/word variable. The block reads the other actor's canonical runtime snapshot when its script runs; missing actors return zero.
+- The visual editor, program model, runtime, four code projections and Scratch `sensing_of` import/export use the same expression. A run with two characters verifies values after the target's earlier script changes its position, volume and variable. Browser evidence covers the visible X value and reopening.
+- Stage properties remain a separate capability. The existing scene limits on actors, variables and words still apply.
+
 ## Sound volume and variable watchers (next #538 increment)
 
 - Escena libre exposes bounded Set volume and Change volume blocks. They update the canonical program, the deterministic runtime and the generated code. A gallery sound played from the run trace uses the volume recorded at that sound block; the stage shows the final volume after Jugar.

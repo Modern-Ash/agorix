@@ -2,6 +2,8 @@
 export const PACKAGE_NAME = "@agorix/program-model";
 
 export type {
+  ActorProperty,
+  ActorPropertyExpression,
   BooleanLiteralExpression,
   BroadcastStatement,
   AddExpression,
@@ -119,6 +121,7 @@ export type {
   ChangeYStatement,
   VariableExpression,
 } from "./schema.js";
+export { ACTOR_PROPERTIES } from "./schema.js";
 export { CHOICE_CATALOG, CHOICE_PROMPT_IDS, isChoicePromptId } from "./choiceCatalog.js";
 export type { ChoicePromptId } from "./choiceCatalog.js";
 export { ASK_TEXT_CATALOG, ASK_TEXT_PROMPT_IDS, isAskTextPromptId } from "./askTextCatalog.js";

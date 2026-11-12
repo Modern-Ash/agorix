@@ -120,6 +120,9 @@ export const JAVA_SUPPORT_API = [
   "touchingColor",
   "touchingStageEdge",
   "distanceToActor",
+  "actorNumberProperty",
+  "actorCostumeName",
+  "actorVariableProperty",
   "touchingMouse",
   "distanceToMouse",
   "xPosition",
@@ -240,6 +243,9 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     boolean touchingColor(String color) { return false; }
     boolean touchingStageEdge(double minX, double maxX, double minY, double maxY) { return false; }
     double distanceToActor(String actor) { return 0; }
+    double actorNumberProperty(String actor, String property) { return 0; }
+    String actorCostumeName(String actor) { return ""; }
+    Object actorVariableProperty(String actor, String variable) { return 0; }
     double xPosition() { return 0; }
     double direction() { return 0; }
     double yPosition() { return 0; }
@@ -457,6 +463,12 @@ function kindOf(writer: Writer, expression: Expression): Kind {
       return "text";
     case "listItem":
       return writer.mixedLists.has(expression.listId) ? "mixed" : "number";
+    case "actorProperty":
+      return expression.property === "costumeName"
+        ? "text"
+        : expression.property === "variable"
+          ? "mixed"
+          : "number";
     default:
       return "number";
   }
@@ -541,6 +553,12 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return `touchingStageEdge(${number(expression.minX)}, ${number(expression.maxX)}, ${number(expression.minY)}, ${number(expression.maxY)})`;
     case "distanceToActor":
       return `distanceToActor(${literal(expression.actorId)})`;
+    case "actorProperty":
+      return expression.property === "costumeName"
+        ? `actorCostumeName(${literal(expression.actorId)})`
+        : expression.property === "variable"
+          ? `actorVariableProperty(${literal(expression.actorId)}, ${literal(expression.variableId ?? "")})`
+          : `actorNumberProperty(${literal(expression.actorId)}, ${literal(expression.property)})`;
     case "xPosition":
       return "xPosition()";
     case "direction":

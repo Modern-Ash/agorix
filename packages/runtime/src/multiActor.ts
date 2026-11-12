@@ -527,6 +527,36 @@ export function runMultiActorProgram(
               x: other.world.sprite.x,
               y: other.world.sprite.y,
               visible: other.world.sprite.visible ?? true,
+              world: other.world,
+              ...orderOptions(creative, other.id),
+              costumeNames: Object.fromEntries(
+                (creative.assets ?? [])
+                  .filter((asset) => asset.kind === "costume")
+                  .map((asset) => [asset.id, asset.name]),
+              ),
+              values: {
+                ...Object.fromEntries(
+                  (validatedProgram.variables ?? []).map((variable) => [
+                    variable.id,
+                    variable.initialValue,
+                  ]),
+                ),
+                ...Object.fromEntries(
+                  (validatedProgram.textVariables ?? []).map((variable) => [
+                    variable.id,
+                    variable.initialValue,
+                  ]),
+                ),
+                ...Object.fromEntries(
+                  Object.entries(other.world.variables ?? {}).map(([id, value]) => [
+                    id,
+                    value.value,
+                  ]),
+                ),
+                ...Object.fromEntries(
+                  Object.entries(other.world.texts ?? {}).map(([id, value]) => [id, value.value]),
+                ),
+              },
             })),
           ...(randomState === undefined ? {} : { randomSeed: randomState }),
           ...(options.keysDown === undefined ? {} : { keysDown: options.keysDown }),

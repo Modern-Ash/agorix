@@ -49,6 +49,26 @@ export interface DistanceToActorExpression {
   readonly actorId: string;
 }
 
+/** Reads a declared property from another actor's runtime state, as Scratch's "of" reporter. */
+export const ACTOR_PROPERTIES = [
+  "xPosition",
+  "yPosition",
+  "direction",
+  "size",
+  "costumeNumber",
+  "costumeName",
+  "volume",
+  "variable",
+] as const;
+export type ActorProperty = (typeof ACTOR_PROPERTIES)[number];
+export interface ActorPropertyExpression {
+  readonly type: "actorProperty";
+  readonly actorId: string;
+  readonly property: ActorProperty;
+  /** Required for a variable property; refers to a declared number or word variable. */
+  readonly variableId?: string;
+}
+
 /** Heading in degrees, as set by turn and point in direction. */
 export interface DirectionExpression {
   readonly type: "direction";
@@ -345,6 +365,7 @@ export type Expression =
   | TouchingStageEdgeExpression
   | TouchingColorExpression
   | DistanceToActorExpression
+  | ActorPropertyExpression
   | TouchingMouseExpression
   | DistanceToMouseExpression
   | XPositionExpression
