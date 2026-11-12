@@ -518,17 +518,28 @@ class Converter {
         return actorId === undefined ? undefined : { type: "touchingActor", actorId };
       }
       case "operator_lt":
-      case "operator_gt":
-      case "operator_equals": {
+      case "operator_gt": {
         const left = this.numberExpression(block, "OPERAND1");
         const right = this.numberExpression(block, "OPERAND2");
         if (left === undefined || right === undefined) return undefined;
         const type = {
           operator_lt: "lessThan",
           operator_gt: "greaterThan",
-          operator_equals: "equals",
-        }[block.opcode] as "lessThan" | "greaterThan" | "equals";
+        }[block.opcode] as "lessThan" | "greaterThan";
         return { type, left, right };
+      }
+      case "operator_equals": {
+        const leftNumber = this.numberExpression(block, "OPERAND1");
+        const rightNumber = this.numberExpression(block, "OPERAND2");
+        if (leftNumber !== undefined && rightNumber !== undefined)
+          return { type: "equals", left: leftNumber, right: rightNumber };
+        const left = this.boundedTextSource(block, "OPERAND1");
+        const right = this.boundedTextSource(block, "OPERAND2");
+        if (left === undefined || right === undefined) {
+          this.drop("operator_equals (values the scene cannot compare)");
+          return undefined;
+        }
+        return { type: "equals", left, right };
       }
       case "operator_and":
       case "operator_or": {

@@ -482,6 +482,63 @@ describe("Scratch import", () => {
     expect(program.scripts[0]!.statements).toEqual([]);
     expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(true);
   });
+
+  it.each(["Sol", "Luna"])("round-trips a Scratch word equality for %s", async (word) => {
+    const scratch = project();
+    (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = ["word", word];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+    });
+    blocks["equal"] = block("operator_equals", {
+      inputs: { OPERAND1: [3, [12, "word", "w"], [10, ""]], OPERAND2: lit("sOL", 10) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("operator_equals"))).toBe(false);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: {
+        type: "equals",
+        left: { type: "textVariable" },
+        right: { type: "textLiteral", value: "sOL" },
+      },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.trace.some((entry) => entry.statementType === "say")).toBe(word === "Sol");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+  });
+
+  it("keeps numeric equality and reports an unsupported word equality", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+    });
+    blocks["equal"] = block("operator_equals", { inputs: { OPERAND1: lit(2), OPERAND2: lit(2) } });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+    const numeric = convertScratchProject(scratch);
+    expect(numeric.program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: {
+        type: "equals",
+        left: { type: "numericLiteral", value: 2 },
+        right: { type: "numericLiteral", value: 2 },
+      },
+    });
+    blocks["equal"] = block("operator_equals", {
+      inputs: { OPERAND1: lit("una palabra demasiado larga", 10), OPERAND2: lit("palabra", 10) },
+    });
+    const unsupported = convertScratchProject(scratch);
+    expect(unsupported.program.scripts[0]!.statements).toEqual([]);
+    expect(unsupported.report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(
+      true,
+    );
+  });
 });
 
 describe("Scratch clones (#1311)", () => {
