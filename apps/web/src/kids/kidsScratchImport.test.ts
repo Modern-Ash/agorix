@@ -464,6 +464,79 @@ describe("Scratch name reporters in bubbles", () => {
   });
 });
 
+describe("Scratch direct data reporters in bubbles", () => {
+  it.each([
+    ["looks_say", "score", 7, "variable"],
+    ["looks_thinkforsecs", "word", "Hola", "textVariable"],
+  ] as const)("imports %s from %s", async (opcode, name, value, type) => {
+    const scratch = {
+      targets: [
+        { isStage: true, name: "Stage", variables: { v: [name, value] }, blocks: {} },
+        {
+          isStage: false,
+          name: "Cat",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          blocks: {
+            hat: block("event_whenflagclicked", { next: "bubble", topLevel: true }),
+            bubble: block(opcode, {
+              inputs: {
+                MESSAGE: [3, [12, name, "v"], [10, ""]],
+                ...(opcode.endsWith("forsecs") ? { SECS: lit(2) } : {}),
+              },
+            }),
+          },
+        },
+      ],
+    };
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    const statement = program.scripts[0]!.statements[0]!;
+    expect(statement).toMatchObject({
+      type: opcode.includes("say") ? "say" : "think",
+      text: "",
+      append: { type },
+    });
+    const creative = creativeForStudio(program, "forest", "es");
+    const result = runMultiActorProgram(program, creative);
+    const bubble = result.trace.find((entry) => entry.statementType === statement.type)?.worldAfter
+      .sprite.bubble;
+    expect(bubble?.text).toBe(String(value));
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[0]).toEqual(statement);
+  });
+
+  it("drops an unsupported direct reporter and keeps a literal message", () => {
+    const scratch = {
+      targets: [
+        { isStage: true, name: "Stage", variables: {}, blocks: {} },
+        {
+          isStage: false,
+          name: "Cat",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          blocks: {
+            hat: block("event_whenflagclicked", { next: "bad", topLevel: true }),
+            bad: block("looks_say", { next: "good", inputs: { MESSAGE: [1, "unsupported"] } }),
+            unsupported: block("unknown_reporter"),
+            good: block("looks_say", { inputs: { MESSAGE: lit("Hola", 10) } }),
+          },
+        },
+      ],
+    };
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([{ type: "say", text: "Hola" }]);
+    expect(report.dropped.some((item) => item.what.includes("looks_say"))).toBe(true);
+  });
+});
+
 describe("Scratch pen, timer and value hats", () => {
   function sprite(blocks: Record<string, unknown>) {
     return {
