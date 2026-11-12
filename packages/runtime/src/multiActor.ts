@@ -606,6 +606,12 @@ export function runMultiActorProgram(
           actor.world = { ...actor.world, backdropId: stage.backdropId };
         const result = runProgram(singleScriptProgram(validatedProgram, script), actor.world, {
           maxSteps: maxSteps - stepsUsed,
+          currentActorId: actor.id,
+          costumeNames: Object.fromEntries(
+            (creative.assets ?? [])
+              .filter((asset) => asset.kind === "costume")
+              .map((asset) => [asset.id, asset.name]),
+          ),
           event: programEventForRuntimeEvent(event),
           ...(isCloneId(actor.id) ? { isClone: true } : {}),
           sensorActors: actors

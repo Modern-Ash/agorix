@@ -168,6 +168,61 @@ describe("Scratch import", () => {
       append: { type: "variable", variableId: "studio-var-1" },
     });
   });
+
+  it.each([
+    [
+      "word variable",
+      [3, [12, "word", "w"], [10, ""]],
+      { type: "textVariable", variableId: "studio-text-1" },
+      "Hola",
+    ],
+    [
+      "costume name",
+      [3, "nameReporter", [10, ""]],
+      { type: "actorProperty", property: "costumeName" },
+      "Nova",
+    ],
+    ["short literal", lit("mundo", 10), { type: "textLiteral", value: "mundo" }, "mundo"],
+  ] as const)("keeps a join with a %s", async (_kind, second, expected, suffix) => {
+    const joined = project();
+    (joined.targets[0] as { variables: Record<string, unknown> }).variables["w"] = ["word", "Hola"];
+    const blocks = (joined.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", { next: "rep", inputs: { MESSAGE: [3, "join", [10, ""]] } });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Saludo:", 10), STRING2: second },
+    });
+    blocks["nameReporter"] = block("looks_costumenumbername", {
+      fields: { NUMBER_NAME: ["name", null] },
+    });
+    const { program, report } = convertScratchProject(joined);
+    expect(
+      report.dropped.some((item) => item.what.includes("join") || item.what.includes("looks_say")),
+    ).toBe(false);
+    const statement = program.scripts[0]!.statements[2]!;
+    expect(statement).toMatchObject({ type: "say", text: "Saludo:", append: expected });
+    const creative = creativeForStudio(program, "forest", "es");
+    const result = runMultiActorProgram(program, creative);
+    const bubble = result.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite
+      .bubble;
+    expect(bubble?.text).toBe(`Saludo: ${suffix}`);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(statement);
+  });
+
+  it("reports and drops a join whose second value is too long", () => {
+    const joined = project();
+    const blocks = (joined.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", { next: "rep", inputs: { MESSAGE: [3, "join", [10, ""]] } });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Saludo:", 10), STRING2: lit("una palabra demasiado larga", 10) },
+    });
+    const { program, report } = convertScratchProject(joined);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.includes("join (a second value"))).toBe(true);
+  });
 });
 
 describe("Scratch clones (#1311)", () => {
