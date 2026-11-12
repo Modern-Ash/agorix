@@ -543,6 +543,11 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - Scratch `length of` imports to canonical `textLength` for a short word literal, word variable or compatible name reporter. `letter of` imports to canonical `letterOf` with the same bounded word source and a fixed one-based position from 1 to 20.
 - Both reporters execute through the deterministic runtime in number or bubble slots and export back to their Scratch opcodes. Unsupported sources and positions are dropped with an explicit import reason. General nested text composition remains outside this importer increment.
 
+## Bounded Scratch text contains condition
+
+- Scratch `contains` imports and exports as canonical `textContains` when both inputs are short word literals, word variables or compatible name reporters. The deterministic runtime compares without case sensitivity, so a condition uses the same result after `.sb3` round-trip.
+- An unsupported word source drops the containing condition with an explicit import reason. Nested text composition remains outside this importer increment.
+
 ## More ideas from Ori (what Scratch's blocks make easy to ask for)
 
 Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks added for Scratch compatibility and are still the same kind of thing: a goal picked from a closed list (never typed), turned by deterministic code into two to eight blocks, shown as ghost blocks with the evidence of where the character would end up, and added only if the learner uses the idea.

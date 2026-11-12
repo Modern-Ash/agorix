@@ -470,6 +470,15 @@ class Converter {
 
   booleanBlock(block: ScratchBlock): Expression | undefined {
     switch (block.opcode) {
+      case "operator_contains": {
+        const text = this.boundedTextSource(block, "STRING1");
+        const part = this.boundedTextSource(block, "STRING2");
+        if (text === undefined || part === undefined) {
+          this.drop("operator_contains (a word the scene cannot use)");
+          return undefined;
+        }
+        return { type: "textContains", text, part };
+      }
       case "data_listcontainsitem": {
         const listId = this.listOf(block);
         const value = this.listValue(block, "ITEM");

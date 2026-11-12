@@ -472,6 +472,14 @@ class Emitter {
         (made.block["inputs"] as Json)["OPERAND"] = operand;
         return made.id;
       }
+      case "textContains":
+        return this.binary(
+          "operator_contains",
+          ["STRING1", "STRING2"],
+          expression.text,
+          expression.part,
+          parent,
+        );
       case "join":
         return this.binary(
           "operator_join",

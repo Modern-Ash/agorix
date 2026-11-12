@@ -349,6 +349,53 @@ describe("Scratch import", () => {
     expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
     expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
   });
+
+  it.each(["Mariposa", "Luna"])(
+    "round-trips a bounded Scratch contains condition for %s",
+    async (word) => {
+      const scratch = project();
+      (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = [
+        "word",
+        word,
+      ];
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "contains"], SUBSTACK: [2, "say"] },
+      });
+      blocks["contains"] = block("operator_contains", {
+        inputs: { STRING1: [3, [12, "word", "w"], [10, ""]], STRING2: lit("POS", 10) },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.includes("operator_contains"))).toBe(false);
+      expect(program.scripts[0]!.statements[0]).toMatchObject({
+        type: "if",
+        condition: { type: "textContains", text: { type: "textVariable" }, part: { value: "POS" } },
+      });
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.trace.some((entry) => entry.statementType === "say")).toBe(word === "Mariposa");
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+    },
+  );
+
+  it("drops an unsupported Scratch contains condition with an explicit reason", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "contains"], SUBSTACK: [2, "say"] },
+    });
+    blocks["contains"] = block("operator_contains", {
+      inputs: { STRING1: lit("una palabra demasiado larga", 10), STRING2: lit("palabra", 10) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(true);
+  });
 });
 
 describe("Scratch clones (#1311)", () => {
