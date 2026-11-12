@@ -674,7 +674,7 @@ export interface SayStatement {
   readonly text: string;
   /** Scratch's "say for N seconds": the bubble stays this many virtual seconds, then goes away. */
   readonly seconds?: number;
-  /** Scratch's "join": a number (a variable, a position...) written right after the text. */
+  /** A number or word read at runtime and written after the fixed text; text may be empty here. */
   readonly append?: Expression;
 }
 

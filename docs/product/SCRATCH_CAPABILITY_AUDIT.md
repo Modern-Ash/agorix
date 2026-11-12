@@ -550,7 +550,7 @@ Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks add
 ## Stage properties in Scratch's "of" block
 
 - Escena libre can read the Stage's backdrop number, backdrop name and volume from a canonical reporter. A backdrop changed earlier in the run is reflected in the value; gallery and child-drawn backdrops have a stable order. Scratch exchange uses `sensing_of` with `_stage_` and preserves those three properties.
-- Scratch import also keeps the direct `costume name` and `backdrop name` looks reporters when they feed a word variable. They become the existing canonical actor and Stage property reads; an unsupported reporter mode is still dropped and reported.
+- Scratch import also keeps the direct `costume name` and `backdrop name` looks reporters when they feed a word variable or a say/think bubble. They become the existing canonical actor and Stage property reads; a bubble with only a dynamic name has no invented fixed text or leading space. An unsupported reporter mode is still dropped and reported.
 - The scene still has no Stage scripts, so its volume is 100. Numeric and word Stage variables have an explicit `scope: stage` declaration, one shared value and watcher visibility across characters, and can be read through `variable of Stage`. Stage lists also share items and watcher visibility across characters. Scratch exchange keeps Stage and character-local data separate.
 
 ## "How do you say this in code?" (a bridge Scratch does not have)

@@ -669,12 +669,29 @@ class Converter {
       case "looks_sayforsecs":
       case "looks_thinkforsecs": {
         const joined = this.joinedMessage(block);
-        const raw = (joined?.text ?? this.literal(block, "MESSAGE"))?.trim();
-        if (raw === undefined || raw === "") return missing();
+        const reference = block.inputs["MESSAGE"]?.[1];
+        const reporter = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+        const direct = reporter === undefined ? undefined : this.reporter(reporter);
+        const dynamicName =
+          direct?.type === "actorProperty" &&
+          (direct.property === "costumeName" || direct.property === "backdropName")
+            ? direct
+            : undefined;
+        const raw = (
+          joined?.text ??
+          this.literal(block, "MESSAGE") ??
+          (dynamicName === undefined ? undefined : "")
+        )?.trim();
+        if (raw === undefined || (raw === "" && dynamicName === undefined)) return missing();
         const text = raw.slice(0, STUDIO_BUBBLE_MAX_LENGTH);
         this.adjust(text, raw);
         const kind = block.opcode.includes("say") ? "say" : "think";
-        const append = joined?.append === undefined ? {} : { append: joined.append };
+        const append =
+          dynamicName !== undefined
+            ? { append: dynamicName }
+            : joined?.append === undefined
+              ? {}
+              : { append: joined.append };
         if (!block.opcode.endsWith("forsecs")) return { type: kind, text, ...append };
         const seconds = num("SECS");
         return {

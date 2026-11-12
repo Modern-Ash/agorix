@@ -757,7 +757,7 @@ function checked(
     return inStudioRange(statement.delta, STUDIO_VOLUME_DELTA_RANGE);
   if (statement.type === "say" || statement.type === "think")
     return (
-      statement.text.trim().length > 0 &&
+      (statement.text.trim().length > 0 || statement.append !== undefined) &&
       statement.text.length <= STUDIO_BUBBLE_MAX_LENGTH &&
       (statement.seconds === undefined ||
         (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds)) &&

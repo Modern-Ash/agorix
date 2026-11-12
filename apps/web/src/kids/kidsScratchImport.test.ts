@@ -4,6 +4,7 @@ import { convertScratchProject } from "./kidsScratchImport.js";
 import { exportScratchProject } from "./kidsScratchExport.js";
 import { readScratchProject } from "./kidsScratchZip.js";
 import { creativeForStudio } from "./kidsStudioModel.js";
+import { validateStudioProgram } from "./kidsStudioModel.js";
 
 const lit = (value: string | number, type = 4) => [1, [type, String(value)]];
 const block = (opcode: string, extra: Record<string, unknown> = {}) => ({
@@ -405,6 +406,61 @@ describe("Scratch variables that hold words", () => {
       "setVariable",
     ]);
     expect(report.dropped.some((item) => item.what.includes("data_setvariableto"))).toBe(true);
+  });
+});
+
+describe("Scratch name reporters in bubbles", () => {
+  it.each([
+    ["looks_say", "looks_costumenumbername", "costumeName"],
+    ["looks_thinkforsecs", "looks_backdropnumbername", "backdropName"],
+  ] as const)("imports %s with a direct %s reporter", async (opcode, reporterOpcode, property) => {
+    const scratch = {
+      targets: [
+        { isStage: true, name: "Stage", variables: {}, blocks: {} },
+        {
+          isStage: false,
+          name: "Cat",
+          x: 0,
+          y: 0,
+          direction: 90,
+          size: 100,
+          variables: {},
+          blocks: {
+            hat: block("event_whenflagclicked", { next: "bubble", topLevel: true }),
+            bubble: block(opcode, {
+              inputs: {
+                MESSAGE: [1, "nameReporter"],
+                ...(opcode.endsWith("forsecs") ? { SECS: lit(2) } : {}),
+              },
+            }),
+            nameReporter: block(reporterOpcode, { fields: { NUMBER_NAME: ["name", null] } }),
+          },
+        },
+      ],
+    };
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    const statement = program.scripts[0]!.statements[0]!;
+    expect(statement).toMatchObject({
+      type: opcode.includes("say") ? "say" : "think",
+      text: "",
+      append: { type: "actorProperty", property },
+    });
+    const creative = creativeForStudio(program, "forest", "es");
+    const result = runMultiActorProgram(program, creative);
+    const bubble = result.trace.find((entry) => entry.statementType === statement.type)?.worldAfter
+      .sprite.bubble;
+    expect(bubble?.text.length).toBeGreaterThan(0);
+    expect(bubble?.text).toBe(bubble?.text.trim());
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[0]).toEqual(statement);
+    expect(() =>
+      validateStudioProgram({
+        ...program,
+        scripts: [{ ...program.scripts[0]!, statements: [{ type: "say", text: "" }] }],
+      }),
+    ).toThrow();
   });
 });
 
