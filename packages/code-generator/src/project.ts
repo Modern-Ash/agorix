@@ -729,6 +729,7 @@ function projectText(program: ProjectProgram): {
     }
   }
   for (const list of program.lists ?? []) {
+    if (list.scope === "stage") write(writer, "// Stage list shared by all characters\n");
     write(
       writer,
       `const ${formatListName(context, list.id, `lists/${list.id}`)} = [${list.initialItems.map((item) => (typeof item === "string" ? JSON.stringify(item) : formatNumber(item))).join(", ")}];\n`,

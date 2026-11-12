@@ -1270,20 +1270,49 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   for (const word of words.slice(3))
     converter.drop(`word variable "${word.name}" (more than three)`);
 
-  // Up to three lists, from the stage first. A list holds numbers or words, as in Scratch; the
-  // scene's lists start empty, so a Scratch list's starting items are left behind and said so.
-  const listNames: string[] = [];
-  for (const target of [stage, ...sprites]) {
+  // Up to three lists, from the stage first. Stage lists keep bounded starting items.
+  const listDeclarations: { name: string; scope?: "stage"; initialItems: (number | string)[] }[] =
+    [];
+  for (const [targetIndex, target] of [stage, ...sprites].entries()) {
     const declared = isRecord(target?.["lists"]) ? target["lists"] : {};
     for (const entry of Object.values(declared)) {
       const name = Array.isArray(entry) ? entry[0] : undefined;
-      if (typeof name !== "string" || !DATA_NAME.test(name) || listNames.includes(name)) continue;
-      listNames.push(name);
-      if (listNames.length <= 3) {
-        converter.listIds.set(name, `studio-list-${listNames.length}`);
+      if (
+        typeof name !== "string" ||
+        !DATA_NAME.test(name) ||
+        listDeclarations.some((item) => item.name === name)
+      )
+        continue;
+      if (listDeclarations.length < 3) {
+        converter.listIds.set(name, `studio-list-${listDeclarations.length + 1}`);
         const items: unknown = Array.isArray(entry) ? entry[1] : undefined;
-        if (Array.isArray(items) && items.length > 0)
-          converter.drop(`list "${name}" (its starting items: the scene's lists start empty)`);
+        const initialItems: (number | string)[] = [];
+        if (Array.isArray(items) && items.length > 0) {
+          if (targetIndex !== 0)
+            converter.drop(`list "${name}" (local starting items are not supported)`);
+          else {
+            for (const item of items.slice(0, 10)) {
+              if (typeof item === "number" && Number.isFinite(item))
+                initialItems.push(
+                  converter.adjust(Math.round(Math.max(-100, Math.min(100, item)) * 10) / 10, item),
+                );
+              else if (typeof item === "string")
+                initialItems.push(
+                  converter.adjust(
+                    item.replace(/\p{Cc}/gu, "").slice(0, STUDIO_WORD_MAX_LENGTH),
+                    item,
+                  ),
+                );
+              else converter.drop(`list "${name}" (invalid starting item)`);
+            }
+            if (items.length > 10) converter.drop(`list "${name}" (more than ten starting items)`);
+          }
+        }
+        listDeclarations.push({
+          name,
+          ...(targetIndex === 0 && stage !== undefined ? { scope: "stage" as const } : {}),
+          initialItems,
+        });
       } else converter.drop(`list "${name}" (more than three)`);
     }
   }
@@ -1384,9 +1413,10 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   }));
   const lists = [...converter.listIds.values()].map((id, index) => ({
     id,
-    name: listNames[index]!,
-    initialItems: [] as number[],
+    name: listDeclarations[index]!.name,
+    initialItems: listDeclarations[index]!.initialItems,
     visible: true,
+    ...(listDeclarations[index]!.scope === "stage" ? { scope: "stage" as const } : {}),
   }));
   const withData: ProjectProgram = {
     ...baseline,

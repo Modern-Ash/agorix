@@ -336,6 +336,42 @@ test("two characters share a Stage word after reopening", async ({ page }) => {
   await expect(page.getByText("Lectura: Hola")).toBeVisible();
 });
 
+test("two characters share a Stage list after reopening", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  const actors = page.getByRole("group", { name: "Personajes" }).getByRole("button");
+  await actors.first().click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Global");
+  await page.getByTestId("create-stage-list").click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("2");
+  await page.getByRole("button", { name: "+ Agregar número" }).click();
+  await actors.nth(1).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("4");
+  await page.getByRole("button", { name: "+ Agregar número" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Global: 2, 4")).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Global: 2, 4")).toBeVisible();
+});
+
 test("free scene senses another character and records its own X position after reopening", async ({
   page,
 }) => {

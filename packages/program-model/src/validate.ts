@@ -1453,7 +1453,15 @@ function validateList(input: unknown, path: string, state: ValidationState): Pro
   if (typeof input.visible !== "boolean") {
     fail("MISSING_FIELD", `${path}.visible`, "expected a boolean", input.visible);
   }
-  return { id: input.id, name, initialItems, visible: input.visible };
+  if (input.scope !== undefined && input.scope !== "stage")
+    fail("INVALID_FIELD_TYPE", `${path}.scope`, "unknown list scope", input.scope);
+  return {
+    id: input.id,
+    name,
+    initialItems,
+    visible: input.visible,
+    ...(input.scope === "stage" ? { scope: "stage" as const } : {}),
+  };
 }
 
 const PROCEDURE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;

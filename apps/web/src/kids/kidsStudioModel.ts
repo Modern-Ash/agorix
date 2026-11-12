@@ -894,7 +894,14 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
       (item, index) =>
         item.id !== `studio-list-${index + 1}` ||
         !DATA_NAME.test(item.name) ||
-        item.initialItems.length !== 0 ||
+        (item.scope === "stage"
+          ? item.initialItems.length > 10 ||
+            item.initialItems.some((value) =>
+              typeof value === "number"
+                ? !finiteSmallNumber(value)
+                : value.length > STUDIO_WORD_MAX_LENGTH || /\p{Cc}/u.test(value),
+            )
+          : item.initialItems.length !== 0) ||
         !item.visible,
     ) ||
     mainScripts(program).some((script, position) => {
@@ -2386,7 +2393,11 @@ export function addStudioText(
   }).history;
 }
 
-export function addStudioList(history: EditorHistory, name: string): EditorHistory {
+export function addStudioList(
+  history: EditorHistory,
+  name: string,
+  scope?: "stage",
+): EditorHistory {
   const program = validateStudioProgram(history.current);
   if (
     !DATA_NAME.test(name) ||
@@ -2401,6 +2412,7 @@ export function addStudioList(history: EditorHistory, name: string): EditorHisto
       name,
       initialItems: [],
       visible: true,
+      ...(scope === "stage" ? { scope } : {}),
     },
   ];
   return recordCanonicalTransaction(history, {

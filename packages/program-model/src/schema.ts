@@ -1066,6 +1066,8 @@ export interface ProgramList {
   readonly name: string;
   readonly initialItems: readonly (number | string)[];
   readonly visible: boolean;
+  /** Shared by all actors when declared on Scratch's Stage; absent means actor-local. */
+  readonly scope?: "stage";
 }
 
 /** A named group of blocks a character can reuse; it belongs to one script. */

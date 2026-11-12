@@ -467,6 +467,7 @@ const COPY = {
     newVariable: "Crear variable",
     newStageVariable: "Nueva variable del Escenario",
     newList: "Crear lista",
+    newStageList: "Nueva lista del Escenario",
     newWord: "Crear palabra",
     newStageWord: "Nueva palabra del Escenario",
     readStageWord: "Guardar palabra del Escenario",
@@ -867,6 +868,7 @@ const COPY = {
     newVariable: "Create variable",
     newStageVariable: "New Stage variable",
     newList: "Create list",
+    newStageList: "New Stage list",
     newWord: "Create word",
     newStageWord: "New Stage word",
     readStageWord: "Save Stage word",
@@ -2449,6 +2451,7 @@ export function KidsStudioScreen({
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
   const shownStageVariables = selectedFrame?.stage.variables ?? run?.stage.variables;
   const shownStageTexts = selectedFrame?.stage.texts ?? run?.stage.texts;
+  const shownStageLists = selectedFrame?.stage.lists ?? run?.stage.lists;
   const stageBackdrop = backdropOfStage(shownStage?.backdropId, backdropId);
   const stageArtAsset = customImagesEnabled
     ? creative.assets?.find(
@@ -2759,7 +2762,9 @@ export function KidsStudioScreen({
     persist(trySetTrigger(scriptTarget, trigger));
   }
 
-  function createData(kind: "variable" | "stageVariable" | "list" | "word" | "stageWord") {
+  function createData(
+    kind: "variable" | "stageVariable" | "list" | "stageList" | "word" | "stageWord",
+  ) {
     try {
       const name = dataName.trim();
       const next =
@@ -2767,7 +2772,7 @@ export function KidsStudioScreen({
           ? addStudioVariable(history, name, kind === "stageVariable" ? "stage" : undefined)
           : kind === "word" || kind === "stageWord"
             ? addStudioText(history, name, kind === "stageWord" ? "stage" : undefined)
-            : addStudioList(history, name);
+            : addStudioList(history, name, kind === "stageList" ? "stage" : undefined);
       persist(next);
       setDataName("");
       if (kind === "variable" || kind === "stageVariable")
@@ -5468,17 +5473,19 @@ export function KidsStudioScreen({
                 {history.current.lists
                   ?.filter(
                     (item) =>
-                      (shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[
-                        item.id
-                      ]?.visible ?? item.visible) !== false,
+                      ((item.scope === "stage"
+                        ? shownStageLists?.[item.id]
+                        : shownWorld?.lists?.[item.id]
+                      )?.visible ?? item.visible) !== false,
                   )
                   .map((item) => (
                     <p key={item.id}>
                       {item.name}:{" "}
                       {listDisplay(
-                        shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[
-                          item.id
-                        ]?.items ?? item.initialItems,
+                        (item.scope === "stage"
+                          ? shownStageLists?.[item.id]
+                          : shownWorld?.lists?.[item.id]
+                        )?.items ?? item.initialItems,
                         locale,
                       )}
                     </p>
@@ -8633,6 +8640,15 @@ export function KidsStudioScreen({
                   onClick={() => createData("list")}
                 >
                   + {copy.newList}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-testid="create-stage-list"
+                  disabled={!dataName.trim() || (history.current.lists?.length ?? 0) >= 3}
+                  onClick={() => createData("stageList")}
+                >
+                  + {copy.newStageList}
                 </button>
                 <button
                   type="button"

@@ -9,6 +9,7 @@ const scene: ProjectProgram = {
   schema: SCHEMA_VERSION,
   variables: [{ id: "score", name: "Score", initialValue: 4, visible: true, scope: "stage" }],
   textVariables: [{ id: "word", name: "Word", initialValue: "hi", visible: true, scope: "stage" }],
+  lists: [{ id: "items", name: "Items", initialItems: ["a"], visible: true, scope: "stage" }],
   scripts: [
     {
       id: "main",
@@ -34,5 +35,9 @@ describe("Stage variable code views", () => {
     expect(projectPython(scene).text).toContain("# Stage word shared by all characters");
     expect(projectProgram(scene).code).toContain("// Stage word shared by all characters");
     expect(projectJava(scene).text).toContain("// Stage word shared by all characters");
+    expect(projectAgorixCode(scene).text).toContain('stage list "Items" = "a"');
+    expect(projectPython(scene).text).toContain("# Stage list shared by all characters");
+    expect(projectProgram(scene).code).toContain("// Stage list shared by all characters");
+    expect(projectJava(scene).text).toContain("// Stage list shared by all characters");
   });
 });

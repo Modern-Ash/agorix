@@ -1019,6 +1019,7 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     );
   }
   for (const list of validated.lists ?? []) {
+    if (list.scope === "stage") writer.text += "// Stage list shared by all characters\n";
     const mixed = writer.mixedLists.has(list.id);
     const initial =
       list.initialItems.length === 0
