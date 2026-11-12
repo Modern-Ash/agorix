@@ -223,6 +223,132 @@ describe("Scratch import", () => {
     );
     expect(report.dropped.some((item) => item.what.includes("join (a second value"))).toBe(true);
   });
+
+  it("imports Scratch letter and length reporters, executes them, and round-trips them", async () => {
+    const scratch = project();
+    (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = [
+      "word",
+      "Hola",
+    ];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(2), STRING: [3, [12, "word", "w"], [10, ""]] },
+    });
+    blocks["var"] = block("data_setvariableto", {
+      next: "weird",
+      fields: { VARIABLE: ["score", "v1"] },
+      inputs: { VALUE: [3, "length", [4, "0"]] },
+    });
+    blocks["length"] = block("operator_length", {
+      inputs: { STRING: [3, [12, "word", "w"], [10, ""]] },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(
+      report.dropped.some(
+        (item) => item.what.includes("operator_letter_of") || item.what.includes("operator_length"),
+      ),
+    ).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "letterOf", index: { value: 2 }, value: { type: "textVariable" } },
+    });
+    expect(program.scripts[0]!.statements[4]).toMatchObject({
+      type: "setVariable",
+      value: { type: "textLength", value: { type: "textVariable" } },
+    });
+    const creative = creativeForStudio(program, "forest", "es");
+    const run = runMultiActorProgram(program, creative);
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("o");
+    expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(4);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+    expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
+  });
+
+  it("reports an unsupported letter position and overlong length source", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(21), STRING: lit("Hola", 10) },
+    });
+    blocks["var"] = block("data_setvariableto", {
+      next: "weird",
+      fields: { VARIABLE: ["score", "v1"] },
+      inputs: { VALUE: [3, "length", [4, "0"]] },
+    });
+    blocks["length"] = block("operator_length", {
+      inputs: { STRING: lit("una palabra demasiado larga", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(
+      program.scripts[0]!.statements.some(
+        (statement) => statement.type === "say" || statement.type === "setVariable",
+      ),
+    ).toBe(false);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_letter_of"))).toBe(true);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
+  });
+
+  it("does not treat a numeric Scratch property as a word source", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["var"] = block("data_setvariableto", {
+      next: "weird",
+      fields: { VARIABLE: ["score", "v1"] },
+      inputs: { VALUE: [3, "length", [4, "0"]] },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: [3, "property", [10, ""]] } });
+    blocks["property"] = block("sensing_of", {
+      fields: { PROPERTY: ["volume", null] },
+      inputs: { OBJECT: [1, "target"] },
+    });
+    blocks["target"] = block("sensing_of_object_menu", { fields: { OBJECT: ["Cat", null] } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(
+      program.scripts[0]!.statements.some((statement) => statement.type === "setVariable"),
+    ).toBe(false);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
+  });
+
+  it("keeps a short literal letter and the current costume name length", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(2), STRING: lit("luna", 10) },
+    });
+    blocks["var"] = block("data_setvariableto", {
+      next: "weird",
+      fields: { VARIABLE: ["score", "v1"] },
+      inputs: { VALUE: [3, "length", [4, "0"]] },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: [3, "name", [10, ""]] } });
+    blocks["name"] = block("looks_costumenumbername", { fields: { NUMBER_NAME: ["name", null] } });
+    const { program } = convertScratchProject(scratch);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("u");
+    expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(4);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+    expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
+  });
 });
 
 describe("Scratch clones (#1311)", () => {

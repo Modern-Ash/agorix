@@ -538,6 +538,11 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - **Decir con variable** (`say` / `think` with `append`): fixed text, one space, then a bounded number or word written in the bubble. The runtime evaluates the value deterministically; decimals are kept to two places.
 - The Scratch importer accepts `join` with fixed first text and a number, word variable, actor/Stage name reporter, or short literal in the second slot. Unsupported second values drop the bubble with an explicit import report. General nested text composition stays outside this bounded form.
 
+## Bounded Scratch letter and length reporters
+
+- Scratch `length of` imports to canonical `textLength` for a short word literal, word variable or compatible name reporter. `letter of` imports to canonical `letterOf` with the same bounded word source and a fixed one-based position from 1 to 20.
+- Both reporters execute through the deterministic runtime in number or bubble slots and export back to their Scratch opcodes. Unsupported sources and positions are dropped with an explicit import reason. General nested text composition remains outside this importer increment.
+
 ## More ideas from Ori (what Scratch's blocks make easy to ask for)
 
 Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks added for Scratch compatibility and are still the same kind of thing: a goal picked from a closed list (never typed), turned by deterministic code into two to eight blocks, shown as ghost blocks with the evidence of where the character would end up, and added only if the learner uses the idea.
