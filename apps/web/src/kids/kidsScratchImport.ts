@@ -39,6 +39,7 @@ import {
   cloneScriptId,
   extraScriptId,
   MAX_STUDIO_EXTRA_SCRIPTS,
+  STUDIO_WORD_MAX_LENGTH,
   studioActorId,
   validateStudioProgram,
 } from "./kidsStudioModel.js";
@@ -1205,7 +1206,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
 
   // Up to three variables, from the stage first, then the sprites.
   const names: { name: string; scope?: "stage"; initialValue: number }[] = [];
-  const words: { name: string }[] = [];
+  const words: { name: string; scope?: "stage"; initialValue: string }[] = [];
   // A variable holds words when it starts as a word or the project sets it to a word.
   const setToWord = new Set<string>();
   for (const target of [stage, ...sprites]) {
@@ -1230,14 +1231,21 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   }
   for (const [targetIndex, target] of [stage, ...sprites].entries()) {
     const variables = isRecord(target?.["variables"]) ? target["variables"] : {};
-    for (const entry of Object.values(variables)) {
+    for (const [scratchId, entry] of Object.entries(variables)) {
       const name = Array.isArray(entry) ? entry[0] : undefined;
       if (typeof name !== "string" || !DATA_NAME.test(name)) continue;
       if (names.some((item) => item.name === name) || words.some((word) => word.name === name))
         continue;
       const initial: unknown = Array.isArray(entry) ? entry[1] : undefined;
-      // The scene's variables always start empty, so a starting word is not kept.
-      if (isWord(initial) || setToWord.has(name)) words.push({ name });
+      if (isWord(initial) || setToWord.has(name) || /(?:^|:)studio-text-\d+$/.test(scratchId))
+        words.push({
+          name,
+          ...(targetIndex === 0 && stage !== undefined ? { scope: "stage" as const } : {}),
+          initialValue:
+            targetIndex === 0 && typeof initial === "string"
+              ? converter.adjust(initial.slice(0, STUDIO_WORD_MAX_LENGTH), initial)
+              : "",
+        });
       else
         names.push({
           name,
@@ -1370,8 +1378,9 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
   const textVariables = words.slice(0, 3).map((word, index) => ({
     id: `studio-text-${index + 1}`,
     name: word.name,
-    initialValue: "",
+    initialValue: word.initialValue,
     visible: true,
+    ...(word.scope === "stage" ? { scope: "stage" as const } : {}),
   }));
   const lists = [...converter.listIds.values()].map((id, index) => ({
     id,

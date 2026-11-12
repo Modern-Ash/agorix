@@ -1011,6 +1011,7 @@ export function projectJava(program: ProjectProgram): LanguageProjectionResult {
     );
   }
   for (const text of validated.textVariables ?? []) {
+    if (text.scope === "stage") writer.text += "// Stage word shared by all characters\n";
     mapped(
       writer,
       `textVariables/${text.id}`,

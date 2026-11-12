@@ -468,6 +468,8 @@ const COPY = {
     newStageVariable: "Nueva variable del Escenario",
     newList: "Crear lista",
     newWord: "Crear palabra",
+    newStageWord: "Nueva palabra del Escenario",
+    readStageWord: "Guardar palabra del Escenario",
     wordVariable: "Palabra",
     wordValue: "Escribí la palabra",
     setWord: "Guardar palabra",
@@ -866,6 +868,8 @@ const COPY = {
     newStageVariable: "New Stage variable",
     newList: "Create list",
     newWord: "Create word",
+    newStageWord: "New Stage word",
+    readStageWord: "Save Stage word",
     wordVariable: "Word",
     wordValue: "Type the word",
     setWord: "Save word",
@@ -1608,6 +1612,7 @@ export function KidsStudioScreen({
   const [musicPan, setMusicPan] = useState(0);
   const [dataName, setDataName] = useState("");
   const [textVarId, setTextVarId] = useState("studio-text-1");
+  const [stageTextVarId, setStageTextVarId] = useState("studio-text-1");
   const [wordValue, setWordValue] = useState("");
   const [wordLetter, setWordLetter] = useState("a");
   const [dataValue, setDataValue] = useState(1);
@@ -1817,6 +1822,11 @@ export function KidsStudioScreen({
     : (history.current.textVariables?.[0]?.id ?? textVarId);
   const selectedTextName =
     history.current.textVariables?.find((item) => item.id === selectedTextId)?.name ?? "";
+  const selectedStageTextId = history.current.textVariables?.some(
+    (item) => item.id === stageTextVarId && item.scope === "stage",
+  )
+    ? stageTextVarId
+    : (history.current.textVariables?.find((item) => item.scope === "stage")?.id ?? stageTextVarId);
   const selectedVariableId = history.current.variables?.some((item) => item.id === variableId)
     ? variableId
     : (history.current.variables?.[0]?.id ?? variableId);
@@ -2438,6 +2448,7 @@ export function KidsStudioScreen({
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
   const shownStageVariables = selectedFrame?.stage.variables ?? run?.stage.variables;
+  const shownStageTexts = selectedFrame?.stage.texts ?? run?.stage.texts;
   const stageBackdrop = backdropOfStage(shownStage?.backdropId, backdropId);
   const stageArtAsset = customImagesEnabled
     ? creative.assets?.find(
@@ -2748,14 +2759,14 @@ export function KidsStudioScreen({
     persist(trySetTrigger(scriptTarget, trigger));
   }
 
-  function createData(kind: "variable" | "stageVariable" | "list" | "word") {
+  function createData(kind: "variable" | "stageVariable" | "list" | "word" | "stageWord") {
     try {
       const name = dataName.trim();
       const next =
         kind === "variable" || kind === "stageVariable"
           ? addStudioVariable(history, name, kind === "stageVariable" ? "stage" : undefined)
-          : kind === "word"
-            ? addStudioText(history, name)
+          : kind === "word" || kind === "stageWord"
+            ? addStudioText(history, name, kind === "stageWord" ? "stage" : undefined)
             : addStudioList(history, name);
       persist(next);
       setDataName("");
@@ -2763,9 +2774,11 @@ export function KidsStudioScreen({
         setVariableId(`studio-var-${next.current.variables?.length ?? 1}`);
       if (kind === "stageVariable")
         setStageVariableId(`studio-var-${next.current.variables?.length ?? 1}`);
-      else if (kind === "word")
+      else if (kind === "word" || kind === "stageWord") {
         setTextVarId(`studio-text-${next.current.textVariables?.length ?? 1}`);
-      else setListId(`studio-list-${next.current.lists?.length ?? 1}`);
+        if (kind === "stageWord")
+          setStageTextVarId(`studio-text-${next.current.textVariables?.length ?? 1}`);
+      } else setListId(`studio-list-${next.current.lists?.length ?? 1}`);
     } catch {
       setError(true);
     }
@@ -5444,9 +5457,10 @@ export function KidsStudioScreen({
                 {history.current.textVariables?.map((item) => (
                   <p key={item.id}>
                     {item.name}:{" "}
-                    {(shownActors?.find((entry) => entry.id === activeActorId)?.world.texts?.[
-                      item.id
-                    ]?.value ??
+                    {((item.scope === "stage"
+                      ? shownStageTexts?.[item.id]
+                      : shownWorld?.texts?.[item.id]
+                    )?.value ??
                       item.initialValue) ||
                       "—"}
                   </p>
@@ -8628,6 +8642,15 @@ export function KidsStudioScreen({
                 >
                   + {copy.newWord}
                 </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-testid="create-stage-word"
+                  disabled={!dataName.trim() || (history.current.textVariables?.length ?? 0) >= 3}
+                  onClick={() => createData("stageWord")}
+                >
+                  + {copy.newStageWord}
+                </button>
                 {history.current.textVariables?.length ? (
                   <>
                     <label>
@@ -8670,6 +8693,45 @@ export function KidsStudioScreen({
                     >
                       + {copy.setWord}
                     </button>
+                    {history.current.textVariables.some((item) => item.scope === "stage") ? (
+                      <>
+                        <label>
+                          {copy.newStageWord}{" "}
+                          <select
+                            aria-label={copy.newStageWord}
+                            value={selectedStageTextId}
+                            onChange={(event) => setStageTextVarId(event.target.value)}
+                          >
+                            {history.current.textVariables
+                              .filter((item) => item.scope === "stage")
+                              .map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.name}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          data-testid="stage-word-read"
+                          onClick={() =>
+                            add({
+                              type: "setText",
+                              variableId: selectedTextId,
+                              value: {
+                                type: "actorProperty",
+                                actorId: STAGE_ACTOR_ID,
+                                property: "variable",
+                                variableId: selectedStageTextId,
+                              },
+                            })
+                          }
+                        >
+                          + {copy.readStageWord}
+                        </button>
+                      </>
+                    ) : null}
                     <button
                       type="button"
                       className="kids-button"

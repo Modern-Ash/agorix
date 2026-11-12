@@ -104,3 +104,70 @@ describe("Stage-owned number variables", () => {
     ).toThrow();
   });
 });
+
+describe("Stage-owned words", () => {
+  const words: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    textVariables: [
+      { id: "shared", name: "Shared", initialValue: "hello", visible: true, scope: "stage" },
+      { id: "seen", name: "Seen", initialValue: "", visible: true },
+    ],
+    scripts: [
+      {
+        id: "a",
+        trigger: { type: "greenFlag" },
+        statements: [
+          { type: "setText", variableId: "shared", value: { type: "textLiteral", value: "world" } },
+        ],
+      },
+      {
+        id: "b",
+        trigger: { type: "greenFlag" },
+        statements: [
+          {
+            type: "setText",
+            variableId: "seen",
+            value: {
+              type: "actorProperty",
+              actorId: STAGE_ACTOR_ID,
+              property: "variable",
+              variableId: "shared",
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  it("shares values and visibility in batch and live runs", () => {
+    const batch = runMultiActorProgram(words, creative);
+    expect(batch.stage.texts?.shared).toEqual({ value: "world", visible: true });
+    expect(batch.actors[1]?.world.texts?.seen?.value).toBe("world");
+    const live = createLiveRuntime(words, creative, { paceSeconds: 0 });
+    live.fire({ type: "start" });
+    for (let t = 0; t < 1; t += LIVE_TICK_SECONDS) live.advance(LIVE_TICK_SECONDS);
+    expect(live.result().stage.texts?.shared).toEqual({ value: "world", visible: true });
+    expect(live.result().actors[1]?.world.texts?.seen?.value).toBe("world");
+  });
+
+  it("rejects local Stage property reads and unsupported scopes", () => {
+    expect(() =>
+      validateProgram({
+        ...words,
+        textVariables: [
+          { ...words.textVariables![0]!, scope: undefined },
+          words.textVariables![1]!,
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProgram({
+        ...words,
+        textVariables: [
+          { ...words.textVariables![0]!, scope: "global" as "stage" },
+          words.textVariables![1]!,
+        ],
+      }),
+    ).toThrow();
+  });
+});

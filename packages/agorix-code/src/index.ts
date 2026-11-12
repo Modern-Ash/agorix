@@ -67,7 +67,11 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     writeMapped(
       writer,
       "textVariables/" + text.id,
-      "text " + variableName(writer, text.id) + " = " + JSON.stringify(text.initialValue) + "\n",
+      (text.scope === "stage" ? "stage text " : "text ") +
+        variableName(writer, text.id) +
+        " = " +
+        JSON.stringify(text.initialValue) +
+        "\n",
     );
     if (text.visible) {
       writeMapped(

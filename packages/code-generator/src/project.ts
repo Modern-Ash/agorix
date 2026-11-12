@@ -719,6 +719,7 @@ function projectText(program: ProjectProgram): {
     }
   }
   for (const text of program.textVariables ?? []) {
+    if (text.scope === "stage") write(writer, "// Stage word shared by all characters\n");
     write(
       writer,
       `let ${formatVariableName(context, text.id, `textVariables/${text.id}`)} = ${JSON.stringify(text.initialValue)};\n`,
