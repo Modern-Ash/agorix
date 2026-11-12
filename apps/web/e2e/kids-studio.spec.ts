@@ -3046,14 +3046,18 @@ test("a character answers the letters a Scratch child reaches for, such as W, wi
   // The first run has finished before we look at where the character is.
   await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
   const actor = page.locator(".kids-studio-stage-actor").first();
-  await expect.poll(async () => actor.getAttribute("style")).toBeTruthy();
-  const before = await actor.getAttribute("style");
+  await expect(actor.locator(".kids-studio-stage-costume")).not.toHaveAttribute(
+    "data-live",
+    "true",
+  );
+  const position = () => actor.evaluate((element) => `${element.style.left}|${element.style.top}`);
+  const before = await position();
   // Not the key the script waits for: nothing moves.
   await page.keyboard.press("q");
-  await expect(actor).toHaveAttribute("style", before!);
+  await expect.poll(position).toBe(before);
   // The key it waits for, capital or not: the character moves.
   await page.keyboard.press("w");
-  await expect.poll(async () => actor.getAttribute("style")).not.toBe(before);
+  await expect.poll(position).not.toBe(before);
   // The key it was chosen by is shown as a capital, and the program says which key.
   await page.getByTestId("script-tab-2").click();
   await expect(keyChoice).toHaveValue("w");
@@ -3083,11 +3087,16 @@ test("pressing Enter on a focused control is that control's own press, not a key
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
   const actor = page.locator(".kids-studio-stage-actor").first();
-  const before = await actor.getAttribute("style");
+  await expect(actor.locator(".kids-studio-stage-costume")).not.toHaveAttribute(
+    "data-live",
+    "true",
+  );
+  const position = () => actor.evaluate((element) => `${element.style.left}|${element.style.top}`);
+  const before = await position();
   // Enter on a button presses the button; the program does not also hear it.
   await page.getByRole("button", { name: "Reiniciar" }).focus();
   await page.keyboard.press("Enter");
-  await expect(actor).toHaveAttribute("style", before!);
+  await expect.poll(position).toBe(before);
 });
 
 test("free scene takes a square root with the new math functions", async ({ page }) => {
