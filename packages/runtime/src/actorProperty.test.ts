@@ -165,7 +165,7 @@ it("reads the running actor's latest position and named costume in batch and liv
   };
   const selfScene: ProjectCreativeState = {
     ...scene,
-    actors: [{ ...scene.actors[1]!, costumeId: "costume:blue" }],
+    actors: [{ ...scene.actors![1]!, costumeId: "costume:blue" }],
     stage: { actorOrder: [hero] },
     costumeOrders: { [hero]: ["costume:blue"] },
   };
