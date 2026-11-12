@@ -224,6 +224,92 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.includes("join (a second value"))).toBe(true);
   });
 
+  it("imports a dynamic join into speech and a word variable without adding a space", async () => {
+    const scratch = project();
+    const stage = scratch.targets[0] as { variables: Record<string, unknown> };
+    stage.variables["w1"] = ["first", "Hola"];
+    stage.variables["w2"] = ["result", "Listo"];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "setWord",
+      inputs: { MESSAGE: [3, "speechJoin", [10, ""]] },
+    });
+    blocks["speechJoin"] = block("operator_join", {
+      inputs: { STRING1: [3, [12, "first", "w1"], [10, ""]], STRING2: [3, "name", [10, ""]] },
+    });
+    blocks["name"] = block("looks_costumenumbername", { fields: { NUMBER_NAME: ["name", null] } });
+    blocks["setWord"] = block("data_setvariableto", {
+      next: "rep",
+      fields: { VARIABLE: ["result", "w2"] },
+      inputs: { VALUE: [3, "wordJoin", [10, ""]] },
+    });
+    blocks["wordJoin"] = block("operator_join", {
+      inputs: { STRING1: [3, [12, "first", "w1"], [10, ""]], STRING2: lit("mundo", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("operator_join"))).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      text: "",
+      append: { type: "join" },
+    });
+    expect(program.scripts[0]!.statements[3]).toMatchObject({
+      type: "setText",
+      value: { type: "join" },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("HolaNova");
+    const resultId = program.textVariables?.find((item) => item.name === "result")?.id;
+    expect(run.actors[0]!.world.texts?.[resultId ?? ""]?.value).toBe("Holamundo");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+    expect(back.program.scripts[0]!.statements[3]).toEqual(program.scripts[0]!.statements[3]);
+  });
+
+  it("reports and drops a dynamic join with an unsupported source", () => {
+    const scratch = project();
+    (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = [
+      "first",
+      "Hola",
+    ];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", { next: "rep", inputs: { MESSAGE: [3, "join", [10, ""]] } });
+    blocks["join"] = block("operator_join", {
+      inputs: {
+        STRING1: [3, [12, "first", "w"], [10, ""]],
+        STRING2: lit("una palabra demasiado larga", 10),
+      },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
+  });
+
+  it("drops nested Scratch joins instead of changing their text", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "outer", [10, ""]] },
+    });
+    blocks["outer"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "inner", [10, ""]] },
+    });
+    blocks["inner"] = block("operator_join", {
+      inputs: { STRING1: lit("mundo", 10), STRING2: lit("!", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.includes("join"))).toBe(true);
+  });
+
   it("imports Scratch letter and length reporters, executes them, and round-trips them", async () => {
     const scratch = project();
     (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = [

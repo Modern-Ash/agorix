@@ -326,6 +326,15 @@ class Converter {
           ? { type: "listContains", listId, value }
           : { type: "listIndexOf", listId, value };
       }
+      case "operator_join": {
+        const left = this.boundedTextSource(block, "STRING1");
+        const right = this.boundedTextSource(block, "STRING2");
+        if (left === undefined || right === undefined) {
+          this.drop("operator_join (a word the scene cannot use)");
+          return undefined;
+        }
+        return { type: "join", left, right };
+      }
       case "operator_length": {
         const value = this.boundedTextSource(block, "STRING");
         if (value === undefined) this.drop("operator_length (a word the scene cannot use)");
@@ -702,7 +711,8 @@ class Converter {
         const isReporter =
           typeof reference === "string" ||
           (Array.isArray(reference) && (reference as unknown as Primitive)[0] === 12);
-        const direct = isReporter ? this.listValue(block, "MESSAGE") : undefined;
+        const direct =
+          isReporter && joined === undefined ? this.listValue(block, "MESSAGE") : undefined;
         const raw = (
           joined?.text ??
           this.literal(block, "MESSAGE") ??
@@ -1125,6 +1135,7 @@ class Converter {
         inner?.opcode === "data_itemoflist" ||
         inner?.opcode === "sensing_of" ||
         inner?.opcode === "operator_letter_of" ||
+        inner?.opcode === "operator_join" ||
         (inner?.opcode === "looks_costumenumbername" &&
           inner.fields["NUMBER_NAME"]?.[0] === "name") ||
         (inner?.opcode === "looks_backdropnumbername" &&
@@ -1162,7 +1173,7 @@ class Converter {
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
     const append = this.listValue(join, "STRING2");
-    if (append === undefined) {
+    if (append === undefined || append.type === "join") {
       this.drop("join (a second value the scene cannot use)");
       return undefined;
     }
