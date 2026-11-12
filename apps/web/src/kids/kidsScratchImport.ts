@@ -679,7 +679,11 @@ class Converter {
           this.literal(block, "MESSAGE") ??
           (direct === undefined ? undefined : "")
         )?.trim();
-        if (raw === undefined || (raw === "" && direct === undefined)) return missing();
+        if (
+          raw === undefined ||
+          (raw === "" && direct === undefined && joined?.append === undefined)
+        )
+          return missing();
         const text = raw.slice(0, STUDIO_BUBBLE_MAX_LENGTH);
         this.adjust(text, raw);
         const kind = block.opcode.includes("say") ? "say" : "think";
@@ -1103,10 +1107,7 @@ class Converter {
     return value === undefined ? undefined : wordOf(value);
   }
 
-  /**
-   * Scratch's `join` in a bubble: a fixed text and a number or variable after it. Anything else
-   * (text from a variable, a join of joins) has no place in the scene and is left behind.
-   */
+  /** Scratch's `join` in a bubble: fixed text and one bounded number or word after it. */
   joinedMessage(
     block: ScratchBlock,
   ): { readonly text: string; readonly append?: Expression } | undefined {
@@ -1115,10 +1116,10 @@ class Converter {
     if (join?.opcode !== "operator_join") return undefined;
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
-    const append = this.numberExpression(join, "STRING2");
+    const append = this.listValue(join, "STRING2");
     if (append === undefined) {
-      if ((this.literal(join, "STRING2") ?? "") !== "") this.drop("join (a second text)");
-      return { text };
+      this.drop("join (a second value the scene cannot use)");
+      return undefined;
     }
     return { text, append };
   }

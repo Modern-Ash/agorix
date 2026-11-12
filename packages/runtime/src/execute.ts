@@ -135,6 +135,9 @@ export interface ExecutionOptions {
   readonly colorZones?: Readonly<Record<string, readonly ColorZone[]>>;
   /** The costume ids of the acting character, in order: its costume number counts from 1 here. */
   readonly costumeOrder?: readonly string[];
+  /** Identity and costume names of the running actor, for reading its current state. */
+  readonly currentActorId?: string;
+  readonly costumeNames?: Readonly<Record<string, string>>;
   /** The backdrop ids in order: the backdrop number counts from 1 here. */
   readonly backdropOrder?: readonly string[];
   /** Human-readable names of backdrops, by canonical asset id. */
@@ -503,6 +506,35 @@ function evaluateExpression(
         if (expression.property === "backdropName")
           return state.options.backdropNames?.[state.world.backdropId ?? ""] ?? "";
         return 0;
+      }
+      if (expression.actorId === state.options.currentActorId) {
+        const sprite = state.world.sprite;
+        switch (expression.property) {
+          case "xPosition":
+            return sprite.x;
+          case "yPosition":
+            return sprite.y;
+          case "direction":
+            return sprite.heading;
+          case "size":
+            return sprite.size ?? 100;
+          case "volume":
+            return state.world.sounds?.volume ?? 100;
+          case "costumeNumber":
+            return (state.options.costumeOrder?.indexOf(sprite.costumeId ?? "") ?? -1) + 1;
+          case "costumeName":
+            return (
+              state.options.costumeNames?.[sprite.costumeId ?? ""] ??
+              sprite.costumeId?.split(":").at(-1) ??
+              ""
+            );
+          case "variable":
+            return (
+              state.world.variables?.[expression.variableId ?? ""]?.value ??
+              state.world.texts?.[expression.variableId ?? ""]?.value ??
+              0
+            );
+        }
       }
       const target = state.options.sensorActors?.find((actor) => actor.id === expression.actorId);
       if (target === undefined) return 0;

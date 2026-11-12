@@ -237,6 +237,12 @@ export function createLiveRuntime(
     });
     const execution: ExecutionOptions = {
       maxSteps: Number.MAX_SAFE_INTEGER,
+      currentActorId: actor.id,
+      costumeNames: Object.fromEntries(
+        (creative.assets ?? [])
+          .filter((asset) => asset.kind === "costume")
+          .map((asset) => [asset.id, asset.name]),
+      ),
       maxVirtualSeconds: maxSeconds,
       event: programEventForRuntimeEvent(event),
       ...(isCloneId(actor.id) ? { isClone: true } : {}),

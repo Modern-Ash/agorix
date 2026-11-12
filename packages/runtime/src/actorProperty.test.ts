@@ -7,7 +7,7 @@ import {
   type ProjectProgram,
   type Statement,
 } from "@agorix/program-model";
-import { createWorldState, runMultiActorProgram, runProgram } from "./index.js";
+import { createLiveRuntime, createWorldState, runMultiActorProgram, runProgram } from "./index.js";
 
 const friend = "actor:friend";
 const hero = "actor:hero";
@@ -138,4 +138,43 @@ describe("property of another actor", () => {
       expect(() => validateProgram(malformed)).toThrow();
     }
   });
+});
+
+it("reads the running actor's latest position and named costume in batch and live execution", () => {
+  const selfProgram: ProjectProgram = {
+    ...program,
+    scripts: [
+      {
+        id: "hero-script",
+        trigger: { type: "greenFlag" },
+        statements: [
+          { type: "goTo", x: 34, y: -7 },
+          {
+            type: "setVariable",
+            variableId: "x",
+            value: { type: "actorProperty", actorId: hero, property: "xPosition" },
+          },
+          {
+            type: "setText",
+            variableId: "name",
+            value: { type: "actorProperty", actorId: hero, property: "costumeName" },
+          },
+        ],
+      },
+    ],
+  };
+  const selfScene: ProjectCreativeState = {
+    ...scene,
+    actors: [{ ...scene.actors[1]!, costumeId: "costume:blue" }],
+    stage: { actorOrder: [hero] },
+    costumeOrders: { [hero]: ["costume:blue"] },
+  };
+  const batch = runMultiActorProgram(selfProgram, selfScene).actors[0]!.world;
+  const live = createLiveRuntime(selfProgram, selfScene);
+  live.fire({ type: "start" });
+  for (let tick = 0; tick < 100 && live.running; tick++) live.advance(0.05);
+  for (const world of [batch, live.result().actors[0]!.world]) {
+    expect(world.variables?.x?.value).toBe(34);
+    expect(world.texts?.name?.value).toBe("Blue");
+  }
 });
