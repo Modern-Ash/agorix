@@ -939,6 +939,49 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
   });
 
+  it("floors a fractional Scratch letter position and round-trips it", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(2.9), STRING: lit("Hola", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("operator_letter_of"))).toBe(false);
+    expect(report.blocksAdjusted).toBeGreaterThan(0);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "letterOf", index: { type: "numericLiteral", value: 2 } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("o");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it.each([0.9, 21.9])("reports fractional letter position %s outside the scene limit", (index) => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(index), STRING: lit("Hola", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.includes("operator_letter_of"))).toBe(true);
+  });
+
   it("imports a letter of one bounded Scratch join and round-trips it", async () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
