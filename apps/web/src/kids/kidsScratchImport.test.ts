@@ -1666,6 +1666,39 @@ describe("Scratch import", () => {
     },
   );
 
+  it("compares numeric-looking Scratch joins and round-trips their equality", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "found"] },
+    });
+    blocks["equal"] = block("operator_equals", {
+      inputs: {
+        OPERAND1: [3, "leftJoin", [10, ""]],
+        OPERAND2: [3, "rightJoin", [10, ""]],
+      },
+    });
+    blocks["leftJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("00", 10), STRING2: lit("7", 10) },
+    });
+    blocks["rightJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("", 10), STRING2: lit("7", 10) },
+    });
+    blocks["found"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("operator_equals"))).toBe(false);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: { type: "equals", left: { type: "join" }, right: { type: "join" } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.trace.some((entry) => entry.statementType === "say")).toBe(true);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+  });
+
   it("reports a deeper Scratch join inside equality", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;

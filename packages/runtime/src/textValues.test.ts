@@ -76,6 +76,25 @@ describe("text values", () => {
     expect(run.world.sprite.x).toBe(10);
   });
   it.each([
+    { left: "007", right: "7", expected: true },
+    { left: "1.00", right: "1", expected: true },
+    { left: " ", right: "0", expected: false },
+    { left: "", right: "0", expected: false },
+    { left: "apple", right: "APPLE", expected: true },
+    { left: "apple", right: "pear", expected: false },
+  ])("compares Scratch text '$left' and '$right' for equality", ({ left, right, expected }) => {
+    const result = runProgram(
+      program([
+        {
+          type: "if",
+          condition: { type: "equals", left: text(left), right: text(right) },
+          then: [{ type: "move", steps: 10 }],
+        },
+      ]),
+    );
+    expect(result.world.sprite.x).toBe(expected ? 10 : 0);
+  });
+  it.each([
     { type: "lessThan", left: text("apple"), right: text("Banana"), expected: true },
     { type: "greaterThan", left: text("Zebra"), right: text("apple"), expected: true },
     { type: "lessThan", left: text("10"), right: text("2"), expected: false },
