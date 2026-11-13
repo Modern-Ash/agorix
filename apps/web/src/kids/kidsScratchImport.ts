@@ -336,13 +336,13 @@ class Converter {
         return { type: "join", left, right };
       }
       case "operator_length": {
-        const value = this.boundedTextSource(block, "STRING");
+        const value = this.boundedStringSource(block, "STRING");
         if (value === undefined) this.drop("operator_length (a word the scene cannot use)");
         return value === undefined ? undefined : { type: "textLength", value };
       }
       case "operator_letter_of": {
         const index = this.number(block, "LETTER");
-        const value = this.boundedTextSource(block, "STRING");
+        const value = this.boundedStringSource(block, "STRING");
         if (
           index === undefined ||
           !Number.isInteger(index) ||

@@ -297,7 +297,8 @@ function checkedText(value: Expression, program: ProjectProgram, depth = 0): boo
       Number.isInteger(value.index.value) &&
       value.index.value >= 1 &&
       value.index.value <= STUDIO_WORD_MAX_LENGTH &&
-      checkedText(value.value, program, depth + 1)
+      (checkedText(value.value, program, depth + 1) ||
+        checkedNumber(value.value, program, depth + 1))
     );
   return false;
 }
@@ -352,7 +353,10 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
       const target = actorOfScript(script.id);
       return target !== null && studioActorId(target.index, target.characterId) === value.actorId;
     });
-  if (value.type === "textLength") return checkedText(value.value, program, depth + 1);
+  if (value.type === "textLength")
+    return (
+      checkedText(value.value, program, depth + 1) || checkedNumber(value.value, program, depth + 1)
+    );
   if (value.type === "variable")
     return program.variables?.some((item) => item.id === value.variableId) === true;
   if (value.type === "listLength")

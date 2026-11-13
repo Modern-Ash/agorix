@@ -408,6 +408,68 @@ describe("Scratch import", () => {
     expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
   });
 
+  it("keeps numeric sources in Scratch letter and length reporters through round-trip", async () => {
+    const scratch = project();
+    (scratch.targets[0] as { variables: Record<string, unknown> }).variables["v1"] = ["score", 42];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(2), STRING: [3, [12, "score", "v1"], [10, ""]] },
+    });
+    blocks["var"] = block("data_setvariableto", {
+      next: "weird",
+      fields: { VARIABLE: ["score", "v1"] },
+      inputs: { VALUE: [3, "length", [4, "0"]] },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: lit(12) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(
+      report.dropped.some(
+        (item) => item.what.includes("operator_letter_of") || item.what.includes("operator_length"),
+      ),
+    ).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "letterOf", value: { type: "variable" } },
+    });
+    expect(program.scripts[0]!.statements[4]).toMatchObject({
+      type: "setVariable",
+      value: { type: "textLength", value: { type: "numericLiteral", value: 12 } },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("2");
+    expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(2);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+    expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
+  });
+
+  it("reports a nested source in Scratch length instead of importing a changed value", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["var"] = block("data_setvariableto", {
+      next: "weird",
+      fields: { VARIABLE: ["score", "v1"] },
+      inputs: { VALUE: [3, "length", [4, "0"]] },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: [3, "join", [10, ""]] } });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: lit(2) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(
+      program.scripts[0]!.statements.some((statement) => statement.type === "setVariable"),
+    ).toBe(false);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
+  });
+
   it("reports an unsupported letter position and overlong length source", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
