@@ -276,6 +276,61 @@ describe("Scratch import", () => {
     expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
   });
 
+  it("keeps a numeric-looking text lexeme in a fixed-prefix join bubble", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("ID:", 10), STRING2: lit("007", 10) },
+    });
+    const { program } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "join", right: { type: "textLiteral", value: "007" } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("ID:007");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("counts the exact characters of numeric-looking text and rejects an overlong lexeme", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "length", [10, ""]] },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: lit("1.00", 10) } });
+    const { program } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "textLength", value: { type: "textLiteral", value: "1.00" } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("4");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+
+    blocks["length"] = block("operator_length", { inputs: { STRING: lit("0".repeat(21), 10) } });
+    const rejected = convertScratchProject(scratch);
+    expect(
+      rejected.program.scripts[0]!.statements.some((statement) => statement.type === "say"),
+    ).toBe(false);
+    expect(rejected.report.dropped.some((item) => item.what.includes("operator_length"))).toBe(
+      true,
+    );
+  });
+
   it("counts raw spaces in a bounded length reporter and rejects a long raw literal", async () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;

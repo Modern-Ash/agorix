@@ -1181,16 +1181,27 @@ class Converter {
     return undefined;
   }
 
-  /** One short word or a bounded number; no nested reporters in Scratch's string slots. */
-  boundedStringSource(block: ScratchBlock, name: string): Expression | undefined {
+  /** Keep type-10 text when number conversion would change its visible characters. */
+  hasLossyTextLiteral(block: ScratchBlock, name: string): boolean {
     const reference = block.inputs[name]?.[1];
     const literal = this.literal(block, name);
     if (
-      Array.isArray(reference) &&
-      (reference as unknown as Primitive)[0] === 10 &&
-      literal !== undefined &&
-      literal !== literal.trim()
-    ) {
+      !Array.isArray(reference) ||
+      (reference as unknown as Primitive)[0] !== 10 ||
+      literal === undefined
+    )
+      return false;
+    if (literal !== literal.trim()) return true;
+    const number = Number(literal);
+    const bounded = Math.max(-100, Math.min(100, Math.round(number * 10) / 10));
+    return literal !== "" && Number.isFinite(number) && String(bounded) !== literal;
+  }
+
+  /** One short word or a bounded number; no nested reporters in Scratch's string slots. */
+  boundedStringSource(block: ScratchBlock, name: string): Expression | undefined {
+    const reference = block.inputs[name]?.[1];
+    if (this.hasLossyTextLiteral(block, name)) {
+      const literal = this.literal(block, name)!;
       return literal.length <= STUDIO_WORD_MAX_LENGTH && !/\p{Cc}/u.test(literal)
         ? { type: "textLiteral", value: literal }
         : undefined;
@@ -1273,15 +1284,9 @@ class Converter {
     if (join?.opcode !== "operator_join") return undefined;
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
-    const second = join.inputs["STRING2"]?.[1];
-    const secondLiteral = this.literal(join, "STRING2");
-    const append =
-      Array.isArray(second) &&
-      (second as unknown as Primitive)[0] === 10 &&
-      secondLiteral !== undefined &&
-      secondLiteral !== secondLiteral.trim()
-        ? this.boundedStringSource(join, "STRING2")
-        : this.listValue(join, "STRING2");
+    const append = this.hasLossyTextLiteral(join, "STRING2")
+      ? this.boundedStringSource(join, "STRING2")
+      : this.listValue(join, "STRING2");
     if (
       append === undefined ||
       ((append.type === "letterOf" || append.type === "textLength") && append.value.type === "join")
