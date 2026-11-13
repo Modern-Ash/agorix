@@ -480,8 +480,8 @@ class Converter {
   booleanBlock(block: ScratchBlock): Expression | undefined {
     switch (block.opcode) {
       case "operator_contains": {
-        const text = this.boundedStringOrJoinSource(block, "STRING1");
-        const part = this.boundedStringOrJoinSource(block, "STRING2");
+        const text = this.boundedContainsSource(block, "STRING1");
+        const part = this.boundedContainsSource(block, "STRING2");
         if (text === undefined || part === undefined) {
           this.drop("operator_contains (a word the scene cannot use)");
           return undefined;
@@ -1232,6 +1232,15 @@ class Converter {
     return inner?.opcode === "operator_join"
       ? this.reporter(inner)
       : this.boundedStringSource(block, name);
+  }
+
+  /** A bounded letter reporter may feed either side of Scratch contains. */
+  boundedContainsSource(block: ScratchBlock, name: string): Expression | undefined {
+    const reference = block.inputs[name]?.[1];
+    const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+    return inner?.opcode === "operator_letter_of"
+      ? this.reporter(inner)
+      : this.boundedStringOrJoinSource(block, name);
   }
 
   /** Scratch's `join` in a bubble: fixed text and one bounded number or word after it. */
