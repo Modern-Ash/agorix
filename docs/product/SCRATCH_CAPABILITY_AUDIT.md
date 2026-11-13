@@ -546,8 +546,8 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 
 ## Bounded Scratch text contains condition
 
-- Scratch `contains` imports and exports as canonical `textContains` when both inputs are short word literals, word variables or compatible name reporters. The deterministic runtime compares without case sensitivity, so a condition uses the same result after `.sb3` round-trip.
-- An unsupported word source drops the containing condition with an explicit import reason. Nested text composition remains outside this importer increment.
+- Scratch `contains` imports and exports as canonical `textContains` when both inputs are short word literals, word variables, bounded numbers, numeric variables or compatible name reporters. Numeric operands retain their type and become digits during the deterministic, case-insensitive comparison, including after `.sb3` round-trip.
+- An unsupported source drops the containing condition with an explicit import reason. Nested text composition remains outside this importer increment.
 
 ## Bounded Scratch word equality
 

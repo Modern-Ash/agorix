@@ -327,8 +327,8 @@ class Converter {
           : { type: "listIndexOf", listId, value };
       }
       case "operator_join": {
-        const left = this.boundedJoinSource(block, "STRING1");
-        const right = this.boundedJoinSource(block, "STRING2");
+        const left = this.boundedStringSource(block, "STRING1");
+        const right = this.boundedStringSource(block, "STRING2");
         if (left === undefined || right === undefined) {
           this.drop("operator_join (a word the scene cannot use)");
           return undefined;
@@ -480,8 +480,8 @@ class Converter {
   booleanBlock(block: ScratchBlock): Expression | undefined {
     switch (block.opcode) {
       case "operator_contains": {
-        const text = this.boundedTextSource(block, "STRING1");
-        const part = this.boundedTextSource(block, "STRING2");
+        const text = this.boundedStringSource(block, "STRING1");
+        const part = this.boundedStringSource(block, "STRING2");
         if (text === undefined || part === undefined) {
           this.drop("operator_contains (a word the scene cannot use)");
           return undefined;
@@ -1174,8 +1174,8 @@ class Converter {
     return undefined;
   }
 
-  /** One short word or a bounded number; no nested reporters in Scratch's join slots. */
-  boundedJoinSource(block: ScratchBlock, name: string): Expression | undefined {
+  /** One short word or a bounded number; no nested reporters in Scratch's string slots. */
+  boundedStringSource(block: ScratchBlock, name: string): Expression | undefined {
     const reference = block.inputs[name]?.[1];
     if (typeof reference !== "string" || this.blocks.get(reference)?.opcode === "data_variable") {
       const number = this.numberExpression(block, name);

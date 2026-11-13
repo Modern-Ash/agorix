@@ -517,6 +517,48 @@ describe("Scratch import", () => {
     },
   );
 
+  it.each([
+    { source: "number", needle: 2, found: true },
+    { source: "number", needle: 3, found: false },
+    { source: "word", needle: 12, found: true },
+    { source: "word", needle: 13, found: false },
+  ])(
+    "round-trips Scratch contains with $source and numeric $needle",
+    async ({ source, needle, found }) => {
+      const scratch = project();
+      const stage = scratch.targets[0] as { variables: Record<string, unknown> };
+      stage.variables["v1"] = ["score", source === "word" ? needle : 12];
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "contains"], SUBSTACK: [2, "say"] },
+      });
+      blocks["contains"] = block("operator_contains", {
+        inputs: {
+          STRING1: source === "number" ? [3, [12, "score", "v1"], [10, ""]] : lit("Hola12", 10),
+          STRING2: source === "number" ? lit(needle) : [3, [12, "score", "v1"], [10, ""]],
+        },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.includes("operator_contains"))).toBe(false);
+      expect(program.scripts[0]!.statements[0]).toMatchObject({
+        type: "if",
+        condition: {
+          type: "textContains",
+          text: { type: source === "number" ? "variable" : "textLiteral" },
+          part: { type: source === "number" ? "numericLiteral" : "variable" },
+        },
+      });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.trace.some((entry) => entry.statementType === "say")).toBe(found);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+    },
+  );
+
   it("drops an unsupported Scratch contains condition with an explicit reason", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
@@ -526,6 +568,25 @@ describe("Scratch import", () => {
     });
     blocks["contains"] = block("operator_contains", {
       inputs: { STRING1: lit("una palabra demasiado larga", 10), STRING2: lit("palabra", 10) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(true);
+  });
+
+  it("reports a nested Scratch contains source instead of silently changing its meaning", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "contains"], SUBSTACK: [2, "say"] },
+    });
+    blocks["contains"] = block("operator_contains", {
+      inputs: { STRING1: [3, "join", [10, ""]], STRING2: lit("12", 10) },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: lit(12) },
     });
     blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
     const { program, report } = convertScratchProject(scratch);
