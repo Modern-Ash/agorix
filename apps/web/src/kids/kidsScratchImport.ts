@@ -1099,6 +1099,14 @@ class Converter {
     const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
     if (inner?.opcode === "data_lengthoflist" && this.listOf(inner) === listId)
       return { type: "listLength", listId };
+    if (Array.isArray(reference) && (reference as unknown as Primitive)[0] === 12) {
+      const variable = (reference as unknown as Primitive)[1];
+      return typeof variable === "string" ? this.variable(variable) : undefined;
+    }
+    if (inner?.opcode === "data_variable") {
+      const variable = inner.fields["VARIABLE"]?.[0];
+      return typeof variable === "string" ? this.variable(variable) : undefined;
+    }
     const value = this.number(block, name);
     const floored = value === undefined ? undefined : Math.floor(value);
     return floored !== undefined && floored >= 1 && floored <= 10

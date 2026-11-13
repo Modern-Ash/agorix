@@ -3,6 +3,39 @@ import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { programToWorkspace, workspaceToProgram } from "./index.js";
 
 describe("list blocks (issue #468)", () => {
+  it("round-trips a numeric variable used as a list index", () => {
+    const original: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "position", name: "position", initialValue: 2, visible: false }],
+      lists: [{ id: "l", name: "items", initialItems: ["A", "B"], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "listRemoveAt",
+              listId: "l",
+              index: { type: "variable", variableId: "position" },
+            },
+            {
+              type: "listInsertAt",
+              listId: "l",
+              index: { type: "variable", variableId: "position" },
+              value: { type: "textLiteral", value: "C" },
+            },
+            {
+              type: "listReplaceAt",
+              listId: "l",
+              index: { type: "variable", variableId: "position" },
+              value: { type: "textLiteral", value: "D" },
+            },
+          ],
+        },
+      ],
+    };
+    expect(workspaceToProgram(programToWorkspace(original).workspace).program).toEqual(original);
+  });
   it("round-trips declarations, statements and expressions", () => {
     const original: ProjectProgram = {
       schema: SCHEMA_VERSION,
