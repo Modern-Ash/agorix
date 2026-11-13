@@ -1162,7 +1162,12 @@ class Converter {
   /** A single bounded Scratch word source for letter/length, without nested text operators. */
   boundedTextSource(block: ScratchBlock, name: string): Expression | undefined {
     const value = this.wordExpression(block, name);
-    if (value?.type === "textLiteral" || value?.type === "textVariable") return value;
+    if (
+      value?.type === "textLiteral" ||
+      value?.type === "textVariable" ||
+      value?.type === "listItem"
+    )
+      return value;
     if (value?.type === "actorProperty") {
       if (value.property === "costumeName" || value.property === "backdropName") return value;
       if (
