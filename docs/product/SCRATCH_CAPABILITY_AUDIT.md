@@ -541,8 +541,8 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 
 ## Bounded Scratch letter and length reporters
 
-- Scratch `length of` imports to canonical `textLength` for a short word literal, word variable or compatible name reporter. `letter of` imports to canonical `letterOf` with the same bounded word source and a fixed one-based position from 1 to 20.
-- Both reporters execute through the deterministic runtime in number or bubble slots and export back to their Scratch opcodes. Unsupported sources and positions are dropped with an explicit import reason. General nested text composition remains outside this importer increment.
+- Scratch `length of` imports to canonical `textLength` for a short word literal, word variable, bounded number, numeric variable or compatible name reporter. `letter of` imports to canonical `letterOf` with the same bounded source and a fixed one-based position from 1 to 20.
+- Both reporters execute through the deterministic runtime in number or bubble slots and export back to their Scratch opcodes, preserving numeric operand types. Numbers become digits under the established coercion rule. Unsupported sources and positions are dropped with an explicit import reason. General nested text composition remains outside this importer increment.
 
 ## Bounded Scratch text contains condition
 
