@@ -338,7 +338,8 @@ function scratchOrder(left: ExpressionValue, right: ExpressionValue): number {
     typeof value === "string" && value.trim() === "" ? NaN : Number(value);
   const leftNumber = numeric(left);
   const rightNumber = numeric(right);
-  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) return leftNumber - rightNumber;
+  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber))
+    return leftNumber === rightNumber ? 0 : leftNumber - rightNumber;
   const leftWord = String(left).toLowerCase();
   const rightWord = String(right).toLowerCase();
   return leftWord < rightWord ? -1 : leftWord > rightWord ? 1 : 0;
@@ -705,20 +706,7 @@ function evaluateExpression(
     case "equals": {
       const left = evaluateExpression(expression.left, `${path}.left`, state);
       const right = evaluateExpression(expression.right, `${path}.right`, state);
-      // Words are the same when they match ignoring upper and lower case, as in Scratch.
-      if (typeof left === "string" && typeof right === "string")
-        return left.toLowerCase() === right.toLowerCase();
-      // A nonnumeric word must not compare equal to zero through arithmetic coercion.
-      if (typeof left === "string" || typeof right === "string") {
-        const word = typeof left === "string" ? left : (right as string);
-        const parsed = Number(word);
-        return (
-          word.trim() !== "" &&
-          Number.isFinite(parsed) &&
-          parsed === coerceNumber(typeof left === "string" ? right : left)
-        );
-      }
-      return coerceNumber(left) === coerceNumber(right);
+      return scratchOrder(left, right) === 0;
     }
     case "and":
       return (
