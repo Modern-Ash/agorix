@@ -480,8 +480,8 @@ class Converter {
   booleanBlock(block: ScratchBlock): Expression | undefined {
     switch (block.opcode) {
       case "operator_contains": {
-        const text = this.boundedStringOrJoinOrLetterSource(block, "STRING1");
-        const part = this.boundedStringOrJoinOrLetterSource(block, "STRING2");
+        const text = this.boundedTextConditionSource(block, "STRING1");
+        const part = this.boundedTextConditionSource(block, "STRING2");
         if (text === undefined || part === undefined) {
           this.drop("operator_contains (a word the scene cannot use)");
           return undefined;
@@ -538,8 +538,8 @@ class Converter {
         const rightNumber = this.numberExpression(block, "OPERAND2");
         if (leftNumber !== undefined && rightNumber !== undefined)
           return { type: "equals", left: leftNumber, right: rightNumber };
-        const left = this.boundedStringOrJoinOrLetterSource(block, "OPERAND1");
-        const right = this.boundedStringOrJoinOrLetterSource(block, "OPERAND2");
+        const left = this.boundedTextConditionSource(block, "OPERAND1");
+        const right = this.boundedTextConditionSource(block, "OPERAND2");
         if (left === undefined || right === undefined) {
           this.drop("operator_equals (values the scene cannot compare)");
           return undefined;
@@ -1247,11 +1247,11 @@ class Converter {
       : this.boundedStringSource(block, name);
   }
 
-  /** A bounded letter reporter may feed either side of contains or word equality. */
-  boundedStringOrJoinOrLetterSource(block: ScratchBlock, name: string): Expression | undefined {
+  /** Bounded text reporters may feed either side of contains or word equality. */
+  boundedTextConditionSource(block: ScratchBlock, name: string): Expression | undefined {
     const reference = block.inputs[name]?.[1];
     const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
-    return inner?.opcode === "operator_letter_of"
+    return inner?.opcode === "operator_letter_of" || inner?.opcode === "operator_length"
       ? this.reporter(inner)
       : this.boundedStringOrJoinSource(block, name);
   }
