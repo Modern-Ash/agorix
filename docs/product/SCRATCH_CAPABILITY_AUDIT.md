@@ -552,7 +552,12 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 ## Bounded Scratch word equality
 
 - Scratch `equals` imports two bounded word sources, two bounded numbers, or a bounded word and number as canonical `equals`. The deterministic runtime compares two words without case sensitivity and a mixed pair only when the word reads as that number; export and reimport preserve operand types and the condition.
-- Studio validation accepts these equality forms in conditions. Unsupported sources drop the condition with an explicit import reason. Other text comparison operators remain outside this increment.
+- Studio validation accepts these equality forms in conditions. Unsupported sources drop the condition with an explicit import reason.
+
+## Bounded Scratch word ordering
+
+- Scratch `<` and `>` import bounded words and numbers as canonical `lessThan` and `greaterThan`. The runtime compares numerically when both values read as numbers; otherwise it compares their lowercase words, matching [Scratch VM comparison](https://github.com/scratchfoundation/scratch-vm/blob/develop/src/util/cast.js).
+- Studio validation accepts the resulting conditions. Export and reimport preserve each operand's type. Unsupported sources drop the condition with an explicit import reason; nested text composition remains outside this increment.
 
 ## Bounded list items in Scratch text operators
 

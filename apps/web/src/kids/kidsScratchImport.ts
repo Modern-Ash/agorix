@@ -519,9 +519,14 @@ class Converter {
       }
       case "operator_lt":
       case "operator_gt": {
-        const left = this.numberExpression(block, "OPERAND1");
-        const right = this.numberExpression(block, "OPERAND2");
-        if (left === undefined || right === undefined) return undefined;
+        const left =
+          this.numberExpression(block, "OPERAND1") ?? this.boundedStringSource(block, "OPERAND1");
+        const right =
+          this.numberExpression(block, "OPERAND2") ?? this.boundedStringSource(block, "OPERAND2");
+        if (left === undefined || right === undefined) {
+          this.drop(`${block.opcode} (values the scene cannot compare)`);
+          return undefined;
+        }
         const type = {
           operator_lt: "lessThan",
           operator_gt: "greaterThan",

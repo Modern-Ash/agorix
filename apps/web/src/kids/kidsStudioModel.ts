@@ -456,12 +456,13 @@ function checkedCondition(
     value.type !== "greaterOrEqual"
   )
     return false;
-  return (
-    (checkedNumber(value.left, program, 0, arity) &&
-      checkedNumber(value.right, program, 0, arity)) ||
-    (value.type === "equals" &&
+  if (value.type === "equals" || value.type === "lessThan" || value.type === "greaterThan")
+    return (
       (checkedText(value.left, program) || checkedNumber(value.left, program, 0, arity)) &&
-      (checkedText(value.right, program) || checkedNumber(value.right, program, 0, arity)))
+      (checkedText(value.right, program) || checkedNumber(value.right, program, 0, arity))
+    );
+  return (
+    checkedNumber(value.left, program, 0, arity) && checkedNumber(value.right, program, 0, arity)
   );
 }
 
