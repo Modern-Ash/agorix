@@ -89,6 +89,29 @@ describe("lists of numbers or words", () => {
     ).toBe(1);
   });
 
+  it("searches numeric-looking list words as Scratch numbers, but keeps blank words textual", () => {
+    expect(
+      run([setR({ type: "listIndexOf", listId: "l", value: word("7") })], ["007", "7"]).world
+        .variables?.["r"]?.value,
+    ).toBe(1);
+    expect(
+      run(
+        [
+          {
+            type: "if",
+            condition: { type: "listContains", listId: "l", value: num(0) },
+            then: [setR(num(1))],
+          },
+        ],
+        [" ", ""],
+      ).world.variables?.["r"]?.value,
+    ).toBe(0);
+    expect(
+      run([setR({ type: "listIndexOf", listId: "l", value: word("missing") })], ["007"]).world
+        .variables?.["r"]?.value,
+    ).toBe(0);
+  });
+
   it("clips a long word, turns true and false into words, and never stops the run", () => {
     const long = run([
       { type: "listAdd", listId: "l", value: word("x".repeat(40)) },

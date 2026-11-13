@@ -874,13 +874,18 @@ export function listClearWorld(world: WorldState, listId: string): WorldState {
   return items === undefined || items.length === 0 ? world : withList(world, listId, []);
 }
 
-/** 1-based place of the first item equal to the value, 0 when there is none; words ignore case. */
+/** 1-based place of the first Scratch-equal item, 0 when there is none. */
 export function listIndexOfWorld(world: WorldState, listId: string, value: ListItem): number {
   const items = world.lists?.[listId]?.items ?? [];
-  const same = (item: ListItem): boolean =>
-    typeof item === "string" && typeof value === "string"
-      ? item.toLowerCase() === value.toLowerCase()
-      : Number(item) === Number(value);
+  const numeric = (item: ListItem): number =>
+    typeof item === "string" && item.trim() === "" ? NaN : Number(item);
+  const same = (item: ListItem): boolean => {
+    const left = numeric(item);
+    const right = numeric(value);
+    return !Number.isNaN(left) && !Number.isNaN(right)
+      ? left === right
+      : String(item).toLowerCase() === String(value).toLowerCase();
+  };
   return items.findIndex(same) + 1;
 }
 

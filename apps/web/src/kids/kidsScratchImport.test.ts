@@ -2978,6 +2978,35 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_addtolist"))).toBe(true);
   });
 
+  it("finds a numeric-equivalent Scratch list word and round-trips the search", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("set"),
+        set: block("data_setvariableto", {
+          fields: { VARIABLE: ["score", "v1"] },
+          inputs: { VALUE: [3, "search", [4, "0"]] },
+        }),
+        search: block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: lit("007", 10) },
+        }),
+      },
+      { L1: ["Compras", ["7"]] },
+      { v1: ["score", 0] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "setVariable",
+      value: { type: "listIndexOf", value: { type: "textLiteral", value: "007" } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(1);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
   it("bounds Stage starting items and reports discarded entries", () => {
     const { program, report } = convertScratchProject(
       listProject(
