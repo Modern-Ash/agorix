@@ -150,7 +150,7 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.includes("motion_movesteps"))).toBe(true);
   });
 
-  it("turns a Scratch join of a text and a variable into a say with the value after it", () => {
+  it("preserves a Scratch join's trailing space before a variable", () => {
     const joined = project();
     const blocks = (joined.targets[1] as { blocks: Record<string, unknown> }).blocks;
     blocks["say"] = block("looks_say", {
@@ -164,9 +164,17 @@ describe("Scratch import", () => {
     const { program } = convertScratchProject(joined);
     expect(program.scripts[0]!.statements[2]).toMatchObject({
       type: "say",
-      text: "Puntos:",
-      append: { type: "variable", variableId: "studio-var-1" },
+      text: "",
+      append: {
+        type: "join",
+        left: { type: "textLiteral", value: "Puntos: " },
+        right: { type: "variable", variableId: "studio-var-1" },
+      },
     });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("Puntos: 0");
   });
 
   it.each([
@@ -199,12 +207,20 @@ describe("Scratch import", () => {
       report.dropped.some((item) => item.what.includes("join") || item.what.includes("looks_say")),
     ).toBe(false);
     const statement = program.scripts[0]!.statements[2]!;
-    expect(statement).toMatchObject({ type: "say", text: "Saludo:", append: expected });
+    expect(statement).toMatchObject({
+      type: "say",
+      text: "",
+      append: {
+        type: "join",
+        left: { type: "textLiteral", value: "Saludo:" },
+        right: expected,
+      },
+    });
     const creative = creativeForStudio(program, "forest", "es");
     const result = runMultiActorProgram(program, creative);
     const bubble = result.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite
       .bubble;
-    expect(bubble?.text).toBe(`Saludo: ${suffix}`);
+    expect(bubble?.text).toBe(`Saludo:${suffix}`);
     const { bytes } = exportScratchProject(program, "forest", "es");
     const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
     expect(back.program.scripts[0]!.statements[2]).toEqual(statement);
@@ -222,6 +238,53 @@ describe("Scratch import", () => {
       false,
     );
     expect(report.dropped.some((item) => item.what.includes("join (a second value"))).toBe(true);
+  });
+
+  it("preserves a Scratch join in a think bubble", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_think", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit(" ¿", 10), STRING2: lit("Sí?", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("join"))).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "think",
+      text: "",
+      append: {
+        type: "join",
+        left: { type: "textLiteral", value: " ¿" },
+        right: { type: "textLiteral", value: "Sí?" },
+      },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "think")?.worldAfter.sprite.bubble?.text,
+    ).toBe(" ¿Sí?");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("reports a Scratch bubble join with a long fixed prefix", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("un prefijo demasiado largo", 10), STRING2: lit("!", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.includes("fixed word"))).toBe(true);
   });
 
   it("imports a dynamic join into speech and a word variable without adding a space", async () => {
