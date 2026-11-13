@@ -218,6 +218,97 @@ describe("Scratch import", () => {
     ).toBe("Puntos: 0");
   });
 
+  it("preserves spaced literals in a fixed-prefix join bubble", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("A", 10), STRING2: lit(" b ", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("join"))).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "join", right: { type: "textLiteral", value: " b " } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("A b ");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("keeps spaced text operands in a word-variable join", async () => {
+    const scratch = project();
+    (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = [
+      "result",
+      "Listo",
+    ];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("data_setvariableto", {
+      next: "rep",
+      fields: { VARIABLE: ["result", "w"] },
+      inputs: { VALUE: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit(" a ", 10), STRING2: lit(" 12 ", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.includes("join"))).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "setText",
+      value: {
+        type: "join",
+        left: { type: "textLiteral", value: " a " },
+        right: { type: "textLiteral", value: " 12 " },
+      },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    const id = program.textVariables?.find((item) => item.name === "result")?.id;
+    expect(run.actors[0]!.world.texts?.[id ?? ""]?.value).toBe(" a  12 ");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("counts raw spaces in a bounded length reporter and rejects a long raw literal", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "length", [10, ""]] },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: lit(" a ", 10) } });
+    const { program } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: { type: "textLength", value: { type: "textLiteral", value: " a " } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("3");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+
+    blocks["length"] = block("operator_length", {
+      inputs: { STRING: lit(` ${"a".repeat(20)} `, 10) },
+    });
+    const rejected = convertScratchProject(scratch);
+    expect(
+      rejected.program.scripts[0]!.statements.some((statement) => statement.type === "say"),
+    ).toBe(false);
+    expect(rejected.report.dropped.some((item) => item.what.includes("operator_length"))).toBe(
+      true,
+    );
+  });
+
   it.each(["STRING1", "STRING2"] as const)(
     "round-trips a bounded letter reporter in join %s",
     async (side) => {
