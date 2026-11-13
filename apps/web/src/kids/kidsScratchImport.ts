@@ -1029,6 +1029,15 @@ class Converter {
           }
           return { type: "listAdd", listId, value };
         }
+        if (block.opcode === "data_insertatlist" && this.literal(block, "INDEX") === "last") {
+          const value = this.listValue(block, "ITEM");
+          if (value === undefined) {
+            this.drop("data_insertatlist (an item the scene cannot hold)");
+            return undefined;
+          }
+          this.adjusted += 1;
+          return { type: "listAdd", listId, value };
+        }
         const index = this.listPosition(block, "INDEX", listId);
         if (index === undefined) {
           this.drop(`${block.opcode} (a position the scene cannot use)`);

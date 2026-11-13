@@ -2694,7 +2694,7 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
       "say",
       "listReplaceAt",
-      "listInsertAt",
+      "listAdd",
       "listRemoveAt",
     ]);
     expect(JSON.stringify(program.scripts[0]!.statements)).toContain('"type":"listLength"');
@@ -2703,13 +2703,13 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(
       run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
     ).toBe("C");
-    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B", "X"]);
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B", "Z"]);
     const { bytes } = exportScratchProject(program, "forest", "es");
     const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
-  it("leaves last-list mutations on an empty list unchanged", () => {
+  it("appends at last of an empty Scratch list", () => {
     const { program, report } = convertScratchProject(
       listProject({
         hat: flag("replace"),
@@ -2720,15 +2720,31 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
         }),
         insert: block("data_insertatlist", {
           ...onList,
-          next: "remove",
           inputs: { INDEX: lit("last", 10), ITEM: lit("X", 10) },
         }),
-        remove: block("data_deleteoflist", { ...onList, inputs: { INDEX: lit("last", 10) } }),
       }),
     );
     expect(report.dropped).toEqual([]);
     const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
-    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([]);
+    expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
+      "listReplaceAt",
+      "listAdd",
+    ]);
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["X"]);
+  });
+
+  it("reports an unsupported item inserted at last", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("insert"),
+        insert: block("data_insertatlist", {
+          ...onList,
+          inputs: { INDEX: lit("last", 10), ITEM: lit("x".repeat(21), 10) },
+        }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_insertatlist"))).toBe(true);
   });
 
   it("reports a last-position reporter from another list", () => {
