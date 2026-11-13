@@ -1180,13 +1180,27 @@ class Converter {
     if (
       typeof reference !== "string" ||
       this.blocks.get(reference)?.opcode === "data_variable" ||
-      this.blocks.get(reference)?.opcode === "data_lengthoflist"
+      this.blocks.get(reference)?.opcode === "data_lengthoflist" ||
+      this.blocks.get(reference)?.opcode === "sensing_of"
     ) {
       const number = this.numberExpression(block, name);
       if (
         number?.type === "numericLiteral" ||
         number?.type === "variable" ||
         number?.type === "listLength"
+      )
+        return number;
+      if (
+        number?.type === "actorProperty" &&
+        [
+          "xPosition",
+          "yPosition",
+          "direction",
+          "size",
+          "costumeNumber",
+          "backdropNumber",
+          "volume",
+        ].includes(number.property)
       )
         return number;
     }
