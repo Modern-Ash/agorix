@@ -480,8 +480,8 @@ class Converter {
   booleanBlock(block: ScratchBlock): Expression | undefined {
     switch (block.opcode) {
       case "operator_contains": {
-        const text = this.boundedStringSource(block, "STRING1");
-        const part = this.boundedStringSource(block, "STRING2");
+        const text = this.boundedStringOrJoinSource(block, "STRING1");
+        const part = this.boundedStringOrJoinSource(block, "STRING2");
         if (text === undefined || part === undefined) {
           this.drop("operator_contains (a word the scene cannot use)");
           return undefined;
