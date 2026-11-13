@@ -539,6 +539,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - The Scratch importer accepts `join` with a short fixed first word and a number, word variable, actor/Stage name reporter, short literal, or one more bounded `join` in the second slot. The whole imported expression stays a canonical `join`, preserving Scratch's exact text and trailing spaces without inserting a separator. Unsupported values, long prefixes and deeper nesting drop the bubble with an explicit import report.
 - A `join` of two bounded sources (short words, word variables, bounded numbers, or numeric variables) also imports as the canonical `join` expression in a word-variable assignment or direct say/think bubble. The runtime writes their values together without inserting a space; Scratch export preserves numeric and word operand types. Nested and unsupported sources are dropped with an explicit import reason.
 - One `letter of` reporter with a bounded simple source may feed either side of `join`. The runtime concatenates its actual character, and `.sb3` exchange preserves the reporter. A letter of another join exceeds the scene's expression depth and is reported as unsupported.
+- One `length of` reporter with a bounded simple source may likewise feed either side of `join`. The runtime writes the actual count as digits; a length of another join inside the outer join is reported as unsupported.
 
 ## Bounded Scratch letter and length reporters
 

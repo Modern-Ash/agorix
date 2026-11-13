@@ -249,6 +249,75 @@ describe("Scratch import", () => {
     },
   );
 
+  it.each(["STRING1", "STRING2"] as const)(
+    "round-trips a bounded length reporter in join %s",
+    async (side) => {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["say"] = block("looks_say", {
+        next: "rep",
+        inputs: { MESSAGE: [3, "join", [10, ""]] },
+      });
+      const length = [3, "length", [10, ""]];
+      blocks["join"] = block("operator_join", {
+        inputs: {
+          STRING1: side === "STRING1" ? length : lit("Hola", 10),
+          STRING2: side === "STRING2" ? length : lit("Hola", 10),
+        },
+      });
+      blocks["length"] = block("operator_length", { inputs: { STRING: lit("Banana", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(false);
+      expect(program.scripts[0]!.statements[2]).toMatchObject({
+        type: "say",
+        append: {
+          type: "join",
+          [side === "STRING1" ? "left" : "right"]: {
+            type: "textLength",
+            value: { type: "textLiteral", value: "Banana" },
+          },
+        },
+      });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+      ).toBe(side === "STRING1" ? "6Hola" : "Hola6");
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+    },
+  );
+
+  it.each(["STRING1", "STRING2"] as const)(
+    "reports a length of a join inside another Scratch join at %s",
+    (side) => {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["say"] = block("looks_say", {
+        next: "rep",
+        inputs: { MESSAGE: [3, "join", [10, ""]] },
+      });
+      blocks["join"] = block("operator_join", {
+        inputs: {
+          STRING1: side === "STRING1" ? [3, "length", [10, ""]] : lit("!", 10),
+          STRING2: side === "STRING2" ? [3, "length", [10, ""]] : lit("!", 10),
+        },
+      });
+      blocks["length"] = block("operator_length", {
+        inputs: { STRING: [3, "innerJoin", [10, ""]] },
+      });
+      blocks["innerJoin"] = block("operator_join", {
+        inputs: { STRING1: lit("Ba", 10), STRING2: lit("nana", 10) },
+      });
+      const { program, report } = convertScratchProject(scratch);
+      expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+        false,
+      );
+      expect(report.dropped.some((item) => item.what.includes("join"))).toBe(true);
+    },
+  );
+
   it.each([
     [
       "word variable",
