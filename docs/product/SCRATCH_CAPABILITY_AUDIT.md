@@ -580,6 +580,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - Scratch's `last` list position imports as the canonical length of that same list for reads, delete and replace. An empty list yields an empty read or unchanged delete/replace. `Insert at last` appends, including to an empty list, and imports as the equivalent canonical `listAdd`. `.sb3` exchange preserves these behaviors. Other computed positions remain outside the bounded importer.
 - Fractional numeric list positions are floored on import, as in Scratch: 2.9 becomes position 2. The adjusted position must remain between 1 and 10; positions outside that range are reported and dropped. The import report counts accepted rounding.
 - A declared numeric variable may supply the position for a list read, delete, insert or replace. The runtime uses its value when the block executes and treats out-of-range values as an empty read or unchanged mutation. Word or unknown variables are reported and dropped; `.sb3` exchange keeps the numeric reporter.
+- The length reporter of any kept list may also supply another list's position. The runtime reads its current length when the block executes; unknown source lists remain reported and dropped. Scratch's literal `last` menu still refers to the target list.
 - An unknown list, unsupported position or nested expression is still dropped with an explicit import report.
 
 ## Scratch list length as a bounded text source

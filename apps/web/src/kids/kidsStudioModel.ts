@@ -210,8 +210,9 @@ function finiteSmallNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
 }
 
-function checkedStudioIndex(value: Expression, listId: string, program: ProjectProgram): boolean {
-  if (value.type === "listLength") return value.listId === listId;
+function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "listLength")
+    return program.lists?.some((item) => item.id === value.listId) === true;
   if (value.type === "variable")
     return program.variables?.some((item) => item.id === value.variableId) === true;
   return (
@@ -292,7 +293,7 @@ function checkedText(value: Expression, program: ProjectProgram, depth = 0): boo
   if (value.type === "listItem")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
-      checkedStudioIndex(value.index, value.listId, program)
+      checkedStudioIndex(value.index, program)
     );
   if (value.type === "letterOf")
     return (
@@ -372,7 +373,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   if (value.type === "listItem")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
-      checkedStudioIndex(value.index, value.listId, program)
+      checkedStudioIndex(value.index, program)
     );
   if (value.type === "randomInteger")
     return (
@@ -821,12 +822,12 @@ function checked(
   if (statement.type === "listRemoveAt")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      checkedStudioIndex(statement.index, statement.listId, program)
+      checkedStudioIndex(statement.index, program)
     );
   if (statement.type === "listInsertAt" || statement.type === "listReplaceAt")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      checkedStudioIndex(statement.index, statement.listId, program) &&
+      checkedStudioIndex(statement.index, program) &&
       checkedListItem(statement.value, program, arity)
     );
   if (statement.type === "repeat")

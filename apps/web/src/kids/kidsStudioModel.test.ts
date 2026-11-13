@@ -320,6 +320,14 @@ describe("Kids creative studio", () => {
         index: { type: "listLength", listId: "studio-list-1" },
       }),
     ).not.toThrow();
+    const withSecondList = addStudioList(history, "Otra");
+    expect(() =>
+      appendStudioStatement(withSecondList, "actor:studio-1-nova", {
+        type: "listRemoveAt",
+        listId: "studio-list-1",
+        index: { type: "listLength", listId: "studio-list-2" },
+      }),
+    ).not.toThrow();
     expect(() =>
       appendStudioStatement(history, "actor:studio-1-nova", {
         type: "listRemoveAt",
