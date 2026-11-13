@@ -299,7 +299,7 @@ class Converter {
       }
       case "data_itemoflist": {
         const listId = this.listOf(block);
-        const index = this.listPosition(block, "INDEX");
+        const index = listId === undefined ? undefined : this.listPosition(block, "INDEX", listId);
         if (listId === undefined || index === undefined) {
           this.drop("data_itemoflist (a list the scene did not keep, or a position it cannot use)");
           return undefined;
@@ -1030,7 +1030,7 @@ class Converter {
           }
           return { type: "listAdd", listId, value };
         }
-        const index = this.listPosition(block, "INDEX");
+        const index = this.listPosition(block, "INDEX", listId);
         if (index === undefined) {
           this.drop(`${block.opcode} (a position the scene cannot use)`);
           return undefined;
@@ -1084,8 +1084,13 @@ class Converter {
     return typeof name === "string" ? this.listIds.get(name) : undefined;
   }
 
-  /** A position the scene's list blocks take: a whole number from 1 to 10. */
-  listPosition(block: ScratchBlock, name: string): Expression | undefined {
+  /** A fixed position or Scratch's dynamic last position of this list. */
+  listPosition(block: ScratchBlock, name: string, listId: string): Expression | undefined {
+    if (this.literal(block, name) === "last") return { type: "listLength", listId };
+    const reference = block.inputs[name]?.[1];
+    const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+    if (inner?.opcode === "data_lengthoflist" && this.listOf(inner) === listId)
+      return { type: "listLength", listId };
     const value = this.number(block, name);
     return value !== undefined && Number.isInteger(value) && value >= 1 && value <= 10
       ? { type: "numericLiteral", value }

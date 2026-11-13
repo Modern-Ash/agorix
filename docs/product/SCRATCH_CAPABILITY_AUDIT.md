@@ -576,6 +576,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - List `contains` and `item # of` use Scratch-style comparison: numeric-looking words such as `007` and `7` match, ordinary words ignore case, and blank words do not match numeric zero. The stored items keep their original characters.
 - A kept Scratch list's item at a fixed position from 1 to 10 can feed `join`, `letter of`, `length of`, `contains` or `equals`. The importer keeps it as a canonical `listItem`, so the runtime uses the actual word or number in that list and `.sb3` export/reimport preserves the reporter.
 - Reading an unavailable list position yields empty text, as in Scratch. Text operators see length zero; numeric consumers still coerce the empty result to zero, and the runtime keeps its out-of-range note.
+- Scratch's `last` list position imports as the canonical length of that same list. Reads, delete, insert and replace use the current length at runtime; empty lists yield empty reads or unchanged mutations. `.sb3` export writes an equivalent length reporter, which reimports to the same canonical expression. Other computed positions remain outside the bounded importer.
 - An unknown list, unsupported position or nested expression is still dropped with an explicit import report.
 
 ## Scratch list length as a bounded text source

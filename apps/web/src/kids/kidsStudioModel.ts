@@ -210,7 +210,8 @@ function finiteSmallNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
 }
 
-function checkedStudioIndex(value: Expression): boolean {
+function checkedStudioIndex(value: Expression, listId: string): boolean {
+  if (value.type === "listLength") return value.listId === listId;
   return (
     value.type === "numericLiteral" &&
     Number.isInteger(value.value) &&
@@ -289,7 +290,7 @@ function checkedText(value: Expression, program: ProjectProgram, depth = 0): boo
   if (value.type === "listItem")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
-      checkedStudioIndex(value.index)
+      checkedStudioIndex(value.index, value.listId)
     );
   if (value.type === "letterOf")
     return (
@@ -369,7 +370,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   if (value.type === "listItem")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
-      checkedStudioIndex(value.index)
+      checkedStudioIndex(value.index, value.listId)
     );
   if (value.type === "randomInteger")
     return (
@@ -818,12 +819,12 @@ function checked(
   if (statement.type === "listRemoveAt")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      checkedStudioIndex(statement.index)
+      checkedStudioIndex(statement.index, statement.listId)
     );
   if (statement.type === "listInsertAt" || statement.type === "listReplaceAt")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      checkedStudioIndex(statement.index) &&
+      checkedStudioIndex(statement.index, statement.listId) &&
       checkedListItem(statement.value, program, arity)
     );
   if (statement.type === "repeat")
