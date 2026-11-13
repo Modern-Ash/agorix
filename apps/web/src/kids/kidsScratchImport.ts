@@ -533,8 +533,8 @@ class Converter {
         const rightNumber = this.numberExpression(block, "OPERAND2");
         if (leftNumber !== undefined && rightNumber !== undefined)
           return { type: "equals", left: leftNumber, right: rightNumber };
-        const left = this.boundedTextSource(block, "OPERAND1");
-        const right = this.boundedTextSource(block, "OPERAND2");
+        const left = this.boundedStringSource(block, "OPERAND1");
+        const right = this.boundedStringSource(block, "OPERAND2");
         if (left === undefined || right === undefined) {
           this.drop("operator_equals (values the scene cannot compare)");
           return undefined;

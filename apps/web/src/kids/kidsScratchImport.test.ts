@@ -685,6 +685,50 @@ describe("Scratch import", () => {
     expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
   });
 
+  it.each([
+    { word: "12", number: 12, expected: true, reverse: false },
+    { word: "Hola", number: 0, expected: false, reverse: false },
+    { word: "13", number: 12, expected: false, reverse: true },
+  ])(
+    "round-trips mixed Scratch equality for '$word' and $number",
+    async ({ word, number, expected, reverse }) => {
+      const scratch = project();
+      const stage = scratch.targets[0] as { variables: Record<string, unknown> };
+      stage.variables["v1"] = ["score", number];
+      stage.variables["stage:studio-text-1"] = ["word", word];
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+      });
+      const wordInput = [3, [12, "word", "stage:studio-text-1"], [10, ""]];
+      const numberInput = [3, [12, "score", "v1"], [4, "0"]];
+      blocks["equal"] = block("operator_equals", {
+        inputs: {
+          OPERAND1: reverse ? numberInput : wordInput,
+          OPERAND2: reverse ? wordInput : numberInput,
+        },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.includes("operator_equals"))).toBe(false);
+      expect(program.scripts[0]!.statements[0]).toMatchObject({
+        type: "if",
+        condition: {
+          type: "equals",
+          left: { type: reverse ? "variable" : "textVariable" },
+          right: { type: reverse ? "textVariable" : "variable" },
+        },
+      });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.trace.some((entry) => entry.statementType === "say")).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+    },
+  );
+
   it("keeps numeric equality and reports an unsupported word equality", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
