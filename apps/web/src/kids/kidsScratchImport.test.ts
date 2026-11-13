@@ -1341,6 +1341,73 @@ describe("Scratch import", () => {
     expect(run.trace.some((entry) => entry.statementType === "say")).toBe(true);
   });
 
+  it.each([
+    { word: "A", reverse: false, expected: true },
+    { word: "A", reverse: true, expected: true },
+    { word: "z", reverse: false, expected: false },
+  ])(
+    "round-trips Scratch equality with a letter and '$word'",
+    async ({ word, reverse, expected }) => {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+      });
+      const letter = [3, "letter", [10, ""]];
+      const other = lit(word, 10);
+      blocks["equal"] = block("operator_equals", {
+        inputs: {
+          OPERAND1: reverse ? other : letter,
+          OPERAND2: reverse ? letter : other,
+        },
+      });
+      blocks["letter"] = block("operator_letter_of", {
+        inputs: { LETTER: lit(2), STRING: lit("Banana", 10) },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(false);
+      expect(program.scripts[0]!.statements[0]).toMatchObject({
+        type: "if",
+        condition: {
+          type: "equals",
+          [reverse ? "right" : "left"]: {
+            type: "letterOf",
+            index: { type: "numericLiteral", value: 2 },
+            value: { type: "textLiteral", value: "Banana" },
+          },
+        },
+      });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.trace.some((entry) => entry.statementType === "say")).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+    },
+  );
+
+  it("reports an unsupported letter index inside Scratch equality", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+    });
+    blocks["equal"] = block("operator_equals", {
+      inputs: { OPERAND1: [3, "letter", [10, ""]], OPERAND2: lit("A", 10) },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(21), STRING: lit("Banana", 10) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_letter_of"))).toBe(true);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(true);
+  });
+
   it("keeps numeric equality and reports an unsupported word equality", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;

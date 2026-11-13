@@ -556,6 +556,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - Scratch `equals` imports two bounded word sources, two bounded numbers, or a bounded word and number as canonical `equals`. The deterministic runtime compares two words without case sensitivity and a mixed pair only when the word reads as that number; export and reimport preserve operand types and the condition.
 - Studio validation accepts these equality forms in conditions. Unsupported sources drop the condition with an explicit import reason.
 - One bounded `join` may feed either side of `equals` alongside a bounded word or number. The runtime compares the resulting value, and `.sb3` export and reimport preserve the expression. Deeper joins remain unsupported and reported.
+- One bounded `letter of` reporter may also feed either side of `equals` alongside a word. It retains the fixed index and source limits; unsupported positions or sources are reported and dropped.
 
 ## Bounded Scratch word ordering
 
