@@ -1184,6 +1184,17 @@ class Converter {
   /** One short word or a bounded number; no nested reporters in Scratch's string slots. */
   boundedStringSource(block: ScratchBlock, name: string): Expression | undefined {
     const reference = block.inputs[name]?.[1];
+    const literal = this.literal(block, name);
+    if (
+      Array.isArray(reference) &&
+      (reference as unknown as Primitive)[0] === 10 &&
+      literal !== undefined &&
+      literal !== literal.trim()
+    ) {
+      return literal.length <= STUDIO_WORD_MAX_LENGTH && !/\p{Cc}/u.test(literal)
+        ? { type: "textLiteral", value: literal }
+        : undefined;
+    }
     if (
       typeof reference !== "string" ||
       this.blocks.get(reference)?.opcode === "data_variable" ||
@@ -1262,7 +1273,15 @@ class Converter {
     if (join?.opcode !== "operator_join") return undefined;
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
-    const append = this.listValue(join, "STRING2");
+    const second = join.inputs["STRING2"]?.[1];
+    const secondLiteral = this.literal(join, "STRING2");
+    const append =
+      Array.isArray(second) &&
+      (second as unknown as Primitive)[0] === 10 &&
+      secondLiteral !== undefined &&
+      secondLiteral !== secondLiteral.trim()
+        ? this.boundedStringSource(join, "STRING2")
+        : this.listValue(join, "STRING2");
     if (
       append === undefined ||
       ((append.type === "letterOf" || append.type === "textLength") && append.value.type === "join")
