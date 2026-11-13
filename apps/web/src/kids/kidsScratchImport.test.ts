@@ -340,7 +340,7 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
   });
 
-  it("drops nested Scratch joins instead of changing their text", () => {
+  it("preserves one nested Scratch join in a bubble", async () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
     blocks["say"] = block("looks_say", {
@@ -348,10 +348,51 @@ describe("Scratch import", () => {
       inputs: { MESSAGE: [3, "outer", [10, ""]] },
     });
     blocks["outer"] = block("operator_join", {
-      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "inner", [10, ""]] },
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "innerJoin", [10, ""]] },
     });
-    blocks["inner"] = block("operator_join", {
+    blocks["innerJoin"] = block("operator_join", {
       inputs: { STRING1: lit("mundo", 10), STRING2: lit("!", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      text: "",
+      append: {
+        type: "join",
+        left: { type: "textLiteral", value: "Hola" },
+        right: {
+          type: "join",
+          left: { type: "textLiteral", value: "mundo" },
+          right: { type: "textLiteral", value: "!" },
+        },
+      },
+    });
+    expect(report.dropped.some((item) => item.what.includes("join"))).toBe(false);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("Holamundo!");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("drops a bubble with deeper nested Scratch joins", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "outer", [10, ""]] },
+    });
+    blocks["outer"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "middle", [10, ""]] },
+    });
+    blocks["middle"] = block("operator_join", {
+      inputs: { STRING1: lit("mundo", 10), STRING2: [3, "innerJoin", [10, ""]] },
+    });
+    blocks["innerJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("!", 10), STRING2: lit("?", 10) },
     });
     const { program, report } = convertScratchProject(scratch);
     expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(

@@ -536,7 +536,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 ## Say with a bounded value after the text (the useful part of Scratch's "join")
 
 - **Decir con variable** (`say` / `think` with `append`): fixed text, one space, then a bounded number or word written in the bubble. The runtime evaluates the value deterministically; decimals are kept to two places.
-- The Scratch importer accepts `join` with fixed first text and a number, word variable, actor/Stage name reporter, or short literal in the second slot. Unsupported second values drop the bubble with an explicit import report. General nested text composition stays outside this bounded form.
+- The Scratch importer accepts `join` with fixed first text and a number, word variable, actor/Stage name reporter, short literal, or one more bounded `join` in the second slot. The nested form stays a canonical `join` expression, so it keeps Scratch's exact text without inserting a space. Unsupported values and deeper nesting drop the bubble with an explicit import report.
 - A `join` of two bounded sources (short words, word variables, bounded numbers, or numeric variables) also imports as the canonical `join` expression in a word-variable assignment or direct say/think bubble. The runtime writes their values together without inserting a space; Scratch export preserves numeric and word operand types. Nested and unsupported sources are dropped with an explicit import reason.
 
 ## Bounded Scratch letter and length reporters

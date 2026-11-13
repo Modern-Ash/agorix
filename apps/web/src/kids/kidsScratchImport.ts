@@ -1235,9 +1235,17 @@ class Converter {
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
     const append = this.listValue(join, "STRING2");
-    if (append === undefined || append.type === "join") {
+    if (append === undefined) {
       this.drop("join (a second value the scene cannot use)");
       return undefined;
+    }
+    if (append.type === "join") {
+      const prefix = wordOf(text);
+      if (prefix === undefined) {
+        this.drop("join (a fixed word the scene cannot use in a nested join)");
+        return undefined;
+      }
+      return { text: "", append: { type: "join", left: prefix, right: append } };
     }
     return { text, append };
   }
