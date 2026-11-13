@@ -729,16 +729,13 @@ class Converter {
           (Array.isArray(reference) && (reference as unknown as Primitive)[0] === 12);
         const direct =
           isReporter && joined === undefined ? this.listValue(block, "MESSAGE") : undefined;
-        const raw = (
-          joined?.text ??
-          this.literal(block, "MESSAGE") ??
-          (direct === undefined ? undefined : "")
-        )?.trim();
-        if (
-          raw === undefined ||
-          (raw === "" && direct === undefined && joined?.append === undefined)
-        )
-          return missing();
+        const raw =
+          joined?.text ?? this.literal(block, "MESSAGE") ?? (direct === undefined ? undefined : "");
+        if (raw === undefined) return missing();
+        if (raw.trim() === "" && direct === undefined && joined?.append === undefined) {
+          this.drop(`${block.opcode} (an empty message the scene cannot show)`);
+          return undefined;
+        }
         const text = raw.slice(0, STUDIO_BUBBLE_MAX_LENGTH);
         this.adjust(text, raw);
         const kind = block.opcode.includes("say") ? "say" : "think";
