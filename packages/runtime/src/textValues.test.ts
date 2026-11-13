@@ -75,4 +75,29 @@ describe("text values", () => {
     );
     expect(run.world.sprite.x).toBe(10);
   });
+  it.each([
+    { word: "12", number: 12, expected: true },
+    { word: "13", number: 12, expected: false },
+    { word: "hola", number: 0, expected: false },
+    { word: "", number: 0, expected: false },
+  ])(
+    "compares a word '$word' and number $number only when the word is numeric",
+    ({ word, number, expected }) => {
+      for (const [left, right] of [
+        [text(word), { type: "numericLiteral", value: number } as Expression],
+        [{ type: "numericLiteral", value: number } as Expression, text(word)],
+      ]) {
+        const result = runProgram(
+          program([
+            {
+              type: "if",
+              condition: { type: "equals", left: left!, right: right! },
+              then: [{ type: "move", steps: 10 }],
+            },
+          ]),
+        );
+        expect(result.world.sprite.x).toBe(expected ? 10 : 0);
+      }
+    },
+  );
 });

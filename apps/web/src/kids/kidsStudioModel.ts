@@ -460,8 +460,8 @@ function checkedCondition(
     (checkedNumber(value.left, program, 0, arity) &&
       checkedNumber(value.right, program, 0, arity)) ||
     (value.type === "equals" &&
-      checkedText(value.left, program) &&
-      checkedText(value.right, program))
+      (checkedText(value.left, program) || checkedNumber(value.left, program, 0, arity)) &&
+      (checkedText(value.right, program) || checkedNumber(value.right, program, 0, arity)))
   );
 }
 
