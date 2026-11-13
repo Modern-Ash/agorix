@@ -577,6 +577,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - A kept Scratch list's item at a fixed position from 1 to 10 can feed `join`, `letter of`, `length of`, `contains` or `equals`. The importer keeps it as a canonical `listItem`, so the runtime uses the actual word or number in that list and `.sb3` export/reimport preserves the reporter.
 - Reading an unavailable list position yields empty text, as in Scratch. Text operators see length zero; numeric consumers still coerce the empty result to zero, and the runtime keeps its out-of-range note.
 - Scratch's `last` list position imports as the canonical length of that same list. Reads, delete, insert and replace use the current length at runtime; empty lists yield empty reads or unchanged mutations. `.sb3` export writes an equivalent length reporter, which reimports to the same canonical expression. Other computed positions remain outside the bounded importer.
+- Fractional numeric list positions are floored on import, as in Scratch: 2.9 becomes position 2. The adjusted position must remain between 1 and 10; positions outside that range are reported and dropped. The import report counts accepted rounding.
 - An unknown list, unsupported position or nested expression is still dropped with an explicit import report.
 
 ## Scratch list length as a bounded text source
