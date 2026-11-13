@@ -611,6 +611,67 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
   });
 
+  it("imports a letter of one bounded Scratch join and round-trips it", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(5), STRING: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: lit(2) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_letter_of"))).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: {
+        type: "letterOf",
+        index: { type: "numericLiteral", value: 5 },
+        value: {
+          type: "join",
+          left: { type: "textLiteral", value: "Hola" },
+          right: { type: "numericLiteral", value: 2 },
+        },
+      },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("2");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("reports a deeper Scratch join inside letter of", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(5), STRING: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "innerJoin", [10, ""]] },
+    });
+    blocks["innerJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("mundo", 10), STRING2: lit("!", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_letter_of"))).toBe(true);
+  });
+
   it("reports an unsupported letter position and overlong length source", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
@@ -986,7 +1047,50 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(true);
   });
 
-  it("reports a nested Scratch contains source instead of silently changing its meaning", () => {
+  it.each([
+    { side: "STRING1", other: "12", expected: true },
+    { side: "STRING1", other: "13", expected: false },
+    { side: "STRING2", other: "hOLA12", expected: true },
+    { side: "STRING2", other: "Hola1", expected: false },
+  ] as const)("imports a bounded join in contains $side", async ({ side, other, expected }) => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "contains"], SUBSTACK: [2, "say"] },
+    });
+    blocks["contains"] = block("operator_contains", {
+      inputs: {
+        STRING1: side === "STRING1" ? [3, "join", [10, ""]] : lit(other, 10),
+        STRING2: side === "STRING2" ? [3, "join", [10, ""]] : lit(other, 10),
+      },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: lit(12) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(false);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: {
+        type: "textContains",
+        [side === "STRING1" ? "text" : "part"]: {
+          type: "join",
+          left: { type: "textLiteral", value: "Hola" },
+          right: { type: "numericLiteral", value: 12 },
+        },
+      },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.trace.some((entry) => entry.statementType === "say")).toBe(expected);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+  });
+
+  it("reports a deeper Scratch join inside contains", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
     blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
@@ -997,11 +1101,15 @@ describe("Scratch import", () => {
       inputs: { STRING1: [3, "join", [10, ""]], STRING2: lit("12", 10) },
     });
     blocks["join"] = block("operator_join", {
-      inputs: { STRING1: lit("Hola", 10), STRING2: lit(12) },
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "innerJoin", [10, ""]] },
+    });
+    blocks["innerJoin"] = block("operator_join", {
+      inputs: { STRING1: lit(1), STRING2: lit(2) },
     });
     blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
     const { program, report } = convertScratchProject(scratch);
     expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
     expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(true);
   });
 
@@ -1077,6 +1185,97 @@ describe("Scratch import", () => {
       expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
     },
   );
+
+  it.each([
+    { other: "hOLA", reverse: false, expected: true },
+    { other: "hOLA", reverse: true, expected: true },
+    { other: "Luna", reverse: false, expected: false },
+  ])(
+    "round-trips Scratch equality with a bounded join and '$other'",
+    async ({ other, reverse, expected }) => {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+      });
+      const joined = [3, "join", [10, ""]];
+      const word = lit(other, 10);
+      blocks["equal"] = block("operator_equals", {
+        inputs: {
+          OPERAND1: reverse ? word : joined,
+          OPERAND2: reverse ? joined : word,
+        },
+      });
+      blocks["join"] = block("operator_join", {
+        inputs: { STRING1: lit("Ho", 10), STRING2: lit("la", 10) },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(false);
+      expect(program.scripts[0]!.statements[0]).toMatchObject({
+        type: "if",
+        condition: {
+          type: "equals",
+          [reverse ? "right" : "left"]: {
+            type: "join",
+            left: { type: "textLiteral", value: "Ho" },
+            right: { type: "textLiteral", value: "la" },
+          },
+        },
+      });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.trace.some((entry) => entry.statementType === "say")).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+    },
+  );
+
+  it("reports a deeper Scratch join inside equality", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+    });
+    blocks["equal"] = block("operator_equals", {
+      inputs: { OPERAND1: [3, "join", [10, ""]], OPERAND2: lit("Hola", 10) },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Ho", 10), STRING2: [3, "innerJoin", [10, ""]] },
+    });
+    blocks["innerJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("l", 10), STRING2: lit("a", 10) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(true);
+  });
+
+  it("keeps numeric equality against a joined number", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+    });
+    blocks["equal"] = block("operator_equals", {
+      inputs: { OPERAND1: [3, "join", [10, ""]], OPERAND2: lit(12) },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("1", 10), STRING2: lit("2", 10) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(false);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.trace.some((entry) => entry.statementType === "say")).toBe(true);
+  });
 
   it("keeps numeric equality and reports an unsupported word equality", () => {
     const scratch = project();

@@ -336,18 +336,13 @@ class Converter {
         return { type: "join", left, right };
       }
       case "operator_length": {
-        const reference = block.inputs["STRING"]?.[1];
-        const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
-        const value =
-          inner?.opcode === "operator_join"
-            ? this.reporter(inner)
-            : this.boundedStringSource(block, "STRING");
+        const value = this.boundedStringOrJoinSource(block, "STRING");
         if (value === undefined) this.drop("operator_length (a word the scene cannot use)");
         return value === undefined ? undefined : { type: "textLength", value };
       }
       case "operator_letter_of": {
         const index = this.number(block, "LETTER");
-        const value = this.boundedStringSource(block, "STRING");
+        const value = this.boundedStringOrJoinSource(block, "STRING");
         if (
           index === undefined ||
           !Number.isInteger(index) ||
@@ -485,8 +480,8 @@ class Converter {
   booleanBlock(block: ScratchBlock): Expression | undefined {
     switch (block.opcode) {
       case "operator_contains": {
-        const text = this.boundedStringSource(block, "STRING1");
-        const part = this.boundedStringSource(block, "STRING2");
+        const text = this.boundedStringOrJoinSource(block, "STRING1");
+        const part = this.boundedStringOrJoinSource(block, "STRING2");
         if (text === undefined || part === undefined) {
           this.drop("operator_contains (a word the scene cannot use)");
           return undefined;
@@ -543,8 +538,8 @@ class Converter {
         const rightNumber = this.numberExpression(block, "OPERAND2");
         if (leftNumber !== undefined && rightNumber !== undefined)
           return { type: "equals", left: leftNumber, right: rightNumber };
-        const left = this.boundedStringSource(block, "OPERAND1");
-        const right = this.boundedStringSource(block, "OPERAND2");
+        const left = this.boundedStringOrJoinSource(block, "OPERAND1");
+        const right = this.boundedStringOrJoinSource(block, "OPERAND2");
         if (left === undefined || right === undefined) {
           this.drop("operator_equals (values the scene cannot compare)");
           return undefined;
@@ -1228,6 +1223,15 @@ class Converter {
         return number;
     }
     return this.boundedTextSource(block, name);
+  }
+
+  /** One bounded join may feed a text reporter; its own operands must stay unnested. */
+  boundedStringOrJoinSource(block: ScratchBlock, name: string): Expression | undefined {
+    const reference = block.inputs[name]?.[1];
+    const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+    return inner?.opcode === "operator_join"
+      ? this.reporter(inner)
+      : this.boundedStringSource(block, name);
   }
 
   /** Scratch's `join` in a bubble: fixed text and one bounded number or word after it. */

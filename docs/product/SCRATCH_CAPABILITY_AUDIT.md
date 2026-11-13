@@ -541,20 +541,20 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 
 ## Bounded Scratch letter and length reporters
 
-- `length of (join ... ...)` imports when the join has two bounded sources. Canonical `textLength` counts the actual concatenated text, and `.sb3` export and reimport preserve the nested operators. Deeper joins remain unsupported and reported.
-
 - Scratch `length of` imports to canonical `textLength` for a short word literal, word variable, bounded number, numeric variable or compatible name reporter. `letter of` imports to canonical `letterOf` with the same bounded source and a fixed one-based position from 1 to 20.
 - Both reporters execute through the deterministic runtime in number or bubble slots and export back to their Scratch opcodes, preserving numeric operand types. Numbers become digits under the established coercion rule. Unsupported sources and positions are dropped with an explicit import reason. General nested text composition remains outside this importer increment.
+- `length of (join ... ...)` and `letter (n) of (join ... ...)` import when the join has two bounded sources. Canonical `textLength` and `letterOf` read the actual concatenated text; `.sb3` exchange preserves the nested operators. Deeper joins remain unsupported and reported.
 
 ## Bounded Scratch text contains condition
 
 - Scratch `contains` imports and exports as canonical `textContains` when both inputs are short word literals, word variables, bounded numbers, numeric variables or compatible name reporters. Numeric operands retain their type and become digits during the deterministic, case-insensitive comparison, including after `.sb3` round-trip.
-- An unsupported source drops the containing condition with an explicit import reason. Nested text composition remains outside this importer increment.
+- One bounded `join` may feed either side of `contains`; the runtime searches the actual concatenated text without case sensitivity, and `.sb3` exchange preserves the nested expression. Deeper joins or unsupported sources drop the condition with an explicit import reason.
 
 ## Bounded Scratch word equality
 
 - Scratch `equals` imports two bounded word sources, two bounded numbers, or a bounded word and number as canonical `equals`. The deterministic runtime compares two words without case sensitivity and a mixed pair only when the word reads as that number; export and reimport preserve operand types and the condition.
 - Studio validation accepts these equality forms in conditions. Unsupported sources drop the condition with an explicit import reason.
+- One bounded `join` may feed either side of `equals` alongside a bounded word or number. The runtime compares the resulting value, and `.sb3` export and reimport preserve the expression. Deeper joins remain unsupported and reported.
 
 ## Bounded Scratch word ordering
 
