@@ -342,18 +342,17 @@ class Converter {
       }
       case "operator_letter_of": {
         const index = this.number(block, "LETTER");
+        const position = index === undefined ? undefined : Math.floor(index);
         const value = this.boundedStringOrJoinSource(block, "STRING");
-        if (
-          index === undefined ||
-          !Number.isInteger(index) ||
-          index < 1 ||
-          index > 20 ||
-          value === undefined
-        ) {
+        if (position === undefined || position < 1 || position > 20 || value === undefined) {
           this.drop("operator_letter_of (a position or word the scene cannot use)");
           return undefined;
         }
-        return { type: "letterOf", index: { type: "numericLiteral", value: index }, value };
+        return {
+          type: "letterOf",
+          index: { type: "numericLiteral", value: this.adjust(position, index) },
+          value,
+        };
       }
       case "motion_xposition":
         return { type: "xPosition" };
