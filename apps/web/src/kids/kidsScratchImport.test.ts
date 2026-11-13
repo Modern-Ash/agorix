@@ -498,7 +498,7 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
   });
 
-  it("does not treat a numeric Scratch property as a word source", () => {
+  it("uses a sprite's numeric Scratch property as digits in a text reporter", async () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
     blocks["var"] = block("data_setvariableto", {
@@ -513,10 +513,109 @@ describe("Scratch import", () => {
     });
     blocks["target"] = block("sensing_of_object_menu", { fields: { OBJECT: ["Cat", null] } });
     const { program, report } = convertScratchProject(scratch);
-    expect(
-      program.scripts[0]!.statements.some((statement) => statement.type === "setVariable"),
-    ).toBe(false);
-    expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(false);
+    expect(program.scripts[0]!.statements[4]).toMatchObject({
+      type: "setVariable",
+      value: { type: "textLength", value: { type: "actorProperty", property: "volume" } },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(3);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
+  });
+
+  it.each([
+    { opcode: "operator_join", input: "STRING1", other: "STRING2", slot: "say", expected: "100!" },
+    { opcode: "operator_letter_of", input: "STRING", other: "LETTER", slot: "say", expected: "0" },
+    { opcode: "operator_length", input: "STRING", other: "", slot: "number", expected: 3 },
+    {
+      opcode: "operator_contains",
+      input: "STRING1",
+      other: "STRING2",
+      slot: "condition",
+      expected: "Sí",
+    },
+    {
+      opcode: "operator_equals",
+      input: "OPERAND1",
+      other: "OPERAND2",
+      slot: "condition",
+      expected: "Sí",
+    },
+  ])(
+    "keeps Stage volume numeric in Scratch $opcode",
+    async ({ opcode, input, other, slot, expected }) => {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", {
+        next: slot === "condition" ? "if" : slot === "number" ? "set" : "say",
+        topLevel: true,
+      });
+      const inputs: Record<string, unknown> = { [input]: [3, "property", [10, ""]] };
+      if (other)
+        inputs[other] =
+          opcode === "operator_letter_of"
+            ? lit(2)
+            : opcode === "operator_join"
+              ? lit("!", 10)
+              : opcode === "operator_contains"
+                ? lit(0)
+                : lit(100);
+      blocks["reporter"] = block(opcode, { inputs });
+      blocks["property"] = block("sensing_of", {
+        fields: { PROPERTY: ["volume", null] },
+        inputs: { OBJECT: [1, "stageMenu"] },
+      });
+      blocks["stageMenu"] = block("sensing_of_object_menu", {
+        fields: { OBJECT: ["_stage_", null] },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: [3, "reporter", [10, ""]] } });
+      blocks["set"] = block("data_setvariableto", {
+        fields: { VARIABLE: ["score", "v1"] },
+        inputs: { VALUE: [3, "reporter", [4, "0"]] },
+      });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "reporter"], SUBSTACK: [2, "found"] },
+      });
+      blocks["found"] = block("looks_say", { inputs: { MESSAGE: lit("Sí", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped).toEqual([]);
+      expect(JSON.stringify(program.scripts[0]!.statements[0])).toContain('"property":"volume"');
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      if (slot === "number")
+        expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(expected);
+      else
+        expect(
+          run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+        ).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("reports an unknown numeric property source in a Scratch text operator", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "say", topLevel: true });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: [3, "join", [10, ""]] } });
+    blocks["join"] = block("operator_join", {
+      inputs: {
+        STRING1: [3, "property", [10, ""]],
+        STRING2: lit("!", 10),
+      },
+    });
+    blocks["property"] = block("sensing_of", {
+      fields: { PROPERTY: ["volume", null] },
+      inputs: { OBJECT: [1, "target"] },
+    });
+    blocks["target"] = block("sensing_of_object_menu", { fields: { OBJECT: ["Missing", null] } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
   });
 
   it("keeps a short literal letter and the current costume name length", async () => {
