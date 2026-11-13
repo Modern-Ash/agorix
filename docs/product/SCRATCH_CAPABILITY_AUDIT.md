@@ -554,6 +554,11 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - Scratch `equals` imports two bounded word sources, two bounded numbers, or a bounded word and number as canonical `equals`. The deterministic runtime compares two words without case sensitivity and a mixed pair only when the word reads as that number; export and reimport preserve operand types and the condition.
 - Studio validation accepts these equality forms in conditions. Unsupported sources drop the condition with an explicit import reason. Other text comparison operators remain outside this increment.
 
+## Bounded list items in Scratch text operators
+
+- A kept Scratch list's item at a fixed position from 1 to 10 can feed `join`, `letter of`, `length of`, `contains` or `equals`. The importer keeps it as a canonical `listItem`, so the runtime uses the actual word or number in that list and `.sb3` export/reimport preserves the reporter.
+- An unknown list, unsupported position or nested expression is still dropped with an explicit import report.
+
 ## Scratch list length as a bounded text source
 
 - The length of a kept Scratch list can feed `join`, `letter of`, `length of`, `contains` or `equals`. It remains a canonical numeric `listLength` reporter; the runtime writes the count as digits when a text operator uses it, and `.sb3` export/reimport preserves the reporter.
