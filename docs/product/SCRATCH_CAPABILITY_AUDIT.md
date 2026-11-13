@@ -571,6 +571,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 
 ## Bounded list items in Scratch text operators
 
+- List add, insert, replace and search keep the exact characters of bounded type-10 text literals when numeric conversion or trimming would change them (for example `007` and `a`). Numeric Scratch slots remain numeric. Raw text over 20 characters or containing controls is reported and dropped.
 - A kept Scratch list's item at a fixed position from 1 to 10 can feed `join`, `letter of`, `length of`, `contains` or `equals`. The importer keeps it as a canonical `listItem`, so the runtime uses the actual word or number in that list and `.sb3` export/reimport preserves the reporter.
 - An unknown list, unsupported position or nested expression is still dropped with an explicit import report.
 

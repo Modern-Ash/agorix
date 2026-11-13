@@ -1098,6 +1098,12 @@ class Converter {
    */
   listValue(block: ScratchBlock, name: string): Expression | undefined {
     const shadow = block.inputs[name]?.[1];
+    if (this.hasLossyTextLiteral(block, name)) {
+      const literal = this.literal(block, name)!;
+      return literal.length <= STUDIO_WORD_MAX_LENGTH && !/\p{Cc}/u.test(literal)
+        ? { type: "textLiteral", value: literal }
+        : undefined;
+    }
     if (Array.isArray(shadow) && (shadow as unknown as Primitive)[0] === 12) {
       const variable = (shadow as unknown as Primitive)[1];
       if (typeof variable !== "string") return undefined;

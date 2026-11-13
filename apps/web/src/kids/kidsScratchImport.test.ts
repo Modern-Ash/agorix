@@ -2914,6 +2914,70 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped).toEqual([]);
   });
 
+  it("preserves bounded text lexemes in Scratch list mutations", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("add"),
+        add: block("data_addtolist", {
+          ...onList,
+          next: "insert",
+          inputs: { ITEM: lit("007", 10) },
+        }),
+        insert: block("data_insertatlist", {
+          ...onList,
+          next: "replace",
+          inputs: { INDEX: lit(1), ITEM: lit(" a ", 10) },
+        }),
+        replace: block("data_replaceitemoflist", {
+          ...onList,
+          next: "find",
+          inputs: { INDEX: lit(1), ITEM: lit("1.00", 10) },
+        }),
+        find: block("data_setvariableto", {
+          fields: { VARIABLE: ["score", "v1"] },
+          inputs: { VALUE: [3, "search", [4, "0"]] },
+        }),
+        search: block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: lit("007", 10) },
+        }),
+      },
+      { L1: ["Compras", []] },
+      { v1: ["score", 0] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements).toMatchObject([
+      { type: "listAdd", value: { type: "textLiteral", value: "007" } },
+      { type: "listInsertAt", value: { type: "textLiteral", value: " a " } },
+      { type: "listReplaceAt", value: { type: "textLiteral", value: "1.00" } },
+      {
+        type: "setVariable",
+        value: { type: "listIndexOf", value: { type: "textLiteral", value: "007" } },
+      },
+    ]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["1.00", "007"]);
+    expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(2);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("reports a raw list literal longer than the scene limit", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("add"),
+        add: block("data_addtolist", {
+          ...onList,
+          inputs: { ITEM: lit("0".repeat(21), 10) },
+        }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_addtolist"))).toBe(true);
+  });
+
   it("bounds Stage starting items and reports discarded entries", () => {
     const { program, report } = convertScratchProject(
       listProject(
