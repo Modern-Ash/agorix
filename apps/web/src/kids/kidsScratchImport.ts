@@ -327,8 +327,8 @@ class Converter {
           : { type: "listIndexOf", listId, value };
       }
       case "operator_join": {
-        const left = this.boundedStringSource(block, "STRING1");
-        const right = this.boundedStringSource(block, "STRING2");
+        const left = this.boundedJoinOperand(block, "STRING1");
+        const right = this.boundedJoinOperand(block, "STRING2");
         if (left === undefined || right === undefined) {
           this.drop("operator_join (a word the scene cannot use)");
           return undefined;
@@ -1225,6 +1225,15 @@ class Converter {
     return this.boundedTextSource(block, name);
   }
 
+  /** A letter of a simple source fits inside one join; a letter of a join would exceed depth. */
+  boundedJoinOperand(block: ScratchBlock, name: string): Expression | undefined {
+    const reference = block.inputs[name]?.[1];
+    const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+    if (inner?.opcode !== "operator_letter_of") return this.boundedStringSource(block, name);
+    const value = this.reporter(inner);
+    return value?.type === "letterOf" && value.value.type !== "join" ? value : undefined;
+  }
+
   /** One bounded join may feed a text reporter; its own operands must stay unnested. */
   boundedStringOrJoinSource(block: ScratchBlock, name: string): Expression | undefined {
     const reference = block.inputs[name]?.[1];
@@ -1253,7 +1262,7 @@ class Converter {
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
     const append = this.listValue(join, "STRING2");
-    if (append === undefined) {
+    if (append === undefined || (append.type === "letterOf" && append.value.type === "join")) {
       this.drop("join (a second value the scene cannot use)");
       return undefined;
     }
