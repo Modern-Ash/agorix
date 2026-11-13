@@ -1186,6 +1186,7 @@ class Converter {
       typeof reference !== "string" ||
       this.blocks.get(reference)?.opcode === "data_variable" ||
       this.blocks.get(reference)?.opcode === "data_lengthoflist" ||
+      this.blocks.get(reference)?.opcode === "data_itemnumoflist" ||
       this.blocks.get(reference)?.opcode === "sensing_of" ||
       this.blocks.get(reference)?.opcode === "looks_costumenumbername" ||
       this.blocks.get(reference)?.opcode === "looks_backdropnumbername"
@@ -1195,6 +1196,7 @@ class Converter {
         number?.type === "numericLiteral" ||
         number?.type === "variable" ||
         number?.type === "listLength" ||
+        number?.type === "listIndexOf" ||
         number?.type === "costumeNumber" ||
         number?.type === "backdropNumber"
       )
