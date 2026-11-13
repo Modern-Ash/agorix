@@ -1303,6 +1303,90 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it.each([
+    { opcode: "operator_join", input: "STRING1", other: "STRING2", slot: "say", expected: "2!" },
+    { opcode: "operator_letter_of", input: "STRING", other: "LETTER", slot: "say", expected: "2" },
+    { opcode: "operator_length", input: "STRING", other: "", slot: "number", expected: 1 },
+    {
+      opcode: "operator_contains",
+      input: "STRING1",
+      other: "STRING2",
+      slot: "condition",
+      expected: "Sí",
+    },
+    {
+      opcode: "operator_equals",
+      input: "OPERAND1",
+      other: "OPERAND2",
+      slot: "condition",
+      expected: "Sí",
+    },
+  ])(
+    "keeps Scratch list length numeric in $opcode through round-trip",
+    async ({ opcode, input, other, slot, expected }) => {
+      const inputs: Record<string, unknown> = { [input]: [3, "listLength", [4, "0"]] };
+      if (other)
+        inputs[other] =
+          opcode === "operator_letter_of"
+            ? lit(1)
+            : opcode === "operator_join"
+              ? lit("!", 10)
+              : lit(2);
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag(slot === "condition" ? "if" : slot === "number" ? "set" : "say"),
+            listLength: block("data_lengthoflist", { fields: { LIST: ["Items", "L1"] } }),
+            reporter: block(opcode, { inputs }),
+            say: block("looks_say", { inputs: { MESSAGE: [3, "reporter", [10, ""]] } }),
+            set: block("data_setvariableto", {
+              fields: { VARIABLE: ["score", "v1"] },
+              inputs: { VALUE: [3, "reporter", [4, "0"]] },
+            }),
+            if: block("control_if", {
+              inputs: { CONDITION: [2, "reporter"], SUBSTACK: [2, "found"] },
+            }),
+            found: block("looks_say", { inputs: { MESSAGE: lit("Sí", 10) } }),
+          },
+          { L1: ["Items", ["Hola", 12]] },
+          { v1: ["score", 0] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(JSON.stringify(program.scripts[0]!.statements[0])).toContain('"type":"listLength"');
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      if (slot === "number")
+        expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(expected);
+      else
+        expect(
+          run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+        ).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("reports an unknown list length in a Scratch text operator", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("say"),
+          say: block("looks_say", { inputs: { MESSAGE: [3, "reporter", [10, ""]] } }),
+          reporter: block("operator_join", {
+            inputs: { STRING1: [3, "listLength", [4, "0"]], STRING2: lit("!", 10) },
+          }),
+          listLength: block("data_lengthoflist", { fields: { LIST: ["Missing", "missing"] } }),
+        },
+        { L1: ["Items", ["Hola"]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("data_lengthoflist"))).toBe(true);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
+  });
+
   it("keeps a list, adds a word and a number, inserts, replaces, and removes", () => {
     const { program, report } = convertScratchProject(
       listProject({

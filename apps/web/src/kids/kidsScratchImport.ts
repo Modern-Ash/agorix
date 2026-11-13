@@ -1177,9 +1177,18 @@ class Converter {
   /** One short word or a bounded number; no nested reporters in Scratch's string slots. */
   boundedStringSource(block: ScratchBlock, name: string): Expression | undefined {
     const reference = block.inputs[name]?.[1];
-    if (typeof reference !== "string" || this.blocks.get(reference)?.opcode === "data_variable") {
+    if (
+      typeof reference !== "string" ||
+      this.blocks.get(reference)?.opcode === "data_variable" ||
+      this.blocks.get(reference)?.opcode === "data_lengthoflist"
+    ) {
       const number = this.numberExpression(block, name);
-      if (number?.type === "numericLiteral" || number?.type === "variable") return number;
+      if (
+        number?.type === "numericLiteral" ||
+        number?.type === "variable" ||
+        number?.type === "listLength"
+      )
+        return number;
     }
     return this.boundedTextSource(block, name);
   }
