@@ -2706,6 +2706,54 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it("floors fractional Scratch list positions in reads and mutations", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "replace",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", { ...onList, inputs: { INDEX: lit(2.9) } }),
+        replace: block("data_replaceitemoflist", {
+          ...onList,
+          next: "insert",
+          inputs: { INDEX: lit(2.9), ITEM: lit("X", 10) },
+        }),
+        insert: block("data_insertatlist", {
+          ...onList,
+          next: "remove",
+          inputs: { INDEX: lit(2.9), ITEM: lit("Y", 10) },
+        }),
+        remove: block("data_deleteoflist", { ...onList, inputs: { INDEX: lit(2.9) } }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(report.blocksAdjusted).toBeGreaterThanOrEqual(4);
+    expect(JSON.stringify(program.scripts[0]!.statements)).not.toContain("2.9");
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "X", "C"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each([0.9, 11.9])("reports a fractional list position %s outside the scene limit", (index) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", { ...onList, inputs: { INDEX: lit(index) } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses empty text for an unavailable Scratch list item in length of", async () => {
     const scratch = listProject(
       {

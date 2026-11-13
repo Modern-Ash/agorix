@@ -1092,8 +1092,9 @@ class Converter {
     if (inner?.opcode === "data_lengthoflist" && this.listOf(inner) === listId)
       return { type: "listLength", listId };
     const value = this.number(block, name);
-    return value !== undefined && Number.isInteger(value) && value >= 1 && value <= 10
-      ? { type: "numericLiteral", value }
+    const floored = value === undefined ? undefined : Math.floor(value);
+    return floored !== undefined && floored >= 1 && floored <= 10
+      ? { type: "numericLiteral", value: this.adjust(floored, value) }
       : undefined;
   }
 
