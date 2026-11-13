@@ -1225,13 +1225,17 @@ class Converter {
     return this.boundedTextSource(block, name);
   }
 
-  /** A letter of a simple source fits inside one join; a letter of a join would exceed depth. */
+  /** A letter or length of a simple source fits inside one join; nested joins exceed depth. */
   boundedJoinOperand(block: ScratchBlock, name: string): Expression | undefined {
     const reference = block.inputs[name]?.[1];
     const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
-    if (inner?.opcode !== "operator_letter_of") return this.boundedStringSource(block, name);
+    if (inner?.opcode !== "operator_letter_of" && inner?.opcode !== "operator_length")
+      return this.boundedStringSource(block, name);
     const value = this.reporter(inner);
-    return value?.type === "letterOf" && value.value.type !== "join" ? value : undefined;
+    return (value?.type === "letterOf" || value?.type === "textLength") &&
+      value.value.type !== "join"
+      ? value
+      : undefined;
   }
 
   /** One bounded join may feed a text reporter; its own operands must stay unnested. */
@@ -1262,7 +1266,10 @@ class Converter {
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
     const append = this.listValue(join, "STRING2");
-    if (append === undefined || (append.type === "letterOf" && append.value.type === "join")) {
+    if (
+      append === undefined ||
+      ((append.type === "letterOf" || append.type === "textLength") && append.value.type === "join")
+    ) {
       this.drop("join (a second value the scene cannot use)");
       return undefined;
     }
