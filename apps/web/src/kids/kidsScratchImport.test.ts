@@ -555,7 +555,7 @@ describe("Scratch import", () => {
     expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
   });
 
-  it("reports a nested source in Scratch length instead of importing a changed value", () => {
+  it("imports length of a bounded Scratch join and round-trips it", async () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
     blocks["var"] = block("data_setvariableto", {
@@ -568,9 +568,46 @@ describe("Scratch import", () => {
       inputs: { STRING1: lit("Hola", 10), STRING2: lit(2) },
     });
     const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(false);
+    expect(program.scripts[0]!.statements[4]).toMatchObject({
+      type: "setVariable",
+      value: {
+        type: "textLength",
+        value: {
+          type: "join",
+          left: { type: "textLiteral", value: "Hola" },
+          right: { type: "numericLiteral", value: 2 },
+        },
+      },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(5);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[4]).toEqual(program.scripts[0]!.statements[4]);
+  });
+
+  it("reports a deeper Scratch join inside length", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["var"] = block("data_setvariableto", {
+      next: "weird",
+      fields: { VARIABLE: ["score", "v1"] },
+      inputs: { VALUE: [3, "length", [4, "0"]] },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: [3, "join", [10, ""]] } });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "innerJoin", [10, ""]] },
+    });
+    blocks["innerJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("mundo", 10), STRING2: lit("!", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
     expect(
       program.scripts[0]!.statements.some((statement) => statement.type === "setVariable"),
     ).toBe(false);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
     expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
   });
 

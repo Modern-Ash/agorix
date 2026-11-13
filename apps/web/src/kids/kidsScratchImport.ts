@@ -336,7 +336,12 @@ class Converter {
         return { type: "join", left, right };
       }
       case "operator_length": {
-        const value = this.boundedStringSource(block, "STRING");
+        const reference = block.inputs["STRING"]?.[1];
+        const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+        const value =
+          inner?.opcode === "operator_join"
+            ? this.reporter(inner)
+            : this.boundedStringSource(block, "STRING");
         if (value === undefined) this.drop("operator_length (a word the scene cannot use)");
         return value === undefined ? undefined : { type: "textLength", value };
       }
