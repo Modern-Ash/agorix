@@ -1239,15 +1239,12 @@ class Converter {
       this.drop("join (a second value the scene cannot use)");
       return undefined;
     }
-    if (append.type === "join") {
-      const prefix = wordOf(text);
-      if (prefix === undefined) {
-        this.drop("join (a fixed word the scene cannot use in a nested join)");
-        return undefined;
-      }
-      return { text: "", append: { type: "join", left: prefix, right: append } };
+    if (text.length > STUDIO_WORD_MAX_LENGTH || /\p{Cc}/u.test(text)) {
+      this.drop("join (a fixed word the scene cannot use)");
+      return undefined;
     }
-    return { text, append };
+    const prefix: Expression = { type: "textLiteral", value: text };
+    return { text: "", append: { type: "join", left: prefix, right: append } };
   }
 
   broadcastName(block: ScratchBlock): string | undefined {
