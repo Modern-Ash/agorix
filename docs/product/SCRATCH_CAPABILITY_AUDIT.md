@@ -541,6 +541,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - One `letter of` reporter with a bounded simple source may feed either side of `join`. The runtime concatenates its actual character, and `.sb3` exchange preserves the reporter. A letter of another join exceeds the scene's expression depth and is reported as unsupported.
 - One `length of` reporter with a bounded simple source may likewise feed either side of `join`. The runtime writes the actual count as digits; a length of another join inside the outer join is reported as unsupported.
 - Type-10 Scratch text literals with leading or trailing spaces keep those spaces in bounded `join`, `letter of`, `length of`, `contains`, and `equals` operands, including the fixed-prefix bubble path. The 20-character limit applies to the raw literal. Numeric-looking text with spaces remains text.
+- Type-10 literals whose numeric conversion would change their visible characters (such as `007` or `1.00`) also stay text in these bounded operators. Runtime concatenation and character counts use the original text; oversized raw literals are reported and dropped.
 
 ## Bounded Scratch letter and length reporters
 
