@@ -132,6 +132,47 @@ describe("Scratch import", () => {
     expect(run.trace.length).toBeGreaterThan(0);
   });
 
+  it.each(["looks_say", "looks_think", "looks_sayforsecs", "looks_thinkforsecs"])(
+    "preserves spaces in an imported %s literal",
+    async (opcode) => {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["say"] = block(opcode, {
+        next: "rep",
+        inputs: {
+          MESSAGE: lit(" Hola ", 10),
+          ...(opcode.endsWith("forsecs") ? { SECS: lit(2) } : {}),
+        },
+      });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.startsWith(opcode))).toBe(false);
+      const kind = opcode.includes("say") ? "say" : "think";
+      expect(program.scripts[0]!.statements[2]).toMatchObject({ type: kind, text: " Hola " });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace.find((entry) => entry.statementType === kind)?.worldAfter.sprite.bubble?.text,
+      ).toBe(" Hola ");
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+    },
+  );
+
+  it("reports a whitespace-only Scratch bubble without an append", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: lit("   ", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.includes("empty message"))).toBe(true);
+  });
+
   it("rejects something that is not a Scratch project, and a project without sprites", () => {
     expect(() => convertScratchProject({ nope: true })).toThrow(RangeError);
     expect(() => convertScratchProject({ targets: [{ isStage: true, blocks: {} }] })).toThrow(
