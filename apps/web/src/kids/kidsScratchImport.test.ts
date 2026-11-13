@@ -2617,6 +2617,95 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses Scratch's last position across list reads and mutations", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "replace",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: lit("last", 10) },
+        }),
+        replace: block("data_replaceitemoflist", {
+          ...onList,
+          next: "insert",
+          inputs: { INDEX: lit("last", 10), ITEM: lit("Z", 10) },
+        }),
+        insert: block("data_insertatlist", {
+          ...onList,
+          next: "remove",
+          inputs: { INDEX: lit("last", 10), ITEM: lit("X", 10) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: lit("last", 10) },
+        }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements.map((statement) => statement.type)).toEqual([
+      "say",
+      "listReplaceAt",
+      "listInsertAt",
+      "listRemoveAt",
+    ]);
+    expect(JSON.stringify(program.scripts[0]!.statements)).toContain('"type":"listLength"');
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("C");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B", "X"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("leaves last-list mutations on an empty list unchanged", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("replace"),
+        replace: block("data_replaceitemoflist", {
+          ...onList,
+          next: "insert",
+          inputs: { INDEX: lit("last", 10), ITEM: lit("Z", 10) },
+        }),
+        insert: block("data_insertatlist", {
+          ...onList,
+          next: "remove",
+          inputs: { INDEX: lit("last", 10), ITEM: lit("X", 10) },
+        }),
+        remove: block("data_deleteoflist", { ...onList, inputs: { INDEX: lit("last", 10) } }),
+      }),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([]);
+  });
+
+  it("reports a last-position reporter from another list", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "otherLength", [10, "last"]] },
+          }),
+          otherLength: block("data_lengthoflist", { fields: { LIST: ["Otra", "L2"] } }),
+        },
+        { L1: ["Compras", ["A"]], L2: ["Otra", ["B"]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses empty text for an unavailable Scratch list item in length of", async () => {
     const scratch = listProject(
       {

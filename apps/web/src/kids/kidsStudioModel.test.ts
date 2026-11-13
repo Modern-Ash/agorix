@@ -313,6 +313,20 @@ describe("Kids creative studio", () => {
     expect(result.actors[0]?.world.lists?.["studio-list-1"]?.items).toEqual([9]);
     expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(1);
     expect(result.trace.map((entry) => entry.statementType)).toContain("listRemoveAt");
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "listRemoveAt",
+        listId: "studio-list-1",
+        index: { type: "listLength", listId: "studio-list-1" },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "listRemoveAt",
+        listId: "studio-list-1",
+        index: { type: "listLength", listId: "missing" },
+      }),
+    ).toThrow();
     for (const index of [0, 11, 1.5])
       expect(() =>
         appendStudioStatement(history, "actor:studio-1-nova", {
