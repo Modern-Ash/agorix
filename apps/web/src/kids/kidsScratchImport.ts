@@ -1181,13 +1181,17 @@ class Converter {
       typeof reference !== "string" ||
       this.blocks.get(reference)?.opcode === "data_variable" ||
       this.blocks.get(reference)?.opcode === "data_lengthoflist" ||
-      this.blocks.get(reference)?.opcode === "sensing_of"
+      this.blocks.get(reference)?.opcode === "sensing_of" ||
+      this.blocks.get(reference)?.opcode === "looks_costumenumbername" ||
+      this.blocks.get(reference)?.opcode === "looks_backdropnumbername"
     ) {
       const number = this.numberExpression(block, name);
       if (
         number?.type === "numericLiteral" ||
         number?.type === "variable" ||
-        number?.type === "listLength"
+        number?.type === "listLength" ||
+        number?.type === "costumeNumber" ||
+        number?.type === "backdropNumber"
       )
         return number;
       if (

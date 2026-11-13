@@ -942,6 +942,106 @@ describe("Scratch clones (#1311)", () => {
 });
 
 describe("Scratch costume and backdrop number", () => {
+  it.each([
+    {
+      operator: "operator_join",
+      input: "STRING1",
+      other: "STRING2",
+      reporter: "looks_costumenumbername",
+      slot: "say",
+      expected: "1!",
+    },
+    {
+      operator: "operator_letter_of",
+      input: "STRING",
+      other: "LETTER",
+      reporter: "looks_backdropnumbername",
+      slot: "say",
+      expected: "1",
+    },
+    {
+      operator: "operator_length",
+      input: "STRING",
+      other: "",
+      reporter: "looks_costumenumbername",
+      slot: "number",
+      expected: 1,
+    },
+    {
+      operator: "operator_contains",
+      input: "STRING1",
+      other: "STRING2",
+      reporter: "looks_backdropnumbername",
+      slot: "condition",
+      expected: "Sí",
+    },
+    {
+      operator: "operator_equals",
+      input: "OPERAND1",
+      other: "OPERAND2",
+      reporter: "looks_costumenumbername",
+      slot: "condition",
+      expected: "Sí",
+    },
+  ])(
+    "keeps $reporter numeric in $operator through Scratch round-trip",
+    async ({ operator, input, other, reporter, slot, expected }) => {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", {
+        next: slot === "condition" ? "if" : slot === "number" ? "set" : "say",
+        topLevel: true,
+      });
+      const inputs: Record<string, unknown> = { [input]: [3, "lookNumber", [4, "0"]] };
+      if (other) inputs[other] = operator === "operator_join" ? lit("!", 10) : lit(1);
+      blocks["operator"] = block(operator, { inputs });
+      blocks["lookNumber"] = block(reporter, { fields: { NUMBER_NAME: ["number", null] } });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: [3, "operator", [10, ""]] } });
+      blocks["set"] = block("data_setvariableto", {
+        fields: { VARIABLE: ["score", "v1"] },
+        inputs: { VALUE: [3, "operator", [4, "0"]] },
+      });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "operator"], SUBSTACK: [2, "found"] },
+      });
+      blocks["found"] = block("looks_say", { inputs: { MESSAGE: lit("Sí", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.includes(operator))).toBe(false);
+      expect(JSON.stringify(program.scripts[0]!.statements[0])).toContain(
+        reporter === "looks_costumenumbername"
+          ? '"type":"costumeNumber"'
+          : '"type":"backdropNumber"',
+      );
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      if (slot === "number")
+        expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(expected);
+      else
+        expect(
+          run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+        ).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("drops an unsupported costume reporter mode inside a text operator", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "say", topLevel: true });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: [3, "join", [10, ""]] } });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: [3, "lookNumber", [4, "0"]], STRING2: lit("!", 10) },
+    });
+    blocks["lookNumber"] = block("looks_costumenumbername", {
+      fields: { NUMBER_NAME: ["unsupported", null] },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
+  });
+
   function numberProject(field: "number" | "name") {
     return {
       targets: [
