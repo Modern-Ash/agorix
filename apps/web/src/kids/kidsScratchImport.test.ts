@@ -611,6 +611,67 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
   });
 
+  it("imports a letter of one bounded Scratch join and round-trips it", async () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(5), STRING: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: lit(2) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_letter_of"))).toBe(false);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      append: {
+        type: "letterOf",
+        index: { type: "numericLiteral", value: 5 },
+        value: {
+          type: "join",
+          left: { type: "textLiteral", value: "Hola" },
+          right: { type: "numericLiteral", value: 2 },
+        },
+      },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("2");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("reports a deeper Scratch join inside letter of", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "letter", [10, ""]] },
+    });
+    blocks["letter"] = block("operator_letter_of", {
+      inputs: { LETTER: lit(5), STRING: [3, "join", [10, ""]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "innerJoin", [10, ""]] },
+    });
+    blocks["innerJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("mundo", 10), STRING2: lit("!", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
+      false,
+    );
+    expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_letter_of"))).toBe(true);
+  });
+
   it("reports an unsupported letter position and overlong length source", () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;

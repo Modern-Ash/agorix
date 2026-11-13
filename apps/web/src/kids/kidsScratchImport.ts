@@ -336,18 +336,13 @@ class Converter {
         return { type: "join", left, right };
       }
       case "operator_length": {
-        const reference = block.inputs["STRING"]?.[1];
-        const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
-        const value =
-          inner?.opcode === "operator_join"
-            ? this.reporter(inner)
-            : this.boundedStringSource(block, "STRING");
+        const value = this.boundedStringOrJoinSource(block, "STRING");
         if (value === undefined) this.drop("operator_length (a word the scene cannot use)");
         return value === undefined ? undefined : { type: "textLength", value };
       }
       case "operator_letter_of": {
         const index = this.number(block, "LETTER");
-        const value = this.boundedStringSource(block, "STRING");
+        const value = this.boundedStringOrJoinSource(block, "STRING");
         if (
           index === undefined ||
           !Number.isInteger(index) ||
@@ -1228,6 +1223,15 @@ class Converter {
         return number;
     }
     return this.boundedTextSource(block, name);
+  }
+
+  /** One bounded join may feed a text reporter; its own operands must stay unnested. */
+  boundedStringOrJoinSource(block: ScratchBlock, name: string): Expression | undefined {
+    const reference = block.inputs[name]?.[1];
+    const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+    return inner?.opcode === "operator_join"
+      ? this.reporter(inner)
+      : this.boundedStringSource(block, name);
   }
 
   /** Scratch's `join` in a bubble: fixed text and one bounded number or word after it. */
