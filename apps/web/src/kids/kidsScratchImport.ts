@@ -519,9 +519,14 @@ class Converter {
       }
       case "operator_lt":
       case "operator_gt": {
-        const left = this.numberExpression(block, "OPERAND1");
-        const right = this.numberExpression(block, "OPERAND2");
-        if (left === undefined || right === undefined) return undefined;
+        const left =
+          this.numberExpression(block, "OPERAND1") ?? this.boundedStringSource(block, "OPERAND1");
+        const right =
+          this.numberExpression(block, "OPERAND2") ?? this.boundedStringSource(block, "OPERAND2");
+        if (left === undefined || right === undefined) {
+          this.drop(`${block.opcode} (values the scene cannot compare)`);
+          return undefined;
+        }
         const type = {
           operator_lt: "lessThan",
           operator_gt: "greaterThan",
@@ -1230,9 +1235,17 @@ class Converter {
     const text = this.literal(join, "STRING1");
     if (text === undefined) return undefined;
     const append = this.listValue(join, "STRING2");
-    if (append === undefined || append.type === "join") {
+    if (append === undefined) {
       this.drop("join (a second value the scene cannot use)");
       return undefined;
+    }
+    if (append.type === "join") {
+      const prefix = wordOf(text);
+      if (prefix === undefined) {
+        this.drop("join (a fixed word the scene cannot use in a nested join)");
+        return undefined;
+      }
+      return { text: "", append: { type: "join", left: prefix, right: append } };
     }
     return { text, append };
   }

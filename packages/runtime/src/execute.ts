@@ -332,6 +332,18 @@ function coerceText(value: ExpressionValue): string {
   return String(Math.round(value * 100) / 100);
 }
 
+/** Scratch orders numbers numerically, then falls back to case-insensitive words. */
+function scratchOrder(left: ExpressionValue, right: ExpressionValue): number {
+  const numeric = (value: ExpressionValue) =>
+    typeof value === "string" && value.trim() === "" ? NaN : Number(value);
+  const leftNumber = numeric(left);
+  const rightNumber = numeric(right);
+  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) return leftNumber - rightNumber;
+  const leftWord = String(left).toLowerCase();
+  const rightWord = String(right).toLowerCase();
+  return leftWord < rightWord ? -1 : leftWord > rightWord ? 1 : 0;
+}
+
 /**
  * What a list keeps of a value: a number stays a number, a word stays a word (clipped), and a
  * true or false becomes the word. The one place that decides it, as for variables and words.
@@ -668,13 +680,17 @@ function evaluateExpression(
     }
     case "lessThan":
       return (
-        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) <
-        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
+        scratchOrder(
+          evaluateExpression(expression.left, `${path}.left`, state),
+          evaluateExpression(expression.right, `${path}.right`, state),
+        ) < 0
       );
     case "greaterThan":
       return (
-        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) >
-        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
+        scratchOrder(
+          evaluateExpression(expression.left, `${path}.left`, state),
+          evaluateExpression(expression.right, `${path}.right`, state),
+        ) > 0
       );
     case "lessOrEqual":
       return (

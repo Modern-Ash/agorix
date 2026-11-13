@@ -340,7 +340,7 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_join"))).toBe(true);
   });
 
-  it("drops nested Scratch joins instead of changing their text", () => {
+  it("preserves one nested Scratch join in a bubble", async () => {
     const scratch = project();
     const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
     blocks["say"] = block("looks_say", {
@@ -348,10 +348,51 @@ describe("Scratch import", () => {
       inputs: { MESSAGE: [3, "outer", [10, ""]] },
     });
     blocks["outer"] = block("operator_join", {
-      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "inner", [10, ""]] },
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "innerJoin", [10, ""]] },
     });
-    blocks["inner"] = block("operator_join", {
+    blocks["innerJoin"] = block("operator_join", {
       inputs: { STRING1: lit("mundo", 10), STRING2: lit("!", 10) },
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      text: "",
+      append: {
+        type: "join",
+        left: { type: "textLiteral", value: "Hola" },
+        right: {
+          type: "join",
+          left: { type: "textLiteral", value: "mundo" },
+          right: { type: "textLiteral", value: "!" },
+        },
+      },
+    });
+    expect(report.dropped.some((item) => item.what.includes("join"))).toBe(false);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("Holamundo!");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[2]).toEqual(program.scripts[0]!.statements[2]);
+  });
+
+  it("drops a bubble with deeper nested Scratch joins", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "outer", [10, ""]] },
+    });
+    blocks["outer"] = block("operator_join", {
+      inputs: { STRING1: lit("Hola", 10), STRING2: [3, "middle", [10, ""]] },
+    });
+    blocks["middle"] = block("operator_join", {
+      inputs: { STRING1: lit("mundo", 10), STRING2: [3, "innerJoin", [10, ""]] },
+    });
+    blocks["innerJoin"] = block("operator_join", {
+      inputs: { STRING1: lit("!", 10), STRING2: lit("?", 10) },
     });
     const { program, report } = convertScratchProject(scratch);
     expect(program.scripts[0]!.statements.some((statement) => statement.type === "say")).toBe(
@@ -964,6 +1005,63 @@ describe("Scratch import", () => {
       true,
     );
   });
+
+  it.each([
+    { opcode: "operator_lt", word: "Apple", number: 2, expected: false },
+    { opcode: "operator_gt", word: "Zebra", number: 2, expected: true },
+  ])(
+    "round-trips bounded word ordering with $opcode",
+    async ({ opcode, word, number, expected }) => {
+      const scratch = project();
+      const stage = scratch.targets[0] as { variables: Record<string, unknown> };
+      stage.variables["stage:studio-text-1"] = ["word", word];
+      stage.variables["v1"] = ["score", number];
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "compare"], SUBSTACK: [2, "say"] },
+      });
+      blocks["compare"] = block(opcode, {
+        inputs: {
+          OPERAND1: [3, [12, "word", "stage:studio-text-1"], [10, ""]],
+          OPERAND2: [3, [12, "score", "v1"], [4, "0"]],
+        },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Orden", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped.some((item) => item.what.includes(opcode))).toBe(false);
+      expect(program.scripts[0]!.statements[0]).toMatchObject({
+        type: "if",
+        condition: {
+          type: opcode === "operator_lt" ? "lessThan" : "greaterThan",
+          left: { type: "textVariable" },
+          right: { type: "variable" },
+        },
+      });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.trace.some((entry) => entry.statementType === "say")).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+    },
+  );
+
+  it("reports an unsupported word ordering operand", () => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "compare"], SUBSTACK: [2, "say"] },
+    });
+    blocks["compare"] = block("operator_lt", {
+      inputs: { OPERAND1: lit("una palabra demasiado larga", 10), OPERAND2: lit("z", 10) },
+    });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Orden", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_lt"))).toBe(true);
+  });
 });
 
 describe("Scratch clones (#1311)", () => {
@@ -1187,10 +1285,16 @@ describe("Scratch costume and backdrop number", () => {
     });
   });
 
-  it("leaves the costume name out and says so", () => {
+  it("reads the costume name as a word in Scratch ordering", () => {
     const { program, report } = convertScratchProject(numberProject("name"));
-    expect(program.scripts[0]!.statements).toEqual([]);
-    expect(report.dropped.length).toBeGreaterThan(0);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: {
+        type: "greaterThan",
+        left: { type: "actorProperty", property: "costumeName" },
+      },
+    });
+    expect(report.dropped).toEqual([]);
   });
 });
 

@@ -76,6 +76,29 @@ describe("text values", () => {
     expect(run.world.sprite.x).toBe(10);
   });
   it.each([
+    { type: "lessThan", left: text("apple"), right: text("Banana"), expected: true },
+    { type: "greaterThan", left: text("Zebra"), right: text("apple"), expected: true },
+    { type: "lessThan", left: text("10"), right: text("2"), expected: false },
+    { type: "greaterThan", left: text("10"), right: text("2"), expected: true },
+    {
+      type: "lessThan",
+      left: { type: "numericLiteral", value: 2 } as Expression,
+      right: text("apple"),
+      expected: true,
+    },
+    { type: "lessThan", left: text(" "), right: text("a"), expected: true },
+  ] as const)(
+    "orders $type operands using Scratch comparison",
+    ({ type, left, right, expected }) => {
+      const result = runProgram(
+        program([
+          { type: "if", condition: { type, left, right }, then: [{ type: "move", steps: 10 }] },
+        ]),
+      );
+      expect(result.world.sprite.x).toBe(expected ? 10 : 0);
+    },
+  );
+  it.each([
     { word: "12", number: 12, expected: true },
     { word: "13", number: 12, expected: false },
     { word: "hola", number: 0, expected: false },
