@@ -56,6 +56,17 @@ describe("lists of numbers or words", () => {
     expect(run([setT(item(1))], [12]).world.texts?.["t"]?.value).toBe("12");
   });
 
+  it("reads an unavailable list item as empty text in text operators", () => {
+    const result = run([setT(item(1)), setR({ type: "textLength", value: item(1) })], []);
+    expect(result.world.texts?.["t"]?.value).toBe("");
+    expect(result.world.variables?.["r"]?.value).toBe(0);
+    expect(result.notes?.some((note) => note.startsWith("list-index-out-of-range"))).toBe(true);
+    expect(run([setR(item(1))], []).world.variables?.["r"]?.value).toBe(0);
+    expect(
+      run([setR({ type: "textLength", value: item(1) })], ["Hola"]).world.variables?.["r"]?.value,
+    ).toBe(4);
+  });
+
   it("compares words ignoring capitals, and a word that reads as a number with that number", () => {
     expect(
       runProgram(

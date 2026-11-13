@@ -2617,6 +2617,30 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses empty text for an unavailable Scratch list item in length of", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", { inputs: { MESSAGE: [3, "length", [10, ""]] } }),
+        length: block("operator_length", { inputs: { STRING: [3, "item", [10, ""]] } }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: lit(1) },
+        }),
+      },
+      { L1: ["Compras", []] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("0");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
   it.each([
     { operator: "operator_join", input: "STRING1", other: "STRING2", slot: "say", expected: "2!" },
     {

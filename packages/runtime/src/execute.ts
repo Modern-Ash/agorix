@@ -752,7 +752,7 @@ function evaluateExpression(
       const item = getListItemWorld(state.world, expression.listId, index);
       if (item === undefined) {
         addNote(state, `list-index-out-of-range:${expression.listId}:${path}`);
-        return 0;
+        return "";
       }
       return item;
     }
