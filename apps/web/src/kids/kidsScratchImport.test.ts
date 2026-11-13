@@ -1612,6 +1612,134 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
   it.each([
+    { operator: "operator_join", input: "STRING1", other: "STRING2", slot: "say", expected: "2!" },
+    {
+      operator: "operator_letter_of",
+      input: "STRING",
+      other: "LETTER",
+      slot: "say",
+      expected: "2",
+    },
+    { operator: "operator_length", input: "STRING", other: "", slot: "number", expected: 1 },
+    {
+      operator: "operator_contains",
+      input: "STRING1",
+      other: "STRING2",
+      slot: "condition",
+      expected: "Sí",
+    },
+    {
+      operator: "operator_equals",
+      input: "OPERAND1",
+      other: "OPERAND2",
+      slot: "condition",
+      expected: "Sí",
+    },
+  ])(
+    "keeps Scratch item number numeric in $operator through round-trip",
+    async ({ operator, input, other, slot, expected }) => {
+      const inputs: Record<string, unknown> = { [input]: [3, "itemNumber", [4, "0"]] };
+      if (other)
+        inputs[other] =
+          operator === "operator_letter_of"
+            ? lit(1)
+            : operator === "operator_join"
+              ? lit("!", 10)
+              : operator === "operator_equals"
+                ? [3, [12, "word", "stage:studio-text-1"], [10, ""]]
+                : lit(2);
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag(slot === "condition" ? "if" : slot === "number" ? "set" : "say"),
+            itemNumber: block("data_itemnumoflist", {
+              fields: { LIST: ["Items", "L1"] },
+              inputs: { ITEM: lit(12) },
+            }),
+            operator: block(operator, { inputs }),
+            say: block("looks_say", { inputs: { MESSAGE: [3, "operator", [10, ""]] } }),
+            set: block("data_setvariableto", {
+              fields: { VARIABLE: ["score", "v1"] },
+              inputs: { VALUE: [3, "operator", [4, "0"]] },
+            }),
+            if: block("control_if", {
+              inputs: { CONDITION: [2, "operator"], SUBSTACK: [2, "found"] },
+            }),
+            found: block("looks_say", { inputs: { MESSAGE: lit("Sí", 10) } }),
+          },
+          { L1: ["Items", ["Hola", 12]] },
+          {
+            v1: ["score", 0],
+            "stage:studio-text-1": ["word", "2"],
+          },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(JSON.stringify(program.scripts[0]!.statements[0])).toContain('"type":"listIndexOf"');
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      if (slot === "number")
+        expect(run.actors[0]!.world.variables?.["studio-var-1"]?.value).toBe(expected);
+      else
+        expect(
+          run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+        ).toBe(expected);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("writes zero when an item is absent from a Scratch list", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("say"),
+          say: block("looks_say", { inputs: { MESSAGE: [3, "join", [10, ""]] } }),
+          join: block("operator_join", {
+            inputs: { STRING1: [3, "itemNumber", [4, "0"]], STRING2: lit("!", 10) },
+          }),
+          itemNumber: block("data_itemnumoflist", {
+            fields: { LIST: ["Items", "L1"] },
+            inputs: { ITEM: lit("missing", 10) },
+          }),
+        },
+        { L1: ["Items", ["Hola", 12]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("0!");
+  });
+
+  it.each([
+    { list: ["Missing", "missing"], item: lit(12) },
+    { list: ["Items", "L1"], item: lit("una palabra demasiado larga", 10) },
+  ])("reports an unsupported Scratch list item-number source", ({ list, item }) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("say"),
+          say: block("looks_say", { inputs: { MESSAGE: [3, "join", [10, ""]] } }),
+          join: block("operator_join", {
+            inputs: { STRING1: [3, "itemNumber", [4, "0"]], STRING2: lit("!", 10) },
+          }),
+          itemNumber: block("data_itemnumoflist", {
+            fields: { LIST: list },
+            inputs: { ITEM: item },
+          }),
+        },
+        { L1: ["Items", ["Hola", 12]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((entry) => entry.what.startsWith("data_itemnumoflist"))).toBe(true);
+    expect(report.dropped.some((entry) => entry.what.startsWith("operator_join"))).toBe(true);
+  });
+
+  it.each([
     { opcode: "operator_join", input: "STRING1", other: "STRING2", slot: "say" },
     { opcode: "operator_letter_of", input: "STRING", other: "LETTER", slot: "say" },
     { opcode: "operator_length", input: "STRING", other: "", slot: "number" },
