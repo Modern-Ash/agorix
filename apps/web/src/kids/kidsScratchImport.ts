@@ -1196,7 +1196,7 @@ class Converter {
         return number;
       if (
         number?.type === "actorProperty" &&
-        [
+        ([
           "xPosition",
           "yPosition",
           "direction",
@@ -1204,7 +1204,9 @@ class Converter {
           "costumeNumber",
           "backdropNumber",
           "volume",
-        ].includes(number.property)
+        ].includes(number.property) ||
+          (number.property === "variable" &&
+            [...this.variableIds.values()].includes(number.variableId ?? "")))
       )
         return number;
     }

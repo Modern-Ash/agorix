@@ -575,6 +575,7 @@ Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks add
 - A direct number or word variable, or another supported reporter, can also fill an imported say/think bubble without fixed text. Literal messages remain literal; reporters outside the scene's bounded vocabulary are left behind and counted.
 - The scene still has no Stage scripts, so its volume is 100. Numeric and word Stage variables have an explicit `scope: stage` declaration, one shared value and watcher visibility across characters, and can be read through `variable of Stage`. Stage lists also share items and watcher visibility across characters. Scratch exchange keeps Stage and character-local data separate.
 - Standard numeric `sensing_of` properties of a kept sprite or Stage can also feed bounded `join`, `letter of`, `length of`, `contains` and `equals` operators. Their canonical property identity survives Scratch exchange; the runtime writes their number as digits when text is expected. Unknown targets and unsupported properties remain reported and dropped.
+- A numeric variable read through `sensing_of` can feed the same bounded operators, retaining its actor and variable ID through Scratch exchange. Word-variable properties stay typed as words. Wrong-scope and unknown variable reads are dropped with an import report.
 
 ## "How do you say this in code?" (a bridge Scratch does not have)
 
