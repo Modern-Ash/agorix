@@ -559,6 +559,11 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - A kept Scratch list's item at a fixed position from 1 to 10 can feed `join`, `letter of`, `length of`, `contains` or `equals`. The importer keeps it as a canonical `listItem`, so the runtime uses the actual word or number in that list and `.sb3` export/reimport preserves the reporter.
 - An unknown list, unsupported position or nested expression is still dropped with an explicit import report.
 
+## Scratch list length as a bounded text source
+
+- The length of a kept Scratch list can feed `join`, `letter of`, `length of`, `contains` or `equals`. It remains a canonical numeric `listLength` reporter; the runtime writes the count as digits when a text operator uses it, and `.sb3` export/reimport preserves the reporter.
+- An unknown list or unsupported nested reporter is dropped with an explicit import reason.
+
 ## More ideas from Ori (what Scratch's blocks make easy to ask for)
 
 Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks added for Scratch compatibility and are still the same kind of thing: a goal picked from a closed list (never typed), turned by deterministic code into two to eight blocks, shown as ghost blocks with the evidence of where the character would end up, and added only if the learner uses the idea.
