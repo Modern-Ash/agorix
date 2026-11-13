@@ -417,7 +417,10 @@ function checkedCondition(
       checkedListItem(value.value, program, arity)
     );
   if (value.type === "textContains")
-    return checkedText(value.text, program) && checkedText(value.part, program);
+    return (
+      (checkedText(value.text, program) || checkedNumber(value.text, program)) &&
+      (checkedText(value.part, program) || checkedNumber(value.part, program))
+    );
   if (value.type === "touchingStageEdge")
     return (
       value.minX === STUDIO_EDGE_CONDITION.minX &&
