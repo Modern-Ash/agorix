@@ -552,6 +552,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - Scratch `contains` imports and exports as canonical `textContains` when both inputs are short word literals, word variables, bounded numbers, numeric variables or compatible name reporters. Numeric operands retain their type and become digits during the deterministic, case-insensitive comparison, including after `.sb3` round-trip.
 - One bounded `join` may feed either side of `contains`; the runtime searches the actual concatenated text without case sensitivity, and `.sb3` exchange preserves the nested expression. Deeper joins or unsupported sources drop the condition with an explicit import reason.
 - One bounded `letter of` reporter may also feed either side of `contains`. Its fixed index and source remain subject to the scene's limits; unsupported compositions are reported and dropped.
+- A bounded `length of` reporter may also feed either side of `contains`. Its numeric result is written as digits for the search, and `.sb3` exchange keeps the reporter.
 
 ## Bounded Scratch word equality
 
@@ -559,6 +560,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - Studio validation accepts these equality forms in conditions. Unsupported sources drop the condition with an explicit import reason.
 - One bounded `join` may feed either side of `equals` alongside a bounded word or number. The runtime compares the resulting value, and `.sb3` export and reimport preserve the expression. Deeper joins remain unsupported and reported.
 - One bounded `letter of` reporter may also feed either side of `equals` alongside a word. It retains the fixed index and source limits; unsupported positions or sources are reported and dropped.
+- A bounded `length of` reporter may also feed either side of `equals` alongside a word or number. The comparison uses its actual numeric result; unsupported sources remain reported and dropped.
 
 ## Bounded Scratch word ordering
 

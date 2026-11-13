@@ -1318,6 +1318,47 @@ describe("Scratch import", () => {
     expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(true);
   });
 
+  it.each([
+    { side: "STRING1", other: "6", expected: true },
+    { side: "STRING1", other: "7", expected: false },
+    { side: "STRING2", other: "score 6", expected: true },
+    { side: "STRING2", other: "score 7", expected: false },
+  ] as const)("round-trips length in contains $side", async ({ side, other, expected }) => {
+    const scratch = project();
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "contains"], SUBSTACK: [2, "say"] },
+    });
+    const length = [3, "length", [4, "0"]];
+    blocks["contains"] = block("operator_contains", {
+      inputs: {
+        STRING1: side === "STRING1" ? length : lit(other, 10),
+        STRING2: side === "STRING2" ? length : lit(other, 10),
+      },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: lit("Banana", 10) } });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_contains"))).toBe(false);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: {
+        type: "textContains",
+        [side === "STRING1" ? "text" : "part"]: {
+          type: "textLength",
+          value: { type: "textLiteral", value: "Banana" },
+        },
+      },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.trace.some((entry) => entry.statementType === "say")).toBe(expected);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+  });
+
   it.each(["Sol", "Luna"])("round-trips a Scratch word equality for %s", async (word) => {
     const scratch = project();
     (scratch.targets[0] as { variables: Record<string, unknown> }).variables["w"] = ["word", word];
@@ -1547,6 +1588,76 @@ describe("Scratch import", () => {
     expect(program.scripts[0]!.statements).toEqual([]);
     expect(report.dropped.some((item) => item.what.startsWith("operator_letter_of"))).toBe(true);
     expect(report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(true);
+  });
+
+  it.each([
+    { side: "OPERAND1", word: "6", expected: true },
+    { side: "OPERAND1", word: "7", expected: false },
+    { side: "OPERAND2", word: "6", expected: true },
+    { side: "OPERAND2", word: "7", expected: false },
+  ] as const)("round-trips length in equality $side", async ({ side, word, expected }) => {
+    const scratch = project();
+    (scratch.targets[0] as { variables: Record<string, unknown> }).variables[
+      "stage:studio-text-1"
+    ] = ["word", word];
+    const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+    blocks["if"] = block("control_if", {
+      inputs: { CONDITION: [2, "equal"], SUBSTACK: [2, "say"] },
+    });
+    const length = [3, "length", [4, "0"]];
+    const wordInput = [3, [12, "word", "stage:studio-text-1"], [10, ""]];
+    blocks["equal"] = block("operator_equals", {
+      inputs: {
+        OPERAND1: side === "OPERAND1" ? length : wordInput,
+        OPERAND2: side === "OPERAND2" ? length : wordInput,
+      },
+    });
+    blocks["length"] = block("operator_length", { inputs: { STRING: lit("Banana", 10) } });
+    blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Iguales", 10) } });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped.some((item) => item.what.startsWith("operator_equals"))).toBe(false);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "if",
+      condition: {
+        type: "equals",
+        [side === "OPERAND1" ? "left" : "right"]: {
+          type: "textLength",
+          value: { type: "textLiteral", value: "Banana" },
+        },
+      },
+    });
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.trace.some((entry) => entry.statementType === "say")).toBe(expected);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements[0]).toEqual(program.scripts[0]!.statements[0]);
+  });
+
+  it("reports an unsupported length source in both text conditions", () => {
+    for (const [opcode, first, second] of [
+      ["operator_contains", "STRING1", "STRING2"],
+      ["operator_equals", "OPERAND1", "OPERAND2"],
+    ] as const) {
+      const scratch = project();
+      const blocks = (scratch.targets[1] as { blocks: Record<string, unknown> }).blocks;
+      blocks["hat"] = block("event_whenflagclicked", { next: "if", topLevel: true });
+      blocks["if"] = block("control_if", {
+        inputs: { CONDITION: [2, "condition"], SUBSTACK: [2, "say"] },
+      });
+      blocks["condition"] = block(opcode, {
+        inputs: { [first]: [3, "length", [4, "0"]], [second]: lit("6", 10) },
+      });
+      blocks["length"] = block("operator_length", {
+        inputs: { STRING: lit("una palabra demasiado larga", 10) },
+      });
+      blocks["say"] = block("looks_say", { inputs: { MESSAGE: lit("Encontrado", 10) } });
+      const { program, report } = convertScratchProject(scratch);
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.startsWith("operator_length"))).toBe(true);
+      expect(report.dropped.some((item) => item.what.startsWith(opcode))).toBe(true);
+    }
   });
 
   it("keeps numeric equality and reports an unsupported word equality", () => {
