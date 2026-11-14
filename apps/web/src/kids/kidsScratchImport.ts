@@ -196,6 +196,21 @@ function parseBlock(raw: unknown): ScratchBlock | undefined {
   };
 }
 
+function isSimpleArithmeticIndex(value: Expression): boolean {
+  if (
+    value.type !== "add" &&
+    value.type !== "subtract" &&
+    value.type !== "multiply" &&
+    value.type !== "divide" &&
+    value.type !== "modulo"
+  )
+    return false;
+  return (
+    (value.left.type === "numericLiteral" || value.left.type === "variable") &&
+    (value.right.type === "numericLiteral" || value.right.type === "variable")
+  );
+}
+
 class Converter {
   /** Canonical actor whose Scratch sprite stack is currently being converted. */
   currentActorId: string | undefined;
@@ -1175,18 +1190,7 @@ class Converter {
       inner?.opcode === "operator_mod"
     ) {
       const source = this.reporter(inner);
-      if (
-        source?.type !== "add" &&
-        source?.type !== "subtract" &&
-        source?.type !== "multiply" &&
-        source?.type !== "divide" &&
-        source?.type !== "modulo"
-      )
-        return undefined;
-      return (source.left.type === "numericLiteral" || source.left.type === "variable") &&
-        (source.right.type === "numericLiteral" || source.right.type === "variable")
-        ? source
-        : undefined;
+      return source !== undefined && isSimpleArithmeticIndex(source) ? source : undefined;
     }
     if (
       inner?.opcode === "looks_costumenumbername" ||
@@ -1224,6 +1228,7 @@ class Converter {
           source.index.type === "listLength" ||
           source.index.type === "variable" ||
           source.index.type === "textVariable" ||
+          isSimpleArithmeticIndex(source.index) ||
           (source.index.type === "mathFunction" &&
             source.index.function === "round" &&
             (source.index.value.type === "numericLiteral" ||
@@ -1250,6 +1255,7 @@ class Converter {
               found.value.index.type === "listLength" ||
               found.value.index.type === "variable" ||
               found.value.index.type === "textVariable" ||
+              isSimpleArithmeticIndex(found.value.index) ||
               (found.value.index.type === "mathFunction" &&
                 found.value.index.function === "round" &&
                 (found.value.index.value.type === "numericLiteral" ||

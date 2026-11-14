@@ -284,6 +284,12 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
         (value.index.type === "listLength" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "variable" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "textVariable" && checkedStudioIndex(value.index, program)) ||
+        ((value.index.type === "add" ||
+          value.index.type === "subtract" ||
+          value.index.type === "multiply" ||
+          value.index.type === "divide" ||
+          value.index.type === "modulo") &&
+          checkedStudioIndex(value.index, program)) ||
         (value.index.type === "mathFunction" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "randomInteger" &&
           value.index.min.type === "numericLiteral" &&
@@ -303,6 +309,12 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
             (value.value.index.type === "listLength" &&
               checkedStudioIndex(value.value.index, program)) ||
             ((value.value.index.type === "variable" || value.value.index.type === "textVariable") &&
+              checkedStudioIndex(value.value.index, program)) ||
+            ((value.value.index.type === "add" ||
+              value.value.index.type === "subtract" ||
+              value.value.index.type === "multiply" ||
+              value.value.index.type === "divide" ||
+              value.value.index.type === "modulo") &&
               checkedStudioIndex(value.value.index, program)) ||
             (value.value.index.type === "mathFunction" &&
               checkedStudioIndex(value.value.index, program)) ||
