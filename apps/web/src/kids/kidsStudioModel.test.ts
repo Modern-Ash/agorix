@@ -408,6 +408,20 @@ describe("Kids creative studio", () => {
       if (valid) expect(attempt).not.toThrow();
       else expect(attempt).toThrow();
     }
+    for (const listId of ["studio-list-1", "missing"]) {
+      const attempt = () =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: {
+            type: "randomInteger",
+            min: { type: "numericLiteral", value: 1 },
+            max: { type: "listLength", listId },
+          },
+        });
+      if (listId === "studio-list-1") expect(attempt).not.toThrow();
+      else expect(attempt).toThrow();
+    }
     for (const [value, fn, valid] of [
       [{ type: "numericLiteral", value: 2.6 }, "round", true],
       [{ type: "variable", variableId: "studio-var-1" }, "round", true],

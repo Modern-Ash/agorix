@@ -211,16 +211,23 @@ function finiteSmallNumber(value: unknown): value is number {
 }
 
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
-  if (value.type === "randomInteger")
+  if (value.type === "randomInteger") {
+    const min = value.min;
+    const max = value.max;
     return (
-      value.min.type === "numericLiteral" &&
-      value.max.type === "numericLiteral" &&
-      Number.isInteger(value.min.value) &&
-      Number.isInteger(value.max.value) &&
-      value.min.value >= 1 &&
-      value.max.value <= 10 &&
-      value.min.value <= value.max.value
+      (min.type === "numericLiteral" &&
+        min.value === 1 &&
+        max.type === "listLength" &&
+        program.lists?.some((item) => item.id === max.listId) === true) ||
+      (min.type === "numericLiteral" &&
+        max.type === "numericLiteral" &&
+        Number.isInteger(min.value) &&
+        Number.isInteger(max.value) &&
+        min.value >= 1 &&
+        max.value <= 10 &&
+        min.value <= max.value)
     );
+  }
   if (
     value.type === "add" ||
     value.type === "subtract" ||

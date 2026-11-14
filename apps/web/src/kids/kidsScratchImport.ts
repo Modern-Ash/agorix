@@ -1095,6 +1095,14 @@ class Converter {
   /** A fixed position or Scratch's dynamic last position of this list. */
   listPosition(block: ScratchBlock, name: string, listId: string): Expression | undefined {
     if (this.literal(block, name) === "last") return { type: "listLength", listId };
+    if (this.literal(block, name)?.toLowerCase() === "random")
+      return block.opcode === "data_insertatlist"
+        ? undefined
+        : {
+            type: "randomInteger",
+            min: { type: "numericLiteral", value: 1 },
+            max: { type: "listLength", listId },
+          };
     const reference = block.inputs[name]?.[1];
     const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
     if (inner?.opcode === "data_lengthoflist") {
@@ -1129,14 +1137,21 @@ class Converter {
     }
     if (inner?.opcode === "operator_random") {
       const source = this.reporter(inner);
-      return source?.type === "randomInteger" &&
+      const dynamic =
+        source?.type === "randomInteger" &&
         source.min.type === "numericLiteral" &&
-        source.max.type === "numericLiteral" &&
-        Number.isInteger(source.min.value) &&
-        Number.isInteger(source.max.value) &&
-        source.min.value >= 1 &&
-        source.max.value <= 10 &&
-        source.min.value <= source.max.value
+        source.min.value === 1 &&
+        source.max.type === "listLength" &&
+        source.max.listId === listId;
+      return dynamic ||
+        (source?.type === "randomInteger" &&
+          source.min.type === "numericLiteral" &&
+          source.max.type === "numericLiteral" &&
+          Number.isInteger(source.min.value) &&
+          Number.isInteger(source.max.value) &&
+          source.min.value >= 1 &&
+          source.max.value <= 10 &&
+          source.min.value <= source.max.value)
         ? source
         : undefined;
     }
