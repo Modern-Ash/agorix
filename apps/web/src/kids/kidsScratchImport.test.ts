@@ -2660,6 +2660,78 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses a changing list length to find a list position", async () => {
+    const search = (source: string) =>
+      block("data_itemnumoflist", {
+        ...onList,
+        inputs: { ITEM: [3, source, [4, "0"]] },
+      });
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "grow",
+          inputs: { MESSAGE: [3, "targetItem", [10, ""]] },
+        }),
+        targetItem: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "firstSearch", [4, "1"]] },
+        }),
+        firstSearch: search("firstLength"),
+        firstLength: block("data_lengthoflist", { fields: { LIST: ["Fuente", "L2"] } }),
+        grow: block("data_addtolist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          next: "remove",
+          inputs: { ITEM: lit("y", 10) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "removeAgain",
+          inputs: { INDEX: [3, "secondSearch", [4, "1"]] },
+        }),
+        secondSearch: search("secondLength"),
+        secondLength: block("data_lengthoflist", { fields: { LIST: ["Fuente", "L2"] } }),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "thirdSearch", [4, "1"]] },
+        }),
+        thirdSearch: search("thirdLength"),
+        thirdLength: block("data_lengthoflist", { fields: { LIST: ["Fuente", "L2"] } }),
+      },
+      { L1: ["Compras", ["A", 1, 2]], L2: ["Fuente", ["x"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("1");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", 1]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("reports an unknown list length searched for a list position", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "search", [4, "1"]] },
+        }),
+        search: block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, "sourceLength", [4, "0"]] },
+        }),
+        sourceLength: block("data_lengthoflist", { fields: { LIST: ["Missing", "missing"] } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses a fixed source list item to find a changing list position", async () => {
     const scratch = listProject(
       {
