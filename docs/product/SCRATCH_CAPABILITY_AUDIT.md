@@ -583,6 +583,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - The length reporter of any kept list may also supply another list's position. The runtime reads its current length when the block executes; unknown source lists remain reported and dropped. Scratch's literal `last` menu still refers to the target list.
 - `Item # of` may supply a list position when it searches for one bounded literal in a kept list. The index updates as that list changes; an absent item yields zero, so reads are empty and mutations leave the list unchanged. Unknown lists and nested searched values are reported and dropped.
 - A declared numeric or word variable may also supply that searched item. Changing the variable changes the computed position on the next read or mutation; unknown variables and nested search expressions remain reported and dropped.
+- An item at a fixed position from 1 to 10 in any kept list may supply that searched item. The computed position follows changes to the source list; an absent match yields zero. Unknown source lists and computed positions within the source item remain reported and dropped.
 - An unknown list, unsupported position or nested expression is still dropped with an explicit import report.
 
 ## Scratch list length as a bounded text source

@@ -360,6 +360,25 @@ describe("Kids creative studio", () => {
         },
       }),
     ).not.toThrow();
+    for (const [listId, index, valid] of [
+      ["studio-list-1", { type: "numericLiteral", value: 1 }, true],
+      ["missing", { type: "numericLiteral", value: 1 }, false],
+      ["studio-list-1", { type: "numericLiteral", value: 11 }, false],
+      ["studio-list-1", { type: "listLength", listId: "studio-list-1" }, false],
+    ] as const) {
+      const attempt = () =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: {
+            type: "listIndexOf",
+            listId: "studio-list-1",
+            value: { type: "listItem", listId, index },
+          },
+        });
+      if (valid) expect(attempt).not.toThrow();
+      else expect(attempt).toThrow();
+    }
     expect(() =>
       appendStudioStatement(history, "actor:studio-1-nova", {
         type: "listRemoveAt",
