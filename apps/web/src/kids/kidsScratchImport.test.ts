@@ -2766,18 +2766,56 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([]);
   });
 
-  it("reports random insertion until append-inclusive behavior is supported", () => {
-    const { program, report } = convertScratchProject(
-      listProject({
-        hat: flag("insert"),
-        insert: block("data_insertatlist", {
-          ...onList,
-          inputs: { INDEX: lit("random", 10), ITEM: lit("X", 10) },
-        }),
+  it("inserts at a seeded random position including the end and round-trips through sb3", async () => {
+    const scratch = listProject({
+      hat: flag("insert"),
+      insert: block("data_insertatlist", {
+        ...onList,
+        inputs: { INDEX: lit("random", 10), ITEM: lit("X", 10) },
       }),
+    });
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements).toMatchObject([
+      {
+        type: "listInsertAt",
+        index: {
+          type: "randomInteger",
+          min: { type: "numericLiteral", value: 1 },
+          max: {
+            type: "add",
+            left: { type: "listLength", listId: "studio-list-1" },
+            right: { type: "numericLiteral", value: 1 },
+          },
+        },
+      },
+    ]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = (seed: number) =>
+      runMultiActorProgram(program, creativeForStudio(program, "forest", "es"), {
+        randomSeed: seed,
+      }).actors[0]!.world.lists?.["studio-list-1"]?.items;
+    expect(run(5)).toEqual(run(5));
+    expect(
+      Array.from({ length: 32 }, (_, seed) => run(seed)).some((items) => items?.[0] === "X"),
+    ).toBe(true);
+    expect(
+      Array.from({ length: 32 }, (_, seed) => run(seed)).some((items) => items?.at(-1) === "X"),
+    ).toBe(true);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+
+    const empty = convertScratchProject(
+      listProject(scratch.targets[1]!.blocks, { L1: ["Compras", []] }),
     );
-    expect(program.scripts[0]!.statements).toEqual([]);
-    expect(report.dropped.some((item) => item.what.includes("data_insertatlist"))).toBe(true);
+    expect(empty.report.dropped).toEqual([]);
+    expect(
+      runMultiActorProgram(empty.program, creativeForStudio(empty.program, "forest", "es"), {
+        randomSeed: 5,
+      }).actors[0]!.world.lists?.["studio-list-1"]?.items,
+    ).toEqual(["X"]);
   });
 
   it("reports a random reporter bounded by a different list", () => {
@@ -2799,6 +2837,30 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     );
     expect(program.scripts[0]!.statements).toEqual([]);
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
+  it("reports random insertion bounded by another list", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("insert"),
+          insert: block("data_insertatlist", {
+            ...onList,
+            inputs: { INDEX: [3, "random", [4, "1"]], ITEM: lit("X", 10) },
+          }),
+          random: block("operator_random", {
+            inputs: { FROM: lit(1), TO: [3, "append", [4, "1"]] },
+          }),
+          append: block("operator_add", {
+            inputs: { NUM1: [3, "otherLength", [4, "1"]], NUM2: lit(1) },
+          }),
+          otherLength: block("data_lengthoflist", { fields: { LIST: ["Otra", "L2"] } }),
+        },
+        { L1: ["Compras", ["A"]], L2: ["Otra", ["B"]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_insertatlist"))).toBe(true);
   });
 
   it("uses a fixed random range as a list position through Scratch exchange", async () => {

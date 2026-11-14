@@ -214,11 +214,20 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
   if (value.type === "randomInteger") {
     const min = value.min;
     const max = value.max;
+    const appendListId =
+      max.type === "add" && max.left.type === "listLength" ? max.left.listId : undefined;
     return (
       (min.type === "numericLiteral" &&
         min.value === 1 &&
         max.type === "listLength" &&
         program.lists?.some((item) => item.id === max.listId) === true) ||
+      (min.type === "numericLiteral" &&
+        min.value === 1 &&
+        max.type === "add" &&
+        appendListId !== undefined &&
+        program.lists?.some((item) => item.id === appendListId) === true &&
+        max.right.type === "numericLiteral" &&
+        max.right.value === 1) ||
       (min.type === "numericLiteral" &&
         max.type === "numericLiteral" &&
         Number.isInteger(min.value) &&
