@@ -1222,6 +1222,7 @@ class Converter {
           source.index.value >= 1 &&
           source.index.value <= 10) ||
           (source.index.type === "listLength" && source.index.listId === source.listId) ||
+          source.index.type === "variable" ||
           (source.index.type === "randomInteger" &&
             source.index.min.type === "numericLiteral" &&
             source.index.min.value === 1 &&
