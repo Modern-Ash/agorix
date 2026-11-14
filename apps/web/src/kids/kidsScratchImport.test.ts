@@ -2962,7 +2962,11 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
       ),
     );
     expect(program.scripts[0]!.statements).toEqual([]);
-    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    expect(
+      report.dropped.some(
+        (item) => item.what.includes("data_deleteoflist") || item.what.includes("listRemoveAt"),
+      ),
+    ).toBe(true);
   });
 
   it.each([
@@ -3612,6 +3616,144 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     const { bytes } = exportScratchProject(program, "forest", "es");
     const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["direct", "search"])(
+    "uses a sprite's changing x property to choose a source item for a %s list position",
+    async (kind) => {
+      const target = (suffix: string) =>
+        block("data_itemoflist", {
+          ...onList,
+          inputs: {
+            INDEX: [3, kind === "direct" ? `source${suffix}` : `search${suffix}`, [4, "1"]],
+          },
+        });
+      const search = (suffix: string) =>
+        block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, `source${suffix}`, [10, ""]] },
+        });
+      const source = (suffix: string) =>
+        block("data_itemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { INDEX: [3, `property${suffix}`, [4, "1"]] },
+        });
+      const property = (suffix: string) =>
+        block("sensing_of", {
+          fields: { PROPERTY: ["x position", null] },
+          inputs: { OBJECT: [1, `sprite${suffix}`] },
+        });
+      const scratch = listProject(
+        {
+          hat: flag("setFirst"),
+          setFirst: block("motion_setx", {
+            next: "sayFirst",
+            inputs: { X: lit(-238.5) },
+          }),
+          sayFirst: block("looks_say", {
+            next: "setSecond",
+            inputs: { MESSAGE: [3, "targetFirst", [10, ""]] },
+          }),
+          targetFirst: target("First"),
+          searchFirst: search("First"),
+          sourceFirst: source("First"),
+          propertyFirst: property("First"),
+          spriteFirst: block("sensing_of_object_menu", { fields: { OBJECT: ["Cat", null] } }),
+          setSecond: block("motion_setx", {
+            next: "saySecond",
+            inputs: { X: lit(-237) },
+          }),
+          saySecond: block("looks_say", {
+            inputs: { MESSAGE: [3, "targetSecond", [10, ""]] },
+          }),
+          targetSecond: target("Second"),
+          searchSecond: search("Second"),
+          sourceSecond: source("Second"),
+          propertySecond: property("Second"),
+          spriteSecond: block("sensing_of_object_menu", { fields: { OBJECT: ["Cat", null] } }),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+      );
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace
+          .filter((entry) => entry.statementType === "say")
+          .map((entry) => entry.worldAfter.sprite.bubble?.text),
+      ).toEqual(["2", "3"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.report.dropped).toEqual([]);
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each([-240, -223.5])(
+    "leaves a target list unchanged for a sprite x property outside the source list at %s",
+    (x) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("setX"),
+            setX: block("motion_setx", { next: "remove", inputs: { X: lit(x) } }),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "source", [4, "1"]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { INDEX: [3, "property", [4, "1"]] },
+            }),
+            property: block("sensing_of", {
+              fields: { PROPERTY: ["x position", null] },
+              inputs: { OBJECT: [1, "sprite"] },
+            }),
+            sprite: block("sensing_of_object_menu", { fields: { OBJECT: ["Cat", null] } }),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([1, 2, 3]);
+    },
+  );
+
+  it.each([
+    ["unknown target", "x position", "Missing"],
+    ["word property", "costume name", "Cat"],
+    ["wrong-scope variable", "position", "Cat"],
+  ])("reports a %s choosing a source list item", (_case, property, target) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { INDEX: [3, "property", [4, "1"]] },
+          }),
+          property: block("sensing_of", {
+            fields: { PROPERTY: [property, null] },
+            inputs: { OBJECT: [1, "sprite"] },
+          }),
+          sprite: block("sensing_of_object_menu", { fields: { OBJECT: [target, null] } }),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        { v1: ["position", 1] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(
+      report.dropped.some(
+        (item) => item.what.includes("data_deleteoflist") || item.what.includes("listRemoveAt"),
+      ),
+    ).toBe(true);
   });
 
   it.each([

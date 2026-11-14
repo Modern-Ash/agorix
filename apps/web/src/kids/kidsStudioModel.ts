@@ -284,6 +284,7 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
         (value.index.type === "listLength" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "variable" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "textVariable" && checkedStudioIndex(value.index, program)) ||
+        (value.index.type === "actorProperty" && checkedStudioIndex(value.index, program)) ||
         ((value.index.type === "letterOf" || value.index.type === "textLength") &&
           checkedStudioIndex(value.index, program)) ||
         ((value.index.type === "add" ||
@@ -311,6 +312,8 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
             (value.value.index.type === "listLength" &&
               checkedStudioIndex(value.value.index, program)) ||
             ((value.value.index.type === "variable" || value.value.index.type === "textVariable") &&
+              checkedStudioIndex(value.value.index, program)) ||
+            (value.value.index.type === "actorProperty" &&
               checkedStudioIndex(value.value.index, program)) ||
             ((value.value.index.type === "letterOf" || value.value.index.type === "textLength") &&
               checkedStudioIndex(value.value.index, program)) ||
