@@ -28,6 +28,15 @@ describe("list blocks (issue #468)", () => {
               type: "listRemoveAt",
               listId: "l",
               index: {
+                type: "actorProperty",
+                actorId: "actor:studio-1-nova",
+                property: "xPosition",
+              },
+            },
+            {
+              type: "listRemoveAt",
+              listId: "l",
+              index: {
                 type: "listIndexOf",
                 listId: "l",
                 value: { type: "variable", variableId: "position" },

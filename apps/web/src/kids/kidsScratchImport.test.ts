@@ -2660,6 +2660,101 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses a changing Stage variable property directly as a list position", async () => {
+    const property = (menu: string) =>
+      block("sensing_of", {
+        fields: { PROPERTY: ["position", null] },
+        inputs: { OBJECT: [1, menu] },
+      });
+    const scratch = listProject(
+      {
+        hat: flag("setSecond"),
+        setSecond: block("data_setvariableto", {
+          next: "say",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(2) },
+        }),
+        say: block("looks_say", {
+          next: "setThird",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "firstProperty", [4, "1"]] },
+        }),
+        firstProperty: property("firstTarget"),
+        firstTarget: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+        setThird: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(3) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "moveOutside",
+          inputs: { INDEX: [3, "secondProperty", [4, "1"]] },
+        }),
+        secondProperty: property("secondTarget"),
+        secondTarget: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+        moveOutside: block("data_setvariableto", {
+          next: "removeAgain",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(11) },
+        }),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "thirdProperty", [4, "1"]] },
+        }),
+        thirdProperty: property("thirdTarget"),
+        thirdTarget: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+      { v1: ["position", 0] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each([
+    ["unknown target", "x position", "Missing"],
+    ["word property", "costume name", "Cat"],
+    ["wrong-scope variable", "position", "Cat"],
+  ])("reports a %s used as a list position", (_case, property, target) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "property", [4, "1"]] },
+          }),
+          property: block("sensing_of", {
+            fields: { PROPERTY: [property, null] },
+            inputs: { OBJECT: [1, "target"] },
+          }),
+          target: block("sensing_of_object_menu", { fields: { OBJECT: [target, null] } }),
+        },
+        { L1: ["Compras", []] },
+        { v1: ["position", 1] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(
+      report.dropped.some(
+        (item) => item.what.includes("data_deleteoflist") || item.what.includes("listRemoveAt"),
+      ),
+    ).toBe(true);
+  });
+
   it("uses a changing fixed source item directly as a list position", async () => {
     const sourceItem = (index: unknown) =>
       block("data_itemoflist", {

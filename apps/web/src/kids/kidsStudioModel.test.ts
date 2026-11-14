@@ -351,6 +351,26 @@ describe("Kids creative studio", () => {
         index: { type: "textVariable", variableId: "missing" },
       }),
     ).toThrow();
+    for (const [actorId, property, variableId, valid] of [
+      ["actor:studio-1-nova", "xPosition", undefined, true],
+      ["missing", "xPosition", undefined, false],
+      ["actor:studio-1-nova", "costumeName", undefined, false],
+      ["__stage__", "variable", "studio-var-1", false],
+    ] as const) {
+      const attempt = () =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: {
+            type: "actorProperty",
+            actorId,
+            property,
+            ...(variableId ? { variableId } : {}),
+          },
+        });
+      if (valid) expect(attempt).not.toThrow();
+      else expect(attempt).toThrow();
+    }
     for (const [listId, index, valid] of [
       ["studio-list-1", { type: "numericLiteral", value: 1 }, true],
       ["missing", { type: "numericLiteral", value: 1 }, false],
