@@ -1122,6 +1122,23 @@ class Converter {
     return typeof name === "string" ? this.listIds.get(name) : undefined;
   }
 
+  numericListProperty(value: Expression): boolean {
+    return (
+      value.type === "actorProperty" &&
+      ([
+        "xPosition",
+        "yPosition",
+        "direction",
+        "size",
+        "costumeNumber",
+        "backdropNumber",
+        "volume",
+      ].includes(value.property) ||
+        (value.property === "variable" &&
+          [...this.variableIds.values()].includes(value.variableId ?? "")))
+    );
+  }
+
   /** A fixed position or Scratch's dynamic last position of this list. */
   listPosition(block: ScratchBlock, name: string, listId: string): Expression | undefined {
     if (this.literal(block, name) === "last") return { type: "listLength", listId };
@@ -1206,20 +1223,7 @@ class Converter {
     }
     if (inner?.opcode === "sensing_of") {
       const source = this.reporter(inner);
-      return source?.type === "actorProperty" &&
-        ([
-          "xPosition",
-          "yPosition",
-          "direction",
-          "size",
-          "costumeNumber",
-          "backdropNumber",
-          "volume",
-        ].includes(source.property) ||
-          (source.property === "variable" &&
-            [...this.variableIds.values()].includes(source.variableId ?? "")))
-        ? source
-        : undefined;
+      return source !== undefined && this.numericListProperty(source) ? source : undefined;
     }
     if (inner?.opcode === "data_itemoflist") {
       const source = this.reporter(inner);
@@ -1231,6 +1235,7 @@ class Converter {
           source.index.type === "listLength" ||
           source.index.type === "variable" ||
           source.index.type === "textVariable" ||
+          this.numericListProperty(source.index) ||
           isSimpleArithmeticIndex(source.index) ||
           isSimpleTextIndex(source.index) ||
           (source.index.type === "mathFunction" &&
@@ -1259,6 +1264,7 @@ class Converter {
               found.value.index.type === "listLength" ||
               found.value.index.type === "variable" ||
               found.value.index.type === "textVariable" ||
+              this.numericListProperty(found.value.index) ||
               isSimpleArithmeticIndex(found.value.index) ||
               isSimpleTextIndex(found.value.index) ||
               (found.value.index.type === "mathFunction" &&
