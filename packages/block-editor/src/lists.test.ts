@@ -73,6 +73,15 @@ describe("list blocks (issue #468)", () => {
               index: { type: "listItem", listId: "l", index: { type: "numericLiteral", value: 1 } },
             },
             {
+              type: "listRemoveAt",
+              listId: "l",
+              index: {
+                type: "listIndexOf",
+                listId: "l",
+                value: { type: "textLiteral", value: "A" },
+              },
+            },
+            {
               type: "listInsertAt",
               listId: "l",
               index: { type: "numericLiteral", value: 2 },

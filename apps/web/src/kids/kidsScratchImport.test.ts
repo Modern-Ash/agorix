@@ -2889,6 +2889,77 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it("uses Scratch item number as a list position before and after a match disappears", async () => {
+    const search = (id: string) =>
+      block("data_itemnumoflist", {
+        ...onList,
+        inputs: { ITEM: lit("B", 10) },
+        parent: id,
+      });
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "remove",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "findForRead", [4, "0"]] },
+        }),
+        findForRead: search("item"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "removeAgain",
+          inputs: { INDEX: [3, "findForRemove", [4, "0"]] },
+        }),
+        findForRemove: search("remove"),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "findAfterRemoval", [4, "0"]] },
+        }),
+        findAfterRemoval: search("removeAgain"),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "say",
+      append: { type: "listItem", index: { type: "listIndexOf" } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "C"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["unknown", "nested"] as const)("reports an unsupported %s item-number index", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "find", [4, "0"]] },
+        }),
+        find: block("data_itemnumoflist", {
+          fields: { LIST: kind === "unknown" ? ["Missing", "missing"] : ["Compras", "L1"] },
+          inputs: { ITEM: kind === "unknown" ? lit("B", 10) : [3, "join", [10, ""]] },
+        }),
+        join: block("operator_join", {
+          inputs: { STRING1: lit("B", 10), STRING2: lit("!", 10) },
+        }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("floors fractional Scratch list positions in reads and mutations", async () => {
     const scratch = listProject(
       {
