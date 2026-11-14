@@ -232,6 +232,8 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
     );
   if (value.type === "variable")
     return program.variables?.some((item) => item.id === value.variableId) === true;
+  if (value.type === "textVariable")
+    return program.textVariables?.some((item) => item.id === value.variableId) === true;
   return (
     value.type === "numericLiteral" &&
     Number.isInteger(value.value) &&

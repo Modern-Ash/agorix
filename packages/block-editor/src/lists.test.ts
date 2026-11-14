@@ -7,6 +7,7 @@ describe("list blocks (issue #468)", () => {
     const original: ProjectProgram = {
       schema: SCHEMA_VERSION,
       variables: [{ id: "position", name: "position", initialValue: 2, visible: false }],
+      textVariables: [{ id: "word", name: "word", initialValue: "2", visible: false }],
       lists: [{ id: "l", name: "items", initialItems: ["A", "B"], visible: true }],
       scripts: [
         {
@@ -17,6 +18,11 @@ describe("list blocks (issue #468)", () => {
               type: "listRemoveAt",
               listId: "l",
               index: { type: "variable", variableId: "position" },
+            },
+            {
+              type: "listRemoveAt",
+              listId: "l",
+              index: { type: "textVariable", variableId: "word" },
             },
             {
               type: "listRemoveAt",

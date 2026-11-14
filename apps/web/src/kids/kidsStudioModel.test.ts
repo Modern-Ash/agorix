@@ -20,6 +20,7 @@ import {
   setStudioTrigger,
   validateStudioProgram,
   addStudioVariable,
+  addStudioText,
   addStudioList,
   wrapStudioTail,
   createStudioProcedure,
@@ -333,6 +334,21 @@ describe("Kids creative studio", () => {
         type: "listRemoveAt",
         listId: "studio-list-1",
         index: { type: "listLength", listId: "missing" },
+      }),
+    ).toThrow();
+    const withWord = addStudioText(history, "Posición");
+    expect(() =>
+      appendStudioStatement(withWord, "actor:studio-1-nova", {
+        type: "listRemoveAt",
+        listId: "studio-list-1",
+        index: { type: "textVariable", variableId: "studio-text-1" },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      appendStudioStatement(withWord, "actor:studio-1-nova", {
+        type: "listRemoveAt",
+        listId: "studio-list-1",
+        index: { type: "textVariable", variableId: "missing" },
       }),
     ).toThrow();
     for (const [listId, index, valid] of [
