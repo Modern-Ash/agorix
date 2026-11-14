@@ -4089,9 +4089,9 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
-  it.each([[], ["word"]])(
+  it.each([{ sourceItems: [] }, { sourceItems: ["word"] }])(
     "leaves the target list unchanged when the source's last item is %j",
-    (sourceItems) => {
+    ({ sourceItems }) => {
       const { program, report } = convertScratchProject(
         listProject(
           {
