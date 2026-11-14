@@ -3863,6 +3863,172 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each(
+    [
+      { opcode: "operator_add", left: 1, right: 1 },
+      { opcode: "operator_subtract", left: 3, right: 1 },
+      { opcode: "operator_multiply", left: 1, right: 2 },
+      { opcode: "operator_divide", left: 4, right: 2 },
+      { opcode: "operator_mod", left: 5, right: 3 },
+    ].flatMap((operation) => [
+      { ...operation, kind: "direct" },
+      { ...operation, kind: "search" },
+    ]),
+  )("uses $opcode to choose a source item for a $kind list position", async (caseData) => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", { inputs: { MESSAGE: [3, "target", [10, ""]] } }),
+        target: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, caseData.kind === "direct" ? "source" : "search", [4, "1"]] },
+        }),
+        search: block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, "source", [10, ""]] },
+        }),
+        source: block("data_itemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { INDEX: [3, "arithmetic", [4, "1"]] },
+        }),
+        arithmetic: block(caseData.opcode, {
+          inputs: { NUM1: lit(caseData.left), NUM2: lit(caseData.right) },
+        }),
+      },
+      { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("3");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["direct", "search"])(
+    "uses a changing arithmetic source position for a $kind list position",
+    (kind) => {
+      const source = (suffix: string) =>
+        block("data_itemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { INDEX: [3, `sum${suffix}`, [4, "1"]] },
+        });
+      const search = (suffix: string) =>
+        block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, `source${suffix}`, [10, ""]] },
+        });
+      const target = (suffix: string) =>
+        block("data_itemoflist", {
+          ...onList,
+          inputs: {
+            INDEX: [3, kind === "direct" ? `source${suffix}` : `search${suffix}`, [4, "1"]],
+          },
+        });
+      const sum = () =>
+        block("operator_add", {
+          inputs: { NUM1: [3, [12, "slot", "v1"], [4, "0"]], NUM2: lit(1) },
+        });
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("sayFirst"),
+            sayFirst: block("looks_say", {
+              next: "setSecond",
+              inputs: { MESSAGE: [3, "targetFirst", [10, ""]] },
+            }),
+            targetFirst: target("First"),
+            searchFirst: search("First"),
+            sourceFirst: source("First"),
+            sumFirst: sum(),
+            setSecond: block("data_setvariableto", {
+              next: "saySecond",
+              fields: { VARIABLE: ["slot", "v1"] },
+              inputs: { VALUE: lit(1) },
+            }),
+            saySecond: block("looks_say", {
+              inputs: { MESSAGE: [3, "targetSecond", [10, ""]] },
+            }),
+            targetSecond: target("Second"),
+            searchSecond: search("Second"),
+            sourceSecond: source("Second"),
+            sumSecond: sum(),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+          { v1: ["slot", 0] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace
+          .filter((entry) => entry.statementType === "say")
+          .map((entry) => entry.worldAfter.sprite.bubble?.text),
+      ).toEqual(["2", "3"]);
+    },
+  );
+
+  it.each(["unknown", "nested"])("reports a $kind arithmetic source position", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { INDEX: [3, "sum", [4, "1"]] },
+          }),
+          sum: block("operator_add", {
+            inputs: {
+              NUM1:
+                kind === "unknown" ? [3, [12, "missing", "v9"], [4, "1"]] : [3, "nested", [4, "1"]],
+              NUM2: lit(1),
+            },
+          }),
+          nested: block("operator_multiply", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
+  it.each([
+    { opcode: "operator_add", left: 0, right: 0, expected: [1, 2, 3] },
+    { opcode: "operator_add", left: 9, right: 1, expected: [1, 2, 3] },
+    { opcode: "operator_divide", left: 5, right: 2, expected: [1, 2] },
+  ])("uses $opcode source index bounds when deleting", ({ opcode, left, right, expected }) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { INDEX: [3, "arithmetic", [4, "1"]] },
+          }),
+          arithmetic: block(opcode, { inputs: { NUM1: lit(left), NUM2: lit(right) } }),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(expected);
+  });
+
   it.each([
     { rounded: 1.6, expected: [1, 2] },
     { rounded: 9.6, expected: [1, 2, 3] },
