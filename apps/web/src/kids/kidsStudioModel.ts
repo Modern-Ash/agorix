@@ -284,6 +284,7 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
         (value.index.type === "listLength" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "variable" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "textVariable" && checkedStudioIndex(value.index, program)) ||
+        (value.index.type === "mathFunction" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "randomInteger" &&
           value.index.min.type === "numericLiteral" &&
           value.index.min.value === 1 &&
@@ -302,6 +303,8 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
             (value.value.index.type === "listLength" &&
               checkedStudioIndex(value.value.index, program)) ||
             ((value.value.index.type === "variable" || value.value.index.type === "textVariable") &&
+              checkedStudioIndex(value.value.index, program)) ||
+            (value.value.index.type === "mathFunction" &&
               checkedStudioIndex(value.value.index, program)) ||
             (value.value.index.type === "randomInteger" &&
               value.value.index.min.type === "numericLiteral" &&

@@ -1224,6 +1224,10 @@ class Converter {
           source.index.type === "listLength" ||
           source.index.type === "variable" ||
           source.index.type === "textVariable" ||
+          (source.index.type === "mathFunction" &&
+            source.index.function === "round" &&
+            (source.index.value.type === "numericLiteral" ||
+              source.index.value.type === "variable")) ||
           (source.index.type === "randomInteger" &&
             source.index.min.type === "numericLiteral" &&
             source.index.min.value === 1 &&
@@ -1246,6 +1250,10 @@ class Converter {
               found.value.index.type === "listLength" ||
               found.value.index.type === "variable" ||
               found.value.index.type === "textVariable" ||
+              (found.value.index.type === "mathFunction" &&
+                found.value.index.function === "round" &&
+                (found.value.index.value.type === "numericLiteral" ||
+                  found.value.index.value.type === "variable")) ||
               (found.value.index.type === "randomInteger" &&
                 found.value.index.min.type === "numericLiteral" &&
                 found.value.index.min.value === 1 &&

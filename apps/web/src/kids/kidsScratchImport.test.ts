@@ -3798,6 +3798,126 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each(["direct", "search"])(
+    "uses a rounded numeric variable to choose a source item for a %s position",
+    async (kind) => {
+      const target = (suffix: string) =>
+        block("data_itemoflist", {
+          ...onList,
+          inputs: {
+            INDEX: [3, kind === "direct" ? `source${suffix}` : `search${suffix}`, [4, "1"]],
+          },
+        });
+      const search = (suffix: string) =>
+        block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, `source${suffix}`, [10, ""]] },
+        });
+      const source = (suffix: string) =>
+        block("data_itemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { INDEX: [3, `round${suffix}`, [4, "1"]] },
+        });
+      const rounded = () =>
+        block("operator_round", { inputs: { NUM: [3, [12, "slot", "v1"], [4, "1"]] } });
+      const scratch = listProject(
+        {
+          hat: flag("sayFirst"),
+          sayFirst: block("looks_say", {
+            next: "setSecond",
+            inputs: { MESSAGE: [3, "targetFirst", [10, ""]] },
+          }),
+          targetFirst: target("First"),
+          searchFirst: search("First"),
+          sourceFirst: source("First"),
+          roundFirst: rounded(),
+          setSecond: block("data_setvariableto", {
+            next: "saySecond",
+            fields: { VARIABLE: ["slot", "v1"] },
+            inputs: { VALUE: lit(2) },
+          }),
+          saySecond: block("looks_say", {
+            inputs: { MESSAGE: [3, "targetSecond", [10, ""]] },
+          }),
+          targetSecond: target("Second"),
+          searchSecond: search("Second"),
+          sourceSecond: source("Second"),
+          roundSecond: rounded(),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        { v1: ["slot", 1] },
+      );
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace
+          .filter((entry) => entry.statementType === "say")
+          .map((entry) => entry.worldAfter.sprite.bubble?.text),
+      ).toEqual(["2", "3"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.report.dropped).toEqual([]);
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each([
+    { rounded: 1.6, expected: [1, 2] },
+    { rounded: 9.6, expected: [1, 2, 3] },
+  ])("uses a rounded literal $rounded to choose a source item", ({ rounded, expected }) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { INDEX: [3, "round", [4, "1"]] },
+          }),
+          round: block("operator_round", { inputs: { NUM: lit(rounded) } }),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(expected);
+  });
+
+  it.each(["unknown", "nested"])(
+    "reports a $kind round selecting a source item for another list",
+    (kind) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "source", [4, "1"]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { INDEX: [3, "round", [4, "1"]] },
+            }),
+            round: block("operator_round", {
+              inputs: { NUM: [3, kind === "unknown" ? "missing" : "inner", [4, "1"]] },
+            }),
+            missing: block("data_variable", { fields: { VARIABLE: ["missing", "v9"] } }),
+            inner: block("operator_round", { inputs: { NUM: lit(1.6) } }),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each([
     { kind: "direct", count: [] },
     { kind: "search", count: [] },
