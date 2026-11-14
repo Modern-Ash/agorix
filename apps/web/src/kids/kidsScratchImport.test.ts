@@ -2660,6 +2660,108 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses a fixed random range as a list position through Scratch exchange", async () => {
+    const random = () => block("operator_random", { inputs: { FROM: lit(2), TO: lit(2) } });
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "remove",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "firstRandom", [4, "1"]] },
+        }),
+        firstRandom: random(),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "secondRandom", [4, "1"]] },
+        }),
+        secondRandom: random(),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"), {
+      randomSeed: 7,
+    });
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "C"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("repeats a bounded random list position with the same seed", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "random", [4, "1"]] },
+          }),
+          random: block("operator_random", { inputs: { FROM: lit(1), TO: lit(3) } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const creative = creativeForStudio(program, "forest", "es");
+    const first = runMultiActorProgram(program, creative, { randomSeed: 42 });
+    const second = runMultiActorProgram(program, creative, { randomSeed: 42 });
+    expect(first.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(
+      second.actors[0]!.world.lists?.["studio-list-1"]?.items,
+    );
+    expect(first.actors[0]!.world.lists?.["studio-list-1"]?.items).toHaveLength(2);
+  });
+
+  it.each([
+    [0, 2],
+    [1, 11],
+    [3, 2],
+    [1.5, 3],
+  ])("reports a random list position with bounds %s to %s", (from, to) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "random", [4, "1"]] },
+        }),
+        random: block("operator_random", { inputs: { FROM: lit(from), TO: lit(to) } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
+  it("reports a variable random bound in a list position", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "random", [4, "1"]] },
+          }),
+          random: block("operator_random", {
+            inputs: { FROM: [3, [12, "position", "v1"], [4, "1"]], TO: lit(3) },
+          }),
+        },
+        { L1: ["Compras", []] },
+        { v1: ["position", 1] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it.each([
     ["operator_subtract", 3, 1, "subtract"],
     ["operator_multiply", 1, 2, "multiply"],

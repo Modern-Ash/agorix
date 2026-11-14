@@ -1127,6 +1127,19 @@ class Converter {
         ? source
         : undefined;
     }
+    if (inner?.opcode === "operator_random") {
+      const source = this.reporter(inner);
+      return source?.type === "randomInteger" &&
+        source.min.type === "numericLiteral" &&
+        source.max.type === "numericLiteral" &&
+        Number.isInteger(source.min.value) &&
+        Number.isInteger(source.max.value) &&
+        source.min.value >= 1 &&
+        source.max.value <= 10 &&
+        source.min.value <= source.max.value
+        ? source
+        : undefined;
+    }
     if (
       inner?.opcode === "operator_add" ||
       inner?.opcode === "operator_subtract" ||
