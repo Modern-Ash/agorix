@@ -33,6 +33,15 @@ describe("list blocks (issue #468)", () => {
                 right: { type: "numericLiteral", value: 1 },
               },
             },
+            ...(["subtract", "multiply", "divide", "modulo"] as const).map((type) => ({
+              type: "listRemoveAt" as const,
+              listId: "l",
+              index: {
+                type,
+                left: { type: "variable" as const, variableId: "position" },
+                right: { type: "numericLiteral" as const, value: 2 },
+              },
+            })),
             {
               type: "listRemoveAt",
               listId: "l",

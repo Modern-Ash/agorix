@@ -1127,10 +1127,23 @@ class Converter {
         ? source
         : undefined;
     }
-    if (inner?.opcode === "operator_add") {
+    if (
+      inner?.opcode === "operator_add" ||
+      inner?.opcode === "operator_subtract" ||
+      inner?.opcode === "operator_multiply" ||
+      inner?.opcode === "operator_divide" ||
+      inner?.opcode === "operator_mod"
+    ) {
       const source = this.reporter(inner);
-      return source?.type === "add" &&
-        (source.left.type === "numericLiteral" || source.left.type === "variable") &&
+      if (
+        source?.type !== "add" &&
+        source?.type !== "subtract" &&
+        source?.type !== "multiply" &&
+        source?.type !== "divide" &&
+        source?.type !== "modulo"
+      )
+        return undefined;
+      return (source.left.type === "numericLiteral" || source.left.type === "variable") &&
         (source.right.type === "numericLiteral" || source.right.type === "variable")
         ? source
         : undefined;

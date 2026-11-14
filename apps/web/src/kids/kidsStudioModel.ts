@@ -211,7 +211,13 @@ function finiteSmallNumber(value: unknown): value is number {
 }
 
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
-  if (value.type === "add") {
+  if (
+    value.type === "add" ||
+    value.type === "subtract" ||
+    value.type === "multiply" ||
+    value.type === "divide" ||
+    value.type === "modulo"
+  ) {
     const simpleOperand = (operand: Expression): boolean =>
       (operand.type === "numericLiteral" && checkedDecimal(operand.value)) ||
       (operand.type === "variable" &&
