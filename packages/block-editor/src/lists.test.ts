@@ -24,6 +24,8 @@ describe("list blocks (issue #468)", () => {
               listId: "l",
               index: { type: "textVariable", variableId: "word" },
             },
+            { type: "listRemoveAt", listId: "l", index: { type: "costumeNumber" } },
+            { type: "listRemoveAt", listId: "l", index: { type: "backdropNumber" } },
             {
               type: "listRemoveAt",
               listId: "l",

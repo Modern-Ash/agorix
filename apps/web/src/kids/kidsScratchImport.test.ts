@@ -2660,6 +2660,61 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it.each(["looks_costumenumbername", "looks_backdropnumbername"])(
+    "uses %s number mode directly as a list position",
+    async (opcode) => {
+      const scratch = listProject(
+        {
+          hat: flag("say"),
+          say: block("looks_say", {
+            next: "remove",
+            inputs: { MESSAGE: [3, "item", [10, ""]] },
+          }),
+          item: block("data_itemoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "firstNumber", [4, "1"]] },
+          }),
+          firstNumber: block(opcode, { fields: { NUMBER_NAME: ["number", null] } }),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "secondNumber", [4, "1"]] },
+          }),
+          secondNumber: block(opcode, { fields: { NUMBER_NAME: ["number", null] } }),
+        },
+        { L1: ["Compras", ["A", "B"]] },
+      );
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+      ).toBe("A");
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each(["name", "unsupported"])(
+    "reports a direct looks reporter in %s mode as a list position",
+    (mode) => {
+      const { program, report } = convertScratchProject(
+        listProject({
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "reporter", [4, "1"]] },
+          }),
+          reporter: block("looks_costumenumbername", { fields: { NUMBER_NAME: [mode, null] } }),
+        }),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it("uses a changing Stage variable property directly as a list position", async () => {
     const property = (menu: string) =>
       block("sensing_of", {

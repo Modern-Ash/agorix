@@ -1101,6 +1101,15 @@ class Converter {
       const sourceListId = this.listOf(inner);
       return sourceListId === undefined ? undefined : { type: "listLength", listId: sourceListId };
     }
+    if (
+      inner?.opcode === "looks_costumenumbername" ||
+      inner?.opcode === "looks_backdropnumbername"
+    ) {
+      const source = this.reporter(inner);
+      return source?.type === "costumeNumber" || source?.type === "backdropNumber"
+        ? source
+        : undefined;
+    }
     if (inner?.opcode === "sensing_of") {
       const source = this.reporter(inner);
       return source?.type === "actorProperty" &&
