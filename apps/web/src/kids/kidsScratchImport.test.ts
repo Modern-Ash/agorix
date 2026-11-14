@@ -4113,6 +4113,114 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it.each([
+    { kind: "numeric", id: "v1", initial: 1, second: 2, missing: 9, type: "variable" },
+    { kind: "word", id: "w1", initial: "1", second: "2", missing: "no", type: "textVariable" },
+  ])("searches with a source item chosen by a changing $kind variable", async (caseData) => {
+    const variable = [12, "slot", caseData.id];
+    const source = () =>
+      block("data_itemoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { INDEX: [3, variable, [4, "1"]] },
+      });
+    const search = (sourceId: string) =>
+      block("data_itemnumoflist", {
+        ...onList,
+        inputs: { ITEM: [3, sourceId, [10, ""]] },
+      });
+    const target = (searchId: string) =>
+      block("data_itemoflist", {
+        ...onList,
+        inputs: { INDEX: [3, searchId, [4, "1"]] },
+      });
+    const scratch = listProject(
+      {
+        hat: flag("sayFirst"),
+        sayFirst: block("looks_say", {
+          next: "setSecond",
+          inputs: { MESSAGE: [3, "targetFirst", [10, ""]] },
+        }),
+        targetFirst: target("searchFirst"),
+        searchFirst: search("sourceFirst"),
+        sourceFirst: source(),
+        setSecond: block("data_setvariableto", {
+          next: "saySecond",
+          fields: { VARIABLE: ["slot", caseData.id] },
+          inputs: { VALUE: lit(caseData.second, caseData.kind === "word" ? 10 : 4) },
+        }),
+        saySecond: block("looks_say", {
+          next: "setMissing",
+          inputs: { MESSAGE: [3, "targetSecond", [10, ""]] },
+        }),
+        targetSecond: target("searchSecond"),
+        searchSecond: search("sourceSecond"),
+        sourceSecond: source(),
+        setMissing: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["slot", caseData.id] },
+          inputs: { VALUE: lit(caseData.missing, caseData.kind === "word" ? 10 : 4) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "searchMissing", [4, "1"]] },
+        }),
+        searchMissing: search("sourceMissing"),
+        sourceMissing: source(),
+      },
+      { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", ["B", "C"]] },
+      { [caseData.id]: ["slot", caseData.initial] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "say",
+      append: {
+        type: "listItem",
+        index: {
+          type: "listIndexOf",
+          value: { type: "listItem", index: { type: caseData.type } },
+        },
+      },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace
+        .filter((entry) => entry.statementType === "say")
+        .map((entry) => entry.worldAfter.sprite.bubble?.text),
+    ).toEqual(["B", "C"]);
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B", "C"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("reports an unknown variable choosing a searched source item", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "search", [4, "1"]] },
+          }),
+          search: block("data_itemnumoflist", {
+            ...onList,
+            inputs: { ITEM: [3, "source", [10, ""]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { INDEX: [3, [12, "missing", "v9"], [4, "1"]] },
+          }),
+        },
+        { L1: ["Compras", ["A"]], L2: ["Fuente", ["A"]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses Scratch's last position across list reads and mutations", async () => {
     const scratch = listProject(
       {

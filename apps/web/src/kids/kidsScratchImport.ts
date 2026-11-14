@@ -1245,6 +1245,8 @@ class Converter {
               found.value.index.value <= 10) ||
               (found.value.index.type === "listLength" &&
                 found.value.index.listId === found.value.listId) ||
+              found.value.index.type === "variable" ||
+              found.value.index.type === "textVariable" ||
               (found.value.index.type === "randomInteger" &&
                 found.value.index.min.type === "numericLiteral" &&
                 found.value.index.min.value === 1 &&

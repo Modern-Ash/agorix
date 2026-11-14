@@ -301,6 +301,8 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
             checkedStudioIndex(value.value.index, program)) ||
             (value.value.index.type === "listLength" &&
               value.value.index.listId === value.value.listId) ||
+            ((value.value.index.type === "variable" || value.value.index.type === "textVariable") &&
+              checkedStudioIndex(value.value.index, program)) ||
             (value.value.index.type === "randomInteger" &&
               value.value.index.min.type === "numericLiteral" &&
               value.value.index.min.value === 1 &&
