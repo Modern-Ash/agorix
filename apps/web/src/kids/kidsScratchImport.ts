@@ -211,6 +211,19 @@ function isSimpleArithmeticIndex(value: Expression): boolean {
   );
 }
 
+function isSimpleTextIndex(value: Expression): boolean {
+  if (value.type === "textLength")
+    return value.value.type === "textLiteral" || value.value.type === "textVariable";
+  return (
+    value.type === "letterOf" &&
+    value.index.type === "numericLiteral" &&
+    Number.isInteger(value.index.value) &&
+    value.index.value >= 1 &&
+    value.index.value <= STUDIO_WORD_MAX_LENGTH &&
+    (value.value.type === "textLiteral" || value.value.type === "textVariable")
+  );
+}
+
 class Converter {
   /** Canonical actor whose Scratch sprite stack is currently being converted. */
   currentActorId: string | undefined;
@@ -1133,21 +1146,11 @@ class Converter {
     }
     if (inner?.opcode === "operator_length") {
       const source = this.reporter(inner);
-      return source?.type === "textLength" &&
-        (source.value.type === "textLiteral" || source.value.type === "textVariable")
-        ? source
-        : undefined;
+      return source !== undefined && isSimpleTextIndex(source) ? source : undefined;
     }
     if (inner?.opcode === "operator_letter_of") {
       const source = this.reporter(inner);
-      return source?.type === "letterOf" &&
-        source.index.type === "numericLiteral" &&
-        Number.isInteger(source.index.value) &&
-        source.index.value >= 1 &&
-        source.index.value <= 20 &&
-        (source.value.type === "textLiteral" || source.value.type === "textVariable")
-        ? source
-        : undefined;
+      return source !== undefined && isSimpleTextIndex(source) ? source : undefined;
     }
     if (inner?.opcode === "operator_round") {
       const source = this.reporter(inner);
@@ -1229,6 +1232,7 @@ class Converter {
           source.index.type === "variable" ||
           source.index.type === "textVariable" ||
           isSimpleArithmeticIndex(source.index) ||
+          isSimpleTextIndex(source.index) ||
           (source.index.type === "mathFunction" &&
             source.index.function === "round" &&
             (source.index.value.type === "numericLiteral" ||
@@ -1256,6 +1260,7 @@ class Converter {
               found.value.index.type === "variable" ||
               found.value.index.type === "textVariable" ||
               isSimpleArithmeticIndex(found.value.index) ||
+              isSimpleTextIndex(found.value.index) ||
               (found.value.index.type === "mathFunction" &&
                 found.value.index.function === "round" &&
                 (found.value.index.value.type === "numericLiteral" ||
