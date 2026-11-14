@@ -2660,6 +2660,101 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses Scratch's random menu for list reads, deletion and replacement", async () => {
+    const random = lit("random", 10);
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "remove",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", { ...onList, inputs: { INDEX: random } }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "replace",
+          inputs: { INDEX: random },
+        }),
+        replace: block("data_replaceitemoflist", {
+          ...onList,
+          inputs: { INDEX: random, ITEM: lit("X", 10) },
+        }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const creative = creativeForStudio(program, "forest", "es");
+    const first = runMultiActorProgram(program, creative, { randomSeed: 42 });
+    const second = runMultiActorProgram(program, creative, { randomSeed: 42 });
+    expect(first.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(
+      second.actors[0]!.world.lists?.["studio-list-1"]?.items,
+    );
+    expect(
+      first.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toMatch(/^[ABC]$/);
+    expect(first.actors[0]!.world.lists?.["studio-list-1"]?.items).toHaveLength(2);
+    expect(first.actors[0]!.world.lists?.["studio-list-1"]?.items).toContain("X");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("keeps empty-list random reads empty and mutations unchanged", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("say"),
+        say: block("looks_say", { next: "remove", inputs: { MESSAGE: [3, "item", [10, ""]] } }),
+        item: block("data_itemoflist", { ...onList, inputs: { INDEX: lit("random", 10) } }),
+        remove: block("data_deleteoflist", { ...onList, inputs: { INDEX: lit("random", 10) } }),
+      }),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"), {
+      randomSeed: 5,
+    });
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([]);
+  });
+
+  it("reports random insertion until append-inclusive behavior is supported", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("insert"),
+        insert: block("data_insertatlist", {
+          ...onList,
+          inputs: { INDEX: lit("random", 10), ITEM: lit("X", 10) },
+        }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_insertatlist"))).toBe(true);
+  });
+
+  it("reports a random reporter bounded by a different list", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "random", [4, "1"]] },
+          }),
+          random: block("operator_random", {
+            inputs: { FROM: lit(1), TO: [3, "otherLength", [4, "1"]] },
+          }),
+          otherLength: block("data_lengthoflist", { fields: { LIST: ["Otra", "L2"] } }),
+        },
+        { L1: ["Compras", ["A"]], L2: ["Otra", ["B"]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses a fixed random range as a list position through Scratch exchange", async () => {
     const random = () => block("operator_random", { inputs: { FROM: lit(2), TO: lit(2) } });
     const scratch = listProject(

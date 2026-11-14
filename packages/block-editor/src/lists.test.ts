@@ -37,6 +37,15 @@ describe("list blocks (issue #468)", () => {
               type: "listRemoveAt",
               listId: "l",
               index: {
+                type: "randomInteger",
+                min: { type: "numericLiteral", value: 1 },
+                max: { type: "listLength", listId: "l" },
+              },
+            },
+            {
+              type: "listRemoveAt",
+              listId: "l",
+              index: {
                 type: "add",
                 left: { type: "variable", variableId: "position" },
                 right: { type: "numericLiteral", value: 1 },
