@@ -360,6 +360,20 @@ describe("Kids creative studio", () => {
         },
       }),
     ).not.toThrow();
+    for (const listId of ["studio-list-1", "missing"]) {
+      const attempt = () =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: {
+            type: "listIndexOf",
+            listId: "studio-list-1",
+            value: { type: "listLength", listId },
+          },
+        });
+      if (listId === "studio-list-1") expect(attempt).not.toThrow();
+      else expect(attempt).toThrow();
+    }
     for (const [listId, index, valid] of [
       ["studio-list-1", { type: "numericLiteral", value: 1 }, true],
       ["missing", { type: "numericLiteral", value: 1 }, false],
@@ -411,7 +425,7 @@ describe("Kids creative studio", () => {
           value: { type: "listLength", listId: "studio-list-1" },
         },
       }),
-    ).toThrow();
+    ).not.toThrow();
     for (const index of [0, 11, 1.5])
       expect(() =>
         appendStudioStatement(history, "actor:studio-1-nova", {
