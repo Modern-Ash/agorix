@@ -113,7 +113,7 @@ Each iteration needs an issue with an observable child journey, success and fail
 ## List queries, clear and visibility (next #538 increment)
 
 - Escena libre offers Delete all, Contains and Item # of for bounded lists of numbers or words. Item # is one-based and returns zero when absent; word matching ignores case. Show list and Hide list change the watcher after execution without changing list contents.
-- These blocks use the canonical program and deterministic runtime, and project to Agorix Code, TypeScript, Python and Java. Scratch import/export preserves the corresponding list blocks, including Delete all as `data_deleteoflist` with `all` in its index slot. Tests cover validation, runtime results, visual block round-trip, Scratch round-trip and a browser run.
+- These blocks use the canonical program and deterministic runtime, and project to Agorix Code, TypeScript, Python and Java. Scratch import/export preserves the corresponding list blocks, including Delete all as the dedicated `data_deletealloflist` opcode; import also accepts the older `data_deleteoflist` with `all` in its index slot. Tests cover validation, runtime results, visual block round-trip, Scratch round-trip and a browser run.
 - The visual palette keeps the existing limits of three lists, 100 items per list and 20 characters per word. General Scratch list indexing and unbounded list operations remain outside this increment.
 
 ## Properties of another character (next #538 increment)

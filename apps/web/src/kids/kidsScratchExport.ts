@@ -834,9 +834,9 @@ class Emitter {
         const name = this.names.list(statement.listId);
         if (name === undefined) return null;
         return this.with(
-          "data_deleteoflist",
+          "data_deletealloflist",
           parent,
-          { INDEX: { type: "textLiteral", value: "all" } },
+          {},
           { LIST: [name, this.names.listId(statement.listId)] },
         );
       }
