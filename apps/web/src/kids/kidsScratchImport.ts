@@ -1098,13 +1098,18 @@ class Converter {
   listPosition(block: ScratchBlock, name: string, listId: string): Expression | undefined {
     if (this.literal(block, name) === "last") return { type: "listLength", listId };
     if (this.literal(block, name)?.toLowerCase() === "random")
-      return block.opcode === "data_insertatlist"
-        ? undefined
-        : {
-            type: "randomInteger",
-            min: { type: "numericLiteral", value: 1 },
-            max: { type: "listLength", listId },
-          };
+      return {
+        type: "randomInteger",
+        min: { type: "numericLiteral", value: 1 },
+        max:
+          block.opcode === "data_insertatlist"
+            ? {
+                type: "add",
+                left: { type: "listLength", listId },
+                right: { type: "numericLiteral", value: 1 },
+              }
+            : { type: "listLength", listId },
+      };
     const reference = block.inputs[name]?.[1];
     const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
     if (inner?.opcode === "data_lengthoflist") {
@@ -1143,8 +1148,13 @@ class Converter {
         source?.type === "randomInteger" &&
         source.min.type === "numericLiteral" &&
         source.min.value === 1 &&
-        source.max.type === "listLength" &&
-        source.max.listId === listId;
+        ((source.max.type === "listLength" && source.max.listId === listId) ||
+          (block.opcode === "data_insertatlist" &&
+            source.max.type === "add" &&
+            source.max.left.type === "listLength" &&
+            source.max.left.listId === listId &&
+            source.max.right.type === "numericLiteral" &&
+            source.max.right.value === 1));
       return dynamic ||
         (source?.type === "randomInteger" &&
           source.min.type === "numericLiteral" &&
