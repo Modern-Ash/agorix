@@ -336,6 +336,14 @@ describe("Kids creative studio", () => {
         index: { type: "listLength", listId: "missing" },
       }),
     ).toThrow();
+    for (const type of ["costumeNumber", "backdropNumber"] as const)
+      expect(() =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: { type },
+        }),
+      ).not.toThrow();
     const withWord = addStudioText(history, "Posición");
     expect(() =>
       appendStudioStatement(withWord, "actor:studio-1-nova", {

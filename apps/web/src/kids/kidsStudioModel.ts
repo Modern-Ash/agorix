@@ -211,6 +211,7 @@ function finiteSmallNumber(value: unknown): value is number {
 }
 
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "costumeNumber" || value.type === "backdropNumber") return true;
   if (value.type === "actorProperty") return checkedNumber(value, program);
   if (value.type === "listLength")
     return program.lists?.some((item) => item.id === value.listId) === true;
