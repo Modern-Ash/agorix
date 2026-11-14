@@ -1244,7 +1244,12 @@ class Converter {
               found.value.index.value >= 1 &&
               found.value.index.value <= 10) ||
               (found.value.index.type === "listLength" &&
-                found.value.index.listId === found.value.listId))))
+                found.value.index.listId === found.value.listId) ||
+              (found.value.index.type === "randomInteger" &&
+                found.value.index.min.type === "numericLiteral" &&
+                found.value.index.min.value === 1 &&
+                found.value.index.max.type === "listLength" &&
+                found.value.index.max.listId === found.value.listId))))
         ? found
         : undefined;
     }

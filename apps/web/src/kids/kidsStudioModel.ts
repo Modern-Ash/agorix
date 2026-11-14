@@ -300,7 +300,12 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
           ((value.value.index.type === "numericLiteral" &&
             checkedStudioIndex(value.value.index, program)) ||
             (value.value.index.type === "listLength" &&
-              value.value.index.listId === value.value.listId)))) &&
+              value.value.index.listId === value.value.listId) ||
+            (value.value.index.type === "randomInteger" &&
+              value.value.index.min.type === "numericLiteral" &&
+              value.value.index.min.value === 1 &&
+              value.value.index.max.type === "listLength" &&
+              value.value.index.max.listId === value.value.listId)))) &&
       checkedListItem(value.value, program, 0)
     );
   if (value.type === "variable")
