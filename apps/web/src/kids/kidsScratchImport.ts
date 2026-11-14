@@ -211,6 +211,14 @@ function isSimpleArithmeticIndex(value: Expression): boolean {
   );
 }
 
+function isSimpleMathIndex(value: Expression): boolean {
+  return (
+    value.type === "mathFunction" &&
+    ["round", "abs", "floor", "ceiling"].includes(value.function) &&
+    (value.value.type === "numericLiteral" || value.value.type === "variable")
+  );
+}
+
 function isSimpleTextIndex(value: Expression): boolean {
   if (value.type === "textLength")
     return value.value.type === "textLiteral" || value.value.type === "textVariable";
@@ -1167,13 +1175,9 @@ class Converter {
       const source = this.reporter(inner);
       return source !== undefined && isSimpleTextIndex(source) ? source : undefined;
     }
-    if (inner?.opcode === "operator_round") {
+    if (inner?.opcode === "operator_round" || inner?.opcode === "operator_mathop") {
       const source = this.reporter(inner);
-      return source?.type === "mathFunction" &&
-        source.function === "round" &&
-        (source.value.type === "numericLiteral" || source.value.type === "variable")
-        ? source
-        : undefined;
+      return source !== undefined && isSimpleMathIndex(source) ? source : undefined;
     }
     if (inner?.opcode === "operator_random") {
       const source = this.reporter(inner);

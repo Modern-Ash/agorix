@@ -3413,6 +3413,107 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it.each([
+    ["abs", -2, ["A", "C"]],
+    ["floor", 2.9, ["A", "C"]],
+    ["ceiling", 2.1, ["A", "B"]],
+  ])("uses %s of a numeric literal as a list position", async (operator, value, remaining) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "math", [4, "1"]] },
+          }),
+          math: block("operator_mathop", {
+            fields: { OPERATOR: [operator, null] },
+            inputs: { NUM: lit(value) },
+          }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(remaining);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["missing", "nested", "sqrt"])(
+    "reports an unsupported %s math function list position",
+    (kind) => {
+      const { program, report } = convertScratchProject(
+        listProject({
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "math", [4, "1"]] },
+          }),
+          math: block("operator_mathop", {
+            fields: { OPERATOR: [kind === "sqrt" ? "sqrt" : "abs", null] },
+            inputs: {
+              NUM:
+                kind === "missing"
+                  ? [3, [12, "missing", "missing"], [4, "0"]]
+                  : kind === "nested"
+                    ? [3, "sum", [4, "0"]]
+                    : lit(4),
+            },
+          }),
+          sum: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+        }),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
+  it("reads the current variable through abs for each list mutation", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("setTwo"),
+          setTwo: block("data_setvariableto", {
+            next: "remove",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(-2) },
+          }),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            next: "setOne",
+            inputs: { INDEX: [3, "firstAbs", [4, "1"]] },
+          }),
+          firstAbs: block("operator_mathop", {
+            fields: { OPERATOR: ["abs", null] },
+            inputs: { NUM: [3, [12, "position", "v1"], [4, "0"]] },
+          }),
+          setOne: block("data_setvariableto", {
+            next: "removeAgain",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(-1) },
+          }),
+          removeAgain: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "secondAbs", [4, "1"]] },
+          }),
+          secondAbs: block("operator_mathop", {
+            fields: { OPERATOR: ["abs", null] },
+            inputs: { NUM: [3, [12, "position", "v1"], [4, "0"]] },
+          }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]] },
+        { v1: ["position", 0] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["C"]);
+  });
+
   it("uses a changing numeric-looking letter directly as a list position", async () => {
     const letter = () =>
       block("operator_letter_of", {

@@ -426,7 +426,10 @@ describe("Kids creative studio", () => {
       [{ type: "numericLiteral", value: 2.6 }, "round", true],
       [{ type: "variable", variableId: "studio-var-1" }, "round", true],
       [{ type: "variable", variableId: "missing" }, "round", false],
-      [{ type: "numericLiteral", value: 2 }, "abs", false],
+      [{ type: "numericLiteral", value: 2 }, "abs", true],
+      [{ type: "numericLiteral", value: 2.6 }, "floor", true],
+      [{ type: "variable", variableId: "studio-var-1" }, "ceiling", true],
+      [{ type: "numericLiteral", value: 4 }, "sqrt", false],
       [
         {
           type: "add",
