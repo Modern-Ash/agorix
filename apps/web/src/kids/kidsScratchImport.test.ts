@@ -3040,7 +3040,7 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
-  it("reports a word variable used as a list position", () => {
+  it("leaves a list unchanged for a nonnumeric word variable position", () => {
     const { program, report } = convertScratchProject(
       listProject(
         {
@@ -3054,8 +3054,61 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
         { w1: ["word", "Hola"] },
       ),
     );
-    expect(program.scripts[0]!.statements).toEqual([]);
-    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "listRemoveAt",
+      index: { type: "textVariable" },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A"]);
+  });
+
+  it("uses a changing numeric-looking word variable as a list position", async () => {
+    const position = [3, [12, "word", "w1"], [4, "1"]];
+    const scratch = listProject(
+      {
+        hat: flag("setNumeric"),
+        setNumeric: block("data_setvariableto", {
+          next: "say",
+          fields: { VARIABLE: ["word", "w1"] },
+          inputs: { VALUE: lit("2", 10) },
+        }),
+        say: block("looks_say", {
+          next: "setThird",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", { ...onList, inputs: { INDEX: position } }),
+        setThird: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["word", "w1"] },
+          inputs: { VALUE: lit("3", 10) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "setMissing",
+          inputs: { INDEX: position },
+        }),
+        setMissing: block("data_setvariableto", {
+          next: "removeAgain",
+          fields: { VARIABLE: ["word", "w1"] },
+          inputs: { VALUE: lit("9", 10) },
+        }),
+        removeAgain: block("data_deleteoflist", { ...onList, inputs: { INDEX: position } }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+      { w1: ["word", "Hola"] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
   it("leaves a list unchanged when its numeric position variable is out of range", () => {

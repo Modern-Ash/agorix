@@ -1127,11 +1127,19 @@ class Converter {
     }
     if (Array.isArray(reference) && (reference as unknown as Primitive)[0] === 12) {
       const variable = (reference as unknown as Primitive)[1];
-      return typeof variable === "string" ? this.variable(variable) : undefined;
+      if (typeof variable !== "string") return undefined;
+      const wordId = this.textIds.get(variable);
+      return wordId === undefined
+        ? this.variable(variable)
+        : { type: "textVariable", variableId: wordId };
     }
     if (inner?.opcode === "data_variable") {
       const variable = inner.fields["VARIABLE"]?.[0];
-      return typeof variable === "string" ? this.variable(variable) : undefined;
+      if (typeof variable !== "string") return undefined;
+      const wordId = this.textIds.get(variable);
+      return wordId === undefined
+        ? this.variable(variable)
+        : { type: "textVariable", variableId: wordId };
     }
     const value = this.number(block, name);
     const floored = value === undefined ? undefined : Math.floor(value);
