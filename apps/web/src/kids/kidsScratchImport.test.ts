@@ -3910,6 +3910,179 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
+  it.each(
+    [
+      { reporter: "length", opcode: "operator_length", inputs: { STRING: lit("ab", 10) } },
+      {
+        reporter: "letter",
+        opcode: "operator_letter_of",
+        inputs: { LETTER: lit(2), STRING: lit("x2", 10) },
+      },
+    ].flatMap((reporter) => [
+      { ...reporter, kind: "direct" },
+      { ...reporter, kind: "search" },
+    ]),
+  )("uses $reporter of bounded text for a $kind source position", async (caseData) => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", { inputs: { MESSAGE: [3, "target", [10, ""]] } }),
+        target: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, caseData.kind === "direct" ? "source" : "search", [4, "1"]] },
+        }),
+        search: block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, "source", [10, ""]] },
+        }),
+        source: block("data_itemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { INDEX: [3, "textReporter", [4, "1"]] },
+        }),
+        textReporter: block(caseData.opcode, { inputs: caseData.inputs }),
+      },
+      { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("3");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each([
+    { reporter: "length", opcode: "operator_length", initial: "a", second: "ab" },
+    { reporter: "letter", opcode: "operator_letter_of", initial: "x1", second: "x2" },
+  ])("uses a changing word variable in $reporter of for a source position", (caseData) => {
+    const source = (suffix: string) =>
+      block("data_itemoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { INDEX: [3, `textReporter${suffix}`, [4, "1"]] },
+      });
+    const target = (suffix: string) =>
+      block("data_itemoflist", {
+        ...onList,
+        inputs: { INDEX: [3, `source${suffix}`, [4, "1"]] },
+      });
+    const textReporter = () =>
+      block(caseData.opcode, {
+        inputs: {
+          ...(caseData.reporter === "letter" ? { LETTER: lit(2) } : {}),
+          STRING: [3, [12, "word", "w1"], [10, ""]],
+        },
+      });
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("sayFirst"),
+          sayFirst: block("looks_say", {
+            next: "setSecond",
+            inputs: { MESSAGE: [3, "targetFirst", [10, ""]] },
+          }),
+          targetFirst: target("First"),
+          sourceFirst: source("First"),
+          textReporterFirst: textReporter(),
+          setSecond: block("data_setvariableto", {
+            next: "saySecond",
+            fields: { VARIABLE: ["word", "w1"] },
+            inputs: { VALUE: lit(caseData.second, 10) },
+          }),
+          saySecond: block("looks_say", {
+            inputs: { MESSAGE: [3, "targetSecond", [10, ""]] },
+          }),
+          targetSecond: target("Second"),
+          sourceSecond: source("Second"),
+          textReporterSecond: textReporter(),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        { w1: ["word", caseData.initial] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace
+        .filter((entry) => entry.statementType === "say")
+        .map((entry) => entry.worldAfter.sprite.bubble?.text),
+    ).toEqual(["2", "3"]);
+  });
+
+  it.each(["length", "letter"])(
+    "leaves the target unchanged for a nonnumeric $reporter source position",
+    (reporter) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "source", [4, "1"]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { INDEX: [3, "textReporter", [4, "1"]] },
+            }),
+            textReporter:
+              reporter === "letter"
+                ? block("operator_letter_of", {
+                    inputs: { LETTER: lit(1), STRING: lit("x", 10) },
+                  })
+                : block("operator_length", { inputs: { STRING: lit("", 10) } }),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([1, 2, 3]);
+    },
+  );
+
+  it.each([
+    { reporter: "length", source: "unknown" },
+    { reporter: "letter", source: "unknown" },
+    { reporter: "length", source: "nested" },
+    { reporter: "letter", source: "nested" },
+  ])("reports a $source text source in $reporter of when selecting a list item", (caseData) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { INDEX: [3, "textReporter", [4, "1"]] },
+          }),
+          textReporter: block(
+            caseData.reporter === "letter" ? "operator_letter_of" : "operator_length",
+            {
+              inputs: {
+                ...(caseData.reporter === "letter" ? { LETTER: lit(1) } : {}),
+                STRING: [3, caseData.source === "unknown" ? "missing" : "join", [10, ""]],
+              },
+            },
+          ),
+          missing: block("data_variable", { fields: { VARIABLE: ["missing", "w9"] } }),
+          join: block("operator_join", {
+            inputs: { STRING1: lit("a", 10), STRING2: lit("b", 10) },
+          }),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it.each(["direct", "search"])(
     "uses a changing arithmetic source position for a $kind list position",
     (kind) => {
