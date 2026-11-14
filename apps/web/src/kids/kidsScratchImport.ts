@@ -1046,10 +1046,7 @@ class Converter {
         if (block.opcode === "data_showlist" || block.opcode === "data_hidelist")
           return { type: block.opcode === "data_showlist" ? "showList" : "hideList", listId };
         if (block.opcode === "data_deletealloflist") return { type: "listClear", listId };
-        if (
-          block.opcode === "data_deleteoflist" &&
-          this.literal(block, "INDEX")?.toLowerCase() === "all"
-        )
+        if (block.opcode === "data_deleteoflist" && this.literal(block, "INDEX") === "all")
           return { type: "listClear", listId };
         if (block.opcode === "data_addtolist") {
           const value = this.listValue(block, "ITEM");
@@ -1142,7 +1139,7 @@ class Converter {
   /** A fixed position or Scratch's dynamic last position of this list. */
   listPosition(block: ScratchBlock, name: string, listId: string): Expression | undefined {
     if (this.literal(block, name) === "last") return { type: "listLength", listId };
-    const choice = this.literal(block, name)?.toLowerCase();
+    const choice = this.literal(block, name);
     if (choice === "random" || choice === "any")
       return {
         type: "randomInteger",

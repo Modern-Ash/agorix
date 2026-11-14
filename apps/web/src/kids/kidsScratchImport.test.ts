@@ -2706,6 +2706,27 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(program.scripts[0]!.statements).toMatchObject([{ type: "listClear" }]);
   });
 
+  it.each([
+    ["ALL", "data_deleteoflist"],
+    ["Random", "data_deleteoflist"],
+    ["ANY", "data_deleteoflist"],
+    ["Last", "data_insertatlist"],
+  ])("reports the non-Scratch list position %s", (position, opcode) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("position"),
+        position: block(opcode, {
+          ...onList,
+          inputs: { INDEX: lit(position, 10), ITEM: lit("X", 10) },
+        }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(
+      report.dropped.some((item) => item.what.includes("a position the scene cannot use")),
+    ).toBe(true);
+  });
+
   it("uses Scratch's random menu for list reads, deletion and replacement", async () => {
     const random = lit("random", 10);
     const scratch = listProject(
