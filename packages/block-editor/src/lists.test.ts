@@ -28,6 +28,15 @@ describe("list blocks (issue #468)", () => {
               type: "listRemoveAt",
               listId: "l",
               index: {
+                type: "add",
+                left: { type: "variable", variableId: "position" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+            {
+              type: "listRemoveAt",
+              listId: "l",
+              index: {
                 type: "mathFunction",
                 function: "round",
                 value: { type: "variable", variableId: "position" },

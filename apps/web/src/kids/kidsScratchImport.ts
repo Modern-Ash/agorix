@@ -1127,6 +1127,14 @@ class Converter {
         ? source
         : undefined;
     }
+    if (inner?.opcode === "operator_add") {
+      const source = this.reporter(inner);
+      return source?.type === "add" &&
+        (source.left.type === "numericLiteral" || source.left.type === "variable") &&
+        (source.right.type === "numericLiteral" || source.right.type === "variable")
+        ? source
+        : undefined;
+    }
     if (
       inner?.opcode === "looks_costumenumbername" ||
       inner?.opcode === "looks_backdropnumbername"
