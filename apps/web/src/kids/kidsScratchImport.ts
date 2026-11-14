@@ -1242,10 +1242,7 @@ class Converter {
           this.numericListProperty(source.index) ||
           isSimpleArithmeticIndex(source.index) ||
           isSimpleTextIndex(source.index) ||
-          (source.index.type === "mathFunction" &&
-            source.index.function === "round" &&
-            (source.index.value.type === "numericLiteral" ||
-              source.index.value.type === "variable")) ||
+          isSimpleMathIndex(source.index) ||
           (source.index.type === "randomInteger" &&
             source.index.min.type === "numericLiteral" &&
             source.index.min.value === 1 &&
@@ -1273,10 +1270,7 @@ class Converter {
               this.numericListProperty(found.value.index) ||
               isSimpleArithmeticIndex(found.value.index) ||
               isSimpleTextIndex(found.value.index) ||
-              (found.value.index.type === "mathFunction" &&
-                found.value.index.function === "round" &&
-                (found.value.index.value.type === "numericLiteral" ||
-                  found.value.index.value.type === "variable")) ||
+              isSimpleMathIndex(found.value.index) ||
               (found.value.index.type === "randomInteger" &&
                 found.value.index.min.type === "numericLiteral" &&
                 found.value.index.min.value === 1 &&
