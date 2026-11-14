@@ -1101,6 +1101,23 @@ class Converter {
       const sourceListId = this.listOf(inner);
       return sourceListId === undefined ? undefined : { type: "listLength", listId: sourceListId };
     }
+    if (inner?.opcode === "sensing_of") {
+      const source = this.reporter(inner);
+      return source?.type === "actorProperty" &&
+        ([
+          "xPosition",
+          "yPosition",
+          "direction",
+          "size",
+          "costumeNumber",
+          "backdropNumber",
+          "volume",
+        ].includes(source.property) ||
+          (source.property === "variable" &&
+            [...this.variableIds.values()].includes(source.variableId ?? "")))
+        ? source
+        : undefined;
+    }
     if (inner?.opcode === "data_itemoflist") {
       const source = this.reporter(inner);
       return source?.type === "listItem" &&
