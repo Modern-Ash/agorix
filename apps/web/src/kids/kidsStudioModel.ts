@@ -211,6 +211,15 @@ function finiteSmallNumber(value: unknown): value is number {
 }
 
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "letterOf")
+    return (
+      value.index.type === "numericLiteral" &&
+      Number.isInteger(value.index.value) &&
+      value.index.value >= 1 &&
+      value.index.value <= STUDIO_WORD_MAX_LENGTH &&
+      (value.value.type === "textLiteral" || value.value.type === "textVariable") &&
+      checkedText(value.value, program)
+    );
   if (value.type === "textLength")
     return (
       (value.value.type === "textLiteral" || value.value.type === "textVariable") &&

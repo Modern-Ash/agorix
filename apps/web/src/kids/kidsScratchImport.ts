@@ -1108,6 +1108,17 @@ class Converter {
         ? source
         : undefined;
     }
+    if (inner?.opcode === "operator_letter_of") {
+      const source = this.reporter(inner);
+      return source?.type === "letterOf" &&
+        source.index.type === "numericLiteral" &&
+        Number.isInteger(source.index.value) &&
+        source.index.value >= 1 &&
+        source.index.value <= 20 &&
+        (source.value.type === "textLiteral" || source.value.type === "textVariable")
+        ? source
+        : undefined;
+    }
     if (
       inner?.opcode === "looks_costumenumbername" ||
       inner?.opcode === "looks_backdropnumbername"
