@@ -1101,6 +1101,16 @@ class Converter {
       const sourceListId = this.listOf(inner);
       return sourceListId === undefined ? undefined : { type: "listLength", listId: sourceListId };
     }
+    if (inner?.opcode === "data_itemoflist") {
+      const source = this.reporter(inner);
+      return source?.type === "listItem" &&
+        source.index.type === "numericLiteral" &&
+        Number.isInteger(source.index.value) &&
+        source.index.value >= 1 &&
+        source.index.value <= 10
+        ? source
+        : undefined;
+    }
     if (inner?.opcode === "data_itemnumoflist") {
       const found = this.reporter(inner);
       return found?.type === "listIndexOf" &&
