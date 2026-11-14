@@ -2939,26 +2939,118 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
-  it.each(["unknown", "nested"] as const)("reports an unsupported %s item-number index", (kind) => {
-    const { program, report } = convertScratchProject(
-      listProject({
-        hat: flag("remove"),
+  it("uses the current word variable to find a Scratch list position", async () => {
+    const needle = [3, [12, "needle", "w1"], [10, ""]];
+    const search = () => block("data_itemnumoflist", { ...onList, inputs: { ITEM: needle } });
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "changeNeedle",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "findForRead", [4, "0"]] },
+        }),
+        findForRead: search(),
+        changeNeedle: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["needle", "w1"] },
+          inputs: { VALUE: lit("C", 10) },
+        }),
         remove: block("data_deleteoflist", {
           ...onList,
-          inputs: { INDEX: [3, "find", [4, "0"]] },
+          next: "removeAgain",
+          inputs: { INDEX: [3, "findForRemove", [4, "0"]] },
         }),
-        find: block("data_itemnumoflist", {
-          fields: { LIST: kind === "unknown" ? ["Missing", "missing"] : ["Compras", "L1"] },
-          inputs: { ITEM: kind === "unknown" ? lit("B", 10) : [3, "join", [10, ""]] },
+        findForRemove: search(),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "findAfterRemoval", [4, "0"]] },
         }),
-        join: block("operator_join", {
-          inputs: { STRING1: lit("B", 10), STRING2: lit("!", 10) },
-        }),
-      }),
+        findAfterRemoval: search(),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+      { w1: ["needle", "B"] },
     );
-    expect(program.scripts[0]!.statements).toEqual([]);
-    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "say",
+      append: {
+        type: "listItem",
+        index: { type: "listIndexOf", value: { type: "textVariable" } },
+      },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
+
+  it("uses a numeric variable for an item-number list position", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "find", [4, "0"]] },
+          }),
+          find: block("data_itemnumoflist", {
+            ...onList,
+            inputs: { ITEM: [3, [12, "needle", "v1"], [4, "0"]] },
+          }),
+        },
+        { L1: ["Compras", [1, 2, 3]] },
+        { v1: ["needle", 2] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "listRemoveAt",
+      index: { type: "listIndexOf", value: { type: "variable" } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([1, 3]);
+  });
+
+  it.each(["unknown", "nested", "unknown-variable"] as const)(
+    "reports an unsupported %s item-number index",
+    (kind) => {
+      const { program, report } = convertScratchProject(
+        listProject({
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "find", [4, "0"]] },
+          }),
+          find: block("data_itemnumoflist", {
+            fields: { LIST: kind === "unknown" ? ["Missing", "missing"] : ["Compras", "L1"] },
+            inputs: {
+              ITEM:
+                kind === "unknown"
+                  ? lit("B", 10)
+                  : kind === "unknown-variable"
+                    ? [3, [12, "missing", "missing"], [10, ""]]
+                    : [3, "join", [10, ""]],
+            },
+          }),
+          join: block("operator_join", {
+            inputs: { STRING1: lit("B", 10), STRING2: lit("!", 10) },
+          }),
+        }),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
 
   it("floors fractional Scratch list positions in reads and mutations", async () => {
     const scratch = listProject(

@@ -367,6 +367,28 @@ describe("Kids creative studio", () => {
         index: {
           type: "listIndexOf",
           listId: "studio-list-1",
+          value: { type: "variable", variableId: "studio-var-1" },
+        },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "listRemoveAt",
+        listId: "studio-list-1",
+        index: {
+          type: "listIndexOf",
+          listId: "studio-list-1",
+          value: { type: "variable", variableId: "missing" },
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "listRemoveAt",
+        listId: "studio-list-1",
+        index: {
+          type: "listIndexOf",
+          listId: "studio-list-1",
           value: { type: "listLength", listId: "studio-list-1" },
         },
       }),
