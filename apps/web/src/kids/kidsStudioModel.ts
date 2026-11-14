@@ -281,7 +281,7 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
       ((value.index.type === "numericLiteral" && checkedStudioIndex(value.index, program)) ||
-        (value.index.type === "listLength" && value.index.listId === value.listId) ||
+        (value.index.type === "listLength" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "variable" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "textVariable" && checkedStudioIndex(value.index, program)) ||
         (value.index.type === "randomInteger" &&
@@ -300,7 +300,7 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
           ((value.value.index.type === "numericLiteral" &&
             checkedStudioIndex(value.value.index, program)) ||
             (value.value.index.type === "listLength" &&
-              value.value.index.listId === value.value.listId) ||
+              checkedStudioIndex(value.value.index, program)) ||
             ((value.value.index.type === "variable" || value.value.index.type === "textVariable") &&
               checkedStudioIndex(value.value.index, program)) ||
             (value.value.index.type === "randomInteger" &&
