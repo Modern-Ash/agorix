@@ -1221,7 +1221,7 @@ class Converter {
           Number.isInteger(source.index.value) &&
           source.index.value >= 1 &&
           source.index.value <= 10) ||
-          (source.index.type === "listLength" && source.index.listId === source.listId) ||
+          source.index.type === "listLength" ||
           source.index.type === "variable" ||
           source.index.type === "textVariable" ||
           (source.index.type === "randomInteger" &&
@@ -1243,8 +1243,7 @@ class Converter {
               Number.isInteger(found.value.index.value) &&
               found.value.index.value >= 1 &&
               found.value.index.value <= 10) ||
-              (found.value.index.type === "listLength" &&
-                found.value.index.listId === found.value.listId) ||
+              found.value.index.type === "listLength" ||
               found.value.index.type === "variable" ||
               found.value.index.type === "textVariable" ||
               (found.value.index.type === "randomInteger" &&

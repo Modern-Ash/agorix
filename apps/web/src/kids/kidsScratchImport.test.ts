@@ -3711,7 +3711,7 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
-  it.each(["unknown", "other-list length"])(
+  it.each(["unknown", "unknown length"])(
     "reports a %s source item used directly as a list position",
     (kind) => {
       const { program, report } = convertScratchProject(
@@ -3724,15 +3724,112 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
             }),
             source: block("data_itemoflist", {
               fields: { LIST: kind === "unknown" ? ["Missing", "missing"] : ["Compras", "L1"] },
-              inputs: { INDEX: kind === "other-list length" ? [3, "length", [4, "1"]] : lit(1) },
+              inputs: { INDEX: kind === "unknown length" ? [3, "length", [4, "1"]] : lit(1) },
             }),
-            length: block("data_lengthoflist", { fields: { LIST: ["Other", "L2"] } }),
+            length: block("data_lengthoflist", { fields: { LIST: ["Missing", "missing"] } }),
           },
           { L1: ["Compras", ["A"]], L2: ["Other", ["1"]] },
         ),
       );
       expect(program.scripts[0]!.statements).toEqual([]);
       expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
+  it.each(["direct", "search"])(
+    "uses another list's changing length to choose a source item for a %s position",
+    async (kind) => {
+      const target = (suffix: string) =>
+        block("data_itemoflist", {
+          ...onList,
+          inputs: {
+            INDEX: [3, kind === "direct" ? `source${suffix}` : `search${suffix}`, [4, "1"]],
+          },
+        });
+      const search = (suffix: string) =>
+        block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, `source${suffix}`, [10, ""]] },
+        });
+      const source = (suffix: string) =>
+        block("data_itemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { INDEX: [3, `length${suffix}`, [4, "1"]] },
+        });
+      const scratch = listProject(
+        {
+          hat: flag("sayFirst"),
+          sayFirst: block("looks_say", {
+            next: "grow",
+            inputs: { MESSAGE: [3, "targetFirst", [10, ""]] },
+          }),
+          targetFirst: target("First"),
+          searchFirst: search("First"),
+          sourceFirst: source("First"),
+          lengthFirst: block("data_lengthoflist", { fields: { LIST: ["Cuenta", "L3"] } }),
+          grow: block("data_addtolist", {
+            fields: { LIST: ["Cuenta", "L3"] },
+            next: "saySecond",
+            inputs: { ITEM: lit("x", 10) },
+          }),
+          saySecond: block("looks_say", {
+            inputs: { MESSAGE: [3, "targetSecond", [10, ""]] },
+          }),
+          targetSecond: target("Second"),
+          searchSecond: search("Second"),
+          sourceSecond: source("Second"),
+          lengthSecond: block("data_lengthoflist", { fields: { LIST: ["Cuenta", "L3"] } }),
+        },
+        { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]], L3: ["Cuenta", ["x"]] },
+      );
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace
+          .filter((entry) => entry.statementType === "say")
+          .map((entry) => entry.worldAfter.sprite.bubble?.text),
+      ).toEqual(["2", "3"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.report.dropped).toEqual([]);
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each([
+    { kind: "direct", count: [] },
+    { kind: "search", count: [] },
+    { kind: "direct", count: ["x", "x", "x"] },
+    { kind: "search", count: ["x", "x", "x"] },
+  ])(
+    "leaves the target unchanged for a $kind source index from count $count",
+    ({ kind, count }) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, kind === "direct" ? "source" : "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              ...onList,
+              inputs: { ITEM: [3, "source", [10, ""]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { INDEX: [3, "length", [4, "1"]] },
+            }),
+            length: block("data_lengthoflist", { fields: { LIST: ["Cuenta", "L3"] } }),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]], L3: ["Cuenta", count] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([1, 2, 3]);
     },
   );
 
@@ -3874,7 +3971,7 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
-  it.each(["unknown", "other-list length"])(
+  it.each(["unknown", "unknown length"])(
     "reports a %s source item in a list index search",
     (kind) => {
       const { program, report } = convertScratchProject(
@@ -3891,9 +3988,9 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
             }),
             source: block("data_itemoflist", {
               fields: { LIST: kind === "unknown" ? ["Missing", "missing"] : ["Compras", "L1"] },
-              inputs: { INDEX: kind === "other-list length" ? [3, "length", [4, "1"]] : lit(1) },
+              inputs: { INDEX: kind === "unknown length" ? [3, "length", [4, "1"]] : lit(1) },
             }),
-            length: block("data_lengthoflist", { fields: { LIST: ["Other", "L2"] } }),
+            length: block("data_lengthoflist", { fields: { LIST: ["Missing", "missing"] } }),
           },
           { L1: ["Compras", ["A"]], L2: ["Other", ["A"]] },
         ),
