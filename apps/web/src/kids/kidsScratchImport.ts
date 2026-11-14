@@ -1104,7 +1104,7 @@ class Converter {
     if (inner?.opcode === "data_itemnumoflist") {
       const found = this.reporter(inner);
       return found?.type === "listIndexOf" &&
-        (found.value.type === "numericLiteral" || found.value.type === "textLiteral")
+        ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(found.value.type)
         ? found
         : undefined;
     }
