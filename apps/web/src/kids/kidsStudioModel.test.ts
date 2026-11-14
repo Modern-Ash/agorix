@@ -380,6 +380,29 @@ describe("Kids creative studio", () => {
       if (valid) expect(attempt).not.toThrow();
       else expect(attempt).toThrow();
     }
+    for (const [value, position, valid] of [
+      [{ type: "textVariable", variableId: "studio-text-1" }, 1, true],
+      [{ type: "textVariable", variableId: "missing" }, 1, false],
+      [{ type: "textLiteral", value: "2" }, 21, false],
+      [
+        {
+          type: "join",
+          left: { type: "textLiteral", value: "a" },
+          right: { type: "textLiteral", value: "b" },
+        },
+        1,
+        false,
+      ],
+    ] as const) {
+      const attempt = () =>
+        appendStudioStatement(withWord, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: { type: "letterOf", index: { type: "numericLiteral", value: position }, value },
+        });
+      if (valid) expect(attempt).not.toThrow();
+      else expect(attempt).toThrow();
+    }
     for (const [actorId, property, variableId, valid] of [
       ["actor:studio-1-nova", "xPosition", undefined, true],
       ["missing", "xPosition", undefined, false],
