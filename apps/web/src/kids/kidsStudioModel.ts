@@ -211,6 +211,11 @@ function finiteSmallNumber(value: unknown): value is number {
 }
 
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "textLength")
+    return (
+      (value.value.type === "textLiteral" || value.value.type === "textVariable") &&
+      checkedText(value.value, program)
+    );
   if (value.type === "costumeNumber" || value.type === "backdropNumber") return true;
   if (value.type === "actorProperty") return checkedNumber(value, program);
   if (value.type === "listLength")

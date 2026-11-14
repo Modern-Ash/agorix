@@ -2660,6 +2660,86 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses a changing word length directly as a list position", async () => {
+    const position = (lengthId: string) => [3, lengthId, [4, "1"]];
+    const word = [3, [12, "word", "w1"], [10, ""]];
+    const scratch = listProject(
+      {
+        hat: flag("setTwo"),
+        setTwo: block("data_setvariableto", {
+          next: "say",
+          fields: { VARIABLE: ["word", "w1"] },
+          inputs: { VALUE: lit("ab", 10) },
+        }),
+        say: block("looks_say", {
+          next: "setThree",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", { ...onList, inputs: { INDEX: position("firstLength") } }),
+        firstLength: block("operator_length", { inputs: { STRING: word } }),
+        setThree: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["word", "w1"] },
+          inputs: { VALUE: lit("abc", 10) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "setEmpty",
+          inputs: { INDEX: position("secondLength") },
+        }),
+        secondLength: block("operator_length", { inputs: { STRING: word } }),
+        setEmpty: block("data_setvariableto", {
+          next: "removeAgain",
+          fields: { VARIABLE: ["word", "w1"] },
+          inputs: { VALUE: lit("", 10) },
+        }),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: position("thirdLength") },
+        }),
+        thirdLength: block("operator_length", { inputs: { STRING: word } }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+      { w1: ["word", "Hola"] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["unknown", "nested"])("reports %s text length used as a list position", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "length", [4, "1"]] },
+        }),
+        length: block("operator_length", {
+          inputs: {
+            STRING:
+              kind === "unknown"
+                ? [3, [12, "missing", "missing"], [10, ""]]
+                : [3, "join", [10, ""]],
+          },
+        }),
+        join: block("operator_join", {
+          inputs: { STRING1: lit("a", 10), STRING2: lit("b", 10) },
+        }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it.each(["looks_costumenumbername", "looks_backdropnumbername"])(
     "uses %s number mode directly as a list position",
     async (opcode) => {
