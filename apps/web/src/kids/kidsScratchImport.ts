@@ -1119,6 +1119,14 @@ class Converter {
         ? source
         : undefined;
     }
+    if (inner?.opcode === "operator_round") {
+      const source = this.reporter(inner);
+      return source?.type === "mathFunction" &&
+        source.function === "round" &&
+        (source.value.type === "numericLiteral" || source.value.type === "variable")
+        ? source
+        : undefined;
+    }
     if (
       inner?.opcode === "looks_costumenumbername" ||
       inner?.opcode === "looks_backdropnumbername"

@@ -2660,6 +2660,104 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses a changing rounded variable directly as a list position", async () => {
+    const round = () =>
+      block("operator_round", { inputs: { NUM: [3, [12, "position", "v1"], [4, "0"]] } });
+    const scratch = listProject(
+      {
+        hat: flag("setTwo"),
+        setTwo: block("data_setvariableto", {
+          next: "say",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(2) },
+        }),
+        say: block("looks_say", {
+          next: "setThree",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "firstRound", [4, "1"]] },
+        }),
+        firstRound: round(),
+        setThree: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(3) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "setZero",
+          inputs: { INDEX: [3, "secondRound", [4, "1"]] },
+        }),
+        secondRound: round(),
+        setZero: block("data_setvariableto", {
+          next: "removeAgain",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(0) },
+        }),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "thirdRound", [4, "1"]] },
+        }),
+        thirdRound: round(),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+      { v1: ["position", 1] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("rounds a bounded decimal literal used as a list position", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "round", [4, "1"]] },
+          }),
+          round: block("operator_round", { inputs: { NUM: lit(2.6) } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+  });
+
+  it.each(["unknown", "nested"])("reports a %s round operand used as a list position", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "round", [4, "1"]] },
+        }),
+        round: block("operator_round", {
+          inputs: {
+            NUM:
+              kind === "unknown" ? [3, [12, "missing", "missing"], [4, "0"]] : [3, "sum", [4, "0"]],
+          },
+        }),
+        sum: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses a changing numeric-looking letter directly as a list position", async () => {
     const letter = () =>
       block("operator_letter_of", {
