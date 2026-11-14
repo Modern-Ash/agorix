@@ -1097,8 +1097,10 @@ class Converter {
     if (this.literal(block, name) === "last") return { type: "listLength", listId };
     const reference = block.inputs[name]?.[1];
     const inner = typeof reference === "string" ? this.blocks.get(reference) : undefined;
-    if (inner?.opcode === "data_lengthoflist" && this.listOf(inner) === listId)
-      return { type: "listLength", listId };
+    if (inner?.opcode === "data_lengthoflist") {
+      const sourceListId = this.listOf(inner);
+      return sourceListId === undefined ? undefined : { type: "listLength", listId: sourceListId };
+    }
     if (Array.isArray(reference) && (reference as unknown as Primitive)[0] === 12) {
       const variable = (reference as unknown as Primitive)[1];
       return typeof variable === "string" ? this.variable(variable) : undefined;

@@ -2828,7 +2828,50 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A"]);
   });
 
-  it("reports a last-position reporter from another list", () => {
+  it("uses the current length of another Scratch list as a position", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "removeOther",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "lengthForRead", [4, "0"]] },
+        }),
+        lengthForRead: block("data_lengthoflist", { fields: { LIST: ["Otra", "L2"] } }),
+        removeOther: block("data_deleteoflist", {
+          fields: { LIST: ["Otra", "L2"] },
+          next: "removeFirst",
+          inputs: { INDEX: lit(1) },
+        }),
+        removeFirst: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "lengthForRemove", [4, "0"]] },
+        }),
+        lengthForRemove: block("data_lengthoflist", { fields: { LIST: ["Otra", "L2"] } }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]], L2: ["Otra", ["X", "Y"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "say",
+      append: { type: "listItem", index: { type: "listLength", listId: "studio-list-2" } },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B", "C"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("reports a list-position length reporter for an unknown list", () => {
     const { program, report } = convertScratchProject(
       listProject(
         {
@@ -2837,9 +2880,9 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
             ...onList,
             inputs: { INDEX: [3, "otherLength", [10, "last"]] },
           }),
-          otherLength: block("data_lengthoflist", { fields: { LIST: ["Otra", "L2"] } }),
+          otherLength: block("data_lengthoflist", { fields: { LIST: ["Missing", "L2"] } }),
         },
-        { L1: ["Compras", ["A"]], L2: ["Otra", ["B"]] },
+        { L1: ["Compras", ["A"]] },
       ),
     );
     expect(program.scripts[0]!.statements).toEqual([]);
