@@ -363,6 +363,30 @@ describe("Kids creative studio", () => {
       if (valid) expect(attempt).not.toThrow();
       else expect(attempt).toThrow();
     }
+    for (const type of ["subtract", "multiply", "divide", "modulo"] as const) {
+      expect(() =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: {
+            type,
+            left: { type: "variable", variableId: "studio-var-1" },
+            right: { type: "numericLiteral", value: 2 },
+          },
+        }),
+      ).not.toThrow();
+      expect(() =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: {
+            type,
+            left: { type: "variable", variableId: "missing" },
+            right: { type: "numericLiteral", value: 2 },
+          },
+        }),
+      ).toThrow();
+    }
     for (const [value, fn, valid] of [
       [{ type: "numericLiteral", value: 2.6 }, "round", true],
       [{ type: "variable", variableId: "studio-var-1" }, "round", true],

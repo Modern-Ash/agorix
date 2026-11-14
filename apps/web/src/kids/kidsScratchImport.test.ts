@@ -2660,6 +2660,159 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it.each([
+    ["operator_subtract", 3, 1, "subtract"],
+    ["operator_multiply", 1, 2, "multiply"],
+    ["operator_divide", 4, 2, "divide"],
+    ["operator_mod", 5, 3, "modulo"],
+  ] as const)(
+    "uses bounded %s directly as a list position",
+    async (opcode, first, second, type) => {
+      const scratch = listProject(
+        {
+          hat: flag("say"),
+          say: block("looks_say", {
+            next: "remove",
+            inputs: { MESSAGE: [3, "item", [10, ""]] },
+          }),
+          item: block("data_itemoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "readIndex", [4, "1"]] },
+          }),
+          readIndex: block(opcode, { inputs: { NUM1: lit(first), NUM2: lit(second) } }),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "removeIndex", [4, "1"]] },
+          }),
+          removeIndex: block(opcode, { inputs: { NUM1: lit(first), NUM2: lit(second) } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]] },
+      );
+      const { program, report } = convertScratchProject(scratch);
+      expect(report.dropped).toEqual([]);
+      expect(program.scripts[0]!.statements[1]).toMatchObject({ index: { type } });
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(
+        run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+      ).toBe("B");
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "C"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each(["operator_divide", "operator_mod"])(
+    "reports deterministic %s by zero at runtime",
+    (opcode) => {
+      const { program, report } = convertScratchProject(
+        listProject({
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "arithmetic", [4, "1"]] },
+          }),
+          arithmetic: block(opcode, { inputs: { NUM1: lit(4), NUM2: lit(0) } }),
+        }),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(() =>
+        runMultiActorProgram(program, creativeForStudio(program, "forest", "es")),
+      ).toThrow(/zero/);
+    },
+  );
+
+  it("recomputes a multiplied list position after its variable changes", () => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "setOutside",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "firstProduct", [4, "1"]] },
+        }),
+        firstProduct: block("operator_multiply", {
+          inputs: { NUM1: [3, [12, "position", "v1"], [4, "0"]], NUM2: lit(2) },
+        }),
+        setOutside: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(2) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "secondProduct", [4, "1"]] },
+        }),
+        secondProduct: block("operator_multiply", {
+          inputs: { NUM1: [3, [12, "position", "v1"], [4, "0"]], NUM2: lit(2) },
+        }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+      { v1: ["position", 1] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B", "C"]);
+  });
+
+  it("truncates a fractional division for deletion but leaves fractional insertion unchanged", () => {
+    const divide = () => block("operator_divide", { inputs: { NUM1: lit(5), NUM2: lit(2) } });
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            next: "insert",
+            inputs: { INDEX: [3, "firstDivide", [4, "1"]] },
+          }),
+          firstDivide: divide(),
+          insert: block("data_insertatlist", {
+            ...onList,
+            inputs: { INDEX: [3, "secondDivide", [4, "1"]], ITEM: lit("X", 10) },
+          }),
+          secondDivide: divide(),
+        },
+        { L1: ["Compras", ["A", "B", "C"]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "C"]);
+  });
+
+  it.each(["unknown", "nested"])("reports a %s arithmetic operand in a list position", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "arithmetic", [4, "1"]] },
+        }),
+        arithmetic: block("operator_subtract", {
+          inputs: {
+            NUM1:
+              kind === "unknown"
+                ? [3, [12, "missing", "missing"], [4, "0"]]
+                : [3, "nested", [4, "0"]],
+            NUM2: lit(1),
+          },
+        }),
+        nested: block("operator_multiply", { inputs: { NUM1: lit(2), NUM2: lit(2) } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses a changing bounded sum directly as a list position", async () => {
     const sum = () =>
       block("operator_add", {
