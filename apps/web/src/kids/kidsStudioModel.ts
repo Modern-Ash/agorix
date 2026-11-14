@@ -213,6 +213,12 @@ function finiteSmallNumber(value: unknown): value is number {
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
   if (value.type === "listLength")
     return program.lists?.some((item) => item.id === value.listId) === true;
+  if (value.type === "listItem")
+    return (
+      program.lists?.some((item) => item.id === value.listId) === true &&
+      value.index.type === "numericLiteral" &&
+      checkedStudioIndex(value.index, program)
+    );
   if (value.type === "listIndexOf")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&

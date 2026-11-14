@@ -2660,6 +2660,94 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses a changing fixed source item directly as a list position", async () => {
+    const sourceItem = (index: unknown) =>
+      block("data_itemoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { INDEX: index },
+      });
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", {
+          next: "changeSource",
+          inputs: { MESSAGE: [3, "targetItem", [10, ""]] },
+        }),
+        targetItem: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "firstSource", [4, "1"]] },
+        }),
+        firstSource: sourceItem(lit(1)),
+        changeSource: block("data_replaceitemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          next: "remove",
+          inputs: { INDEX: lit(1), ITEM: lit(3) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "changeToWord",
+          inputs: { INDEX: [3, "secondSource", [4, "1"]] },
+        }),
+        secondSource: sourceItem(lit(1)),
+        changeToWord: block("data_replaceitemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          next: "removeAgain",
+          inputs: { INDEX: lit(1), ITEM: lit("no", 10) },
+        }),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          next: "clearSource",
+          inputs: { INDEX: [3, "thirdSource", [4, "1"]] },
+        }),
+        thirdSource: sourceItem(lit(1)),
+        clearSource: block("data_deleteoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          next: "removeEmpty",
+          inputs: { INDEX: lit(1) },
+        }),
+        removeEmpty: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "emptySource", [4, "1"]] },
+        }),
+        emptySource: sourceItem(lit(1)),
+      },
+      { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["unknown", "computed"])(
+    "reports a %s source item used directly as a list position",
+    (kind) => {
+      const { program, report } = convertScratchProject(
+        listProject({
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: kind === "unknown" ? ["Missing", "missing"] : ["Compras", "L1"] },
+            inputs: { INDEX: kind === "computed" ? [3, "length", [4, "1"]] : lit(1) },
+          }),
+          length: block("data_lengthoflist", { ...onList }),
+        }),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it("uses a changing list length to find a list position", async () => {
     const search = (source: string) =>
       block("data_itemnumoflist", {
