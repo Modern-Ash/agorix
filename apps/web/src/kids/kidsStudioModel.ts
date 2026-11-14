@@ -253,7 +253,7 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
   if (value.type === "mathFunction") {
     const operand = value.value;
     return (
-      value.function === "round" &&
+      ["round", "abs", "floor", "ceiling"].includes(value.function) &&
       ((operand.type === "numericLiteral" && checkedDecimal(operand.value)) ||
         (operand.type === "variable" &&
           program.variables?.some((item) => item.id === operand.variableId) === true))
