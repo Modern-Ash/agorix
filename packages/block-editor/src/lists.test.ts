@@ -19,6 +19,15 @@ describe("list blocks (issue #468)", () => {
               index: { type: "variable", variableId: "position" },
             },
             {
+              type: "listRemoveAt",
+              listId: "l",
+              index: {
+                type: "listIndexOf",
+                listId: "l",
+                value: { type: "variable", variableId: "position" },
+              },
+            },
+            {
               type: "listInsertAt",
               listId: "l",
               index: { type: "variable", variableId: "position" },
@@ -79,6 +88,19 @@ describe("list blocks (issue #468)", () => {
                 type: "listIndexOf",
                 listId: "l",
                 value: { type: "textLiteral", value: "A" },
+              },
+            },
+            {
+              type: "listRemoveAt",
+              listId: "l",
+              index: {
+                type: "listIndexOf",
+                listId: "l",
+                value: {
+                  type: "listItem",
+                  listId: "l",
+                  index: { type: "numericLiteral", value: 1 },
+                },
               },
             },
             {

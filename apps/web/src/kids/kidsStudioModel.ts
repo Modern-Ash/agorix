@@ -216,7 +216,10 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
   if (value.type === "listIndexOf")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
-      (value.value.type === "numericLiteral" || value.value.type === "textLiteral") &&
+      (["numericLiteral", "textLiteral", "variable", "textVariable"].includes(value.value.type) ||
+        (value.value.type === "listItem" &&
+          value.value.index.type === "numericLiteral" &&
+          checkedStudioIndex(value.value.index, program))) &&
       checkedListItem(value.value, program, 0)
     );
   if (value.type === "variable")
