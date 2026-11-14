@@ -4212,6 +4212,95 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it("uses a changing numeric variable to choose a source item for another list's position", async () => {
+    const position = [3, [12, "position", "v1"], [4, "1"]];
+    const source = () =>
+      block("data_itemoflist", {
+        fields: { LIST: ["Positions", "L2"] },
+        inputs: { INDEX: position },
+      });
+    const target = (sourceId: string) =>
+      block("data_itemoflist", {
+        ...onList,
+        inputs: { INDEX: [3, sourceId, [4, "1"]] },
+      });
+    const scratch = listProject(
+      {
+        hat: flag("sayFirst"),
+        sayFirst: block("looks_say", {
+          next: "setSecond",
+          inputs: { MESSAGE: [3, "targetFirst", [10, ""]] },
+        }),
+        targetFirst: target("sourceFirst"),
+        sourceFirst: source(),
+        setSecond: block("data_setvariableto", {
+          next: "saySecond",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(2) },
+        }),
+        saySecond: block("looks_say", {
+          next: "setMissing",
+          inputs: { MESSAGE: [3, "targetSecond", [10, ""]] },
+        }),
+        targetSecond: target("sourceSecond"),
+        sourceSecond: source(),
+        setMissing: block("data_setvariableto", {
+          next: "sayMissing",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(9) },
+        }),
+        sayMissing: block("looks_say", {
+          inputs: { MESSAGE: [3, "targetMissing", [10, ""]] },
+        }),
+        targetMissing: target("sourceMissing"),
+        sourceMissing: source(),
+      },
+      { L1: ["Compras", ["A", "B"]], L2: ["Positions", ["1", "2"]] },
+      { v1: ["position", 1] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "say",
+      append: {
+        type: "listItem",
+        index: { type: "listItem", index: { type: "variable", variableId: "studio-var-1" } },
+      },
+    });
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace
+        .filter((entry) => entry.statementType === "say")
+        .map((entry) => entry.worldAfter.sprite.bubble?.text),
+    ).toEqual(["A", "B", ""]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("reports an unknown variable choosing a source item for another list's position", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Positions", "L2"] },
+            inputs: { INDEX: [3, [12, "missing", "v9"], [4, "1"]] },
+          }),
+        },
+        { L1: ["Compras", ["A"]], L2: ["Positions", ["1"]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("leaves a list unchanged for a nonnumeric word variable position", () => {
     const { program, report } = convertScratchProject(
       listProject(
