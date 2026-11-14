@@ -1142,7 +1142,8 @@ class Converter {
   /** A fixed position or Scratch's dynamic last position of this list. */
   listPosition(block: ScratchBlock, name: string, listId: string): Expression | undefined {
     if (this.literal(block, name) === "last") return { type: "listLength", listId };
-    if (this.literal(block, name)?.toLowerCase() === "random")
+    const choice = this.literal(block, name)?.toLowerCase();
+    if (choice === "random" || choice === "any")
       return {
         type: "randomInteger",
         min: { type: "numericLiteral", value: 1 },

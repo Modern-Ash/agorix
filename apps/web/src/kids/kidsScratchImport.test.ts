@@ -2766,6 +2766,81 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual([]);
   });
 
+  it.each([{ initialItems: ["A", "B", "C"] }, { initialItems: [] }])(
+    "treats Scratch's any list position like random with initial items $initialItems",
+    async ({ initialItems }) => {
+      const projectWith = (position: string) =>
+        listProject(
+          {
+            hat: flag("say"),
+            say: block("looks_say", {
+              next: "remove",
+              inputs: { MESSAGE: [3, "item", [10, ""]] },
+            }),
+            item: block("data_itemoflist", {
+              ...onList,
+              inputs: { INDEX: lit(position, 10) },
+            }),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              next: "replace",
+              inputs: { INDEX: lit(position, 10) },
+            }),
+            replace: block("data_replaceitemoflist", {
+              ...onList,
+              next: "insert",
+              inputs: { INDEX: lit(position, 10), ITEM: lit("X", 10) },
+            }),
+            insert: block("data_insertatlist", {
+              ...onList,
+              inputs: { INDEX: lit(position, 10), ITEM: lit("Y", 10) },
+            }),
+          },
+          { L1: ["Compras", initialItems] },
+        );
+      const any = convertScratchProject(projectWith("any"));
+      const random = convertScratchProject(projectWith("random"));
+      expect(any.report.dropped).toEqual([]);
+      expect(any.program.scripts[0]!.statements).toEqual(random.program.scripts[0]!.statements);
+      expect(validateStudioProgram(any.program)).toEqual(any.program);
+      const run = (program: typeof any.program) =>
+        runMultiActorProgram(program, creativeForStudio(program, "forest", "es"), {
+          randomSeed: 42,
+        });
+      const anyRun = run(any.program);
+      const randomRun = run(random.program);
+      expect(anyRun.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(
+        randomRun.actors[0]!.world.lists?.["studio-list-1"]?.items,
+      );
+      expect(
+        anyRun.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+      ).toBe(
+        randomRun.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble
+          ?.text,
+      );
+      if (initialItems.length === 0)
+        expect(anyRun.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["Y"]);
+      const { bytes } = exportScratchProject(any.program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.report.dropped).toEqual([]);
+      expect(back.program.scripts[0]!.statements).toEqual(any.program.scripts[0]!.statements);
+    },
+  );
+
+  it("reports an unknown list-position word", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: lit("somewhere", 10) },
+        }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("inserts at a seeded random position including the end and round-trips through sb3", async () => {
     const scratch = listProject({
       hat: flag("insert"),
