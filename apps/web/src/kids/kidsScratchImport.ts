@@ -1217,10 +1217,11 @@ class Converter {
     if (inner?.opcode === "data_itemoflist") {
       const source = this.reporter(inner);
       return source?.type === "listItem" &&
-        source.index.type === "numericLiteral" &&
-        Number.isInteger(source.index.value) &&
-        source.index.value >= 1 &&
-        source.index.value <= 10
+        ((source.index.type === "numericLiteral" &&
+          Number.isInteger(source.index.value) &&
+          source.index.value >= 1 &&
+          source.index.value <= 10) ||
+          (source.index.type === "listLength" && source.index.listId === source.listId))
         ? source
         : undefined;
     }
