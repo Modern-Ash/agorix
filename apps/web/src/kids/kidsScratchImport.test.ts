@@ -2660,6 +2660,103 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("uses a changing bounded sum directly as a list position", async () => {
+    const sum = () =>
+      block("operator_add", {
+        inputs: { NUM1: [3, [12, "position", "v1"], [4, "0"]], NUM2: lit(1) },
+      });
+    const scratch = listProject(
+      {
+        hat: flag("setOne"),
+        setOne: block("data_setvariableto", {
+          next: "say",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(1) },
+        }),
+        say: block("looks_say", {
+          next: "setTwo",
+          inputs: { MESSAGE: [3, "item", [10, ""]] },
+        }),
+        item: block("data_itemoflist", { ...onList, inputs: { INDEX: [3, "firstSum", [4, "1"]] } }),
+        firstSum: sum(),
+        setTwo: block("data_setvariableto", {
+          next: "remove",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(2) },
+        }),
+        remove: block("data_deleteoflist", {
+          ...onList,
+          next: "setMinusOne",
+          inputs: { INDEX: [3, "secondSum", [4, "1"]] },
+        }),
+        secondSum: sum(),
+        setMinusOne: block("data_setvariableto", {
+          next: "removeAgain",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(-1) },
+        }),
+        removeAgain: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "thirdSum", [4, "1"]] },
+        }),
+        thirdSum: sum(),
+      },
+      { L1: ["Compras", ["A", "B", "C"]] },
+      { v1: ["position", 0] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("B");
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("uses bounded decimal addends for a list position", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "sum", [4, "1"]] },
+          }),
+          sum: block("operator_add", { inputs: { NUM1: lit(1.5), NUM2: lit(1.5) } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A", "B"]);
+  });
+
+  it.each(["unknown", "nested"])("reports a %s addend used as a list position", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("remove"),
+        remove: block("data_deleteoflist", { ...onList, inputs: { INDEX: [3, "sum", [4, "1"]] } }),
+        sum: block("operator_add", {
+          inputs: {
+            NUM1:
+              kind === "unknown"
+                ? [3, [12, "missing", "missing"], [4, "0"]]
+                : [3, "nested", [4, "0"]],
+            NUM2: lit(1),
+          },
+        }),
+        nested: block("operator_multiply", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("uses a changing rounded variable directly as a list position", async () => {
     const round = () =>
       block("operator_round", { inputs: { NUM: [3, [12, "position", "v1"], [4, "0"]] } });

@@ -211,6 +211,13 @@ function finiteSmallNumber(value: unknown): value is number {
 }
 
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "add") {
+    const simpleOperand = (operand: Expression): boolean =>
+      (operand.type === "numericLiteral" && checkedDecimal(operand.value)) ||
+      (operand.type === "variable" &&
+        program.variables?.some((item) => item.id === operand.variableId) === true);
+    return simpleOperand(value.left) && simpleOperand(value.right);
+  }
   if (value.type === "mathFunction") {
     const operand = value.value;
     return (
