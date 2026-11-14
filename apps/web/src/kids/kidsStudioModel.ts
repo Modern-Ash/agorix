@@ -281,7 +281,12 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
       ((value.index.type === "numericLiteral" && checkedStudioIndex(value.index, program)) ||
-        (value.index.type === "listLength" && value.index.listId === value.listId))
+        (value.index.type === "listLength" && value.index.listId === value.listId) ||
+        (value.index.type === "randomInteger" &&
+          value.index.min.type === "numericLiteral" &&
+          value.index.min.value === 1 &&
+          value.index.max.type === "listLength" &&
+          value.index.max.listId === value.listId))
     );
   if (value.type === "listIndexOf")
     return (

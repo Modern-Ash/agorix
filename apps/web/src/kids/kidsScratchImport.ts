@@ -1221,7 +1221,12 @@ class Converter {
           Number.isInteger(source.index.value) &&
           source.index.value >= 1 &&
           source.index.value <= 10) ||
-          (source.index.type === "listLength" && source.index.listId === source.listId))
+          (source.index.type === "listLength" && source.index.listId === source.listId) ||
+          (source.index.type === "randomInteger" &&
+            source.index.min.type === "numericLiteral" &&
+            source.index.min.value === 1 &&
+            source.index.max.type === "listLength" &&
+            source.index.max.listId === source.listId))
         ? source
         : undefined;
     }

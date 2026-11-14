@@ -4114,6 +4114,104 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it("uses a seeded random source item as another list's position and round-trips", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", { inputs: { MESSAGE: [3, "target", [10, ""]] } }),
+        target: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "source", [4, "1"]] },
+        }),
+        source: block("data_itemoflist", {
+          fields: { LIST: ["Positions", "L2"] },
+          inputs: { INDEX: lit("random", 10) },
+        }),
+      },
+      { L1: ["Compras", ["A", "B"]], L2: ["Positions", ["1", "2"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    expect(program.scripts[0]!.statements[0]).toMatchObject({
+      type: "say",
+      append: {
+        type: "listItem",
+        index: {
+          type: "listItem",
+          listId: "studio-list-2",
+          index: {
+            type: "randomInteger",
+            min: { type: "numericLiteral", value: 1 },
+            max: { type: "listLength", listId: "studio-list-2" },
+          },
+        },
+      },
+    });
+    const bubble = (seed: number) =>
+      runMultiActorProgram(program, creativeForStudio(program, "forest", "es"), {
+        randomSeed: seed,
+      }).trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text;
+    expect(bubble(5)).toBe(bubble(5));
+    expect(new Set([bubble(0), bubble(0x80000000)])).toEqual(new Set(["A", "B"]));
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each([{ sourceItems: [] }, { sourceItems: ["word"] }])(
+    "keeps a target list unchanged for a random source item from %j",
+    ({ sourceItems }) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "source", [4, "1"]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Positions", "L2"] },
+              inputs: { INDEX: lit("random", 10) },
+            }),
+          },
+          { L1: ["Compras", ["A"]], L2: ["Positions", sourceItems] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"), {
+        randomSeed: 5,
+      });
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["A"]);
+    },
+  );
+
+  it("reports a source item's random bound from another list", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "source", [4, "1"]] },
+          }),
+          source: block("data_itemoflist", {
+            fields: { LIST: ["Positions", "L2"] },
+            inputs: { INDEX: [3, "random", [4, "1"]] },
+          }),
+          random: block("operator_random", {
+            inputs: { FROM: lit(1), TO: [3, "targetLength", [4, "1"]] },
+          }),
+          targetLength: block("data_lengthoflist", { ...onList }),
+        },
+        { L1: ["Compras", ["A"]], L2: ["Positions", ["1"]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it("leaves a list unchanged for a nonnumeric word variable position", () => {
     const { program, report } = convertScratchProject(
       listProject(
