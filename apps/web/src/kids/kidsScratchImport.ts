@@ -1235,6 +1235,8 @@ class Converter {
           source.index.type === "listLength" ||
           source.index.type === "variable" ||
           source.index.type === "textVariable" ||
+          source.index.type === "costumeNumber" ||
+          source.index.type === "backdropNumber" ||
           this.numericListProperty(source.index) ||
           isSimpleArithmeticIndex(source.index) ||
           isSimpleTextIndex(source.index) ||
@@ -1264,6 +1266,8 @@ class Converter {
               found.value.index.type === "listLength" ||
               found.value.index.type === "variable" ||
               found.value.index.type === "textVariable" ||
+              found.value.index.type === "costumeNumber" ||
+              found.value.index.type === "backdropNumber" ||
               this.numericListProperty(found.value.index) ||
               isSimpleArithmeticIndex(found.value.index) ||
               isSimpleTextIndex(found.value.index) ||

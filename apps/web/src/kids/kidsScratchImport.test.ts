@@ -3536,6 +3536,72 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each(
+    ["looks_costumenumbername", "looks_backdropnumbername"].flatMap((opcode) => [
+      { opcode, kind: "direct" },
+      { opcode, kind: "search" },
+    ]),
+  )("uses $opcode number mode to choose a source item for a $kind position", async (caseData) => {
+    const scratch = listProject(
+      {
+        hat: flag("say"),
+        say: block("looks_say", { inputs: { MESSAGE: [3, "target", [10, ""]] } }),
+        target: block("data_itemoflist", {
+          ...onList,
+          inputs: { INDEX: [3, caseData.kind === "direct" ? "source" : "search", [4, "1"]] },
+        }),
+        search: block("data_itemnumoflist", {
+          ...onList,
+          inputs: { ITEM: [3, "source", [10, ""]] },
+        }),
+        source: block("data_itemoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { INDEX: [3, "number", [4, "1"]] },
+        }),
+        number: block(caseData.opcode, { fields: { NUMBER_NAME: ["number", null] } }),
+      },
+      { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(
+      run.trace.find((entry) => entry.statementType === "say")?.worldAfter.sprite.bubble?.text,
+    ).toBe("2");
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["name", "unsupported"])(
+    "reports a looks reporter in %s mode choosing a source item",
+    (mode) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "source", [4, "1"]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { INDEX: [3, "reporter", [4, "1"]] },
+            }),
+            reporter: block("looks_costumenumbername", {
+              fields: { NUMBER_NAME: [mode, null] },
+            }),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each(["name", "unsupported"])(
     "reports a direct looks reporter in %s mode as a list position",
     (mode) => {
