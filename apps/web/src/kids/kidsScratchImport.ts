@@ -1008,6 +1008,7 @@ class Converter {
       case "data_hidelist":
       case "data_insertatlist":
       case "data_replaceitemoflist":
+      case "data_deletealloflist":
       case "data_deleteoflist": {
         const listId = this.listOf(block);
         if (listId === undefined) {
@@ -1016,6 +1017,7 @@ class Converter {
         }
         if (block.opcode === "data_showlist" || block.opcode === "data_hidelist")
           return { type: block.opcode === "data_showlist" ? "showList" : "hideList", listId };
+        if (block.opcode === "data_deletealloflist") return { type: "listClear", listId };
         if (
           block.opcode === "data_deleteoflist" &&
           this.literal(block, "INDEX")?.toLowerCase() === "all"

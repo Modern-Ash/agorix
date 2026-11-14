@@ -2660,6 +2660,52 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
   const flag = (next: string) => block("event_whenflagclicked", { next, topLevel: true });
   const onList = { fields: { LIST: ["Compras", "L1"] } };
 
+  it("imports Scratch's dedicated delete-all list block and clears the runtime list", async () => {
+    const scratch = listProject(
+      {
+        hat: flag("clear"),
+        clear: block("data_deletealloflist", { ...onList, next: "add" }),
+        add: block("data_addtolist", { ...onList, inputs: { ITEM: lit("C", 10) } }),
+      },
+      { L1: ["Compras", ["A", "B"]] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements.map((item) => item.type)).toEqual([
+      "listClear",
+      "listAdd",
+    ]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["C"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.report.dropped).toEqual([]);
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it("reports a dedicated delete-all block for an unknown list", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("clear"),
+        clear: block("data_deletealloflist", { fields: { LIST: ["Missing", "missing"] } }),
+      }),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deletealloflist"))).toBe(true);
+  });
+
+  it("still imports the older delete-at-all list form", () => {
+    const { program, report } = convertScratchProject(
+      listProject({
+        hat: flag("clear"),
+        clear: block("data_deleteoflist", { ...onList, inputs: { INDEX: lit("all", 10) } }),
+      }),
+    );
+    expect(report.dropped).toEqual([]);
+    expect(program.scripts[0]!.statements).toMatchObject([{ type: "listClear" }]);
+  });
+
   it("uses Scratch's random menu for list reads, deletion and replacement", async () => {
     const random = lit("random", 10);
     const scratch = listProject(
@@ -4770,7 +4816,7 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(set).toMatchObject({ type: "setVariable", value: { type: "listLength" } });
   });
 
-  it("leaves starting items, a fourth list, a position out of range and 'delete all' behind, and says so", () => {
+  it("keeps delete all while reporting a fourth list and an out-of-range position", () => {
     const { program, report } = convertScratchProject(
       listProject(
         {
@@ -4796,7 +4842,8 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(reasons.some((what) => what.includes("starting items"))).toBe(false);
     expect(reasons.some((what) => what.includes("more than three"))).toBe(true);
     expect(reasons.some((what) => what.startsWith("data_insertatlist"))).toBe(true);
-    expect(reasons).toContain("data_deletealloflist");
+    expect(reasons).not.toContain("data_deletealloflist");
+    expect(program.scripts[0]!.statements).toMatchObject([{ type: "listClear" }]);
   });
 
   it("does not keep a word longer than 20 letters", () => {

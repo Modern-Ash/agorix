@@ -258,6 +258,7 @@ describe("a scene with a list that holds numbers or words round-trips (design: w
       "data_insertatlist",
       "data_replaceitemoflist",
       "data_deleteoflist",
+      "data_deletealloflist",
       "data_itemoflist",
       "data_lengthoflist",
       "data_itemnumoflist",
