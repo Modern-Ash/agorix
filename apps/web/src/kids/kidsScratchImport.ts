@@ -1239,10 +1239,12 @@ class Converter {
           found.value.type,
         ) ||
           (found.value.type === "listItem" &&
-            found.value.index.type === "numericLiteral" &&
-            Number.isInteger(found.value.index.value) &&
-            found.value.index.value >= 1 &&
-            found.value.index.value <= 10))
+            ((found.value.index.type === "numericLiteral" &&
+              Number.isInteger(found.value.index.value) &&
+              found.value.index.value >= 1 &&
+              found.value.index.value <= 10) ||
+              (found.value.index.type === "listLength" &&
+                found.value.index.listId === found.value.listId))))
         ? found
         : undefined;
     }

@@ -592,7 +592,8 @@ describe("Kids creative studio", () => {
       ["studio-list-1", { type: "numericLiteral", value: 1 }, true],
       ["missing", { type: "numericLiteral", value: 1 }, false],
       ["studio-list-1", { type: "numericLiteral", value: 11 }, false],
-      ["studio-list-1", { type: "listLength", listId: "studio-list-1" }, false],
+      ["studio-list-1", { type: "listLength", listId: "studio-list-1" }, true],
+      ["studio-list-1", { type: "listLength", listId: "missing" }, false],
     ] as const) {
       const attempt = () =>
         appendStudioStatement(history, "actor:studio-1-nova", {
