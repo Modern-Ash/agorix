@@ -124,7 +124,11 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
         tutor: { config: configFromEnv({}) },
         ori: {
           deploymentId,
-          auth: { resolveSession: async () => { throw Error("unauthorized"); } },
+          auth: {
+            resolveSession: async () => {
+              throw Error("unauthorized");
+            },
+          },
           oriRoot: dir,
           world: {},
           learningContext: async () => null,
@@ -149,20 +153,26 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
       }
       expect(existsSync(socket)).toBe(false);
       writeFileSync(socket, "do-not-delete");
-      await expect(startOriMig04PgIntegratedHost({
-        connectionString: databaseUrl,
-        socket,
-        tutor: { config: configFromEnv({}) },
-        ori: {
-          deploymentId,
-          auth: { resolveSession: async () => { throw Error("unauthorized"); } },
-          oriRoot: dir,
-          world: {},
-          learningContext: async () => null,
-          rolloutDecide: () => ({ learnerVisible: false }),
-          runOriOverride: async () => ({ status: "rejected" }) as never,
-        },
-      })).rejects.toThrow("Ori socket path is not a socket");
+      await expect(
+        startOriMig04PgIntegratedHost({
+          connectionString: databaseUrl,
+          socket,
+          tutor: { config: configFromEnv({}) },
+          ori: {
+            deploymentId,
+            auth: {
+              resolveSession: async () => {
+                throw Error("unauthorized");
+              },
+            },
+            oriRoot: dir,
+            world: {},
+            learningContext: async () => null,
+            rolloutDecide: () => ({ learnerVisible: false }),
+            runOriOverride: async () => ({ status: "rejected" }) as never,
+          },
+        }),
+      ).rejects.toThrow("Ori socket path is not a socket");
       expect(readFileSync(socket, "utf8")).toBe("do-not-delete");
     } finally {
       await admin.query("delete from agorix_ori_rollout_policy where deployment_id = $1", [

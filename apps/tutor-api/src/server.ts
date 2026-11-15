@@ -336,7 +336,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
       // by the production learning-context provider.
       if (options.oriTrustedLearningEvent) {
         const recorded = await options.oriTrustedLearningEvent(
-          identity.ownerId, identity.projectId, { kind: "hint" },
+          identity.ownerId,
+          identity.projectId,
+          { kind: "hint" },
         );
         if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
       }
@@ -405,7 +407,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
         return send(response, 409, error("review-not-finalized"));
       if (ticket.status === "accepted" && options.oriTrustedLearningEvent) {
         const recorded = await options.oriTrustedLearningEvent(
-          identity.ownerId, identity.projectId, { kind: "stage", stage: "connect" },
+          identity.ownerId,
+          identity.projectId,
+          { kind: "stage", stage: "connect" },
         );
         if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
       }
@@ -469,7 +473,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (options.oriTrustedLearningEvent) {
         try {
           evidenceRecorded = await options.oriTrustedLearningEvent(
-            current.ownerId, current.projectId, { kind: "stage", stage: "translate" },
+            current.ownerId,
+            current.projectId,
+            { kind: "stage", stage: "translate" },
           );
         } catch {
           evidenceRecorded = false;

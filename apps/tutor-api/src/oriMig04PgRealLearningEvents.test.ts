@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { POSTGRESQL_SCHEMA_SQL } from "@agorix/project-repository";
-import { ORI_MIG04_LEARNING_CONTEXT_SCHEMA_SQL, createOriMig04PgLearningContext } from "./oriMig04PgLearningContext.js";
+import {
+  ORI_MIG04_LEARNING_CONTEXT_SCHEMA_SQL,
+  createOriMig04PgLearningContext,
+} from "./oriMig04PgLearningContext.js";
 import { createOriMig04PgLearningEvents } from "./oriMig04PgLearningEvents.js";
 
 const databaseUrl = process.env["ORI_MIG04_TEST_DATABASE_URL"];
@@ -35,8 +38,14 @@ run("MIG-04 real PostgreSQL pedagogical evidence", () => {
       });
       expect(await read("intruder", projectId)).toBeNull();
     } finally {
-      await pool.query("delete from agorix_ori_learning_context where owner_id = $1 and project_id = $2", [owner, projectId]);
-      await pool.query("delete from agorix_projects where owner_id = $1 and project_id = $2", [owner, projectId]);
+      await pool.query(
+        "delete from agorix_ori_learning_context where owner_id = $1 and project_id = $2",
+        [owner, projectId],
+      );
+      await pool.query("delete from agorix_projects where owner_id = $1 and project_id = $2", [
+        owner,
+        projectId,
+      ]);
       await pool.end();
     }
   });

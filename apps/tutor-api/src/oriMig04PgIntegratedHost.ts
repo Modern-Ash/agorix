@@ -106,7 +106,11 @@ export async function startOriMig04PgIntegratedHost({
       if (socketOwned && socket && socketIdentity) {
         try {
           const stat = lstatSync(socket);
-          if (stat.isSocket() && stat.dev === socketIdentity.dev && stat.ino === socketIdentity.ino) {
+          if (
+            stat.isSocket() &&
+            stat.dev === socketIdentity.dev &&
+            stat.ino === socketIdentity.ino
+          ) {
             unlinkSync(socket);
           }
         } catch {
@@ -134,7 +138,11 @@ export async function startOriMig04PgIntegratedHost({
             if (socketOwned && socket && socketIdentity) {
               try {
                 const stat = lstatSync(socket);
-                if (stat.isSocket() && stat.dev === socketIdentity.dev && stat.ino === socketIdentity.ino) {
+                if (
+                  stat.isSocket() &&
+                  stat.dev === socketIdentity.dev &&
+                  stat.ino === socketIdentity.ino
+                ) {
                   unlinkSync(socket);
                 }
               } catch {

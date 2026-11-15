@@ -32,7 +32,8 @@ export function createOriMig04PgLearningContext(pool: Pick<Pool, "query">) {
       row.hints_used < 0 ||
       row.hints_used > 100 ||
       !["explore", "connect", "translate"].includes(row.learning_stage)
-    ) return null;
+    )
+      return null;
     return {
       attempts: row.attempts,
       hintsUsed: row.hints_used,
@@ -41,7 +42,9 @@ export function createOriMig04PgLearningContext(pool: Pick<Pool, "query">) {
   };
 }
 
-export async function assertOriMig04PgLearningContextReadiness(pool: Pick<Pool, "query">): Promise<void> {
+export async function assertOriMig04PgLearningContextReadiness(
+  pool: Pick<Pool, "query">,
+): Promise<void> {
   const result = await pool.query<{ column_name: string }>(
     `select column_name from information_schema.columns
      where table_schema = current_schema() and table_name = $1`,

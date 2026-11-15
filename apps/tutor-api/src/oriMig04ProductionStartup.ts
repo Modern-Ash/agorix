@@ -43,5 +43,6 @@ export async function startOriMig04ProductionStartup({
   });
 }
 
-export type OriMig04ProductionTutorOptions =
-  Parameters<typeof createOriMig04PgAuthenticatedTutorServer>[0]["tutor"];
+export type OriMig04ProductionTutorOptions = Parameters<
+  typeof createOriMig04PgAuthenticatedTutorServer
+>[0]["tutor"];

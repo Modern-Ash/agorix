@@ -291,5 +291,4 @@ describe("canonical project -> runtime -> Ori review composition", () => {
     );
     await expect(repository.get("intruder", record.projectId)).rejects.toThrow();
   });
-
 });

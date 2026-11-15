@@ -35,11 +35,13 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
     let visible = false;
     const program: ProjectProgram = {
       schema: SCHEMA_VERSION,
-      scripts: [{
-        id: "main",
-        trigger: { type: "onStart" },
-        statements: [{ type: "move", steps: 1 }],
-      }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "move", steps: 1 }],
+        },
+      ],
     };
     try {
       await admin.query(POSTGRESQL_SCHEMA_SQL);
@@ -129,7 +131,9 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
       expect((await post("/auth/project", { projectId })).status).toBe(200);
       const learning = createOriMig04PgLearningContext(admin);
       expect(await learning(owner, projectId)).toEqual({
-        attempts: 0, hintsUsed: 0, learningStage: "explore",
+        attempts: 0,
+        hintsUsed: 0,
+        learningStage: "explore",
       });
 
       // Operator has not approved rollout. No learner-facing route or event.
@@ -149,7 +153,11 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
       visible = true;
       const proposed = await post("/review/propose", {});
       expect(proposed.status).toBe(200);
-      const pending = (await proposed.json()) as { ticketId: string; proposal: unknown; appliedChanges: boolean };
+      const pending = (await proposed.json()) as {
+        ticketId: string;
+        proposal: unknown;
+        appliedChanges: boolean;
+      };
       expect(pending.ticketId).toMatch(/^[0-9a-f-]{36}$/i);
       expect(pending.appliedChanges).toBe(false);
       expect(pending.proposal).toBeTruthy();
@@ -164,18 +172,21 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
       expect((await post("/review/apply", applyBody)).status).toBe(403);
       expect((await canonical.repository.get(owner, projectId)).revision).toBe(created.revision);
       const approved = await post("/review/decision", {
-        ticketId: pending.ticketId, decision: "accept",
+        ticketId: pending.ticketId,
+        decision: "accept",
       });
       expect(approved.status).toBe(200);
       expect((await approved.json()) as object).toMatchObject({
-        status: "accepted", appliedChanges: false,
+        status: "accepted",
+        appliedChanges: false,
       });
       expect((await learning(owner, projectId))?.learningStage).toBe("connect");
 
       const applied = await post("/review/apply", applyBody);
       expect(applied.status).toBe(200);
       expect((await applied.json()) as object).toMatchObject({
-        status: "applied", evidenceRecorded: true,
+        status: "applied",
+        evidenceRecorded: true,
       });
       const updated = await canonical.repository.get(owner, projectId);
       expect(updated.revision).toBe(created.revision + 1);
@@ -191,9 +202,14 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
       // trusted writer still has the current canonical revision.
       expect(await runtime.emergencyDisable()).toBeGreaterThan(1);
       const writer = createOriMig04PgHostWiring({ pool: canonical.pool, deploymentId });
-      expect(await writer.oriMig04AtomicCommit(
-        owner, projectId, updated.storedProject, updated.revision,
-      )).toBe("denied");
+      expect(
+        await writer.oriMig04AtomicCommit(
+          owner,
+          projectId,
+          updated.storedProject,
+          updated.revision,
+        ),
+      ).toBe("denied");
       expect((await canonical.repository.get(owner, projectId)).revision).toBe(updated.revision);
     } finally {
       if (runtime) await runtime.close();
@@ -202,21 +218,22 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
           "delete from agorix_ori_learning_context where owner_id = $1 and project_id = $2",
           [owner, projectId],
         );
-        await admin.query(
-          "delete from agorix_ori_session_projects where account_id = $1",
-          [owner],
-        );
-        await admin.query(
-          "delete from agorix_projects where owner_id = $1 and project_id = $2",
-          [owner, projectId],
-        );
+        await admin.query("delete from agorix_ori_session_projects where account_id = $1", [owner]);
+        await admin.query("delete from agorix_projects where owner_id = $1 and project_id = $2", [
+          owner,
+          projectId,
+        ]);
       }
       if (owner) {
         await admin.query("delete from agorix_auth_sessions where account_id = $1", [owner]);
         await admin.query("delete from agorix_auth_accounts where account_id = $1", [owner]);
       }
-      await admin.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [deploymentId]);
-      await admin.query("delete from agorix_ori_rollout_policy where deployment_id = $1", [deploymentId]);
+      await admin.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [
+        deploymentId,
+      ]);
+      await admin.query("delete from agorix_ori_rollout_policy where deployment_id = $1", [
+        deploymentId,
+      ]);
       await canonical.close();
       await admin.end();
     }

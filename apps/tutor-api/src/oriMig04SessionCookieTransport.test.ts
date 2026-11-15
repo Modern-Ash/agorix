@@ -17,7 +17,9 @@ describe("MIG-04 trusted cookie transport", () => {
   it("rejects missing, duplicate, malformed and oversized cookies", () => {
     expect(transport.sessionToken(request())).toBeNull();
     expect(
-      transport.sessionToken(request(`__Host-agorix-session=${token}; __Host-agorix-session=${token}`)),
+      transport.sessionToken(
+        request(`__Host-agorix-session=${token}; __Host-agorix-session=${token}`),
+      ),
     ).toBeNull();
     expect(transport.sessionToken(request("__Host-agorix-session=bad value"))).toBeNull();
     expect(transport.sessionToken(request("x".repeat(8193)))).toBeNull();
@@ -65,7 +67,11 @@ describe("MIG-04 trusted cookie transport", () => {
   });
 
   it("fails closed after headers are sent or token is invalid", () => {
-    expect(() => transport.onRotatedToken({ headersSent: true } as ServerResponse, token)).toThrow();
-    expect(() => transport.onRotatedToken({ headersSent: false } as ServerResponse, "bad")).toThrow();
+    expect(() =>
+      transport.onRotatedToken({ headersSent: true } as ServerResponse, token),
+    ).toThrow();
+    expect(() =>
+      transport.onRotatedToken({ headersSent: false } as ServerResponse, "bad"),
+    ).toThrow();
   });
 });

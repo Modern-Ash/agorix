@@ -34,9 +34,9 @@ describe("MIG-04 shared AuthService production composition", () => {
       startOriMig04PgSharedAuthProductionHost({ ...options, socket: "/tmp/ori\u0000.sock" }),
     ).rejects.toThrow("Invalid Ori Unix socket path");
     for (const socket of ["/tmp/ori\n.sock", "/tmp/ori\r.sock"]) {
-      await expect(
-        startOriMig04PgSharedAuthProductionHost({ ...options, socket }),
-      ).rejects.toThrow("Invalid Ori Unix socket path");
+      await expect(startOriMig04PgSharedAuthProductionHost({ ...options, socket })).rejects.toThrow(
+        "Invalid Ori Unix socket path",
+      );
     }
     await expect(
       startOriMig04PgSharedAuthProductionHost({ ...options, connectionString: "" }),
@@ -53,9 +53,9 @@ describe("MIG-04 shared AuthService production composition", () => {
       ).rejects.toThrow("Invalid MIG-04 deployment ID");
     }
     for (const port of [-1, 65536, 1.5, Number.NaN]) {
-      await expect(
-        startOriMig04PgSharedAuthProductionHost({ ...options, port }),
-      ).rejects.toThrow("Invalid MIG-04 listener port");
+      await expect(startOriMig04PgSharedAuthProductionHost({ ...options, port })).rejects.toThrow(
+        "Invalid MIG-04 listener port",
+      );
     }
   });
 

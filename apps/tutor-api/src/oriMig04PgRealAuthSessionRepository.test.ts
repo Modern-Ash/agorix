@@ -40,9 +40,7 @@ run("MIG-04 durable AuthService sessions across processes", () => {
         writer.replace(oldHash, nextRecord as never, new Date().toISOString()),
       ).rejects.toThrow("Auth session rotation conflict");
       await reader.revoke(nextHash, "2026-10-28T00:00:00.000Z");
-      expect((await writer.findByTokenHash(nextHash))?.revokedAt).toBe(
-        "2026-10-28T00:00:00.000Z",
-      );
+      expect((await writer.findByTokenHash(nextHash))?.revokedAt).toBe("2026-10-28T00:00:00.000Z");
       await writer.deleteForAccount(accountId);
       expect(await reader.findByTokenHash(nextHash)).toBeUndefined();
     } finally {

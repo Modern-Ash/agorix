@@ -17,7 +17,12 @@ assertOriMig04StartupSafe(env);
 const connectionString = env["AGORIX_ORI_MIG04_DATABASE_URL"] ?? "";
 const deploymentId = env["AGORIX_ORI_MIG04_DEPLOYMENT_ID"] ?? "";
 const oriRoot = env["ORI_REPO_PATH"] ?? "";
-if (!connectionString.trim() || !/^[A-Za-z0-9_-]{1,128}$/.test(deploymentId) || !isAbsolute(oriRoot) || oriRoot.includes("\0")) {
+if (
+  !connectionString.trim() ||
+  !/^[A-Za-z0-9_-]{1,128}$/.test(deploymentId) ||
+  !isAbsolute(oriRoot) ||
+  oriRoot.includes("\0")
+) {
   throw new Error("MIG-04 requires PostgreSQL, a deployment ID and an absolute Ori checkout");
 }
 const host = env["AGORIX_TUTOR_HOST"] ?? "127.0.0.1";
@@ -49,8 +54,12 @@ let closing: Promise<void> | undefined;
 function shutdown() {
   closing ??= runtime.close();
   void closing.then(
-    () => { process.exitCode = 0; },
-    () => { process.exitCode = 1; },
+    () => {
+      process.exitCode = 0;
+    },
+    () => {
+      process.exitCode = 1;
+    },
   );
 }
 process.once("SIGTERM", shutdown);

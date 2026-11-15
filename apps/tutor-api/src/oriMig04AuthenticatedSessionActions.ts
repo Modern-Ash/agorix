@@ -15,11 +15,16 @@ export function createOriMig04AuthenticatedSessionActions({
   readonly auth: Pick<AuthService, "resolveSession" | "signOut" | "deleteAccount">;
   readonly projects: Projects;
 }) {
-  if (!auth || typeof auth.resolveSession !== "function" ||
-      typeof auth.signOut !== "function" || typeof auth.deleteAccount !== "function" ||
-      !projects || typeof projects.selectProject !== "function" ||
-      typeof projects.logout !== "function" ||
-      typeof projects.revokeAccountSessions !== "function") {
+  if (
+    !auth ||
+    typeof auth.resolveSession !== "function" ||
+    typeof auth.signOut !== "function" ||
+    typeof auth.deleteAccount !== "function" ||
+    !projects ||
+    typeof projects.selectProject !== "function" ||
+    typeof projects.logout !== "function" ||
+    typeof projects.revokeAccountSessions !== "function"
+  ) {
     throw new Error("Missing trusted Ori session lifecycle dependencies");
   }
 

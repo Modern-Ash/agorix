@@ -9,14 +9,22 @@ type VerifiedSession = OriAuthenticatedSession;
  * AuthService resolver, never from request body, query string or headers.
  */
 export function createOriMig04AuthenticatedProjectLifecycle(lifecycle: Lifecycle) {
-  if (!lifecycle || typeof lifecycle.select !== "function" ||
-      typeof lifecycle.revoke !== "function" || typeof lifecycle.revokeAll !== "function") {
+  if (
+    !lifecycle ||
+    typeof lifecycle.select !== "function" ||
+    typeof lifecycle.revoke !== "function" ||
+    typeof lifecycle.revokeAll !== "function"
+  ) {
     throw new Error("Missing durable Ori project lifecycle");
   }
   function requireIdentity(session: VerifiedSession): VerifiedSession {
-    if (!session || typeof session.accountId !== "string" ||
-        typeof session.sessionId !== "string" ||
-        !session.accountId || !session.sessionId) {
+    if (
+      !session ||
+      typeof session.accountId !== "string" ||
+      typeof session.sessionId !== "string" ||
+      !session.accountId ||
+      !session.sessionId
+    ) {
       throw new Error("Missing verified Ori session identity");
     }
     return session;
