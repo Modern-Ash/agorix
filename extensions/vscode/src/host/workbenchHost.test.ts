@@ -123,6 +123,40 @@ describe("workbenchHost", () => {
     expect(out[0]).toMatchObject({ type: "workspace", programHash: programSemanticHash(get()!) });
   });
 
+  it("commits numeric edits and refuses stale or unknown fields", async () => {
+    const { host, get, labels } = setup();
+    const intent = {
+      type: "setNumericField",
+      location: { container: script, index: 0 },
+      field: "steps",
+      value: 21,
+    } as const;
+    const changed = await host.handle({
+      schema,
+      type: "intent",
+      intent,
+      baseHash: programSemanticHash(base),
+    });
+    expect(changed[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({ type: "move", steps: 21 });
+    expect(labels).toHaveLength(1);
+    const stale = await host.handle({
+      schema,
+      type: "intent",
+      intent,
+      baseHash: programSemanticHash(base),
+    });
+    expect(stale[0]).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    const bad = await host.handle({
+      schema,
+      type: "intent",
+      intent: { ...intent, field: "missing" },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(bad[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(1);
+  });
+
   it("moves exactly like applying the same change through block-editor", async () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };

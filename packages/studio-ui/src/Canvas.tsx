@@ -267,7 +267,9 @@ export function Canvas({
         const isSel = sync?.selectedBlockId === block.id;
         const isExec = sync?.executingBlockId === block.id;
         const isFail = sync?.failedBlockId === block.id;
-        const fields = Object.entries(block.fields)
+        const fieldEntries = Object.entries(block.fields);
+        const fields = fieldEntries
+          .filter(([, value]) => typeof value !== "number")
           .map(([name, value]) => `${fieldLabel(name, copy)}: ${String(value)}`)
           .join(", ");
         return (
@@ -334,6 +336,44 @@ export function Canvas({
               {label}
               {fields === "" ? "" : ` (${fields})`}
             </span>
+            {fieldEntries
+              .filter(([, value]) => typeof value === "number")
+              .map(([name, value]) => (
+                <label key={name} className="block-field">
+                  <span>{fieldLabel(name, copy)}</span>
+                  <input
+                    key={`${pos}:${name}:${value}`}
+                    type="number"
+                    tabIndex={isTabbable ? 0 : -1}
+                    aria-label={`${label}: ${fieldLabel(name, copy)}`}
+                    defaultValue={value as number}
+                    draggable={false}
+                    onDragStart={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                      if (event.key === "Enter") event.currentTarget.blur();
+                    }}
+                    onBlur={(event) => {
+                      const raw = event.currentTarget.value.trim();
+                      const number = Number(raw);
+                      if (raw === "" || !Number.isFinite(number)) {
+                        event.currentTarget.value = String(value);
+                        return;
+                      }
+                      if (number !== value) {
+                        onIntent({
+                          type: "setNumericField",
+                          location: block.location,
+                          field: name,
+                          value: number,
+                        });
+                        // The host owns accepted state; show the new value only after its snapshot arrives.
+                        event.currentTarget.value = String(value);
+                      }
+                    }}
+                  />
+                </label>
+              ))}
             {hint === undefined ? null : (
               <span className={ambient === undefined ? "hint-badge" : "hint-badge ambient"}>
                 {ambient === undefined
@@ -344,6 +384,22 @@ export function Canvas({
             )}
             {isFail ? <span className="sync-badge fail-badge">{copy.canvasFailedHere}</span> : null}
             {isExec ? <span className="sync-badge">{copy.canvasRunning}</span> : null}
+            <button
+              type="button"
+              tabIndex={isTabbable ? 0 : -1}
+              className="block-ori"
+              aria-label={`${copy.askOriAboutBlock}: ${label}`}
+              title={copy.askOriAboutBlock}
+              onClick={() =>
+                onIntent({
+                  type: "askAgent",
+                  verb: "explain",
+                  about: { kind: "node", id: block.id },
+                })
+              }
+            >
+              Ori
+            </button>
             <button
               type="button"
               tabIndex={isTabbable ? 0 : -1}

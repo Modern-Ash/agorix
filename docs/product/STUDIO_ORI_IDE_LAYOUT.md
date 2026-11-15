@@ -10,8 +10,11 @@ Opening a local project shows a focused, full-width Studio Workbench. The
 native code projection stays in the neighboring editor tab, one click away.
 The VS Code primary sidebar and bottom panel close for this project-opening
 flow; learners can reopen them with standard VS Code controls. The Workbench
-puts the editable canonical program first, Ori at the right, and execution
-evidence below the program. The block palette is a visible toolbox with
+puts Run and the stage above the editable canonical program, Ori at the right,
+and detailed execution evidence below the program. This keeps the edit, run,
+observe loop in the first viewport. Numeric block values are edited directly
+on the block and committed through the canonical workspace transaction, with
+stale edits and invalid values refused. The block palette is a visible toolbox with
 drag handles, a click-to-add path and visible insertion targets while dragging.
 An empty script shows its insertion target immediately. Mission, actors and
 assets live in a disclosure section. The
@@ -27,8 +30,9 @@ what the program did.
 
 1. The learner opens a project in the Workbench. The code projection remains
    one tab away and synchronized with the canonical program.
-2. The learner edits, predicts and runs. The stage and event trace appear in
-   the evidence area beneath the program.
+2. The learner edits a block value in place, predicts, runs and sees the stage
+   immediately above the program. The event trace remains in the detailed
+   evidence area beneath the program.
 3. Ori occupies a stable companion area. Its intent/plan input is a structured
    learning workflow, not a free-form chat. Explanations and proposals still
    use the existing validated Companion and proposal paths.

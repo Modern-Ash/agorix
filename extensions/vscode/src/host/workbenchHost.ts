@@ -184,7 +184,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
   return (
     intent.intent.type === "insertBlock" ||
     intent.intent.type === "moveBlock" ||
-    intent.intent.type === "deleteBlock"
+    intent.intent.type === "deleteBlock" ||
+    intent.intent.type === "setNumericField"
   );
 }
 
@@ -359,11 +360,13 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
         }
         try {
-          const change = intentToChange(intent, newBlockId);
-          if (change === undefined) {
-            return [];
-          }
           const { workspace } = programToWorkspace(program);
+          const change = intentToChange(intent, newBlockId, workspace);
+          if (change === undefined) {
+            return intent.type === "setNumericField"
+              ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
+              : [];
+          }
           await port.commit(
             applyWorkspaceChange(workspace, change).program,
             `Workbench: ${intent.type}`,
