@@ -210,6 +210,20 @@ function finiteSmallNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
 }
 
+function checkedSimpleJoinSearchOperand(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "listLength")
+    return program.lists?.some((item) => item.id === value.listId) === true;
+  if (value.type === "listItem")
+    return (
+      program.lists?.some((item) => item.id === value.listId) === true &&
+      value.index.type === "numericLiteral" &&
+      Number.isInteger(value.index.value) &&
+      value.index.value >= 1 &&
+      value.index.value <= 10
+    );
+  return ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(value.type);
+}
+
 function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean {
   if (value.type === "randomInteger") {
     const min = value.min;
@@ -321,12 +335,8 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
           value.value.max.type === "numericLiteral" &&
           checkedStudioIndex(value.value, program)) ||
         (value.value.type === "join" &&
-          ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(
-            value.value.left.type,
-          ) &&
-          ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(
-            value.value.right.type,
-          ) &&
+          checkedSimpleJoinSearchOperand(value.value.left, program) &&
+          checkedSimpleJoinSearchOperand(value.value.right, program) &&
           checkedText(value.value, program)) ||
         (value.value.type === "listItem" &&
           ((value.value.index.type === "numericLiteral" &&

@@ -4598,6 +4598,109 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it.each(["length", "item"])(
+    "searches with the current %s of a source list inside join",
+    async (kind) => {
+      const source = () =>
+        kind === "length"
+          ? block("data_lengthoflist", { fields: { LIST: ["Cuenta", "L3"] } })
+          : block("data_itemoflist", {
+              fields: { LIST: ["Cuenta", "L3"] },
+              inputs: { INDEX: lit(1) },
+            });
+      const join = (suffix: string) =>
+        block("operator_join", {
+          inputs: { STRING1: [3, `source${suffix}`, [10, ""]], STRING2: lit("2", 10) },
+        });
+      const search = (suffix: string) =>
+        block("data_itemnumoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { ITEM: [3, `join${suffix}`, [10, ""]] },
+        });
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("removeFirst"),
+            removeFirst: block("data_deleteoflist", {
+              ...onList,
+              next: "changeSource",
+              inputs: { INDEX: [3, "searchFirst", [4, "1"]] },
+            }),
+            searchFirst: search("First"),
+            joinFirst: join("First"),
+            sourceFirst: source(),
+            changeSource:
+              kind === "length"
+                ? block("data_addtolist", {
+                    next: "removeSecond",
+                    fields: { LIST: ["Cuenta", "L3"] },
+                    inputs: { ITEM: lit(2) },
+                  })
+                : block("data_replaceitemoflist", {
+                    next: "removeSecond",
+                    fields: { LIST: ["Cuenta", "L3"] },
+                    inputs: { INDEX: lit(1), ITEM: lit(2) },
+                  }),
+            removeSecond: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "searchSecond", [4, "1"]] },
+            }),
+            searchSecond: search("Second"),
+            joinSecond: join("Second"),
+            sourceSecond: source(),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]], L3: ["Cuenta", [1]] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each(["unknown length", "unknown item", "invalid item index"])(
+    "reports %s inside a joined list search",
+    (kind) => {
+      const isItem = kind !== "unknown length";
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "join", [10, ""]] },
+            }),
+            join: block("operator_join", {
+              inputs: { STRING1: [3, "source", [10, ""]], STRING2: lit("2", 10) },
+            }),
+            source: isItem
+              ? block("data_itemoflist", {
+                  fields: {
+                    LIST: [
+                      kind === "unknown item" ? "Missing" : "Cuenta",
+                      kind === "unknown item" ? "missing" : "L3",
+                    ],
+                  },
+                  inputs: { INDEX: lit(kind === "invalid item index" ? 11 : 1) },
+                })
+              : block("data_lengthoflist", { fields: { LIST: ["Missing", "missing"] } }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]], L3: ["Cuenta", [1]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {

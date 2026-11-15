@@ -234,8 +234,17 @@ function isSimpleRandomSearch(value: Expression): boolean {
 
 function isSimpleJoinSearch(value: Expression): boolean {
   if (value.type !== "join") return false;
-  const simple = (item: Expression): boolean =>
-    ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(item.type);
+  const simple = (item: Expression): boolean => {
+    if (item.type === "listLength") return true;
+    if (item.type === "listItem")
+      return (
+        item.index.type === "numericLiteral" &&
+        Number.isInteger(item.index.value) &&
+        item.index.value >= 1 &&
+        item.index.value <= 10
+      );
+    return ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(item.type);
+  };
   return simple(value.left) && simple(value.right);
 }
 
