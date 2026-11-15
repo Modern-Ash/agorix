@@ -275,6 +275,8 @@ test("Ori notices the same block written three times and offers one Repetir, onl
   await page.getByRole("button", { name: /Ori vio algo/ }).click();
   await expect(page.locator(".kids-ori-noticed-panel")).toContainText("3 veces seguidas");
   await expect(page.getByTestId("ori-fix-diff")).toContainText("Repetir 3 veces");
+  // The fix was tried on a copy first: joining the blocks does exactly what they did.
+  await expect(page.getByTestId("fix-evidence")).toContainText("hace exactamente lo mismo");
   // Nothing changed yet.
   await expect(page.locator(".kids-program-block")).toHaveCount(3);
   await page.getByRole("button", { name: "Usar este cambio" }).click();
