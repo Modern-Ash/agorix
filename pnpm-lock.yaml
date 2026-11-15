@@ -513,6 +513,9 @@ importers:
       '@agorix/interaction-core':
         specifier: workspace:*
         version: link:../interaction-core
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/studio-ui:
     dependencies:
@@ -525,6 +528,12 @@ importers:
       '@agorix/interaction-core':
         specifier: workspace:*
         version: link:../interaction-core
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/stage':
+        specifier: workspace:*
+        version: link:../stage
       '@agorix/studio-protocol':
         specifier: workspace:*
         version: link:../studio-protocol

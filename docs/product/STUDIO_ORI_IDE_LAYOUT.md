@@ -20,6 +20,12 @@ An empty script shows its insertion target immediately. Mission, actors and
 assets live in a disclosure section. The
 separate World Preview remains available on demand.
 
+The stage loads the initial deterministic frame when a project opens and uses
+the same bundled gallery artwork as Web for known characters and backdrops.
+Project PNG/WebP artwork is accepted only through the bounded creative asset
+contract. The next visual parity work is tracked in epic #1648: richer visual
+block composition, direct costume editing and full asset workflows.
+
 The interface takes inspiration from the project/editor/agent division and
 reviewable agent changes described in the [Kiro IDE](https://kiro.dev/ide/).
 Agorix's teaching boundary is different: Ori asks and explains, the learner

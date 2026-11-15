@@ -7,6 +7,11 @@
 > The Ori-specific gate below tracks the new journey and the evidence still
 > required before claiming Ori parity.
 
+> The green semantic parity matrix also does not certify visual IDE parity.
+> Epic #1648 tracks visual blocks, a world stage, costumes, assets and advanced
+> component breadth. A learner seeing text rows or missing costume controls is
+> an open product gap even when the shared program and runtime tests pass.
+
 ## Ori in VS Code: new release gate (#1622)
 
 The historical green matrix below remains a baseline for the original Studio

@@ -36,6 +36,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .stage-backdrop[data-backdrop-id="asset:space.trailhead"] { background: linear-gradient(135deg, color-mix(in srgb, var(--vscode-charts-blue), transparent 82%), var(--vscode-editor-background)); }
 .stage-backdrop[data-backdrop-id="asset:space.nebula"] { background: radial-gradient(circle at 72% 28%, color-mix(in srgb, var(--vscode-charts-purple), transparent 56%), transparent 32%), linear-gradient(135deg, color-mix(in srgb, var(--vscode-charts-purple), transparent 72%), var(--vscode-editor-background)); }
 .stage-grid { position: absolute; inset: 0; background-image: linear-gradient(var(--vscode-editorWidget-border, var(--vscode-panel-border)) 1px, transparent 1px), linear-gradient(90deg, var(--vscode-editorWidget-border, var(--vscode-panel-border)) 1px, transparent 1px); background-size: 32px 32px; opacity: 0.38; }
+.stage-art-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.stage-art-backdrop + .stage-grid { opacity: 0.12; }
+.stage-art-sprite { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.stage-sprite:has(.stage-art-sprite) { border: 0; border-radius: 0; background: transparent; }
 .stage-goal, .stage-sprite { position: absolute; width: 22px; height: 22px; box-sizing: border-box; transition: left 180ms ease, bottom 180ms ease, transform 180ms ease; }
 .stage-goal { transform: translate(-50%, 50%); border: 2px solid var(--vscode-testing-iconPassed); border-radius: 50%; background: color-mix(in srgb, var(--vscode-testing-iconPassed), transparent 78%); }
 .stage-goal.reached { box-shadow: 0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconPassed), transparent 72%); }
@@ -116,6 +120,7 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .asset-row h3 { font-size: 0.95em; }
 .asset-row p { color: var(--vscode-descriptionForeground); font-size: 0.82em; }
 .asset-preview { display: grid; place-items: center; min-height: 34px; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); font-family: var(--vscode-editor-font-family); font-size: 0.75em; }
+.asset-preview img { display: block; width: 100%; max-height: 48px; object-fit: contain; }
 .workbench[data-density="compact"] .asset-panel { margin-bottom: 6px; padding: 6px; }
 .validation-panel { display: grid; gap: 8px; margin-bottom: 10px; padding: 8px; border: 1px solid var(--vscode-editorWarning-foreground); background: var(--vscode-editorWidget-background); }
 .validation-panel header { display: flex; justify-content: space-between; gap: 8px; color: var(--vscode-descriptionForeground); }
