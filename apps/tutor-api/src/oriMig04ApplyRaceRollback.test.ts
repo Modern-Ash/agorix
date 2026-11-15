@@ -11,8 +11,8 @@ afterEach(async () => {
     servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
   );
 });
-describe("MIG-04 apply rollback after asynchronous identity refresh", () => {
-  it("rejects apply if kill switch trips while identity refresh is pending", async () => {
+describe("MIG-04 apply rollback during asynchronous identity verification", () => {
+  it("rejects apply if kill switch trips while identity resolution is pending", async () => {
     const controller = createOriMig04RolloutController();
     expect(
       controller.replaceFromHost({
@@ -39,7 +39,7 @@ describe("MIG-04 apply rollback after asynchronous identity refresh", () => {
       oriMig04RolloutDecide: controller.decide,
       oriReviewIdentity: async () => {
         identityCalls++;
-        if (identityCalls === 2) {
+        if (identityCalls === 1) {
           notifyRefresh?.();
           await refreshGate;
         }

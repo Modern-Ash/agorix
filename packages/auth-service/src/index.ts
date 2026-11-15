@@ -125,6 +125,8 @@ export interface SignInResult {
 }
 
 export interface ResolveSessionResult {
+  /** Previous verified session id, available only after a successful rotation. */
+  readonly previousSessionId?: string;
   readonly account: AccountIdentity;
   readonly session: SessionIdentity;
   readonly sessionToken: string;
@@ -307,6 +309,7 @@ export class AuthService {
       session: nextSession,
       sessionToken: nextToken,
       rotated: true,
+      previousSessionId: record.session.sessionId,
     };
   }
 
