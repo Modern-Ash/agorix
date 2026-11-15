@@ -4396,6 +4396,101 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it.each([
+    [1, 1, [1, 2], ["B", "C"]],
+    [2, 2, [1, 2], ["A", "C"]],
+    [1, 1, [2, 3], ["A", "B", "C"]],
+  ])(
+    "searches for pick random %s to %s as a list position",
+    async (min, max, sourceItems, remaining) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "random", [4, "0"]] },
+            }),
+            random: block("operator_random", {
+              inputs: { FROM: lit(min), TO: lit(max) },
+            }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", sourceItems] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(remaining);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("repeats the same bounded random search with the same runtime seed", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "search", [4, "1"]] },
+          }),
+          search: block("data_itemnumoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { ITEM: [3, "random", [4, "0"]] },
+          }),
+          random: block("operator_random", { inputs: { FROM: lit(1), TO: lit(2) } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [1, 2]] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const creative = creativeForStudio(program, "forest", "es");
+    const first = runMultiActorProgram(program, creative).actors[0]!.world.lists?.["studio-list-1"]
+      ?.items;
+    const second = runMultiActorProgram(program, creative).actors[0]!.world.lists?.["studio-list-1"]
+      ?.items;
+    expect(second).toEqual(first);
+    expect([
+      ["B", "C"],
+      ["A", "C"],
+    ]).toContainEqual(first);
+  });
+
+  it.each([
+    ["fractional", lit(1.5), lit(2)],
+    ["reversed", lit(3), lit(2)],
+    ["out of range", lit(1), lit(11)],
+    ["variable", [3, [12, "position", "v1"], [4, "0"]], lit(2)],
+  ])("reports a %s random bound in a searched list position", (kind, from, to) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "search", [4, "1"]] },
+          }),
+          search: block("data_itemnumoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { ITEM: [3, "random", [4, "0"]] },
+          }),
+          random: block("operator_random", { inputs: { FROM: from, TO: to } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [1, 2]] },
+        { v1: ["position", 1] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {

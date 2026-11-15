@@ -219,6 +219,19 @@ function isSimpleMathIndex(value: Expression): boolean {
   );
 }
 
+function isSimpleRandomSearch(value: Expression): boolean {
+  return (
+    value.type === "randomInteger" &&
+    value.min.type === "numericLiteral" &&
+    value.max.type === "numericLiteral" &&
+    Number.isInteger(value.min.value) &&
+    Number.isInteger(value.max.value) &&
+    value.min.value >= 1 &&
+    value.max.value <= 10 &&
+    value.min.value <= value.max.value
+  );
+}
+
 function isSimpleTextIndex(value: Expression): boolean {
   if (value.type === "textLength")
     return value.value.type === "textLiteral" || value.value.type === "textVariable";
@@ -1263,6 +1276,7 @@ class Converter {
           isSimpleMathIndex(found.value) ||
           isSimpleArithmeticIndex(found.value) ||
           isSimpleTextIndex(found.value) ||
+          isSimpleRandomSearch(found.value) ||
           (found.value.type === "listItem" &&
             ((found.value.index.type === "numericLiteral" &&
               Number.isInteger(found.value.index.value) &&
