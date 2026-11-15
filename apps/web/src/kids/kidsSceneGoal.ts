@@ -33,7 +33,10 @@ function atEdge(actor: Placed | undefined): boolean {
   );
 }
 
-function metIn(goal: ProjectSceneGoal, actors: readonly Placed[]): boolean {
+/** A goal about a character; one about a value has no character. */
+export type ActorSceneGoal = Exclude<ProjectSceneGoal, { readonly kind: "variableReaches" }>;
+
+function metIn(goal: ActorSceneGoal, actors: readonly Placed[]): boolean {
   const find = (id: string) => actors.find((item) => item.id === id);
   if (goal.kind === "touchActor") return touching(find(goal.actorId), find(goal.targetId));
   if (goal.kind === "reachEdge") return atEdge(find(goal.actorId));
@@ -74,6 +77,18 @@ function reachedCellInTrace(
  * that is already true before anything runs is not met by running an empty program.
  */
 export function sceneGoalMet(goal: ProjectSceneGoal, run: MultiActorRunResult): boolean {
+  if (goal.kind === "variableReaches") {
+    // A value held at the end of any step counts, even if a later block took it back down.
+    const held = (variables: Readonly<Record<string, { readonly value: number }>> | undefined) =>
+      (variables?.[goal.variableId]?.value ?? Number.NEGATIVE_INFINITY) >= goal.value;
+    return (
+      held(run.stage.variables) ||
+      run.frames.some(
+        (frame) =>
+          held(frame.stage.variables) || frame.actors.some((actor) => held(actor.world.variables)),
+      )
+    );
+  }
   if (goal.kind === "reachCell") {
     if ((run.trace?.length ?? 0) > 0) return reachedCellInTrace(goal, run);
     // A one-frame run is only the starting layout; a later frame is evidence of a step.
@@ -83,14 +98,21 @@ export function sceneGoalMet(goal: ProjectSceneGoal, run: MultiActorRunResult): 
 }
 
 /** Both characters of a goal must still be in the scene. */
-export function sceneGoalValid(goal: ProjectSceneGoal, actorIds: readonly string[]): boolean {
+export function sceneGoalValid(
+  goal: ProjectSceneGoal,
+  actorIds: readonly string[],
+  /** The scene's number variables; a goal about a value needs its variable to still exist. */
+  variableIds?: readonly string[],
+): boolean {
+  if (goal.kind === "variableReaches")
+    return variableIds === undefined || variableIds.includes(goal.variableId);
   return goal.kind === "touchActor"
     ? actorIds.includes(goal.actorId) && actorIds.includes(goal.targetId)
     : actorIds.includes(goal.actorId);
 }
 
 /** The goals a child can pick for the current cast: one edge goal per character, one touch per pair. */
-export function sceneGoalChoices(actorIds: readonly string[]): readonly ProjectSceneGoal[] {
+export function sceneGoalChoices(actorIds: readonly string[]): readonly ActorSceneGoal[] {
   const edges = actorIds.map((actorId) => ({ kind: "reachEdge", actorId }) as const);
   const touches = actorIds.flatMap((actorId) =>
     actorIds
@@ -100,12 +122,32 @@ export function sceneGoalChoices(actorIds: readonly string[]): readonly ProjectS
   return [...touches, ...edges];
 }
 
+/** Reaching a number a score game aims for: one choice per number variable and target. */
+export const VARIABLE_GOAL_VALUES = [3, 5, 10] as const;
+
+export function variableGoalChoices(
+  variables: readonly { readonly id: string }[],
+): readonly ProjectSceneGoal[] {
+  return variables.flatMap((variable) =>
+    VARIABLE_GOAL_VALUES.map(
+      (value) => ({ kind: "variableReaches", variableId: variable.id, value }) as const,
+    ),
+  );
+}
+
 export function describeSceneGoal(
   goal: ProjectSceneGoal,
   nameOf: (actorId: string) => string,
   locale: Locale,
+  /** Names of the scene's number variables, for a goal about a value. */
+  variableName: (variableId: string) => string = (variableId) => variableId,
 ): string {
   const es = locale === "es";
+  if (goal.kind === "variableReaches") {
+    return es
+      ? `${variableName(goal.variableId)} llega a ${goal.value}`
+      : `${variableName(goal.variableId)} reaches ${goal.value}`;
+  }
   if (goal.kind === "reachEdge") {
     return es
       ? `${nameOf(goal.actorId)} llega al borde`
@@ -122,6 +164,7 @@ export function describeSceneGoal(
 }
 
 export function sceneGoalKey(goal: ProjectSceneGoal): string {
+  if (goal.kind === "variableReaches") return `value:${goal.variableId}:${goal.value}`;
   if (goal.kind === "touchActor") return `touch:${goal.actorId}:${goal.targetId}`;
   if (goal.kind === "reachCell") {
     return `cell:${goal.actorId}:${goal.cx}:${goal.cy}${goal.afterTurn ? ":turn" : ""}`;

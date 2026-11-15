@@ -1,11 +1,11 @@
 import type { ProjectSceneGoal } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
-import { sceneGoalChoices } from "./kidsSceneGoal.js";
+import { sceneGoalChoices, type ActorSceneGoal } from "./kidsSceneGoal.js";
 import { actorOfScript, studioActorId } from "./kidsStudioModel.js";
 
 export interface SceneGoalProposal {
-  readonly goal: ProjectSceneGoal;
+  readonly goal: ActorSceneGoal;
   readonly message: string;
 }
 
@@ -32,9 +32,9 @@ function movers(program: ProjectProgram): ReadonlySet<string> {
 export function rankSceneGoals(
   actorIds: readonly string[],
   program: ProjectProgram,
-): readonly ProjectSceneGoal[] {
+): readonly ActorSceneGoal[] {
   const moving = movers(program);
-  const score = (goal: ProjectSceneGoal): number => {
+  const score = (goal: ActorSceneGoal): number => {
     const seeker = moving.has(goal.actorId) ? 2 : 0;
     // With company in the scene a meeting is the richer idea; alone, the edge is the only one.
     const kind = goal.kind === "touchActor" ? 1 : 0;
@@ -62,7 +62,10 @@ export function proposeSceneGoal(
   const preferredKey = preferred ? JSON.stringify(preferred) : null;
   const ranked =
     preferredKey !== null && local.some((item) => JSON.stringify(item) === preferredKey)
-      ? [preferred!, ...local.filter((item) => JSON.stringify(item) !== preferredKey)]
+      ? [
+          preferred as ActorSceneGoal,
+          ...local.filter((item) => JSON.stringify(item) !== preferredKey),
+        ]
       : local;
   if (ranked.length === 0) return null;
   const goal = ranked[((attempt % ranked.length) + ranked.length) % ranked.length]!;

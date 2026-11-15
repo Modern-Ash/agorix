@@ -285,3 +285,7 @@ Ori's idea card already ran the idea on a copy and showed where the character wo
 ## Status: Ori's ideas measured (#1586) and the card no longer blames an idea for a program that never ends
 
 `docs/product/ORI_EVAL.md` is a table, kept in step by a test, of every idea Ori can put forward on five fixed scenes: how many are offered, invalid, stop the program, change nothing, or would stop something. The first run found a real fault: the card said "with this idea the program does not reach the end" for a program that never ended (a `forever` loop). The preview now also carries how the program ends today (`outcomeBefore`) and the warning is shown only when the program ended and the idea stops it.
+
+## Status: a scene goal about a value (#1598, #1599)
+
+The scene goal (one per scene, chosen from closed choices, checked against a run) already was the runtime-proved assertion #1598 asks for, for characters. It now has a second family: `variableReaches`, "a number variable of the scene holds at least 3, 5 or 10 at some step of a run" (a score game's goal). It is validated in the scene file (`studio-var-1` to `-3`, a whole number from 1 to 99), judged from the run's own stage and frames by `sceneGoalMet`, offered in the goal picker for each number variable, and dropped if its variable goes away. Ori does not propose it yet: its goal ideas and helper blocks stay about characters. #1600 (the step where a goal last held) is not built.
