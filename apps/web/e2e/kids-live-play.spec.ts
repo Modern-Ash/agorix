@@ -156,3 +156,29 @@ test("the run says which block changed each value and jumps to that step (#1579,
   await change.click();
   await expect(change).toHaveAttribute("aria-current", "step");
 });
+
+test("a run is compared with the last one: the same program gives the same run (#1581)", async ({
+  page,
+}) => {
+  await openScene(page);
+  for (let i = 0; i < 2; i++)
+    await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  const play = page.getByRole("button", { name: "Jugar", exact: true });
+  await play.click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  // Only one finished run so far: nothing to compare with.
+  await expect(page.locator(".kids-run-compare")).toHaveCount(0);
+  await play.click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  const compare = page.locator(".kids-run-compare");
+  await compare.locator("summary").click();
+  await expect(compare).toContainText("Igual que la vez anterior");
+
+  // After an edit the sentence says where they stop agreeing, and the button goes there.
+  await page.getByRole("button", { name: "+ Girar a la derecha", exact: true }).click();
+  await play.click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  await compare.locator("summary").click();
+  await expect(compare).toContainText("antes eran 2 pasos y ahora 3");
+  await compare.getByRole("button", { name: "Ir a ese paso" }).click();
+});
