@@ -403,6 +403,8 @@ export interface CandidatePreview {
   readonly lost: readonly BehaviourKind[];
   /** The idea changes nothing that happens when the program runs. */
   readonly unchanged: boolean;
+  /** How the program ends now, so "the idea stops it" is only said of a program that did end. */
+  readonly outcomeBefore: string;
   readonly outcome: string;
   readonly stepsBefore: number;
   readonly stepsAfter: number;
@@ -430,6 +432,7 @@ export function previewCandidate(
   return {
     lost: [...behavioursOf(before)].filter((kind) => !stillThere.has(kind)).sort(),
     unchanged: sameRun(before, after),
+    outcomeBefore: before.outcome,
     outcome: after.outcome,
     stepsBefore: before.stepsUsed,
     stepsAfter: after.stepsUsed,

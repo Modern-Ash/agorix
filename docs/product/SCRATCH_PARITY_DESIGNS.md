@@ -281,3 +281,7 @@ A real `.sb3` carries its pictures; the importer used to read only `project.json
 ## Status: an idea says what it would stop (#1584, #1585)
 
 Ori's idea card already ran the idea on a copy and showed where the character would end and how many blocks would run (#602, #603, #605). `previewCandidate` now also reports `lost`, the behaviours the program has now and the idea would stop (movement, sound, what it says, drawing), and `unchanged`, when the idea changes nothing that happens on a run. The card says so in one sentence each. An idea is still shown and the learner decides: Ori does not hide an idea the learner asked for, it says what it would do.
+
+## Status: Ori's ideas measured (#1586) and the card no longer blames an idea for a program that never ends
+
+`docs/product/ORI_EVAL.md` is a table, kept in step by a test, of every idea Ori can put forward on five fixed scenes: how many are offered, invalid, stop the program, change nothing, or would stop something. The first run found a real fault: the card said "with this idea the program does not reach the end" for a program that never ended (a `forever` loop). The preview now also carries how the program ends today (`outcomeBefore`) and the warning is shown only when the program ended and the idea stops it.

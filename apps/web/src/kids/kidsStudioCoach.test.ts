@@ -192,6 +192,16 @@ describe("previewCandidate: what an idea would change or stop", () => {
     expect(show(same, [...same])).toMatchObject({ unchanged: true, lost: [] });
   });
 
+  it("says how the program ends now, so a program that never ends is not blamed on the idea", () => {
+    const loop = [{ type: "forever", body: [{ type: "move", steps: 40 }] }];
+    const preview = show(loop, [...loop, { type: "move", steps: 40 }]);
+    expect(preview?.outcomeBefore).not.toBe("completed");
+    expect(preview?.unchanged).toBe(true);
+    expect(show([{ type: "move", steps: 40 }], [{ type: "move", steps: 40 }])?.outcomeBefore).toBe(
+      "completed",
+    );
+  });
+
   it("names what the program does now and the idea would stop", () => {
     const now = [
       { type: "move", steps: 40 },

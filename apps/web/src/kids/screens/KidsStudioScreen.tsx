@@ -9834,7 +9834,10 @@ export function KidsStudioScreen({
                         ) · {intentPlan.preview.stepsBefore} {copy.evidenceBlocks}.{" "}
                         {copy.evidenceWith} ({intentPlan.preview.to.x}, {intentPlan.preview.to.y}) ·{" "}
                         {intentPlan.preview.stepsAfter} {copy.evidenceBlocks}.
-                        {intentPlan.preview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
+                        {intentPlan.preview.outcomeBefore === "completed" &&
+                        intentPlan.preview.outcome !== "completed"
+                          ? ` ${copy.evidenceStops}`
+                          : ""}
                         {intentPlan.preview.unchanged ? ` ${copy.evidenceUnchanged}` : ""}
                         {intentPlan.preview.lost.length > 0
                           ? ` ${copy.evidenceLost} ${intentPlan.preview.lost
@@ -9887,7 +9890,10 @@ export function KidsStudioScreen({
                         {oriPreview.stepsBefore} {copy.evidenceBlocks}. {copy.evidenceWith} (
                         {oriPreview.to.x}, {oriPreview.to.y}) · {oriPreview.stepsAfter}{" "}
                         {copy.evidenceBlocks}.
-                        {oriPreview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
+                        {oriPreview.outcomeBefore === "completed" &&
+                        oriPreview.outcome !== "completed"
+                          ? ` ${copy.evidenceStops}`
+                          : ""}
                         {oriPreview.unchanged ? ` ${copy.evidenceUnchanged}` : ""}
                         {oriPreview.lost.length > 0
                           ? ` ${copy.evidenceLost} ${oriPreview.lost
