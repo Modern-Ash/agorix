@@ -3881,6 +3881,106 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
   });
 
+  it("searches for the current Stage numeric property to choose another list position", async () => {
+    const property = (suffix: string) =>
+      block("sensing_of", {
+        fields: { PROPERTY: ["position", null] },
+        inputs: { OBJECT: [1, `stage${suffix}`] },
+      });
+    const search = (suffix: string) =>
+      block("data_itemnumoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { ITEM: [3, `property${suffix}`, [10, ""]] },
+      });
+    const scratch = listProject(
+      {
+        hat: flag("setTwo"),
+        setTwo: block("data_setvariableto", {
+          next: "removeFirst",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(2) },
+        }),
+        removeFirst: block("data_deleteoflist", {
+          ...onList,
+          next: "setThree",
+          inputs: { INDEX: [3, "searchFirst", [4, "1"]] },
+        }),
+        searchFirst: search("First"),
+        propertyFirst: property("First"),
+        stageFirst: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+        setThree: block("data_setvariableto", {
+          next: "removeSecond",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(3) },
+        }),
+        removeSecond: block("data_deleteoflist", {
+          ...onList,
+          next: "setMissing",
+          inputs: { INDEX: [3, "searchSecond", [4, "1"]] },
+        }),
+        searchSecond: search("Second"),
+        propertySecond: property("Second"),
+        stageSecond: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+        setMissing: block("data_setvariableto", {
+          next: "removeMissing",
+          fields: { VARIABLE: ["position", "v1"] },
+          inputs: { VALUE: lit(9) },
+        }),
+        removeMissing: block("data_deleteoflist", {
+          ...onList,
+          inputs: { INDEX: [3, "searchMissing", [4, "1"]] },
+        }),
+        searchMissing: search("Missing"),
+        propertyMissing: property("Missing"),
+        stageMissing: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+      },
+      { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
+      { v1: ["position", 0] },
+    );
+    const { program, report } = convertScratchProject(scratch);
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["word property", "unknown target", "nested value"])(
+    "reports a %s in a searched list position",
+    (kind) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, kind === "nested value" ? "sum" : "property", [10, ""]] },
+            }),
+            property: block("sensing_of", {
+              fields: {
+                PROPERTY: [kind === "word property" ? "costume name" : "x position", null],
+              },
+              inputs: { OBJECT: [1, "target"] },
+            }),
+            target: block("sensing_of_object_menu", {
+              fields: { OBJECT: [kind === "unknown target" ? "Missing" : "Cat", null] },
+            }),
+            sum: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {
