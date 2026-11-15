@@ -72,3 +72,27 @@ describe("Free scene goal metadata", () => {
     expect(() => validateProjectSceneGoal(null)).toThrow();
   });
 });
+
+describe("a goal about a value", () => {
+  it("keeps a variable and a whole number from 1 to 99", () => {
+    const goal = { kind: "variableReaches", variableId: "studio-var-2", value: 10 };
+    expect(validateProjectSceneGoal(goal)).toEqual(goal);
+    const parsed = validatePortableStoredProject({
+      ...project,
+      metadata: { ...project.metadata, sceneGoal: goal },
+    });
+    expect(parsed.metadata.sceneGoal).toEqual(goal);
+  });
+
+  it("refuses anything else", () => {
+    for (const bad of [
+      { kind: "variableReaches", variableId: "studio-var-4", value: 5 },
+      { kind: "variableReaches", variableId: "score", value: 5 },
+      { kind: "variableReaches", variableId: "studio-var-1", value: 0 },
+      { kind: "variableReaches", variableId: "studio-var-1", value: 100 },
+      { kind: "variableReaches", variableId: "studio-var-1", value: 2.5 },
+      { kind: "variableReaches", variableId: "studio-var-1", value: 5, actorId: "actor:x" },
+    ])
+      expect(() => validateProjectSceneGoal(bad), JSON.stringify(bad)).toThrow();
+  });
+});

@@ -7,6 +7,8 @@ import { PersistenceError } from "./store.js";
 export type ProjectSceneGoal =
   | { readonly kind: "touchActor"; readonly actorId: string; readonly targetId: string }
   | { readonly kind: "reachEdge"; readonly actorId: string }
+  /** A number variable of the scene holds at least this much at some step of a run. */
+  | { readonly kind: "variableReaches"; readonly variableId: string; readonly value: number }
   | {
       readonly kind: "reachCell";
       readonly actorId: string;
@@ -47,6 +49,20 @@ export function validateProjectSceneGoal(value: unknown): ProjectSceneGoal {
       return invalid("sceneGoal has an unknown field");
     }
     return { kind: "reachEdge", actorId: actorId(record["actorId"], "actorId") };
+  }
+  if (record["kind"] === "variableReaches") {
+    if (keys.some((key) => !["kind", "variableId", "value"].includes(key))) {
+      return invalid("sceneGoal has an unknown field");
+    }
+    const variableId = record["variableId"];
+    const value = record["value"];
+    if (typeof variableId !== "string" || !/^studio-var-[1-3]$/.test(variableId)) {
+      return invalid("sceneGoal.variableId is invalid");
+    }
+    if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 99) {
+      return invalid("sceneGoal.value is invalid");
+    }
+    return { kind: "variableReaches", variableId, value: value as number };
   }
   if (record["kind"] === "reachCell") {
     if (keys.some((key) => !["kind", "actorId", "cx", "cy", "afterTurn"].includes(key))) {

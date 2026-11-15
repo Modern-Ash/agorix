@@ -14,6 +14,14 @@ import { actorOfScript, studioActorId, validateStudioProgram } from "./kidsStudi
 /** Blocks Ori may suggest for a goal; each one is a closed, valid scene statement. */
 export type OriGoalBlockKind = "move" | "pointTowards" | "repeat";
 
+type ActorGoal = Exclude<ProjectSceneGoal, { readonly kind: "variableReaches" }>;
+
+/** The helper blocks are about a character; a goal about a value has none of them. */
+function actorGoal(goal: ProjectSceneGoal): ActorGoal {
+  if (goal.kind === "variableReaches") throw new Error("a value goal has no character");
+  return goal;
+}
+
 function scriptIndex(program: ProjectProgram, actorId: string): number {
   const index = program.scripts.findIndex((script) => {
     const actor = actorOfScript(script.id);
@@ -23,7 +31,8 @@ function scriptIndex(program: ProjectProgram, actorId: string): number {
   return index;
 }
 
-export function oriGoalStatement(kind: OriGoalBlockKind, goal: ProjectSceneGoal): Statement {
+export function oriGoalStatement(kind: OriGoalBlockKind, raw: ProjectSceneGoal): Statement {
+  const goal = actorGoal(raw);
   if (kind === "move") return { type: "move", steps: 40 };
   if (kind === "repeat") return { type: "repeat", count: 5, body: [{ type: "move", steps: 40 }] };
   if (goal.kind !== "touchActor") throw new Error("only a touch goal points at someone");
@@ -38,6 +47,7 @@ export function goalBlockCandidates(
   program: ProjectProgram,
   goal: ProjectSceneGoal,
 ): readonly OriGoalBlockKind[] {
+  if (goal.kind === "variableReaches") return [];
   const script = program.scripts[scriptIndex(program, goal.actorId)]!;
   const used = usedBlockKinds(script.statements);
   const moves = used.has("move") || used.has("glideTo");
@@ -50,10 +60,11 @@ export function goalBlockCandidates(
 
 export function explainOriGoalBlock(
   kind: OriGoalBlockKind,
-  goal: ProjectSceneGoal,
+  raw: ProjectSceneGoal,
   names: (actorId: string) => string,
   locale: Locale,
 ): string {
+  const goal = actorGoal(raw);
   const who = names(goal.actorId);
   const es = locale === "es";
   if (kind === "move")
@@ -71,11 +82,12 @@ export function explainOriGoalBlock(
 
 export function proposeOriGoalBlock(
   program: ProjectProgram,
-  goal: ProjectSceneGoal,
+  raw: ProjectSceneGoal,
   kind: OriGoalBlockKind,
   names: (actorId: string) => string,
   locale: Locale,
 ): ProgramProposal {
+  const goal = actorGoal(raw);
   const current = validateStudioProgram(program);
   const index = scriptIndex(current, goal.actorId);
   const script = current.scripts[index]!;
@@ -101,9 +113,10 @@ export function proposeOriGoalBlock(
 /** Recheck character, position and exact closed statement before showing or accepting bytes. */
 export function reviewOriGoalBlock(
   program: ProjectProgram,
-  goal: ProjectSceneGoal,
+  rawGoal: ProjectSceneGoal,
   raw: ProgramProposal,
 ): ProposalReview {
+  const goal = actorGoal(rawGoal);
   const current = validateStudioProgram(program);
   const index = scriptIndex(current, goal.actorId);
   const script = current.scripts[index]!;

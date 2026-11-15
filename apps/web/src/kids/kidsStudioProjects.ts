@@ -126,6 +126,7 @@ export function saveStudioProject(
     sceneGoalValid(
       previous.sceneGoal,
       creative.actors.map((actor) => actor.id),
+      (valid.variables ?? []).map((variable) => variable.id),
     )
       ? previous.sceneGoal
       : undefined;

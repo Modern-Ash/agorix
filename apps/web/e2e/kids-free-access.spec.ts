@@ -123,6 +123,34 @@ test("a scene goal is checked against the run, survives a reload and can be remo
   await expect(page.getByRole("combobox", { name: "Elegir una meta" })).toBeVisible();
 });
 
+test("a goal about a value is met when the variable reaches the number (#1598)", async ({
+  page,
+}) => {
+  await SEED(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("7");
+  await page.getByRole("button", { name: "+ Fijar valor" }).click();
+
+  const choose = page.getByRole("combobox", { name: "Elegir una meta" });
+  await choose.selectOption({ label: "Puntos llega a 10" });
+  await expect(page.getByTestId("scene-goal")).toHaveText("Puntos llega a 10");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("scene-goal-result")).toContainText("Todavía no");
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+
+  await page.getByRole("button", { name: "Quitar meta" }).click();
+  await choose.selectOption({ label: "Puntos llega a 5" });
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  await expect(page.getByTestId("scene-goal-result")).toContainText("¡Lograste la meta!");
+
+  await page.reload();
+  await expect(page.getByTestId("scene-goal")).toHaveText("Puntos llega a 5");
+});
+
 test("Ori proposes a scene goal; the child can ask for another, accept it or decline", async ({
   page,
 }) => {

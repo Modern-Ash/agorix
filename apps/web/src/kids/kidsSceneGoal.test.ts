@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { MultiActorRunResult } from "@agorix/runtime";
+import { runMultiActorProgram, type MultiActorRunResult } from "@agorix/runtime";
 import {
   describeSceneGoal,
   sceneGoalChoices,
   sceneGoalKey,
   sceneGoalMet,
   sceneGoalValid,
+  variableGoalChoices,
 } from "./kidsSceneGoal.js";
+import { creativeForStudio, validateStudioProgram } from "./kidsStudioModel.js";
 
 const actor = (id: string, x: number, y: number, visible = true) => ({
   id,
@@ -108,5 +110,48 @@ describe("scene goals", () => {
     const goal = { kind: "touchActor", actorId: NOVA, targetId: LUMA } as const;
     expect(describeSceneGoal(goal, name, "es")).toBe("Nova toca a Luma");
     expect(describeSceneGoal(goal, name, "en")).toBe("Nova touches Luma");
+  });
+});
+
+describe("a goal about a value", () => {
+  const goal = { kind: "variableReaches", variableId: "studio-var-1", value: 5 } as const;
+  const play = (statements: unknown[]) => {
+    const program = validateStudioProgram({
+      schema: "agorix/program/v1",
+      variables: [{ id: "studio-var-1", name: "score", initialValue: 0, visible: true }],
+      scripts: [{ id: "studio-actor-1-nova", trigger: { type: "greenFlag" }, statements }],
+    } as never);
+    return runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+  };
+  const add = (delta: number) => ({
+    type: "changeVariable",
+    variableId: "studio-var-1",
+    delta: { type: "numericLiteral", value: delta },
+  });
+
+  it("is met when the value reaches the number at some step, even if it goes down after", () => {
+    expect(sceneGoalMet(goal, play([add(3)]))).toBe(false);
+    expect(sceneGoalMet(goal, play([add(3), add(2)]))).toBe(true);
+    expect(sceneGoalMet(goal, play([add(5), add(-5)]))).toBe(true);
+  });
+
+  it("is not met by a program that never runs a step", () => {
+    expect(sceneGoalMet(goal, play([]))).toBe(false);
+  });
+
+  it("needs its variable to exist, and is offered for each variable", () => {
+    expect(sceneGoalValid(goal, [NOVA], ["studio-var-1"])).toBe(true);
+    expect(sceneGoalValid(goal, [NOVA], ["studio-var-2"])).toBe(false);
+    expect(variableGoalChoices([{ id: "studio-var-1" }]).map(sceneGoalKey)).toEqual([
+      "value:studio-var-1:3",
+      "value:studio-var-1:5",
+      "value:studio-var-1:10",
+    ]);
+  });
+
+  it("is described with the variable's name in both languages", () => {
+    const name = () => "?";
+    expect(describeSceneGoal(goal, name, "es", () => "puntos")).toBe("puntos llega a 5");
+    expect(describeSceneGoal(goal, name, "en", () => "points")).toBe("points reaches 5");
   });
 });

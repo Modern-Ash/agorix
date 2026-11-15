@@ -9,6 +9,7 @@ import {
   sceneGoalChoices,
   sceneGoalKey,
   sceneGoalMet,
+  variableGoalChoices,
 } from "../kidsSceneGoal.js";
 import {
   goalBlockCandidates,
@@ -52,7 +53,12 @@ export function KidsSceneGoalPanel({
   const [blockIdea, setBlockIdea] = useState<number | null>(null);
   const es = locale === "es";
   const nameOf = (actorId: string) => actors.find((item) => item.id === actorId)?.name ?? "?";
-  const choices = sceneGoalChoices(actors.map((item) => item.id));
+  const variableName = (variableId: string) =>
+    program.variables?.find((item) => item.id === variableId)?.name ?? "?";
+  const choices = [
+    ...sceneGoalChoices(actors.map((item) => item.id)),
+    ...variableGoalChoices(program.variables ?? []),
+  ];
   const proposal =
     attempt === null || goal !== null
       ? null
@@ -137,7 +143,7 @@ export function KidsSceneGoalPanel({
             <option value="">{es ? "Sin meta" : "No goal"}</option>
             {choices.map((item) => (
               <option key={sceneGoalKey(item)} value={sceneGoalKey(item)}>
-                {describeSceneGoal(item, nameOf, locale)}
+                {describeSceneGoal(item, nameOf, locale, variableName)}
               </option>
             ))}
           </select>
@@ -189,7 +195,7 @@ export function KidsSceneGoalPanel({
         </>
       ) : (
         <>
-          <p data-testid="scene-goal">{describeSceneGoal(goal, nameOf, locale)}</p>
+          <p data-testid="scene-goal">{describeSceneGoal(goal, nameOf, locale, variableName)}</p>
           {!fixed ? (
             <button type="button" className="kids-button" onClick={() => onChange(null)}>
               {es ? "Quitar meta" : "Remove goal"}
