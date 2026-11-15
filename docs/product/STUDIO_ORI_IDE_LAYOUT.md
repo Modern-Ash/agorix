@@ -6,11 +6,14 @@ program with Web, but does not copy the Kids layout.
 
 ## First screen
 
-Opening a local project shows the native code projection beside the Studio
-Workbench. The Workbench puts the editable canonical program first, Ori at the
-right, and execution evidence below the program. The block palette stays
-available as a tool; mission, actors and assets move into a disclosure section.
-The separate World Preview remains available on demand.
+Opening a local project shows a focused, full-width Studio Workbench. The
+native code projection stays in the neighboring editor tab, one click away.
+The VS Code primary sidebar and bottom panel close for this project-opening
+flow; learners can reopen them with standard VS Code controls. The Workbench
+puts the editable canonical program first, Ori at the right, and execution
+evidence below the program. The block palette is a closed disclosure by
+default; mission, actors and assets also live in a disclosure section. The
+separate World Preview remains available on demand.
 
 The interface takes inspiration from the project/editor/agent division and
 reviewable agent changes described in the [Kiro IDE](https://kiro.dev/ide/).
@@ -20,8 +23,8 @@ what the program did.
 
 ## Interaction contract
 
-1. The learner opens a project and sees code and Workbench together. The code
-   projection remains one tap away and synchronized with the canonical program.
+1. The learner opens a project in the Workbench. The code projection remains
+   one tab away and synchronized with the canonical program.
 2. The learner edits, predicts and runs. The stage and event trace appear in
    the evidence area beneath the program.
 3. Ori occupies a stable companion area. Its intent/plan input is a structured

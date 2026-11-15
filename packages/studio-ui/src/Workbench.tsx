@@ -898,10 +898,6 @@ export function Workbench({
         <h1>{copy.ideTitle}</h1>
         <p>{copy.ideSubtitle}</p>
       </header>
-      <section className="studio-tools" aria-label={copy.toolsTitle}>
-        <h2>{copy.toolsTitle}</h2>
-        <Palette copy={copy} onAdd={add} />
-      </section>
       <main className="studio-main">
         <section className="studio-program" aria-label={copy.canvasLabel}>
           <h2>{copy.canvasLabel}</h2>
@@ -986,6 +982,10 @@ export function Workbench({
         onSelectionChange={setSelection}
         locale={copyLocale}
       />
+      <details className="studio-tools">
+        <summary>{copy.toolsTitle}</summary>
+        <Palette copy={copy} onAdd={add} />
+      </details>
     </div>
   );
 }
