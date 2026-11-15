@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import type { TutorRequest } from "@agorix/tutor-contract";
+import { createLearningCompanionRequest, type TutorRequest } from "@agorix/tutor-contract";
 import { getKidsMission } from "@agorix/curriculum";
 import { createOriCliService, oriCliConfigFromEnv, type OriCliProcess } from "./oriCli.js";
 import { configFromEnv } from "./index.js";
@@ -61,6 +61,37 @@ async function start(
 }
 
 describe("tutor HTTP server (issue #348)", () => {
+  it("serves the VS Code Companion boundary and rejects malformed or cross-origin requests", async () => {
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    const input = createLearningCompanionRequest({
+      capability: "explainer",
+      mission: {
+        id: "first-mission.reach-goal",
+        version: 1,
+        concepts: ["sequence"],
+        learningObjective: "reach the goal",
+      },
+      program: request.program,
+      selectedNodeIds: [],
+      runtimeFacts: [],
+      scaffoldHistory: [],
+    });
+    const path = `${base}/api/tutor/studio-companion/companion`;
+    const post = (body: string, origin = base) =>
+      fetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin },
+        body,
+      });
+    const health = await fetch(`${base}/api/tutor/studio-companion/health`);
+    expect(health.status).toBe(200);
+    expect(await health.json()).toEqual({ status: "unavailable" });
+    const response = await post(JSON.stringify(input));
+    expect(response.status).toBe(200);
+    expect((await response.json()).metadata.provenance).toBe("deterministic-fake");
+    expect((await post("{}")).status).toBe(400);
+    expect((await post(JSON.stringify(input), "https://other.example")).status).toBe(403);
+  });
   it("opens a proven advanced session and returns a reviewable offline scene idea", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
     const program = (statements: unknown[]) => ({

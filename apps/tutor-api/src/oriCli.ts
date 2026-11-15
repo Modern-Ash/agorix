@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AiCapability, AiPolicy } from "./aiConfig.js";
 import type { ProviderRuntimeErrorCode } from "@agorix/provider-runtime";
+import type { LearningCompanionRequest, LearningCompanionResponse } from "@agorix/tutor-contract";
+import { runOriStudioCompanion } from "./oriStudioCompanion.js";
 import {
   evaluateOriAgentOutput,
   runOriAgent,
@@ -60,6 +62,7 @@ export interface OriCliService {
   proposeGoal(locale: OriLocale): Promise<OriGoalDecision>;
   advanced(context: OriAdvancedStageContext): Promise<OriAdvancedDecision>;
   studio(context: OriStudioContext): Promise<OriStudioDecision>;
+  companion?(request: LearningCompanionRequest): Promise<LearningCompanionResponse>;
 }
 
 export interface OriCliDiagnostics {
@@ -299,6 +302,11 @@ export function createOriCliService(
       const policy = policyFor("studio");
       const provider = await select(policy);
       return runOriStudio(context, provider ? textModel(provider, policy) : undefined);
+    },
+    async companion(request) {
+      const policy = policyFor("studio");
+      const provider = await select(policy);
+      return runOriStudioCompanion(request, provider ? textModel(provider, policy) : undefined);
     },
   };
 }
