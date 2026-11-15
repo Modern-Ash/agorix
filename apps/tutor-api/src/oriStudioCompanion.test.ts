@@ -61,15 +61,30 @@ describe("Ori VS Code Companion boundary", () => {
     expect(offline.metadata.provenance).toBe("deterministic-fake");
   });
 
-  it("keeps builder proposals deterministic until the review issue", async () => {
-    let called = false;
+  it("turns one bounded model choice into a reviewable proposal", async () => {
     const answer = await runOriStudioCompanion(request("builder"), {
-      generate: async () => {
-        called = true;
-        return "{}";
-      },
+      generate: async () => '{"type":"move","steps":20}',
     });
-    expect(called).toBe(false);
-    expect(answer.metadata.provenance).toBe("deterministic-fake");
+    expect(answer.metadata.provenance).toBe("local-provider");
+    expect(answer.capability).toBe("builder");
+    if (answer.capability !== "builder") return;
+    expect(answer.payload.proposal.operations).toEqual([
+      { type: "appendStatement", scriptIndex: 0, statement: { type: "move", steps: 20 } },
+    ]);
+    expect(answer.payload.reviewState).toBe("proposed");
+  });
+
+  it("falls back when Ori chooses an unsafe or expanded operation", async () => {
+    for (const output of [
+      '{"type":"move","steps":1000}',
+      '{"type":"turn","degrees":45}',
+      '{"type":"move","steps":20,"hidden":true}',
+      "broken",
+    ]) {
+      const answer = await runOriStudioCompanion(request("builder"), {
+        generate: async () => output,
+      });
+      expect(answer.metadata.provenance).toBe("deterministic-fake");
+    }
   });
 });

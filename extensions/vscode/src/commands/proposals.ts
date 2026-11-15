@@ -5,7 +5,9 @@ import { t } from "../l10n.js";
 import type { ProjectProgram } from "@agorix/program-model";
 import {
   applyProposalSession,
+  createProposalSession,
   createStoredProjectWithProgram,
+  modifyProposalSession,
   rejectProposalSession,
   serializeProjectFile,
   serializeStoredProject,
@@ -47,6 +49,7 @@ export interface StudioProposalCommandHandlers {
 export function createStudioProposalCommandHandlers(
   port: StudioProposalCommandPort,
 ): StudioProposalCommandHandlers {
+  let applying = false;
   const revealIfPresent = async (nodeId: string): Promise<void> => {
     try {
       await port.revealCanonicalNode(nodeId);
@@ -118,14 +121,102 @@ export function createStudioProposalCommandHandlers(
       await revealIfPresent(proposalSession.affectedNodeIds[0]);
     }
     const apply = t("Apply");
+    const modify = t("Modify");
     const reject = t("Reject");
+    const operation = proposalSession.review.proposal.operations[0];
+    const canModify =
+      proposalSession.review.proposal.operations.length === 1 &&
+      operation?.type === "appendStatement" &&
+      (operation.statement.type === "move" || operation.statement.type === "turn");
     const choice = await vscode.window.showInformationMessage(
       `${proposalSession.purpose}. ${proposalSession.rationale}`,
       apply,
+      ...(canModify ? [modify] : []),
       reject,
     );
     if (choice === apply) {
       await applyActiveProposal();
+    } else if (choice === modify && canModify && operation?.type === "appendStatement") {
+      const original =
+        operation.statement.type === "move"
+          ? operation.statement.steps
+          : operation.statement.degrees;
+      const entered = await vscode.window.showInputBox({
+        title: t("Modify proposed number"),
+        value: String(original),
+        prompt: t("Enter the number to preview before applying."),
+      });
+      if (entered === undefined) return;
+      const amount = Number(entered);
+      if (!Number.isInteger(amount) || amount === original) {
+        void vscode.window.showWarningMessage(t("Choose a different whole number."));
+        return;
+      }
+      const statement =
+        operation.statement.type === "move"
+          ? { type: "move" as const, steps: amount }
+          : { type: "turn" as const, degrees: amount };
+      let modified: StudioProposalSession;
+      try {
+        modified = createProposalSession(open.project, {
+          ...proposalSession.review.proposal,
+          operations: [{ ...operation, statement }],
+        });
+      } catch {
+        void vscode.window.showWarningMessage(t("That number cannot be used here."));
+        return;
+      }
+      const [originalDoc, modifiedDoc] = await Promise.all([
+        vscode.workspace.openTextDocument({
+          content: modified.diff.acceptedCode,
+          language: "javascript",
+        }),
+        vscode.workspace.openTextDocument({
+          content: modified.diff.proposedCode,
+          language: "javascript",
+        }),
+      ]);
+      await vscode.commands.executeCommand(
+        "vscode.diff",
+        originalDoc.uri,
+        modifiedDoc.uri,
+        t("Modified Agorix proposal"),
+      );
+      if (
+        (await vscode.window.showInformationMessage(
+          t("Apply your modified proposal?"),
+          apply,
+          t("Cancel"),
+        )) !== apply
+      )
+        return;
+      const current = port.requireProject();
+      if (current === undefined || current.uri.toString() !== open.uri.toString()) return;
+      if (applying) return;
+      let decision;
+      try {
+        decision = modifyProposalSession(
+          current.project.stored.program,
+          proposalSession,
+          modified.review.candidateProgram,
+        );
+      } catch {
+        void vscode.window.showWarningMessage(t("The project changed; review the proposal again."));
+        return;
+      }
+      applying = true;
+      try {
+        const previousRaw = serializeStoredProject(current.project.stored);
+        await writeCurrentProject(
+          createStoredProjectWithProgram(current.project.stored, decision.program),
+        );
+        port.undoStack().push({ uri: current.uri, raw: previousRaw });
+        port.redoStack().length = 0;
+        port.setActiveProposal(undefined);
+        void vscode.window.showInformationMessage(t("Applied modified proposal."));
+      } finally {
+        applying = false;
+      }
     } else if (choice === reject) {
       rejectActiveProposal();
     }
@@ -175,24 +266,31 @@ export function createStudioProposalCommandHandlers(
   };
 
   const applyActiveProposal = async (): Promise<void> => {
+    if (applying) return;
     const open = port.requireProject();
     const activeProposal = port.getActiveProposal();
     if (open === undefined || activeProposal === undefined) {
       return;
     }
-    const previousRaw = serializeStoredProject(open.project.stored);
-    const decision = applyProposalSession(open.project.stored.program, activeProposal);
-    const stored = createStoredProjectWithProgram(open.project.stored, decision.program);
-    await writeCurrentProject(stored);
-    port.undoStack().push({ uri: open.uri, raw: previousRaw });
-    port.redoStack().length = 0;
-    port.setActiveProposal(undefined);
-    await vscode.window.showInformationMessage(
-      t("Applied proposal. Use Undo Proposal to restore it."),
-    );
+    applying = true;
+    try {
+      const previousRaw = serializeStoredProject(open.project.stored);
+      const decision = applyProposalSession(open.project.stored.program, activeProposal);
+      const stored = createStoredProjectWithProgram(open.project.stored, decision.program);
+      await writeCurrentProject(stored);
+      port.undoStack().push({ uri: open.uri, raw: previousRaw });
+      port.redoStack().length = 0;
+      port.setActiveProposal(undefined);
+      await vscode.window.showInformationMessage(
+        t("Applied proposal. Use Undo Proposal to restore it."),
+      );
+    } finally {
+      applying = false;
+    }
   };
 
   const rejectActiveProposal = (): void => {
+    if (applying) return;
     const open = port.requireProject();
     const activeProposal = port.getActiveProposal();
     if (open === undefined || activeProposal === undefined) {

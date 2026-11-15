@@ -37,6 +37,7 @@ const webviewPanels: Array<{
 }> = [];
 let failRegistration = false;
 let choice: string | undefined;
+let choices: string[] = [];
 let picked: { fsPath: string } | undefined;
 let savePicked: { fsPath: string } | undefined;
 let quickPick: Record<string, unknown> | undefined;
@@ -215,7 +216,8 @@ vi.mock("vscode", () => {
       showInputBox: async () => inputBox,
       showInformationMessage: async (message: string, ...items: unknown[]) => {
         shown.push(message);
-        return items.includes(choice ?? "") ? choice : undefined;
+        const selected = choices.length > 0 ? choices.shift() : choice;
+        return items.includes(selected ?? "") ? selected : undefined;
       },
       showWarningMessage: async (message: string, ...items: unknown[]) => {
         shown.push(message);
@@ -375,6 +377,7 @@ describe("Studio extension wiring", () => {
     secrets.clear();
     webviewPanels.length = 0;
     choice = undefined;
+    choices = [];
     quickPick = undefined;
     quickPicks = [];
     savePicked = undefined;
@@ -967,6 +970,19 @@ describe("Studio extension wiring", () => {
     expect(redone.program.scripts[0].statements).toEqual(written.program.scripts[0].statements);
   });
 
+  it("previews a learner-modified suggestion before a modify decision", async () => {
+    await openFile("/p/modified.json", stored([]));
+    choices = ["Modify", "Apply"];
+    inputBox = "15";
+    await handlers.get("agorixStudio.suggestFirstStep")!();
+    expect(diffs.filter((entry) => entry[0] === "vscode.diff")).toHaveLength(2);
+    const written = JSON.parse(new TextDecoder().decode(files.get("/p/modified.json")));
+    expect(written.program.scripts[0].statements).toEqual([{ type: "move", steps: 15 }]);
+    await handlers.get("agorixStudio.undoProposal")!();
+    const undone = JSON.parse(new TextDecoder().decode(files.get("/p/modified.json")));
+    expect(undone.program.scripts[0].statements).toEqual([]);
+  });
+
   describe("automatic Workbench density", () => {
     const densityMessages = () =>
       (workbenchPanel()?.messages ?? []).filter(
@@ -1241,10 +1257,16 @@ describe("Studio extension wiring", () => {
         };
       }
       const result = await fake.request(JSON.parse(init.body ?? "{}"));
+      const modeled = result.ok
+        ? {
+            ...result.response,
+            metadata: { ...result.response.metadata, provenance: "local-provider" },
+          }
+        : {};
       return {
         ok: result.ok,
         status: 200,
-        text: async () => JSON.stringify(result.ok ? result.response : {}),
+        text: async () => JSON.stringify(modeled),
       };
     });
     try {
