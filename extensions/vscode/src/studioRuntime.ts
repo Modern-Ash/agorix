@@ -193,6 +193,11 @@ export function activate(context: vscode.ExtensionContext): void {
       providerWiring.current === undefined
         ? { origin: "built-in", reason: "no-provider" }
         : providerWiring.current.source().request(project, "build"),
+    providerHelp: async (project, action, selectedNodeIds, evidence) =>
+      providerWiring.current?.teaching().request(project, action, {
+        selectedNodeIds,
+        ...(evidence === undefined ? {} : { evidence }),
+      }),
   });
   const ambientStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
   const aiEnabled = (): boolean =>

@@ -44,7 +44,7 @@ export async function runOriStudioCompanion(
   if (!model || valid.capability === "builder") return fallback;
   try {
     const raw = await model.generate(
-      "You are Ori, a programming learning companion for children. Return exactly one JSON object with only a message string. Ask or explain from the supplied structural facts. Never claim the program ran unless the outcome says it ran. Never request personal information, produce code, links, markup or instructions to change the program directly.",
+      "You are Ori, a programming learning companion for children. Reply in the input locale. Return exactly one JSON object with only a message string. Ask or explain from the supplied structural facts. Never claim the program ran unless the outcome says it ran. Never request personal information, produce code, links, markup or instructions to change the program directly.",
       studioCompanionModelInput(valid),
     );
     if (raw.length > MAX_MODEL_OUTPUT) return fallback;

@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 import type { AgentAgreements } from "@agorix/agent-workflow";
+import { programSemanticHash } from "@agorix/proposals";
+import type { LearningCompanionResponse } from "@agorix/tutor-contract";
 import { canDoCompanionAction, ceilingMessage } from "../assistance.js";
 import {
   createCompanionTurn,
@@ -23,6 +25,12 @@ export interface StudioCompanionCommandPort {
   reviewProposalSession(proposal: StudioProposalSession): Promise<void>;
   /** Asks for a provider-backed build proposal; absent means built-in only. */
   providerBuild?(project: OpenProject["project"]): Promise<ProviderProposalResult>;
+  providerHelp?(
+    project: OpenProject["project"],
+    action: Exclude<StudioCompanionAction, "build">,
+    selectedNodeIds: readonly string[],
+    evidence: StudioExecutionEvidence | undefined,
+  ): Promise<LearningCompanionResponse | undefined>;
 }
 
 export interface StudioCompanionCommandHandlers {
@@ -56,10 +64,31 @@ export function createStudioCompanionCommandHandlers(
       action === "build" && port.providerBuild !== undefined
         ? await port.providerBuild(open.project)
         : undefined;
+    const help =
+      action !== "build" && port.providerHelp !== undefined
+        ? await port.providerHelp(
+            open.project,
+            action,
+            selected === undefined ? [] : [selected],
+            evidence,
+          )
+        : undefined;
+    const current = port.requireProject();
+    if (
+      current === undefined ||
+      current.uri.toString() !== open.uri.toString() ||
+      programSemanticHash(current.project.stored.program) !==
+        programSemanticHash(open.project.stored.program)
+    )
+      return undefined;
     const turn = createCompanionTurn(open.project, action, {
       ...(selected === undefined ? {} : { selectedNodeIds: [selected] }),
       ...(evidence === undefined ? {} : { evidence }),
-      ...(asked?.origin === "provider" ? { providerResponse: asked.response } : {}),
+      ...(asked?.origin === "provider"
+        ? { providerResponse: asked.response }
+        : help === undefined
+          ? {}
+          : { providerResponse: help }),
     });
     if (asked?.origin === "built-in" && asked.notice !== undefined) {
       void vscode.window.showInformationMessage(asked.notice);
