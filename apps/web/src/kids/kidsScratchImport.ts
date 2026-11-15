@@ -232,10 +232,15 @@ function isSimpleRandomSearch(value: Expression): boolean {
   );
 }
 
-function isSimpleJoinSearch(value: Expression): boolean {
+function isSimpleJoinSearch(
+  value: Expression,
+  numericProperty: (item: Expression) => boolean,
+): boolean {
   if (value.type !== "join") return false;
   const simple = (item: Expression): boolean => {
     if (item.type === "listLength") return true;
+    if (item.type === "costumeNumber" || item.type === "backdropNumber") return true;
+    if (numericProperty(item)) return true;
     if (item.type === "listItem")
       return (
         item.index.type === "numericLiteral" &&
@@ -1293,7 +1298,7 @@ class Converter {
           isSimpleArithmeticIndex(found.value) ||
           isSimpleTextIndex(found.value) ||
           isSimpleRandomSearch(found.value) ||
-          isSimpleJoinSearch(found.value) ||
+          isSimpleJoinSearch(found.value, (item) => this.numericListProperty(item)) ||
           (found.value.type === "listItem" &&
             ((found.value.index.type === "numericLiteral" &&
               Number.isInteger(found.value.index.value) &&
