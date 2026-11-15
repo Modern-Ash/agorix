@@ -34,7 +34,7 @@ import { sceneGoalValid } from "./kidsSceneGoal.js";
 const INDEX = "agorix.kids.studios.v1";
 const STUDIO_ID = /^studio-[1-9][0-9]*$/;
 
-interface StudioStorage {
+export interface StudioStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }

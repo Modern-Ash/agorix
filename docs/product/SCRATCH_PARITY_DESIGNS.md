@@ -273,3 +273,7 @@ A script can wait for, and a condition can ask about, **space, the four arrows, 
 ## Status: go forward/backward layers (Scratch parity)
 
 `goToLayer` gains `layer: "forward" | "backward"` with a whole `steps` (1–10; Studio accepts 1–3). The stage order moves the character that many places and stops at either end (`reorderActors`, shared by the live and batch runtimes). Java shows it as `moveLayers(direction, steps)`; the Scratch importer/exporter use `looks_goforwardbackwardlayers` (imported counts above 3 are adjusted and reported).
+
+## Status: pictures in the Scratch import (#1632)
+
+A real `.sb3` carries its pictures; the importer used to read only `project.json`. Now `readScratchPictures` reads, by name and with caps, only the picture each imported character was wearing and the stage's backdrop; `bringScratchPictures` redraws an SVG on the device, prepares every picture like one a child adds, and keeps it as the child's own art of that character or the scene. Other costumes are not brought, and a picture that cannot be read leaves the gallery character. The owner chose this option (first costume and backdrop) on 2026-11-15.
