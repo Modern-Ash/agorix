@@ -8,6 +8,7 @@ import {
   factsOfRun,
   judgePrediction,
   judgeQuantity,
+  previewCandidate,
   changesBetween,
   quantityKindFor,
   reflectionFor,
@@ -158,5 +159,48 @@ describe("what changed between two runs", () => {
   });
   it("says same only when nothing differs", () => {
     expect(changesBetween(first, first)).toEqual(["same"]);
+  });
+});
+
+describe("previewCandidate: what an idea would change or stop", () => {
+  const program = (statements: unknown[]) =>
+    ({
+      schema: "agorix/program/v1",
+      scripts: [{ id: "s", trigger: { type: "greenFlag" }, statements }],
+    }) as never;
+  const creative = {
+    actors: [
+      { id: "a", name: "A", x: 0, y: 0, direction: 90, size: 100, visible: true, scripts: ["s"] },
+    ],
+  } as never;
+  const show = (current: unknown[], candidate: unknown[]) =>
+    previewCandidate(program(current), program(candidate), creative, "a", []);
+
+  it("says an idea that adds a visible step changes something", () => {
+    const preview = show(
+      [{ type: "move", steps: 40 }],
+      [
+        { type: "move", steps: 40 },
+        { type: "move", steps: 40 },
+      ],
+    );
+    expect(preview).toMatchObject({ unchanged: false, lost: [], outcome: "completed" });
+  });
+
+  it("says an idea that changes nothing on a run changes nothing", () => {
+    const same = [{ type: "move", steps: 40 }];
+    expect(show(same, [...same])).toMatchObject({ unchanged: true, lost: [] });
+  });
+
+  it("names what the program does now and the idea would stop", () => {
+    const now = [
+      { type: "move", steps: 40 },
+      { type: "say", text: "Hola" },
+    ];
+    expect(show(now, [{ type: "move", steps: 40 }])).toMatchObject({
+      unchanged: false,
+      lost: ["speech"],
+    });
+    expect(show(now, [{ type: "say", text: "Hola" }])).toMatchObject({ lost: ["motion"] });
   });
 });

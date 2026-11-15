@@ -277,3 +277,7 @@ A script can wait for, and a condition can ask about, **space, the four arrows, 
 ## Status: pictures in the Scratch import (#1632)
 
 A real `.sb3` carries its pictures; the importer used to read only `project.json`. Now `readScratchPictures` reads, by name and with caps, only the picture each imported character was wearing and the stage's backdrop; `bringScratchPictures` redraws an SVG on the device, prepares every picture like one a child adds, and keeps it as the child's own art of that character or the scene. Other costumes are not brought, and a picture that cannot be read leaves the gallery character. The owner chose this option (first costume and backdrop) on 2026-11-15.
+
+## Status: an idea says what it would stop (#1584, #1585)
+
+Ori's idea card already ran the idea on a copy and showed where the character would end and how many blocks would run (#602, #603, #605). `previewCandidate` now also reports `lost`, the behaviours the program has now and the idea would stop (movement, sound, what it says, drawing), and `unchanged`, when the idea changes nothing that happens on a run. The card says so in one sentence each. An idea is still shown and the learner decides: Ori does not hide an idea the learner asked for, it says what it would do.
