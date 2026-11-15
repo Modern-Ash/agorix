@@ -357,7 +357,52 @@ export function reflectionFor(
   };
 }
 
+/** What a program does, in the few words a child hears; used to say what an idea would stop. */
+export type BehaviourKind = "motion" | "sound" | "speech" | "drawing";
+
+const BEHAVIOUR_OF_STATEMENT: Readonly<Record<string, BehaviourKind>> = {
+  move: "motion",
+  goTo: "motion",
+  goToTarget: "motion",
+  setX: "motion",
+  setY: "motion",
+  changeX: "motion",
+  changeY: "motion",
+  glideTo: "motion",
+  turn: "motion",
+  playSound: "sound",
+  playNote: "sound",
+  playDrum: "sound",
+  say: "speech",
+  think: "speech",
+  penDown: "drawing",
+  stamp: "drawing",
+};
+
+function behavioursOf(run: MultiActorRunResult): ReadonlySet<BehaviourKind> {
+  const kinds = new Set<BehaviourKind>();
+  for (const entry of run.trace) {
+    const kind = BEHAVIOUR_OF_STATEMENT[entry.statementType];
+    if (kind !== undefined) kinds.add(kind);
+  }
+  return kinds;
+}
+
+/** The same steps ending in the same worlds: running the program gives the learner nothing new. */
+function sameRun(before: MultiActorRunResult, after: MultiActorRunResult): boolean {
+  return (
+    before.trace.length === after.trace.length &&
+    before.trace.every((entry, at) => entry.statementType === after.trace[at]!.statementType) &&
+    JSON.stringify(before.actors.map((actor) => actor.world)) ===
+      JSON.stringify(after.actors.map((actor) => actor.world))
+  );
+}
+
 export interface CandidatePreview {
+  /** Behaviours the program has now and the idea would stop (an idea may take one away on purpose). */
+  readonly lost: readonly BehaviourKind[];
+  /** The idea changes nothing that happens when the program runs. */
+  readonly unchanged: boolean;
   readonly outcome: string;
   readonly stepsBefore: number;
   readonly stepsAfter: number;
@@ -381,7 +426,10 @@ export function previewCandidate(
   const from = before.actors.find((entry) => entry.id === actorId)?.world.sprite;
   const to = after.actors.find((entry) => entry.id === actorId)?.world.sprite;
   if (!from || !to) return null;
+  const stillThere = behavioursOf(after);
   return {
+    lost: [...behavioursOf(before)].filter((kind) => !stillThere.has(kind)).sort(),
+    unchanged: sameRun(before, after),
     outcome: after.outcome,
     stepsBefore: before.stepsUsed,
     stepsAfter: after.stepsUsed,
