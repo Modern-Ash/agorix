@@ -1,48 +1,18 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runMultiActorProgram } from "@agorix/runtime";
-import type { ProjectProgram } from "@agorix/program-model";
 import { convertScratchProject } from "./kidsScratchImport.js";
 import { creativeForStudio } from "./kidsStudioModel.js";
+import { fidelityMarkdown, fidelityTotals, measureFidelity } from "./kidsScratchFidelity.js";
 import { SCRATCH_CORPUS } from "./__fixtures__/scratch/corpus.js";
 
-/** Every statement in the program, nested ones included (the report only counts the top level). */
-function statementsOf(program: ProjectProgram): number {
-  const walk = (value: unknown): number => {
-    if (Array.isArray(value)) return value.reduce((sum: number, item) => sum + walk(item), 0);
-    if (typeof value !== "object" || value === null) return 0;
-    const record = value as Record<string, unknown>;
-    const self = typeof record["type"] === "string" && !("trigger" in record) ? 1 : 0;
-    return (
-      self + ["statements", "then", "else", "body"].reduce((sum, key) => sum + walk(record[key]), 0)
-    );
-  };
-  return program.scripts.reduce((sum, script) => sum + walk(script.statements), 0);
-}
-
-interface Row {
-  readonly name: string;
-  readonly statements: number;
-  readonly imported: number;
-  readonly scripts: number;
-  readonly scriptsKept: number;
-  readonly reasons: Readonly<Record<string, number>>;
-}
-
-function measure(): readonly Row[] {
-  return SCRATCH_CORPUS.map(({ name, project }) => {
-    const { program, report } = convertScratchProject(project);
-    const reasons: Record<string, number> = {};
-    for (const item of report.dropped) reasons[item.what] = item.count;
-    return {
-      name,
-      statements: project.stats.statements,
-      imported: statementsOf(program),
-      scripts: project.stats.scripts,
-      scriptsKept: project.stats.scripts - (reasons["another script of the sprite"] ?? 0),
-      reasons,
-    };
-  });
-}
+const REPORT = fileURLToPath(
+  new URL("../../../../docs/product/SCRATCH_IMPORT_FIDELITY.md", import.meta.url),
+);
+const FLOORS = { statements: 91, imported: 75, scripts: 23, scriptsKept: 21 };
+const START = "<!-- fidelity:start -->";
+const END = "<!-- fidelity:end -->";
 
 describe("Scratch import measured on the team's corpus", () => {
   it("converts every project and each result runs in the deterministic runtime", () => {
@@ -53,25 +23,33 @@ describe("Scratch import measured on the team's corpus", () => {
     }
   });
 
-  it("keeps the numbers visible and never lets them get worse", () => {
-    const rows = measure();
-    const total = (pick: (row: Row) => number) => rows.reduce((sum, row) => sum + pick(row), 0);
-    const statements = total((row) => row.statements);
-    const imported = total((row) => row.imported);
-    const scripts = total((row) => row.scripts);
-    const kept = total((row) => row.scriptsKept);
-    const reasons = new Map<string, number>();
-    for (const row of rows)
-      for (const [what, count] of Object.entries(row.reasons))
-        reasons.set(what, (reasons.get(what) ?? 0) + count);
-    const top = [...reasons.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
-    // Printed so a person can read the table when the numbers change.
-    console.info(JSON.stringify({ statements, imported, scripts, kept, rows, top }, null, 1));
-    expect(imported).toBeLessThanOrEqual(statements);
-    // Floors: an import change may raise these (then raise them here), never lower them.
-    expect(statements).toBe(91);
-    expect(imported).toBeGreaterThanOrEqual(73);
-    expect(scripts).toBe(23);
-    expect(kept).toBeGreaterThanOrEqual(21);
+  it("never lets the fidelity get worse", () => {
+    const total = fidelityTotals(measureFidelity(SCRATCH_CORPUS));
+    expect(total.imported).toBeLessThanOrEqual(total.statements);
+    // Floors: an import change may raise these (then raise them here and regenerate the report).
+    expect(total.statements).toBe(FLOORS.statements);
+    expect(total.imported).toBeGreaterThanOrEqual(FLOORS.imported);
+    expect(total.scripts).toBe(FLOORS.scripts);
+    expect(total.scriptsKept).toBeGreaterThanOrEqual(FLOORS.scriptsKept);
+  });
+
+  it("publishes the same numbers in docs/product/SCRATCH_IMPORT_FIDELITY.md", () => {
+    const table = fidelityMarkdown(measureFidelity(SCRATCH_CORPUS));
+    const doc = readFileSync(REPORT, "utf8");
+    const block = `${START}\n\n${table}\n\n${END}`;
+    if (process.env["UPDATE_FIDELITY"] === "1") {
+      const from = doc.indexOf(START);
+      const to = doc.indexOf(END) + END.length;
+      writeFileSync(REPORT, `${doc.slice(0, from)}${block}${doc.slice(to)}`);
+      return;
+    }
+    // Regenerate with: UPDATE_FIDELITY=1 pnpm vitest run kidsScratchCorpus
+    // Prettier pads the table and adds blank lines around it; compare without them.
+    const plain = (text: string) =>
+      text
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n\s*\n/g, "\n")
+        .replace(/-{3,}/g, "---");
+    expect(plain(doc)).toContain(plain(block));
   });
 });
