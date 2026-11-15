@@ -235,7 +235,8 @@ describe("Ori host CLI adapter (issue #381)", () => {
 
   it("bounds the host response window and permits an explicit Codex model", () => {
     expect(oriCliConfigFromEnv({}).timeoutMs).toBe(7_000);
-    expect(oriCliConfigFromEnv({ AGORIX_ORI_TIMEOUT_MS: "99999" }).timeoutMs).toBe(7_000);
+    expect(oriCliConfigFromEnv({ AGORIX_ORI_TIMEOUT_MS: "20000" }).timeoutMs).toBe(20_000);
+    expect(oriCliConfigFromEnv({ AGORIX_ORI_TIMEOUT_MS: "99999" }).timeoutMs).toBe(30_000);
     expect(oriCliConfigFromEnv({ AGORIX_ORI_CODEX_MODEL: "test-model" }).codexModel).toBe(
       "test-model",
     );
