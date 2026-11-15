@@ -719,6 +719,7 @@ export function Workbench({
   const copyLocale = normalizeStudioUiLocale(locale);
   const copy = copyFor(copyLocale);
   const [layout, setLayout] = useState<WorkbenchDensity>(density);
+  const [dragging, setDragging] = useState(false);
   const layoutRef = useRef<WorkbenchDensity>(density);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
@@ -892,12 +893,24 @@ export function Workbench({
   }, [playing, workspace, execution?.status, execution?.frameIndex]);
 
   return (
-    <div className="workbench" data-density={layout}>
+    <div
+      className="workbench"
+      data-density={layout}
+      data-dragging={dragging}
+      onDragStart={() => setDragging(true)}
+      onDragEnd={() => setDragging(false)}
+      onDrop={() => setDragging(false)}
+    >
       <header className="studio-banner">
         <span>{copy.ideEyebrow}</span>
         <h1>{copy.ideTitle}</h1>
         <p>{copy.ideSubtitle}</p>
       </header>
+      <aside className="studio-tools" aria-label={copy.toolsTitle}>
+        <h2>{copy.toolsTitle}</h2>
+        <p>{copy.toolsHint}</p>
+        <Palette copy={copy} onAdd={add} />
+      </aside>
       <main className="studio-main">
         <section className="studio-program" aria-label={copy.canvasLabel}>
           <h2>{copy.canvasLabel}</h2>
@@ -929,6 +942,7 @@ export function Workbench({
               ambientHint={agentUi.proposal === undefined ? ambientHint : undefined}
             />
           )}
+          <p className="zone-hint">{copy.zoneHint}</p>
           <div className="zones">
             <AgentZone verb="explain" label={copy.zoneExplain} onIntent={post} />
             <AgentZone verb="debug" label={copy.zoneDebug} onIntent={post} />
@@ -982,10 +996,6 @@ export function Workbench({
         onSelectionChange={setSelection}
         locale={copyLocale}
       />
-      <details className="studio-tools">
-        <summary>{copy.toolsTitle}</summary>
-        <Palette copy={copy} onAdd={add} />
-      </details>
     </div>
   );
 }
