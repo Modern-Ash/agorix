@@ -7,4 +7,6 @@ The live runtime already records every outside input of a run (`LiveInputLog`) a
 - **Strict reading.** A wrong kind, an extra field, a size past a cap (2,000,000 characters, 100,000 inputs, the live tick limit), an input past the last tick or out of order, a non-number or a non-integer tick is refused with a reason that names the field and never repeats its content.
 - Nothing is sent anywhere; the file is made and read on the device.
 
-Next increments of #1577: a Save/Open replay control in the studio, and a check that the program hash matches before replaying.
+## In the studio
+
+Beside **Otra vez**, **Guardar repetición** saves the last run's inputs as `agorix-replay.json` on the device (answers left out), and **Abrir repetición** reads one. The file carries an identity of the program it came from; opening it on a different program, or a file that is not a replay, shows a short message and runs nothing. Opening a valid one watches the run again exactly as it was.

@@ -66,3 +66,46 @@ test("Replay watches the last run again and ends where it ended", async ({ page 
   await expect(replay).toBeEnabled();
   await expect.poll(() => actor.evaluate((node) => (node as HTMLElement).style.left)).toBe(left);
 });
+
+test("a saved replay opens on the same program and is refused on another (#1577)", async ({
+  page,
+}) => {
+  await openScene(page);
+  for (let i = 0; i < 3; i++)
+    await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  const actor = page.locator(".kids-studio-stage-actor").first();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  const left = await actor.evaluate((node) => (node as HTMLElement).style.left);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Guardar repetición" }).click(),
+  ]);
+  const path = await download.path();
+  const fs = await import("node:fs");
+  const file = fs.readFileSync(path!);
+  const upload = { name: "replay.json", mimeType: "application/json", buffer: file };
+
+  // Another program, run once: the saved file belongs to the first one and is refused.
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  const note = page.getByRole("status").filter({ hasText: /repetición|replay/i });
+  await page.getByLabel("Abrir repetición").setInputFiles(upload);
+  await expect(note).toContainText("otro programa");
+
+  // Back to the first program, run once: the same file now replays that run exactly.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  await page.getByLabel("Abrir repetición").setInputFiles(upload);
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  await expect.poll(() => actor.evaluate((node) => (node as HTMLElement).style.left)).toBe(left);
+
+  await page.getByLabel("Abrir repetición").setInputFiles({
+    name: "bad.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"kind":"nope"}'),
+  });
+  await expect(note).toContainText("no es una repetición válida");
+});
