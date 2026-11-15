@@ -323,6 +323,10 @@ export const TIP_RULES: readonly TipRule[] = [
     tip: t("Mostrar el bloque del que habla Ori", "Show the block Ori is talking about"),
   },
   {
+    match: named(/Retroceder$|Rewind$/),
+    tip: t("Retroceder: volver un bloque atrás", "Rewind: go back one block"),
+  },
+  {
     match: named(/Paso$|Step$/),
     tip: t("Paso: ver un bloque por vez", "Step: watch one block at a time"),
   },

@@ -109,3 +109,29 @@ test("a saved replay opens on the same program and is refused on another (#1577)
   });
   await expect(note).toContainText("no es una repetición válida");
 });
+
+test("Rewind goes back one block at a time and Step comes forward to the same place (#1578)", async ({
+  page,
+}) => {
+  await openScene(page);
+  for (let i = 0; i < 3; i++)
+    await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  const actor = page.locator(".kids-studio-stage-actor").first();
+  const left = () => actor.evaluate((node) => parseFloat((node as HTMLElement).style.left));
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  const end = await left();
+  const back = page.getByRole("button", { name: "Retroceder", exact: true });
+  await back.click();
+  const one = await left();
+  expect(one).toBeLessThan(end);
+  await back.click();
+  const two = await left();
+  expect(two).toBeLessThan(one);
+  await expect(back).toBeDisabled();
+  const step = page.getByRole("button", { name: "Paso", exact: true });
+  await step.click();
+  expect(await left()).toBe(one);
+  await step.click();
+  expect(await left()).toBe(end);
+});

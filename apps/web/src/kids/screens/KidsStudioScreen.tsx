@@ -334,6 +334,7 @@ const COPY = {
     blocks: "Programa de",
     run: "Jugar",
     step: "Paso",
+    stepBack: "Retroceder",
     reset: "Volver al inicio",
     move: "Mover",
     goTo: "Ir a posición",
@@ -735,6 +736,7 @@ const COPY = {
     blocks: "Program for",
     run: "Play",
     step: "Step",
+    stepBack: "Rewind",
     reset: "Back to start",
     move: "Move",
     goTo: "Go to position",
@@ -2450,6 +2452,15 @@ export function KidsStudioScreen({
       ?.scrollIntoView({ block: "center", behavior: "smooth" });
   }
   const pointed = pointedAt !== null && pointedAt.run === run ? pointedAt.finding : null;
+  /** The frame one block before the one shown; none at the first block or with no run. */
+  const frameBefore =
+    !run || run.frames.length < 2
+      ? null
+      : frame === null
+        ? run.frames.length - 2
+        : frame > 0
+          ? frame - 1
+          : null;
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
@@ -5054,6 +5065,15 @@ export function KidsStudioScreen({
                   stopLive();
                   setFrame(next);
                 }}
+                {...(frameBefore === null
+                  ? {}
+                  : {
+                      onRewind: () => {
+                        stopLive();
+                        setStepped(true);
+                        setFrame(frameBefore);
+                      },
+                    })}
               />
             ) : null}
             {listening ? (
