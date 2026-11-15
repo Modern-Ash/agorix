@@ -3981,6 +3981,62 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each([
+    ["looks_costumenumbername", [2, 1], ["A", "C"]],
+    ["looks_backdropnumbername", [2, 1], ["A", "C"]],
+    ["looks_costumenumbername", [2, 3], ["A", "B", "C"]],
+  ])("searches for %s number to choose a list position", async (opcode, sourceItems, remaining) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "search", [4, "1"]] },
+          }),
+          search: block("data_itemnumoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { ITEM: [3, "number", [10, ""]] },
+          }),
+          number: block(opcode, { fields: { NUMBER_NAME: ["number", null] } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", sourceItems] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(remaining);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["looks_costumenumbername", "looks_backdropnumbername"])(
+    "reports %s name as a searched list position",
+    (opcode) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "name", [10, ""]] },
+            }),
+            name: block(opcode, { fields: { NUMBER_NAME: ["name", null] } }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [1, 2]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {
