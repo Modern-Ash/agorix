@@ -4836,6 +4836,108 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each(["length", "letter"])(
+    "searches with a changing word through %s of inside join",
+    async (kind) => {
+      const text = () =>
+        block(kind === "length" ? "operator_length" : "operator_letter_of", {
+          inputs: { STRING: [3, [12, "word", "w1"], [10, ""]], LETTER: lit(1) },
+        });
+      const join = (suffix: string) =>
+        block("operator_join", {
+          inputs: { STRING1: [3, `text${suffix}`, [10, ""]], STRING2: lit("2", 10) },
+        });
+      const search = (suffix: string) =>
+        block("data_itemnumoflist", {
+          fields: { LIST: ["Fuente", "L2"] },
+          inputs: { ITEM: [3, `join${suffix}`, [10, ""]] },
+        });
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("setFirst"),
+            setFirst: block("data_setvariableto", {
+              next: "removeFirst",
+              fields: { VARIABLE: ["word", "w1"] },
+              inputs: { VALUE: lit(kind === "length" ? "a" : "1a", 10) },
+            }),
+            removeFirst: block("data_deleteoflist", {
+              ...onList,
+              next: "setSecond",
+              inputs: { INDEX: [3, "searchFirst", [4, "1"]] },
+            }),
+            searchFirst: search("First"),
+            joinFirst: join("First"),
+            textFirst: text(),
+            setSecond: block("data_setvariableto", {
+              next: "removeSecond",
+              fields: { VARIABLE: ["word", "w1"] },
+              inputs: { VALUE: lit(kind === "length" ? "ab" : "2a", 10) },
+            }),
+            removeSecond: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "searchSecond", [4, "1"]] },
+            }),
+            searchSecond: search("Second"),
+            joinSecond: join("Second"),
+            textSecond: text(),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]] },
+          { w1: ["word", ""] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each(["unknown length", "nested length", "invalid letter"])(
+    "reports %s inside a joined list search",
+    (kind) => {
+      const letter = kind === "invalid letter";
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "join", [10, ""]] },
+            }),
+            join: block("operator_join", {
+              inputs: { STRING1: [3, "text", [10, ""]], STRING2: lit("2", 10) },
+            }),
+            text: block(letter ? "operator_letter_of" : "operator_length", {
+              inputs: {
+                STRING:
+                  kind === "unknown length"
+                    ? [3, [12, "missing", "missing"], [10, ""]]
+                    : kind === "nested length"
+                      ? [3, "innerJoin", [10, ""]]
+                      : lit("12", 10),
+                LETTER: lit(21),
+              },
+            }),
+            innerJoin: block("operator_join", {
+              inputs: { STRING1: lit("1", 10), STRING2: lit("2", 10) },
+            }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {
