@@ -12,6 +12,7 @@ export function KidsTimeline({
   marks,
   locale,
   onSeek,
+  onRewind,
 }: {
   /** How many steps the run recorded. */
   readonly count: number;
@@ -22,6 +23,8 @@ export function KidsTimeline({
   readonly marks: readonly number[];
   readonly locale: Locale;
   readonly onSeek: (frame: number | null) => void;
+  /** Goes back one step; absent at the first step. */
+  readonly onRewind?: (() => void) | undefined;
 }) {
   if (count < 2) return null;
   const es = locale === "es";
@@ -55,7 +58,19 @@ export function KidsTimeline({
           <i key={mark} style={{ left: `${(mark / (count - 1)) * 100}%` }} />
         ))}
       </span>
-      <small aria-hidden="true">{label}</small>
+      <span className="kids-timeline-foot">
+        <button
+          type="button"
+          className="kids-button kids-icon-button"
+          title={es ? "Retroceder" : "Rewind"}
+          disabled={onRewind === undefined}
+          onClick={onRewind}
+        >
+          <span aria-hidden="true">⏮</span>
+          <span className="kids-visually-hidden">{es ? "Retroceder" : "Rewind"}</span>
+        </button>
+        <small aria-hidden="true">{label}</small>
+      </span>
     </div>
   );
 }
