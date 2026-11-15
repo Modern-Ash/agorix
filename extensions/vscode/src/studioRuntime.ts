@@ -351,7 +351,11 @@ export function activate(context: vscode.ExtensionContext): void {
         events: session.agentEvents,
       }),
   });
-  const revealProjectSurfaces = (): Promise<void> => surfaceCommands.openWorkbench();
+  const revealProjectSurfaces = async (): Promise<void> => {
+    await surfaceCommands.openWorkbench();
+    await vscode.commands.executeCommand("workbench.action.closeSidebar");
+    await vscode.commands.executeCommand("workbench.action.closePanel");
+  };
   const projectCommands = createStudioProjectCommandHandlers({
     getCurrentProjectionId: () => session.currentProjectionId,
     setCurrentProject: (project) => {
@@ -374,6 +378,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       await surfaceCommands.openWorkbenchInPanel(webviewPanel);
+      await vscode.commands.executeCommand("workbench.action.closeSidebar");
+      await vscode.commands.executeCommand("workbench.action.closePanel");
     },
   };
   const developerCommands = createStudioDeveloperCommandHandlers({

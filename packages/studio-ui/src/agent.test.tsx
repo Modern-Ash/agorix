@@ -160,7 +160,7 @@ describe("clarification ui", () => {
     const markup = renderToStaticMarkup(
       <AgentPanel state={ui} send={() => undefined} locale="es" />,
     );
-    expect(markup).toContain("Acuerdos del agente");
+    expect(markup).toContain("Preferencias de Ori");
     expect(markup).toContain("Que queres probar primero?");
     expect(markup).toContain("Probar un paso visible de movimiento");
     expect(markup).toContain("Escribir los pasos repetidos una vez con repetir");

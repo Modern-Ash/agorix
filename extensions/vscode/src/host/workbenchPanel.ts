@@ -135,13 +135,13 @@ export function openWorkbenchPanel(
   locale: WorkbenchLocale = "en",
 ): void {
   if (panel !== undefined) {
-    panel.reveal(vscode.ViewColumn.Beside, true);
+    panel.reveal(vscode.ViewColumn.Active, false);
     return;
   }
   const distRoot = vscode.Uri.file(context.asAbsolutePath("dist"));
   attachWorkbenchPanel(
     context,
-    vscode.window.createWebviewPanel(VIEW_TYPE, "Agorix Studio · Ori", vscode.ViewColumn.Beside, {
+    vscode.window.createWebviewPanel(VIEW_TYPE, "Agorix Studio · Ori", vscode.ViewColumn.Active, {
       enableScripts: true,
       localResourceRoots: [distRoot],
       retainContextWhenHidden: true,

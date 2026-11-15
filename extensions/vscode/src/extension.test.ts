@@ -479,6 +479,8 @@ describe("Studio extension wiring", () => {
 
     expect(panel.webview.html).toContain("Agorix Workbench");
     expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", true]);
+    expect(commandCalls).toContainEqual(["workbench.action.closeSidebar"]);
+    expect(commandCalls).toContainEqual(["workbench.action.closePanel"]);
     expect(webviewPanels.some((item) => item.html.includes("Mundo Agorix"))).toBe(false);
   });
 
@@ -545,6 +547,8 @@ describe("Studio extension wiring", () => {
     await openFile("/p/reveal.json", stored([]));
     expect(workbenchPanel()?.html).toContain("Agorix Workbench");
     expect(webviewPanels.some((panel) => panel.html.includes("Mundo Agorix"))).toBe(false);
+    expect(commandCalls).toContainEqual(["workbench.action.closeSidebar"]);
+    expect(commandCalls).toContainEqual(["workbench.action.closePanel"]);
   });
 
   it("shows clean-install project actions before a project is open", () => {
