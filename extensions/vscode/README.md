@@ -43,6 +43,11 @@ Companion and built-in proposal path remains available. The separate
 `/api/tutor/studio/ori` route is for the Kids scene and cannot accept a general
 VS Code project.
 
+For a slower local CLI, start the tutor API with `AGORIX_ORI_TIMEOUT_MS=20000`
+and set `agorixStudio.agent.requestTimeoutMs` to `30000`. The server caps the
+configured model window at 30 seconds; the Studio client needs a longer window
+than the server to receive either the response or its deterministic fallback.
+
 Explicit explain, debug, challenge and reflect actions use this adapter when
 configured and permitted by the shared request budget. The Companion History
 keeps the interpretation beside bounded runtime facts; selecting a turn reveals

@@ -97,7 +97,7 @@ export function oriCliConfigFromEnv(env: Record<string, string | undefined>): Or
     codexModel: env.AGORIX_ORI_CODEX_MODEL || "gpt-6-luna",
     opencodeBin: env.AGORIX_ORI_OPENCODE_BIN || "opencode",
     timeoutMs: Number.isFinite(requested)
-      ? Math.min(7_000, Math.max(500, Math.floor(requested)))
+      ? Math.min(30_000, Math.max(500, Math.floor(requested)))
       : 7_000,
   };
 }

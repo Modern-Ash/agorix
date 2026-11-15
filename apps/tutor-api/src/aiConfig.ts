@@ -121,7 +121,7 @@ export function validateAiConfig(raw: unknown): AiConfig {
       !/^[A-Za-z0-9._:@/+-]{1,80}$/.test(policy.model) ||
       !Number.isInteger(policy.timeoutMs) ||
       (policy.timeoutMs as number) < 500 ||
-      (policy.timeoutMs as number) > 7_000 ||
+      (policy.timeoutMs as number) > 30_000 ||
       !Number.isInteger(policy.requestsPerMinute) ||
       (policy.requestsPerMinute as number) < 1 ||
       (policy.requestsPerMinute as number) > 60 ||

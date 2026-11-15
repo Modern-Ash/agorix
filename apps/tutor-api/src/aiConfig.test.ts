@@ -24,6 +24,15 @@ const initial = defaultAiConfig(
 describe("durable AI configuration", () => {
   it("validates a complete registry and refuses unknown fields, providers, secrets and limits", () => {
     expect(validateAiConfig(initial)).toEqual(initial);
+    expect(
+      validateAiConfig({
+        ...initial,
+        capabilities: {
+          ...initial.capabilities,
+          studio: { ...initial.capabilities.studio, timeoutMs: 20_000 },
+        },
+      }).capabilities.studio.timeoutMs,
+    ).toBe(20_000);
     const invalid = [
       { ...initial, token: "secret" },
       {
