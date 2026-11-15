@@ -1,5 +1,11 @@
 # Agorix Studio release gate
 
+> The green statuses below cover the earlier Web/VS Code Studio contract. They
+> do not certify Ori's teaching experience in the VS Code extension. Issue
+> #1619 audits that gap in
+> [ORI_STUDIO_VSCODE_INTEGRATION.md](./ORI_STUDIO_VSCODE_INTEGRATION.md);
+> #1622 must add the new journey and evidence before claiming Ori parity.
+
 Issue #214 is the release gate for Studio as a professional projection of Agorix.
 The gate is intentionally source-controlled: Web and Studio may feel different,
 but every row below must point to the same shared contract and automated
