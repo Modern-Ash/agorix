@@ -115,4 +115,36 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("edits an existing text field without accepting a new field or oversized text", () => {
+    const workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: { id: "say:1", type: "looks_say", fields: { text: "Hello" } },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const change = intentToChange(
+      { type: "setTextField", location, field: "text", value: "Hola" },
+      newId,
+      workspace,
+    );
+    expect(
+      applyWorkspaceChange(workspace, change!).workspace.scripts[0]?.statements[0]?.fields?.text,
+    ).toBe("Hola");
+    expect(
+      intentToChange(
+        { type: "setTextField", location, field: "missing", value: "x" },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setTextField", location, field: "text", value: "x".repeat(161) },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
 });
