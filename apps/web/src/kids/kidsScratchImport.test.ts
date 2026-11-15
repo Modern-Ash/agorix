@@ -4701,6 +4701,141 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each(["looks_costumenumbername", "looks_backdropnumbername"])(
+    "searches with %s number inside a direct join",
+    async (opcode) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "join", [10, ""]] },
+            }),
+            join: block("operator_join", {
+              inputs: { STRING1: [3, "number", [10, ""]], STRING2: lit("2", 10) },
+            }),
+            number: block(opcode, { fields: { NUMBER_NAME: ["number", null] } }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B", "C"]);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("searches with a changing Stage numeric property inside join", async () => {
+    const property = (suffix: string) =>
+      block("sensing_of", {
+        fields: { PROPERTY: ["position", null] },
+        inputs: { OBJECT: [1, `stage${suffix}`] },
+      });
+    const join = (suffix: string) =>
+      block("operator_join", {
+        inputs: { STRING1: [3, `property${suffix}`, [10, ""]], STRING2: lit("2", 10) },
+      });
+    const search = (suffix: string) =>
+      block("data_itemnumoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { ITEM: [3, `join${suffix}`, [10, ""]] },
+      });
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("setOne"),
+          setOne: block("data_setvariableto", {
+            next: "removeFirst",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(1) },
+          }),
+          removeFirst: block("data_deleteoflist", {
+            ...onList,
+            next: "setTwo",
+            inputs: { INDEX: [3, "searchFirst", [4, "1"]] },
+          }),
+          searchFirst: search("First"),
+          joinFirst: join("First"),
+          propertyFirst: property("First"),
+          stageFirst: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+          setTwo: block("data_setvariableto", {
+            next: "removeSecond",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(2) },
+          }),
+          removeSecond: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "searchSecond", [4, "1"]] },
+          }),
+          searchSecond: search("Second"),
+          joinSecond: join("Second"),
+          propertySecond: property("Second"),
+          stageSecond: block("sensing_of_object_menu", { fields: { OBJECT: ["_stage_", null] } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]] },
+        { v1: ["position", 0] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    expect(validateStudioProgram(program)).toEqual(program);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+    const { bytes } = exportScratchProject(program, "forest", "es");
+    const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+    expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+  });
+
+  it.each(["costume name", "backdrop name", "word property", "unknown target"])(
+    "reports %s inside a joined list search",
+    (kind) => {
+      const looks = kind === "costume name" || kind === "backdrop name";
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "join", [10, ""]] },
+            }),
+            join: block("operator_join", {
+              inputs: { STRING1: [3, "source", [10, ""]], STRING2: lit("2", 10) },
+            }),
+            source: looks
+              ? block(
+                  kind === "costume name" ? "looks_costumenumbername" : "looks_backdropnumbername",
+                  { fields: { NUMBER_NAME: ["name", null] } },
+                )
+              : block("sensing_of", {
+                  fields: {
+                    PROPERTY: [kind === "word property" ? "costume name" : "x position", null],
+                  },
+                  inputs: { OBJECT: [1, "target"] },
+                }),
+            target: block("sensing_of_object_menu", {
+              fields: { OBJECT: [kind === "unknown target" ? "Missing" : "Cat", null] },
+            }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {
