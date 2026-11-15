@@ -4491,6 +4491,113 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
   });
 
+  it.each([
+    ["1", "2", [12, 22], ["B", "C"]],
+    ["2", "2", [12, 22], ["A", "C"]],
+    ["9", "9", [12, 22], ["A", "B", "C"]],
+  ])(
+    "searches for join %s and %s to choose a list position",
+    async (left, right, sourceItems, remaining) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "join", [10, ""]] },
+            }),
+            join: block("operator_join", {
+              inputs: { STRING1: lit(left, 10), STRING2: lit(right, 10) },
+            }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", sourceItems] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(remaining);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("searches with the current word variable in a direct join", () => {
+    const search = (suffix: string) =>
+      block("data_itemnumoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { ITEM: [3, `join${suffix}`, [10, ""]] },
+      });
+    const join = () =>
+      block("operator_join", {
+        inputs: { STRING1: [3, [12, "word", "w1"], [10, ""]], STRING2: lit("2", 10) },
+      });
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("setOne"),
+          setOne: block("data_setvariableto", {
+            next: "removeFirst",
+            fields: { VARIABLE: ["word", "w1"] },
+            inputs: { VALUE: lit("1", 10) },
+          }),
+          removeFirst: block("data_deleteoflist", {
+            ...onList,
+            next: "setTwo",
+            inputs: { INDEX: [3, "searchFirst", [4, "1"]] },
+          }),
+          searchFirst: search("First"),
+          joinFirst: join(),
+          setTwo: block("data_setvariableto", {
+            next: "removeSecond",
+            fields: { VARIABLE: ["word", "w1"] },
+            inputs: { VALUE: lit("2", 10) },
+          }),
+          removeSecond: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "searchSecond", [4, "1"]] },
+          }),
+          searchSecond: search("Second"),
+          joinSecond: join(),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]] },
+        { w1: ["word", ""] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+  });
+
+  it("reports an unknown variable inside a joined list search", () => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "search", [4, "1"]] },
+          }),
+          search: block("data_itemnumoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { ITEM: [3, "join", [10, ""]] },
+          }),
+          join: block("operator_join", {
+            inputs: { STRING1: [3, [12, "missing", "missing"], [10, ""]], STRING2: lit("2", 10) },
+          }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [12, 22]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {
@@ -6639,7 +6746,10 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
             },
           }),
           join: block("operator_join", {
-            inputs: { STRING1: lit("B", 10), STRING2: lit("!", 10) },
+            inputs: { STRING1: lit("B", 10), STRING2: [3, "nestedJoin", [10, ""]] },
+          }),
+          nestedJoin: block("operator_join", {
+            inputs: { STRING1: lit("!", 10), STRING2: lit("?", 10) },
           }),
         }),
       );

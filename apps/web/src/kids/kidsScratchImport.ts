@@ -232,6 +232,13 @@ function isSimpleRandomSearch(value: Expression): boolean {
   );
 }
 
+function isSimpleJoinSearch(value: Expression): boolean {
+  if (value.type !== "join") return false;
+  const simple = (item: Expression): boolean =>
+    ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(item.type);
+  return simple(value.left) && simple(value.right);
+}
+
 function isSimpleTextIndex(value: Expression): boolean {
   if (value.type === "textLength")
     return value.value.type === "textLiteral" || value.value.type === "textVariable";
@@ -1277,6 +1284,7 @@ class Converter {
           isSimpleArithmeticIndex(found.value) ||
           isSimpleTextIndex(found.value) ||
           isSimpleRandomSearch(found.value) ||
+          isSimpleJoinSearch(found.value) ||
           (found.value.type === "listItem" &&
             ((found.value.index.type === "numericLiteral" &&
               Number.isInteger(found.value.index.value) &&

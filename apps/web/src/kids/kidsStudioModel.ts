@@ -320,6 +320,14 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
           value.value.min.type === "numericLiteral" &&
           value.value.max.type === "numericLiteral" &&
           checkedStudioIndex(value.value, program)) ||
+        (value.value.type === "join" &&
+          ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(
+            value.value.left.type,
+          ) &&
+          ["numericLiteral", "textLiteral", "variable", "textVariable"].includes(
+            value.value.right.type,
+          ) &&
+          checkedText(value.value, program)) ||
         (value.value.type === "listItem" &&
           ((value.value.index.type === "numericLiteral" &&
             checkedStudioIndex(value.value.index, program)) ||
