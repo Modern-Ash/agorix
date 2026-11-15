@@ -10,3 +10,7 @@ The live runtime already records every outside input of a run (`LiveInputLog`) a
 ## In the studio
 
 Beside **Otra vez**, **Guardar repetición** saves the last run's inputs as `agorix-replay.json` on the device (answers left out), and **Abrir repetición** reads one. The file carries an identity of the program it came from; opening it on a different program, or a file that is not a replay, shows a short message and runs nothing. Opening a valid one watches the run again exactly as it was.
+
+## What changed in a run (#1579, #1580)
+
+`valueHistory` (kidsRunHistory.ts) reads the run's own trace and lists every number or word variable that took a new value, in order, each with the block that changed it; a loop or custom block is not blamed, the blocks inside it are. The Studio shows it under the timeline as "Qué cambió (N)": each line is a step, and pressing it goes to that step of the run. `lastChangeBefore` answers "which block gave this variable its value at this step". At most 60 changes are listed and the rest are counted. Breakpoints (pausing at a chosen block) are not built yet.

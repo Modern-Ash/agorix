@@ -135,3 +135,24 @@ test("Rewind goes back one block at a time and Step comes forward to the same pl
   await step.click();
   expect(await left()).toBe(end);
 });
+
+test("the run says which block changed each value and jumps to that step (#1579, #1580)", async ({
+  page,
+}) => {
+  await openScene(page);
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("7");
+  await page.getByRole("button", { name: "+ Fijar valor" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-replay-button")).toBeEnabled();
+  const history = page.locator(".kids-run-history");
+  await expect(history).toContainText("Qué cambió (1)");
+  await history.locator("summary").click();
+  const change = history.getByRole("button", { name: /Paso 1: Puntos 0 → 7 · Fijar valor/ });
+  await expect(change).toBeVisible();
+  // Go to the end, then jump back to the step that set the value.
+  await change.click();
+  await expect(change).toHaveAttribute("aria-current", "step");
+});
