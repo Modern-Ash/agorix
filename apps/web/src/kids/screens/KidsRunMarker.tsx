@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { acceptProposal, rejectProposal } from "@agorix/proposals";
-import type { ProjectProgram, Statement } from "@agorix/program-model";
+import type { ProjectCreativeState, ProjectProgram, Statement } from "@agorix/program-model";
 import type { Finding } from "@agorix/run-evidence";
 import type { Locale } from "../../i18n.js";
 import type { AgeBand } from "../kidsAgeBand.js";
 import { findingSentence } from "../kidsRunFindings.js";
 import { proposeRunFix, reviewRunFix } from "../kidsRunFixes.js";
+import { ideaPreviewNotes, previewCandidate } from "../kidsStudioCoach.js";
 import { requestFindingRephrase, type RephraseResult } from "../kidsFindingRephrase.js";
 
 /** Once the server says there is no model, the button is not offered again in this session. */
@@ -19,6 +20,8 @@ let rephraseUnavailable = false;
 export function KidsRunMarker({
   finding,
   program,
+  creative,
+  actorId,
   locale,
   band,
   onShow,
@@ -32,6 +35,9 @@ export function KidsRunMarker({
 }: {
   readonly finding: Finding;
   readonly program: ProjectProgram;
+  /** The scene, so the fix can be tried on a copy before it is shown. */
+  readonly creative: ProjectCreativeState;
+  readonly actorId: string;
   readonly locale: Locale;
   readonly band: AgeBand;
   readonly onShow: (finding: Finding) => void;
@@ -68,6 +74,20 @@ export function KidsRunMarker({
       return reviewRunFix(program, finding, proposeRunFix(program, finding, locale));
     } catch {
       return null;
+    }
+  })();
+  // The fix tried on a copy: what it would change or stop, or whether a tidy-up does the same.
+  const notes = (() => {
+    if (!review) return [];
+    try {
+      const preview = previewCandidate(program, review.candidateProgram, creative, actorId, []);
+      return preview === null
+        ? []
+        : ideaPreviewNotes(preview, locale, {
+            meantToDoTheSame: finding.kind === "repeatedBlocks" || finding.kind === "repeatedApart",
+          });
+    } catch {
+      return [];
     }
   })();
   // The block the fix puts in the program, to show before the learner decides.
@@ -152,6 +172,11 @@ export function KidsRunMarker({
             shared !== undefined) ? (
             <div className="kids-ori-proposal" data-testid="ori-fix">
               <p>{review.proposal.rationale}</p>
+              {notes.length > 0 ? (
+                <p className="kids-note" data-testid="fix-evidence">
+                  {notes.join(" ")}
+                </p>
+              ) : null}
               <p className="kids-note">
                 {es
                   ? "Idea de Ori: todavía no está en tu programa. Revisá el cambio antes de decidir."

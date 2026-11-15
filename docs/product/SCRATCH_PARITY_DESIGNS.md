@@ -289,3 +289,7 @@ Ori's idea card already ran the idea on a copy and showed where the character wo
 ## Status: a scene goal about a value (#1598, #1599)
 
 The scene goal (one per scene, chosen from closed choices, checked against a run) already was the runtime-proved assertion #1598 asks for, for characters. It now has a second family: `variableReaches`, "a number variable of the scene holds at least 3, 5 or 10 at some step of a run" (a score game's goal). It is validated in the scene file (`studio-var-1` to `-3`, a whole number from 1 to 99), judged from the run's own stage and frames by `sceneGoalMet`, offered in the goal picker for each number variable, and dropped if its variable goes away. Ori does not propose it yet: its goal ideas and helper blocks stay about characters. #1600 (the step where a goal last held) is not built.
+
+## Status: Ori's fix is tried on a copy first (#1583, #1584)
+
+The "Ori vio algo" card now runs the fix on a copy of the program, like an idea card, and adds the same sentences (`ideaPreviewNotes`): what the fix would stop or leave unchanged. A tidy-up (joining repeated blocks, a block shared by everyone) is meant to do exactly what the program did, so the card says "Lo probé en una copia: el programa hace exactamente lo mismo", or warns when it does not. The proposals that come from a remote Ori still go through the same review and the same card when they are shown in the studio; the Advanced screen is not covered.

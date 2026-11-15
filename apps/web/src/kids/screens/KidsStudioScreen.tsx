@@ -124,6 +124,7 @@ import {
   quantityKindFor,
   type ActorFacts,
   type QuantityKind,
+  ideaPreviewNotes,
   previewCandidate,
   reflectionFor,
   type CandidatePreview,
@@ -697,14 +698,6 @@ const COPY = {
     evidenceNow: "Ahora termina en",
     evidenceWith: "Con la idea terminaría en",
     evidenceBlocks: "bloques",
-    evidenceStops:
-      "Ojo: con esta idea el programa no llega al final. Podés cambiarla o rechazarla.",
-    evidenceUnchanged: "Esta idea no cambia lo que pasa al jugar. Podés usarla igual o rechazarla.",
-    evidenceLost: "Ojo: con esta idea ya no pasaría",
-    lostMotion: "el movimiento",
-    lostSound: "el sonido",
-    lostSpeech: "lo que dice",
-    lostDrawing: "el dibujo",
     ideaText: "Mirá el bloque propuesto y decidí.",
     use: "Usar idea",
     change: "Cambiar idea",
@@ -1105,15 +1098,6 @@ const COPY = {
     evidenceNow: "Now it ends at",
     evidenceWith: "With the idea it would end at",
     evidenceBlocks: "blocks",
-    evidenceStops:
-      "Careful: with this idea the program does not reach the end. You can change or reject it.",
-    evidenceUnchanged:
-      "This idea does not change what happens when you play. You can use it anyway or reject it.",
-    evidenceLost: "Careful: with this idea this would stop happening:",
-    lostMotion: "the movement",
-    lostSound: "the sound",
-    lostSpeech: "what it says",
-    lostDrawing: "the drawing",
     ideaText: "Look at the suggested block and decide.",
     use: "Use idea",
     change: "Change idea",
@@ -1502,12 +1486,6 @@ export function KidsStudioScreen({
   mission,
 }: Props) {
   const copy = COPY[locale];
-  const lostWords = {
-    motion: copy.lostMotion,
-    sound: copy.lostSound,
-    speech: copy.lostSpeech,
-    drawing: copy.lostDrawing,
-  } as const;
   const missionDefinition = mission
     ? getKidsMission(KIDS_MISSION_IDS[mission.index], locale, mission.world, mission.catalog)
     : null;
@@ -5477,6 +5455,8 @@ export function KidsStudioScreen({
               <KidsRunMarker
                 key={`${noticed.id}-${runCount}`}
                 finding={noticed}
+                creative={creative}
+                actorId={activeActorId}
                 program={history.current}
                 describeBlock={blockLabel}
                 onApplyProgram={(next, label) => {
@@ -9878,16 +9858,9 @@ export function KidsStudioScreen({
                         ) · {intentPlan.preview.stepsBefore} {copy.evidenceBlocks}.{" "}
                         {copy.evidenceWith} ({intentPlan.preview.to.x}, {intentPlan.preview.to.y}) ·{" "}
                         {intentPlan.preview.stepsAfter} {copy.evidenceBlocks}.
-                        {intentPlan.preview.outcomeBefore === "completed" &&
-                        intentPlan.preview.outcome !== "completed"
-                          ? ` ${copy.evidenceStops}`
-                          : ""}
-                        {intentPlan.preview.unchanged ? ` ${copy.evidenceUnchanged}` : ""}
-                        {intentPlan.preview.lost.length > 0
-                          ? ` ${copy.evidenceLost} ${intentPlan.preview.lost
-                              .map((kind) => lostWords[kind])
-                              .join(", ")}.`
-                          : ""}
+                        {ideaPreviewNotes(intentPlan.preview, locale)
+                          .map((note) => ` ${note}`)
+                          .join("")}
                       </p>
                     ) : null}
                     <div>
@@ -9934,16 +9907,9 @@ export function KidsStudioScreen({
                         {oriPreview.stepsBefore} {copy.evidenceBlocks}. {copy.evidenceWith} (
                         {oriPreview.to.x}, {oriPreview.to.y}) · {oriPreview.stepsAfter}{" "}
                         {copy.evidenceBlocks}.
-                        {oriPreview.outcomeBefore === "completed" &&
-                        oriPreview.outcome !== "completed"
-                          ? ` ${copy.evidenceStops}`
-                          : ""}
-                        {oriPreview.unchanged ? ` ${copy.evidenceUnchanged}` : ""}
-                        {oriPreview.lost.length > 0
-                          ? ` ${copy.evidenceLost} ${oriPreview.lost
-                              .map((kind) => lostWords[kind])
-                              .join(", ")}.`
-                          : ""}
+                        {ideaPreviewNotes(oriPreview, locale)
+                          .map((note) => ` ${note}`)
+                          .join("")}
                       </p>
                     ) : null}
                     <strong>

@@ -8,6 +8,7 @@ import {
   factsOfRun,
   judgePrediction,
   judgeQuantity,
+  ideaPreviewNotes,
   previewCandidate,
   changesBetween,
   quantityKindFor,
@@ -212,5 +213,49 @@ describe("previewCandidate: what an idea would change or stop", () => {
       lost: ["speech"],
     });
     expect(show(now, [{ type: "say", text: "Hola" }])).toMatchObject({ lost: ["motion"] });
+  });
+});
+
+describe("ideaPreviewNotes: the sentences a card adds", () => {
+  const base = {
+    lost: [],
+    unchanged: false,
+    outcomeBefore: "completed",
+    outcome: "completed",
+    stepsBefore: 1,
+    stepsAfter: 2,
+    from: { x: 0, y: 0 },
+    to: { x: 40, y: 0 },
+  } as const;
+
+  it("says nothing when the idea only adds something", () => {
+    expect(ideaPreviewNotes(base, "es")).toEqual([]);
+  });
+
+  it("says what an idea changes nothing of, stops, or loses, in both languages", () => {
+    const notes = ideaPreviewNotes({ ...base, unchanged: true, lost: ["motion", "sound"] }, "es");
+    expect(notes).toHaveLength(2);
+    expect(notes[0]).toContain("no cambia lo que pasa");
+    expect(notes[1]).toContain("el movimiento, el sonido");
+    expect(ideaPreviewNotes({ ...base, lost: ["speech"] }, "en")[0]).toContain("what it says");
+    expect(ideaPreviewNotes({ ...base, outcome: "budget-exceeded" }, "es")[0]).toContain(
+      "no llega al final",
+    );
+  });
+
+  it("does not blame an idea for a program that never ended", () => {
+    expect(
+      ideaPreviewNotes(
+        { ...base, outcomeBefore: "budget-exceeded", outcome: "budget-exceeded" },
+        "es",
+      ),
+    ).toEqual([]);
+  });
+
+  it("judges a tidy-up by whether it does exactly the same", () => {
+    const same = ideaPreviewNotes({ ...base, unchanged: true }, "es", { meantToDoTheSame: true });
+    expect(same).toEqual(["Lo probé en una copia: el programa hace exactamente lo mismo."]);
+    const different = ideaPreviewNotes(base, "en", { meantToDoTheSame: true });
+    expect(different[0]).toContain("does not do exactly the same");
   });
 });

@@ -440,3 +440,58 @@ export function previewCandidate(
     to: { x: Math.round(to.x), y: Math.round(to.y) },
   };
 }
+
+const LOST_WORDS: Readonly<Record<BehaviourKind, readonly [string, string]>> = {
+  motion: ["el movimiento", "the movement"],
+  sound: ["el sonido", "the sound"],
+  speech: ["lo que dice", "what it says"],
+  drawing: ["el dibujo", "the drawing"],
+};
+
+/**
+ * What an idea would change, in the sentences a card adds under "where it would end": that it
+ * changes nothing, and what the program does now that it would stop. Empty when there is no
+ * surprise to report.
+ */
+export function ideaPreviewNotes(
+  preview: CandidatePreview,
+  locale: Locale,
+  /** A tidy-up (join repeated blocks) is meant to do exactly what the program did before. */
+  options: { readonly meantToDoTheSame?: boolean } = {},
+): readonly string[] {
+  const es = locale === "es";
+  const notes: string[] = [];
+  if (options.meantToDoTheSame === true) {
+    notes.push(
+      preview.unchanged
+        ? es
+          ? "Lo probé en una copia: el programa hace exactamente lo mismo."
+          : "I tried it on a copy: the program does exactly the same."
+        : es
+          ? "Ojo: probé el cambio en una copia y no hace exactamente lo mismo que antes."
+          : "Careful: I tried the change on a copy and it does not do exactly the same as before.",
+    );
+    return notes;
+  }
+  if (preview.outcomeBefore === "completed" && preview.outcome !== "completed")
+    notes.push(
+      es
+        ? "Ojo: con esta idea el programa no llega al final. Podés cambiarla o rechazarla."
+        : "Careful: with this idea the program does not reach the end. You can change or reject it.",
+    );
+  if (preview.unchanged)
+    notes.push(
+      es
+        ? "Esta idea no cambia lo que pasa al jugar. Podés usarla igual o rechazarla."
+        : "This idea does not change what happens when you play. You can use it anyway or reject it.",
+    );
+  if (preview.lost.length > 0) {
+    const words = preview.lost.map((kind) => LOST_WORDS[kind][es ? 0 : 1]).join(", ");
+    notes.push(
+      es
+        ? `Ojo: con esta idea ya no pasaría ${words}.`
+        : `Careful: with this idea this would stop happening: ${words}.`,
+    );
+  }
+  return notes;
+}
