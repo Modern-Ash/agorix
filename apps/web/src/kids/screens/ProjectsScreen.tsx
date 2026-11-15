@@ -15,6 +15,7 @@ import {
   type CutKind,
 } from "../kidsImportCuts.js";
 import { readScratchProject } from "../kidsScratchZip.js";
+import { bringScratchPictures, type PicturesBrought } from "../kidsScratchPictureImport.js";
 import { ExportMediaDialog } from "./ExportMediaDialog.js";
 import { KidsBackdrop } from "./KidsArt.js";
 import { ListenButton } from "./ListenButton.js";
@@ -56,6 +57,7 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
   const [scratchImport, setScratchImport] = useState<{
     readonly id: string;
     readonly report: ScratchImportReport;
+    readonly pictures: PicturesBrought;
   } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [exportingMedia, setExportingMedia] = useState<string | null>(null);
@@ -121,14 +123,23 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      const converted = convertScratchProject(await readScratchProject(await file.arrayBuffer()));
+      const buffer = await file.arrayBuffer();
+      const converted = convertScratchProject(await readScratchProject(buffer));
       const scene = importScratchStudioProject(converted, locale, store);
+      // The pictures are an extra: if they cannot be read the scene is still imported.
+      const pictures = await bringScratchPictures({
+        buffer,
+        imported: converted,
+        sceneId: scene.id,
+        locale,
+        store,
+      }).catch(() => ({ brought: 0, left: 0 }));
       setStudios(listStudioProjects());
       saveImportCuts(
         scene.id,
         converted.report.dropped.map((item) => cutKindOf(item.what)),
       );
-      setScratchImport({ id: scene.id, report: converted.report });
+      setScratchImport({ id: scene.id, report: converted.report, pictures });
       setMessage("");
     } catch {
       setScratchImport(null);
@@ -197,6 +208,13 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
               ? `Traje ${scratchImport.report.sprites} objeto(s) y ${scratchImport.report.blocksImported} bloque(s) de Scratch; ${scratchImport.report.blocksAdjusted} se ajustaron a lo que permite la escena.`
               : `Brought ${scratchImport.report.sprites} sprite(s) and ${scratchImport.report.blocksImported} block(s) from Scratch; ${scratchImport.report.blocksAdjusted} were adjusted to what the scene allows.`}
           </p>
+          {scratchImport.pictures.brought + scratchImport.pictures.left > 0 ? (
+            <p>
+              {locale === "es"
+                ? `Traje ${scratchImport.pictures.brought} imagen(es) de personajes y fondo; ${scratchImport.pictures.left} no se pudieron traer y quedó el dibujo de la galería. Solo se trae el disfraz que tenía puesto cada personaje.`
+                : `Brought ${scratchImport.pictures.brought} picture(s) of characters and backdrop; ${scratchImport.pictures.left} could not be brought and the gallery picture stayed. Only the costume each character was wearing comes across.`}
+            </p>
+          ) : null}
           {scratchImport.report.dropped.length > 0 ? (
             <>
               <section aria-label={locale === "es" ? "Ori explica" : "Ori explains"}>

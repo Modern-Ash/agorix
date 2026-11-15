@@ -204,8 +204,15 @@ test("a scene can be exported as a Scratch .sb3 and imported back (#1312)", asyn
   });
   const report = page.locator(".kids-scratch-report");
   await expect(report).toContainText("1 objeto(s)");
+  // The character's picture is read out of the file, redrawn on the device and kept as its own.
+  await expect(report).toContainText("Traje 2 imagen(es)");
   await report.getByRole("button", { name: "Abrir la escena" }).click();
   await expect(page.locator(".kids-program-block").first()).toContainText("Mover");
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image").first()).toHaveCSS(
+    "background-image",
+    /data:image\//,
+  );
+  await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image\//);
 });
 
 test("the child's own drawing goes into the .sb3 as a PNG costume (#1312)", async ({ page }) => {

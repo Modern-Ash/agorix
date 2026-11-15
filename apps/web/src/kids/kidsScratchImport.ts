@@ -61,8 +61,20 @@ export interface ScratchImportReport {
   readonly dropped: readonly { readonly what: string; readonly count: number }[];
 }
 
+/**
+ * The picture file each imported character and the stage were wearing when the project was saved,
+ * named as Scratch names them (the md5 of the bytes plus the extension). Only names: the files
+ * are read separately, from the `.sb3`, by `readScratchPictures`.
+ */
+export interface ScratchPictureNames {
+  /** Studio actor id to its current costume's file name. */
+  readonly costumes: Readonly<Record<string, string>>;
+  readonly backdrop?: string;
+}
+
 export interface ScratchImportResult {
   readonly program: ProjectProgram;
+  readonly pictures: ScratchPictureNames;
   readonly backdropId: KidsGalleryBackdropId;
   readonly positions: Readonly<
     Record<string, { x: number; y: number; direction: number; size: number }>
@@ -1650,6 +1662,33 @@ function legalize(
   return { ...script, statements: kept };
 }
 
+const PICTURE_FILE = /^[0-9a-f]{32}\.(?:png|svg|jpg|jpeg|webp)$/;
+
+/** The file name of the costume a Scratch target was wearing (its first when none is recorded). */
+function currentPicture(target: Record<string, unknown> | undefined): string | undefined {
+  const costumes = target?.["costumes"];
+  if (!Array.isArray(costumes)) return undefined;
+  const at = target?.["currentCostume"];
+  const costume: unknown =
+    costumes[typeof at === "number" && Number.isInteger(at) && at >= 0 ? at : 0];
+  const file = isRecord(costume) ? costume["md5ext"] : undefined;
+  return typeof file === "string" && PICTURE_FILE.test(file) ? file : undefined;
+}
+
+function pictureNamesOf(
+  stage: Record<string, unknown> | undefined,
+  used: readonly Record<string, unknown>[],
+): ScratchPictureNames {
+  const costumes: Record<string, string> = {};
+  used.forEach((sprite, index) => {
+    const file = currentPicture(sprite);
+    const character = KIDS_GALLERY_CHARACTERS[index % KIDS_GALLERY_CHARACTERS.length]!;
+    if (file !== undefined) costumes[studioActorId(index + 1, character.id)] = file;
+  });
+  const backdrop = currentPicture(stage);
+  return { costumes, ...(backdrop === undefined ? {} : { backdrop }) };
+}
+
 export function convertScratchProject(raw: unknown): ScratchImportResult {
   if (!isRecord(raw) || !Array.isArray(raw["targets"]))
     throw new RangeError("not a Scratch 3 project");
@@ -1918,6 +1957,7 @@ export function convertScratchProject(raw: unknown): ScratchImportResult {
     .sort((a, b) => b.count - a.count || a.what.localeCompare(b.what));
   return {
     program,
+    pictures: pictureNamesOf(stage, used),
     backdropId: "forest",
     positions,
     report: {

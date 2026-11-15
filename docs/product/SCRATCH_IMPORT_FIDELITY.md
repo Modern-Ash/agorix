@@ -4,6 +4,12 @@ How much of a Scratch project comes across when it is opened in Agorix. Measured
 
 A block counts as brought across when it is in the converted program (nested blocks included); a script counts as kept when it is not left out. The test `kidsScratchCorpus.test.ts` fails if either number drops, and fails if this table is out of date. After an importer change, copy the table the failing test prints between the markers below, and raise the floors in the test.
 
+## Pictures (not in the table)
+
+The table counts blocks and scripts. Pictures are separate: the importer now reads, from the `.sb3`, the one costume each character was wearing and the stage's backdrop (`readScratchPictures`, `bringScratchPictures`). Each is read with size caps (2 MB a picture, 32 pictures, 12 MB together), an SVG is redrawn on a canvas on the device, and every picture goes through the same preparation as one a child adds (PNG or WebP under 60 KB, 256 × 256). Other costumes, and a picture that cannot be read, are reported as not brought and the gallery character stays. The synthetic corpus has no pictures, so the e2e round trip (export a scene, import it back) is what shows pictures arriving.
+
+## Blocks
+
 <!-- fidelity:start -->
 
 | Project       | Blocks | Brought across | Scripts | Scripts kept   |
