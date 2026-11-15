@@ -55,6 +55,39 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("persists a known backdrop and refuses unknown assets", async () => {
+    const { host, port, metadata, labels } = setup();
+    await port.commitMetadata(
+      {
+        ...metadata(),
+        assets: [
+          {
+            id: "backdrop:moon",
+            kind: "backdrop",
+            name: "Moon",
+            source: "builtin:kids-gallery-backdrop:moon",
+          },
+        ],
+      },
+      "test fixture",
+    );
+    const before = labels.length;
+    const accepted = await host.handle({
+      schema,
+      type: "updateStage",
+      backdropId: "backdrop:moon",
+    });
+    expect(accepted).toContainEqual({ schema, type: "scene", backdropId: "backdrop:moon" });
+    expect(metadata().stage?.backdropId).toBe("backdrop:moon");
+    const refused = await host.handle({
+      schema,
+      type: "updateStage",
+      backdropId: "backdrop:missing",
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(metadata().stage?.backdropId).toBe("backdrop:moon");
+    expect(labels).toHaveLength(before + 1);
+  });
   it("sends project costume and backdrop art alongside the built-in catalog", async () => {
     const { host, port, metadata } = setup();
     await port.commitMetadata(
@@ -105,6 +138,7 @@ describe("workbenchHost", () => {
         type: "actors",
         actors: [{ id: "actor:main", costumeId: "asset:costume.default", scriptCount: 1 }],
       },
+      { schema, type: "scene", backdropId: "asset:space.trailhead" },
       { schema, type: "assets" },
       { schema, type: "validation", issues: [] },
       { schema, type: "missionSpec", spec: { successCheck: "touches-goal" } },

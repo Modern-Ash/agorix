@@ -532,8 +532,16 @@ describe("Studio extension wiring", () => {
       patch: { x: 24, y: 6, direction: 90 },
     });
     await flushWorkbench();
+    expect(commandCalls).toContainEqual(["agorixStudio.reset"]);
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "updateStage",
+      backdropId: "asset:space.nebula",
+    });
+    await flushWorkbench();
     const afterActorUpdate = new TextDecoder().decode(files.get("/p/workbench.json"));
     expect(afterActorUpdate).toContain('"actors"');
+    expect(JSON.parse(afterActorUpdate).metadata.stage.backdropId).toBe("asset:space.nebula");
     expect(() =>
       workbenchPanel()?.receive({
         schema: "agorix/studio-protocol/v1",
