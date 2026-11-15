@@ -49,6 +49,15 @@ export {
   type LiveRuntimeOptions,
 } from "./liveRuntime.js";
 export {
+  RUN_INPUTS_FILE_KIND,
+  RUN_INPUTS_MAX_CHARS,
+  RunInputsFileError,
+  encodeRunInputs,
+  parseRunInputs,
+  type EncodeRunInputsOptions,
+  type ParsedRunInputs,
+} from "./inputLogFile.js";
+export {
   COPIES_CAP,
   advanceCopiesWorld,
   createCopiesWorld,

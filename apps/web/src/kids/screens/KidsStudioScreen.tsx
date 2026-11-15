@@ -37,6 +37,7 @@ import {
   studioCategoryId,
   type StudioCategory,
 } from "../kidsStudioCategories.js";
+import { md5Hex } from "../kidsScratchPack.js";
 import { starterShelf, starterStatement, type StudioStarterKind } from "../kidsPaletteCatalog.js";
 import {
   createEditorHistory,
@@ -77,6 +78,9 @@ import {
   createLiveRuntime,
   isCloneId,
   createReplayRuntime,
+  encodeRunInputs,
+  parseRunInputs,
+  RunInputsFileError,
   runMultiActorProgram,
   type ClockSample,
   type LiveInputLog,
@@ -1661,6 +1665,7 @@ export function KidsStudioScreen({
     readonly programJson: string;
   } | null>(null);
   const replaying = useRef(false);
+  const [replayNote, setReplayNote] = useState("");
   // Seconds each actor's last move should take on screen, so a glide slides and a step is smooth.
   const motionRef = useRef<Record<string, number>>({});
   // A forever loop that has run for a few seconds is a loop that does not end: Ori can help.
@@ -3940,11 +3945,11 @@ export function KidsStudioScreen({
   }
 
   /** Watches the last live run again, with the same inputs it had; nothing is recorded twice. */
-  function replay() {
-    if (!lastLive) return;
+  function replay(source: NonNullable<typeof lastLive> | null = lastLive) {
+    if (!source) return;
     try {
       stopLive();
-      const again = createReplayRuntime(lastLive.program, lastLive.creative, lastLive.log, {
+      const again = createReplayRuntime(source.program, source.creative, source.log, {
         paceSeconds: LIVE_PACE_SECONDS,
       });
       stopKidsSounds();
@@ -3960,6 +3965,58 @@ export function KidsStudioScreen({
       setError(false);
     } catch {
       setError(true);
+    }
+  }
+
+  /** Identifies a program for a replay file; not a secret, only "is this the same program". */
+  function programIdentity(programJson: string): string {
+    return md5Hex(new TextEncoder().encode(programJson));
+  }
+
+  /** Saves the last run's inputs as a file on this device; typed answers are left out. */
+  function saveReplay() {
+    if (!lastLive) return;
+    const blob = new Blob(
+      [encodeRunInputs(lastLive.log, { programHash: programIdentity(lastLive.programJson) })],
+      { type: "application/json" },
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; // agora-allowlist: local Blob download of a validated run-inputs file, not outbound navigation
+    anchor.download = "agorix-replay.json";
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    setReplayNote(locale === "es" ? "Guardé la repetición." : "Saved the replay.");
+  }
+
+  /** Opens a replay file made for this same program and watches it; anything else is refused. */
+  async function openReplay(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const parsed = parseRunInputs(await file.text());
+      const programJson = JSON.stringify(history.current);
+      if (parsed.programHash !== undefined && parsed.programHash !== programIdentity(programJson)) {
+        setReplayNote(
+          locale === "es"
+            ? "Esa repetición es de otro programa."
+            : "That replay is for a different program.",
+        );
+        return;
+      }
+      setReplayNote("");
+      replay({ log: parsed.log, program: history.current, creative, programJson });
+    } catch (caught) {
+      setReplayNote(
+        caught instanceof RunInputsFileError
+          ? locale === "es"
+            ? "Ese archivo no es una repetición válida."
+            : "That file is not a valid replay."
+          : locale === "es"
+            ? "No pude abrir el archivo."
+            : "I could not open the file.",
+      );
     }
   }
 
@@ -4679,7 +4736,7 @@ export function KidsStudioScreen({
                     type="button"
                     className="kids-button kids-replay-button"
                     disabled={playing}
-                    onClick={replay}
+                    onClick={() => replay()}
                   >
                     <span aria-hidden="true">↺</span> {locale === "es" ? "Otra vez" : "Again"}
                   </button>
@@ -5033,6 +5090,41 @@ export function KidsStudioScreen({
                 >
                   {locale === "es" ? "✦ Preguntar a Ori" : "✦ Ask Ori"}
                 </button>
+              ) : null}
+              {lastLive && lastLive.programJson === JSON.stringify(history.current) ? (
+                <>
+                  <button
+                    type="button"
+                    className="kids-button kids-icon-button"
+                    aria-label={locale === "es" ? "Guardar repetición" : "Save replay"}
+                    title={locale === "es" ? "Guardar repetición" : "Save replay"}
+                    disabled={playing}
+                    onClick={saveReplay}
+                  >
+                    <span aria-hidden="true">💾</span>
+                  </button>
+                  <label
+                    className="kids-button kids-icon-button"
+                    title={locale === "es" ? "Abrir repetición" : "Open replay"}
+                  >
+                    <span aria-hidden="true">📂</span>
+                    <span className="kids-sr-only">
+                      {locale === "es" ? "Abrir repetición" : "Open replay"}
+                    </span>
+                    <input
+                      type="file"
+                      className="kids-sr-only"
+                      accept=".json,application/json"
+                      disabled={playing}
+                      onChange={(event) => void openReplay(event)}
+                    />
+                  </label>
+                </>
+              ) : null}
+              {replayNote ? (
+                <span role="status" className="kids-sr-only">
+                  {replayNote}
+                </span>
               ) : null}
             </div>
             {chooser === "actor" ? (
