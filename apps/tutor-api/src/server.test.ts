@@ -92,6 +92,37 @@ describe("tutor HTTP server (issue #348)", () => {
     expect((await post("{}")).status).toBe(400);
     expect((await post(JSON.stringify(input), "https://other.example")).status).toBe(403);
   });
+
+  it("returns one validated Ori proposal without changing the submitted canonical program", async () => {
+    const run: OriCliProcess = async (_bin, args) =>
+      args.includes("--version") ? "version" : '{"type":"turn","degrees":90}';
+    const base = await start({}, undefined, createOriCliService(oriCliConfigFromEnv({}), { run }));
+    const input = createLearningCompanionRequest({
+      capability: "builder",
+      mission: {
+        id: "first-mission.reach-goal",
+        version: 1,
+        concepts: ["sequence"],
+        learningObjective: "reach the goal",
+      },
+      program: request.program,
+      selectedNodeIds: [],
+      runtimeFacts: [],
+      scaffoldHistory: [],
+    });
+    const response = await fetch(`${base}/api/tutor/studio-companion/companion`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: base },
+      body: JSON.stringify(input),
+    });
+    expect(response.status).toBe(200);
+    const answer = await response.json();
+    expect(answer.metadata.provenance).toBe("local-provider");
+    expect(answer.payload.proposal.operations).toEqual([
+      { type: "appendStatement", scriptIndex: 0, statement: { type: "turn", degrees: 90 } },
+    ]);
+    expect(input.program.scripts[0]?.statements).toEqual([{ type: "move", steps: 10 }]);
+  });
   it("opens a proven advanced session and returns a reviewable offline scene idea", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
     const program = (statements: unknown[]) => ({

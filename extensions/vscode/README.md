@@ -43,10 +43,12 @@ Companion and built-in proposal path remains available. The separate
 `/api/tutor/studio/ori` route is for the Kids scene and cannot accept a general
 VS Code project.
 
-This adapter supplies bounded teaching text for explain, debug, challenge and
-reflect. Builder proposals remain deterministic until #1623 completes the
-reviewed Ori proposal flow. #1620 connects all Companion actions to the adapter
-in the learner-facing UI.
+Explicit explain, debug, challenge and reflect actions use this adapter when
+configured and permitted by the shared request budget. The Companion History
+keeps the interpretation beside bounded runtime facts; selecting a turn reveals
+its canonical node. Ori can also propose one bounded move or turn. Studio shows
+the diff and requires the learner to apply, modify or reject it; invalid model
+output falls back to the deterministic proposal.
 
 ## Supported VS Code versions
 

@@ -19,8 +19,13 @@ import {
 
 const project = () =>
   openStoredProject(createStudioStarterProject({ starter: "blank", locale: "en-US" }));
-const validResponse = (): LearningCompanionResponse =>
-  createCompanionTurn(project(), "build").response;
+const validResponse = (): LearningCompanionResponse => {
+  const baseline = createCompanionTurn(project(), "build").response;
+  return {
+    ...baseline,
+    metadata: { ...baseline.metadata, provenance: "local-provider" },
+  } as LearningCompanionResponse;
+};
 
 const allow: StudioRouter = (): StudioRouteResult => ({
   status: "selected",
@@ -69,6 +74,17 @@ function setup(options: {
 }
 
 describe("proposal source", () => {
+  it("does not present server deterministic fallback as an Ori proposal", async () => {
+    const fallback = createCompanionTurn(project(), "build").response;
+    const { source } = setup({
+      route: allow,
+      outcome: { status: "response", response: fallback, locality: "local" },
+    });
+    expect(await source.request(project(), "build")).toMatchObject({
+      origin: "built-in",
+      reason: "unavailable",
+    });
+  });
   it("returns a provider session for a valid builder response", async () => {
     const { source, request } = setup({
       route: allow,

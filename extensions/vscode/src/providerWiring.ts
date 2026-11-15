@@ -10,6 +10,7 @@ import {
 import type { LayaBatchTransport } from "@agorix/learning-decision-plane";
 import { createAgentClient } from "./commands/accounts.js";
 import { createProposalSource, type ProposalSource } from "./studioProposalSource.js";
+import { createTeachingSource } from "./studioTeachingSource.js";
 import type { StudioProviderClient } from "./studioProvider.js";
 
 export interface ProviderWiringOptions {
@@ -48,6 +49,7 @@ export function createPolicyRouter(allowRemote: boolean): StudioRouter {
 
 export function createProviderWiring(options: ProviderWiringOptions): {
   source(): ProposalSource;
+  teaching(): ReturnType<typeof createTeachingSource>;
   client(): StudioProviderClient | undefined;
   ambientPipeline(): StudioPipeline;
 } {
@@ -104,6 +106,10 @@ export function createProviderWiring(options: ProviderWiringOptions): {
     source: () => {
       const { pipeline: active, client } = current();
       return createProposalSource({ pipeline: active, client });
+    },
+    teaching: () => {
+      const { pipeline: active, client } = current();
+      return createTeachingSource({ pipeline: active, client });
     },
     client: () => current().client,
   };
