@@ -1257,6 +1257,7 @@ class Converter {
         (["numericLiteral", "textLiteral", "variable", "textVariable", "listLength"].includes(
           found.value.type,
         ) ||
+          this.numericListProperty(found.value) ||
           (found.value.type === "listItem" &&
             ((found.value.index.type === "numericLiteral" &&
               Number.isInteger(found.value.index.value) &&
