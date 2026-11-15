@@ -4,7 +4,38 @@
 > do not certify Ori's teaching experience in the VS Code extension. Issue
 > #1619 audits that gap in
 > [ORI_STUDIO_VSCODE_INTEGRATION.md](./ORI_STUDIO_VSCODE_INTEGRATION.md);
-> #1622 must add the new journey and evidence before claiming Ori parity.
+> The Ori-specific gate below tracks the new journey and the evidence still
+> required before claiming Ori parity.
+
+## Ori in VS Code: new release gate (#1622)
+
+The historical green matrix below remains a baseline for the original Studio
+capabilities. Ori in the VS Code extension has a separate gate:
+
+| Capability                                     | Implemented                                                   | Visible by default                                         | Experimental or gated                                                                | Evidence                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| Bounded Ori teaching endpoint                  | Yes, when tutor API runs                                      | No; extension endpoint setting is empty by default         | Uses the `studio` server policy and optional local CLI                               | `apps/tutor-api/src/oriStudioCompanion.test.ts`, `server.test.ts`         |
+| Explain, debug, challenge and reflect from Ori | Yes, on explicit action when configured and policy permits    | Deterministic help remains the default without an endpoint | Provider request budget and child-safe validation apply                              | `extensions/vscode/src/studioTeachingSource.test.ts`, `extension.test.ts` |
+| Ori program suggestion                         | One bounded move or turn, wrapped as `ProgramProposal`        | No; requires the configured endpoint                       | Rejected/invalid model output falls back; full creative breadth is later work        | `oriStudioCompanion.test.ts`, `extension.test.ts`                         |
+| Learner review                                 | Diff, accept, reject and numeric modify with a second preview | Yes for any presented proposal                             | Owned project saves still use expected-revision checks; no automatic server mutation | `extensions/vscode/src/extension.test.ts`                                 |
+| Web → Studio → Ori → Web                       | Automated semantic journey                                    | No live deployment proof yet                               | Installed VSIX and real child/educator review remain release gates                   | `extensions/vscode/src/oriCrossSurfaceJourney.test.ts`                    |
+
+Release requires all of the following:
+
+1. The new cross-surface journey, unsafe/invalid response, stale proposal,
+   offline fallback and revision conflict tests pass in CI.
+2. A packaged VSIX is exercised against a test tutor API through the visible
+   Explain/Build/review/Run controls. Unit and in-process HTTP tests alone do
+   not establish this.
+3. A human educator and an appropriate learner review the task script in
+   [`ORI_STUDIO_PEDAGOGICAL_REVIEW.md`](../pedagogy/ORI_STUDIO_PEDAGOGICAL_REVIEW.md).
+   Record observed behavior and concerns without collecting child identity or
+   claiming effectiveness from a small exploratory session.
+4. An independent reviewer checks proposal authorization, privacy, accessibility
+   and failure behavior. CI and human review are both required before rollout.
+
+Current status: automated cross-surface journey exists; packaged VSIX Ori
+journey, human pedagogical evidence and independent review are pending.
 
 Issue #214 is the release gate for Studio as a professional projection of Agorix.
 The gate is intentionally source-controlled: Web and Studio may feel different,
