@@ -308,6 +308,8 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
       (["numericLiteral", "textLiteral", "variable", "textVariable", "listLength"].includes(
         value.value.type,
       ) ||
+        value.value.type === "costumeNumber" ||
+        value.value.type === "backdropNumber" ||
         (value.value.type === "actorProperty" && checkedNumber(value.value, program)) ||
         (value.value.type === "listItem" &&
           ((value.value.index.type === "numericLiteral" &&

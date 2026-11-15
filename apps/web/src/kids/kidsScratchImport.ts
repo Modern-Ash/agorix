@@ -1257,6 +1257,8 @@ class Converter {
         (["numericLiteral", "textLiteral", "variable", "textVariable", "listLength"].includes(
           found.value.type,
         ) ||
+          found.value.type === "costumeNumber" ||
+          found.value.type === "backdropNumber" ||
           this.numericListProperty(found.value) ||
           (found.value.type === "listItem" &&
             ((found.value.index.type === "numericLiteral" &&
