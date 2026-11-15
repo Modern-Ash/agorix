@@ -211,6 +211,8 @@ function finiteSmallNumber(value: unknown): value is number {
 }
 
 function checkedSimpleJoinSearchOperand(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "textLength" || value.type === "letterOf")
+    return checkedStudioIndex(value, program);
   if (value.type === "costumeNumber" || value.type === "backdropNumber") return true;
   if (value.type === "actorProperty") return checkedNumber(value, program);
   if (value.type === "listLength")

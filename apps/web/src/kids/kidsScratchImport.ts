@@ -239,6 +239,7 @@ function isSimpleJoinSearch(
   if (value.type !== "join") return false;
   const simple = (item: Expression): boolean => {
     if (item.type === "listLength") return true;
+    if (item.type === "textLength" || item.type === "letterOf") return isSimpleTextIndex(item);
     if (item.type === "costumeNumber" || item.type === "backdropNumber") return true;
     if (numericProperty(item)) return true;
     if (item.type === "listItem")
