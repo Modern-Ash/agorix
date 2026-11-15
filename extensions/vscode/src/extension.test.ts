@@ -746,8 +746,10 @@ describe("Studio extension wiring", () => {
       const original = new TextDecoder().decode(files.get("/p/ori-help.json"));
       await handlers.get("agorixStudio.run")!();
       const turn = await handlers.get("agorixStudio.companionExplain")!();
-      expect(turn?.message).toContain("runtime position");
-      expect(turn?.diagnostics.providerSelection).toBe("provider");
+      expect(turn).toMatchObject({
+        message: expect.stringContaining("runtime position"),
+        diagnostics: { providerSelection: "provider" },
+      });
       expect(calls.some((url) => url.endsWith("/companion"))).toBe(true);
       expect(new TextDecoder().decode(files.get("/p/ori-help.json"))).toBe(original);
     } finally {
