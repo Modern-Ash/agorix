@@ -55,6 +55,42 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("sends project costume and backdrop art alongside the built-in catalog", async () => {
+    const { host, port, metadata } = setup();
+    await port.commitMetadata(
+      {
+        ...metadata(),
+        assets: [
+          {
+            id: "costume:nova",
+            kind: "costume",
+            name: "Nova",
+            source: "builtin:kids-gallery-costume:nova",
+          },
+          {
+            id: "backdrop:moon",
+            kind: "backdrop",
+            name: "Moon",
+            source: "builtin:kids-gallery-backdrop:moon",
+          },
+        ],
+      },
+      "test fixture",
+    );
+    const assets = host.snapshot().find((message) => message.type === "assets");
+    expect(assets).toMatchObject({
+      assets: expect.arrayContaining([
+        expect.objectContaining({
+          id: "costume:nova",
+          source: "builtin:kids-gallery-costume:nova",
+        }),
+        expect.objectContaining({
+          id: "backdrop:moon",
+          source: "builtin:kids-gallery-backdrop:moon",
+        }),
+      ]),
+    });
+  });
   it("answers ready with the workspace and hash, or nothing without a project", async () => {
     const { host } = setup();
     expect(await host.handle({ schema, type: "ready" })).toMatchObject([

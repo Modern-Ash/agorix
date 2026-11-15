@@ -14,6 +14,7 @@ import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js
 import { locationKey } from "./blockView.js";
 import { Palette } from "./Palette.js";
 import { densityAnnouncement } from "./density.js";
+import { imageForAsset, imageForId } from "./visualArt.js";
 import { AgentPanel } from "./AgentPanel.js";
 import { copyFor, normalizeStudioUiLocale, type StudioUiLocale } from "./i18n.js";
 import {
@@ -320,6 +321,7 @@ export function StagePanel({
 }) {
   const state = frame?.state;
   const assetNames = new Map(assets.map((asset) => [asset.id, asset.name]));
+  const backdropImage = imageForId(state?.backdropId, assets);
   const visibleVariables = (state?.variables ?? []).filter((variable) => variable.visible);
   const activeSoundIds = state?.sounds?.activeSoundIds ?? [];
   const stageActors =
@@ -372,6 +374,9 @@ export function StagePanel({
               data-backdrop-id={state.backdropId ?? "default"}
               aria-hidden="true"
             />
+            {backdropImage === undefined ? null : (
+              <img className="stage-art-backdrop" src={backdropImage} alt="" aria-hidden="true" />
+            )}
             <div className="stage-grid" aria-hidden="true" />
             <div
               className={frame?.reachedGoal ? "stage-goal reached" : "stage-goal"}
@@ -382,7 +387,8 @@ export function StagePanel({
             {stageActors
               .filter((actor) => actor.visible)
               .map((actor) => {
-                const size = Math.max(14, Math.min(42, Math.round((actor.size / 100) * 22)));
+                const size = Math.max(28, Math.min(110, Math.round((actor.size / 100) * 48)));
+                const costumeImage = imageForId(actor.costumeId ?? "asset:costume.default", assets);
                 return (
                   <div
                     key={actor.id}
@@ -400,6 +406,14 @@ export function StagePanel({
                     role="img"
                     aria-label={`${copy.stageSprite} ${actor.name}: x ${actor.x}, y ${actor.y}, ${copy.actorDirection} ${actor.direction}${actor.costumeId === undefined ? "" : `, ${copy.actorCostume} ${assetNames.get(actor.costumeId) ?? actor.costumeId}`}`}
                   >
+                    {costumeImage === undefined ? null : (
+                      <img
+                        className="stage-art-sprite"
+                        src={costumeImage}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    )}
                     {actor.bubble === undefined ? null : (
                       <span className={`stage-bubble stage-bubble-${actor.bubble.kind}`}>
                         {actor.bubble.text}
@@ -652,7 +666,11 @@ export function AssetPanel({
         {filteredAssets.map((asset) => (
           <article key={asset.id} className="asset-row">
             <div className="asset-preview" aria-hidden="true">
-              {asset.kind.slice(0, 2).toUpperCase()}
+              {imageForAsset(asset) === undefined ? (
+                asset.kind.slice(0, 2).toUpperCase()
+              ) : (
+                <img src={imageForAsset(asset)} alt="" />
+              )}
             </div>
             <div>
               <h3>{asset.name}</h3>

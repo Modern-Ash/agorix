@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
+import { SCHEMA_VERSION } from "@agorix/program-model";
 import {
   STUDIO_PROTOCOL_VERSION,
   normalizeDensityPreference,
@@ -14,7 +15,11 @@ import { workbenchHtml, type WorkbenchLocale } from "./workbenchHtml.js";
 import { createAgentHost, type AgentHost, type AgentPort } from "./agentHost.js";
 import type { SyncHub } from "../sync/syncHub.js";
 import { createWorkbenchHost, type HostPort, type WorkbenchHost } from "./workbenchHost.js";
-import type { StudioExecutionViewState } from "../studioCore.js";
+import {
+  createExecutionEvidence,
+  createExecutionViewState,
+  type StudioExecutionViewState,
+} from "../studioCore.js";
 
 const VIEW_TYPE = "agorixStudio.workbench";
 let panel: vscode.WebviewPanel | undefined;
@@ -23,12 +28,14 @@ let agent: AgentHost | undefined;
 let blockCounter = 0;
 let currentHub: SyncHub | undefined;
 let currentExecutionView: (() => StudioExecutionViewState | undefined) | undefined;
+let currentPort: HostPort | undefined;
 let unsubscribeSync: (() => void) | undefined;
 
 let lastDensity: Density | undefined;
 let configListener: vscode.Disposable | undefined;
 
 function clearWorkbenchState(): void {
+  currentPort = undefined;
   configListener?.dispose();
   configListener = undefined;
   lastDensity = undefined;
@@ -126,6 +133,20 @@ function executionMessages(view: unknown): HostMessage[] {
   return messages;
 }
 
+function initialStageMessages(port: HostPort): HostMessage[] {
+  const program = port.getProgram();
+  const metadata = port.getMetadata();
+  if (program === undefined || metadata === undefined) return [];
+  try {
+    const evidence = createExecutionEvidence({ schemaVersion: SCHEMA_VERSION, program, metadata });
+    return executionMessages(createExecutionViewState(evidence, 0, "idle")).filter(
+      (message) => message.type === "stageFrame",
+    );
+  } catch {
+    return [];
+  }
+}
+
 export function openWorkbenchPanel(
   context: vscode.ExtensionContext,
   port: HostPort,
@@ -177,6 +198,7 @@ export function attachWorkbenchPanel(
   agent = createAgentHost(agentPort);
   currentHub = hub;
   currentExecutionView = executionView;
+  currentPort = port;
   unsubscribeSync = hub.subscribe((state) => {
     if (host !== undefined) void send(host.syncMessage(state));
   });
@@ -211,7 +233,11 @@ export function attachWorkbenchPanel(
         await send(await workbench.handle(message));
         await send(agentHost.snapshot());
         await send(workbench.syncMessage(hub.getState()));
-        await send(executionMessages(executionView()));
+        await send(
+          executionView() === undefined
+            ? initialStageMessages(port)
+            : executionMessages(executionView()),
+        );
         await pushDensity("setting", true);
         return;
       }
@@ -243,7 +269,11 @@ export function refreshWorkbench(): void {
       ...host.snapshot(),
       ...agent.onProgramChanged(),
       ...(currentHub === undefined ? [] : host.syncMessage(currentHub.getState())),
-      ...executionMessages(currentExecutionView?.()),
+      ...(currentExecutionView?.() === undefined
+        ? currentPort === undefined
+          ? []
+          : initialStageMessages(currentPort)
+        : executionMessages(currentExecutionView?.())),
     ];
     void send(messages).then(() => pushDensity("auto"));
   }

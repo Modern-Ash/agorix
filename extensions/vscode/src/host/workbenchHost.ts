@@ -5,12 +5,17 @@ import {
   programToWorkspace,
 } from "@agorix/block-editor";
 import { intentToChange, type AgentAnchorRef, type AgentVerb } from "@agorix/interaction-core";
-import { ProgramValidationError, type ProjectProgram } from "@agorix/program-model";
+import {
+  ProgramValidationError,
+  validEmbeddedImageSource,
+  type ProjectProgram,
+} from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
 import {
   STUDIO_PROTOCOL_VERSION,
   type ActorPatch,
   type ActorView,
+  type AssetView,
   type ChangeRefusalReason,
   type ExperienceFacts,
   type HostMessage,
@@ -98,6 +103,26 @@ function knownCostumeIds(metadata: ProjectMetadata): ReadonlySet<string> {
       .filter((asset) => asset.kind === "costume")
       .map((asset) => asset.id),
   );
+}
+
+function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
+  const catalog = studioAssetCatalog();
+  const catalogIds = new Set(catalog.map((asset) => asset.id));
+  return [
+    ...catalog,
+    ...(metadata.assets ?? [])
+      .filter((asset) => !catalogIds.has(asset.id))
+      .map((asset): AssetView => ({
+        id: asset.id,
+        name: asset.name,
+        kind: asset.kind,
+        tags: asset.tags ?? [],
+        ...(/^builtin:kids-gallery-(costume|backdrop):[a-z]+$/.test(asset.source) ||
+        validEmbeddedImageSource(asset.source)
+          ? { source: asset.source }
+          : {}),
+      })),
+  ];
 }
 
 function knownAssetIds(
@@ -238,7 +263,14 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       return [
         { schema, type: "workspace", workspace, programHash: programSemanticHash(program) },
         ...actorsMessage(),
-        { schema, type: "assets", assets: studioAssetCatalog() },
+        {
+          schema,
+          type: "assets",
+          assets:
+            port.getMetadata() === undefined
+              ? studioAssetCatalog()
+              : assetsForMetadata(port.getMetadata()!),
+        },
         ...validationMessage(),
         ...missionSpecMessage(),
       ];

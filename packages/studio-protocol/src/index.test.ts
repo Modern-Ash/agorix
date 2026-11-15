@@ -6,6 +6,32 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("accepts only bounded local image sources in asset messages", () => {
+    const asset = {
+      id: "costume:nova",
+      name: "Nova",
+      kind: "costume",
+      tags: [],
+      source: "builtin:kids-gallery-costume:nova",
+    };
+    expect(parseHostMessage({ schema, type: "assets", assets: [asset] })).toMatchObject({
+      assets: [asset],
+    });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "assets",
+        assets: [{ ...asset, source: "https://example.com/x.png" }],
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "assets",
+        assets: [{ ...asset, source: "data:image/svg+xml,<script/>" }],
+      }),
+    ).toBeUndefined();
+  });
   it("round-trips well-formed ui messages", () => {
     const intent = {
       type: "moveBlock",

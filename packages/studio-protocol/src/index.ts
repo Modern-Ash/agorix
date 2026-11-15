@@ -22,6 +22,7 @@ import type {
   BlockWorkspaceSnapshot,
 } from "@agorix/block-editor";
 import { isSafeId, parseAnchorRef, type Intent } from "@agorix/interaction-core";
+import { validEmbeddedImageSource } from "@agorix/program-model";
 
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
@@ -302,6 +303,8 @@ export interface AssetView {
   readonly height?: number;
   readonly durationMs?: number;
   readonly preview?: string;
+  /** Validated built-in art reference or bounded PNG/WebP project image; never a remote URL. */
+  readonly source?: string;
 }
 
 export type ValidationIssueSeverity = "warning" | "error";
@@ -795,6 +798,16 @@ function parseAsset(value: unknown): AssetView | undefined {
     if (value[key] !== undefined && !isIndex(value[key])) return undefined;
   }
   if (value["preview"] !== undefined && typeof value["preview"] !== "string") return undefined;
+  const source = value["source"];
+  if (
+    source !== undefined &&
+    !(
+      (typeof source === "string" &&
+        /^builtin:kids-gallery-(costume|backdrop):[a-z]+$/.test(source)) ||
+      validEmbeddedImageSource(source)
+    )
+  )
+    return undefined;
   return {
     id: value["id"],
     name: value["name"],
@@ -804,6 +817,7 @@ function parseAsset(value: unknown): AssetView | undefined {
     ...(value["height"] === undefined ? {} : { height: value["height"] as number }),
     ...(value["durationMs"] === undefined ? {} : { durationMs: value["durationMs"] as number }),
     ...(value["preview"] === undefined ? {} : { preview: value["preview"] }),
+    ...(source === undefined ? {} : { source: source as string }),
   };
 }
 

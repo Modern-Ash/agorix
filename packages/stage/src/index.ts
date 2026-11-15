@@ -52,3 +52,20 @@ export type {
   StageRunStatus,
 } from "./feedback.js";
 export { deriveStageFeedback, resolveStageMotion } from "./feedback.js";
+export {
+  KIDS_GALLERY_CHARACTERS,
+  KIDS_GALLERY_BACKDROPS,
+  KIDS_GALLERY_CATEGORIES,
+  galleryCategoryName,
+  galleryCharacterArt,
+  galleryBackdropArt,
+  galleryCharacterName,
+  galleryBackdropName,
+  isGalleryCharacterId,
+  isGalleryBackdropId,
+} from "./galleryArt.js";
+export type {
+  KidsGalleryCharacterId,
+  KidsGalleryBackdropId,
+  KidsGalleryCategory,
+} from "./galleryArt.js";

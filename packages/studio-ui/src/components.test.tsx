@@ -17,6 +17,7 @@ import { densityAnnouncement } from "./density.js";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, parseDragPayload } from "./drag.js";
 import { copyFor } from "./i18n.js";
+import { imageForAsset, imageForId } from "./visualArt.js";
 
 const program = {
   schema: "agorix/program/v1",
@@ -35,6 +36,32 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("renders shared gallery art and rejects remote or unknown image sources", () => {
+    const costume = {
+      id: "costume:nova",
+      name: "Nova",
+      kind: "costume" as const,
+      tags: [],
+      source: "builtin:kids-gallery-costume:nova",
+    };
+    const backdrop = {
+      id: "backdrop:moon",
+      name: "Moon",
+      kind: "backdrop" as const,
+      tags: [],
+      source: "builtin:kids-gallery-backdrop:moon",
+    };
+    expect(imageForAsset(costume)).toMatch(/^data:image\/svg\+xml,/);
+    expect(imageForId("backdrop:moon", [backdrop])).toMatch(/^data:image\/svg\+xml,/);
+    expect(imageForAsset({ ...costume, source: "https://example.com/child.png" })).toBeUndefined();
+    expect(
+      imageForAsset({ ...costume, source: "builtin:kids-gallery-costume:unknown" }),
+    ).toBeUndefined();
+    const markup = renderToStaticMarkup(
+      <AssetPanel copy={copyFor("en")} assets={[costume, backdrop]} />,
+    );
+    expect(markup.match(/<img/g)).toHaveLength(2);
+  });
   it("renders Workbench density as host-controlled data, not inline styles", () => {
     const html = renderToStaticMarkup(
       <Workbench
@@ -217,6 +244,8 @@ describe("studio-ui", () => {
     expect(markup).toContain("stage-sprite selected");
     expect(markup).toContain('data-backdrop-id="asset:space.nebula"');
     expect(markup).toContain('data-costume-id="asset:costume.spark"');
+    expect(markup).toContain('class="stage-art-backdrop"');
+    expect(markup).toContain('class="stage-art-sprite"');
     expect(markup).toContain("Go Nova");
     expect(markup).toContain("Sprite Helper");
     expect(markup).toContain("actor:helper · helper · move");

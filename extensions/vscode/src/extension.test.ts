@@ -507,6 +507,7 @@ describe("Studio extension wiring", () => {
     const sent = workbenchPanel()?.messages as { type: string }[];
     expect(sent.some((message) => message.type === "workspace")).toBe(true);
     expect(sent.some((message) => message.type === "actors")).toBe(true);
+    expect(sent.some((message) => message.type === "stageFrame")).toBe(true);
     expect(sent.some((message) => message.type === "assets")).toBe(true);
     expect(sent.some((message) => message.type === "validation")).toBe(true);
     expect(sent.some((message) => message.type === "sync")).toBe(true);
