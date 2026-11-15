@@ -893,71 +893,88 @@ export function Workbench({
 
   return (
     <div className="workbench" data-density={layout}>
-      <Palette copy={copy} onAdd={add} />
-      <main>
-        <ExecutionToolbar
-          copy={copy}
-          disabled={workspace === undefined}
-          playing={playing}
-          state={execution}
-          onCommand={execute}
-        />
-        <StagePanel
-          copy={copy}
-          frame={stageFrame}
-          assets={assets}
-          selectedActorId={selectedActorId}
-        />
-        <MissionSpecPanel copy={copy} spec={missionSpec} onSave={updateMissionSpec} />
-        <EventTracePanel copy={copy} state={execution} selectedActorId={selectedActorId} />
-        <ActorTree
-          copy={copy}
-          actors={actors?.actors ?? []}
-          selectedActorId={selectedActorId}
-          onSelect={setSelectedActorId}
-        />
-        <ActorInspector
-          copy={copy}
-          actors={actors?.actors ?? []}
-          assets={assets}
-          selectedActorId={selectedActorId}
-          onPatch={updateActor}
-        />
-        <ValidationPanel copy={copy} issues={validationIssues} />
-        <AssetPanel copy={copy} assets={assets} />
-        {workspace === undefined ? (
-          <p>{copy.openProjectToStart}</p>
-        ) : (
-          <Canvas
+      <header className="studio-banner">
+        <span>{copy.ideEyebrow}</span>
+        <h1>{copy.ideTitle}</h1>
+        <p>{copy.ideSubtitle}</p>
+      </header>
+      <section className="studio-tools" aria-label={copy.toolsTitle}>
+        <h2>{copy.toolsTitle}</h2>
+        <Palette copy={copy} onAdd={add} />
+      </section>
+      <main className="studio-main">
+        <section className="studio-program" aria-label={copy.canvasLabel}>
+          <h2>{copy.canvasLabel}</h2>
+          {workspace === undefined ? (
+            <p>{copy.openProjectToStart}</p>
+          ) : (
+            <Canvas
+              copy={copy}
+              workspace={workspace}
+              onIntent={post}
+              onAnnounce={announce}
+              focusRequest={focusRequest}
+              ghosts={agentUi.proposal === undefined ? undefined : anchored.ghosts}
+              sync={sync}
+              hints={
+                agentUi.proposal === undefined
+                  ? agentUi.help?.blockIds !== undefined
+                    ? {
+                        hints: Object.fromEntries(
+                          agentUi.help.blockIds.map((id) => [id, copy.helpLookHere]),
+                        ),
+                        skipped: [],
+                      }
+                    : ambientHint?.blockId === undefined
+                      ? undefined
+                      : { hints: { [ambientHint.blockId]: ambientHint.label }, skipped: [] }
+                  : { hints: anchored.hints, skipped: anchored.skipped }
+              }
+              ambientHint={agentUi.proposal === undefined ? ambientHint : undefined}
+            />
+          )}
+          <div className="zones">
+            <AgentZone verb="explain" label={copy.zoneExplain} onIntent={post} />
+            <AgentZone verb="debug" label={copy.zoneDebug} onIntent={post} />
+            <AgentZone verb="challenge" label={copy.zoneChallenge} onIntent={post} />
+          </div>
+        </section>
+        <section className="studio-evidence" aria-label={copy.evidenceTitle}>
+          <h2>{copy.evidenceTitle}</h2>
+          <ExecutionToolbar
             copy={copy}
-            workspace={workspace}
-            onIntent={post}
-            onAnnounce={announce}
-            focusRequest={focusRequest}
-            ghosts={agentUi.proposal === undefined ? undefined : anchored.ghosts}
-            sync={sync}
-            hints={
-              agentUi.proposal === undefined
-                ? agentUi.help?.blockIds !== undefined
-                  ? {
-                      hints: Object.fromEntries(
-                        agentUi.help.blockIds.map((id) => [id, copy.helpLookHere]),
-                      ),
-                      skipped: [],
-                    }
-                  : ambientHint?.blockId === undefined
-                    ? undefined
-                    : { hints: { [ambientHint.blockId]: ambientHint.label }, skipped: [] }
-                : { hints: anchored.hints, skipped: anchored.skipped }
-            }
-            ambientHint={agentUi.proposal === undefined ? ambientHint : undefined}
+            disabled={workspace === undefined}
+            playing={playing}
+            state={execution}
+            onCommand={execute}
           />
-        )}
-        <div className="zones">
-          <AgentZone verb="explain" label={copy.zoneExplain} onIntent={post} />
-          <AgentZone verb="debug" label={copy.zoneDebug} onIntent={post} />
-          <AgentZone verb="challenge" label={copy.zoneChallenge} onIntent={post} />
-        </div>
+          <StagePanel
+            copy={copy}
+            frame={stageFrame}
+            assets={assets}
+            selectedActorId={selectedActorId}
+          />
+          <EventTracePanel copy={copy} state={execution} selectedActorId={selectedActorId} />
+          <ValidationPanel copy={copy} issues={validationIssues} />
+        </section>
+        <details className="studio-details">
+          <summary>{copy.detailsTitle}</summary>
+          <MissionSpecPanel copy={copy} spec={missionSpec} onSave={updateMissionSpec} />
+          <ActorTree
+            copy={copy}
+            actors={actors?.actors ?? []}
+            selectedActorId={selectedActorId}
+            onSelect={setSelectedActorId}
+          />
+          <ActorInspector
+            copy={copy}
+            actors={actors?.actors ?? []}
+            assets={assets}
+            selectedActorId={selectedActorId}
+            onPatch={updateActor}
+          />
+          <AssetPanel copy={copy} assets={assets} />
+        </details>
         <div className="status" role="status" aria-live="polite">
           {status}
         </div>

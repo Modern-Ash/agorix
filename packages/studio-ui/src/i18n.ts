@@ -8,7 +8,15 @@ export function normalizeStudioUiLocale(value: unknown): StudioUiLocale {
 
 export const COPY = {
   en: {
-    agentLabel: "Agent",
+    agentLabel: "Ori learning companion",
+    oriTitle: "Ori",
+    oriSubtitle: "Think through the next step together",
+    ideEyebrow: "AGORIX STUDIO / ADVANCED",
+    ideTitle: "Make something. Prove it works.",
+    ideSubtitle: "Your code stays yours. Ori helps you reason; the runtime shows what happened.",
+    toolsTitle: "Building blocks",
+    evidenceTitle: "Run & evidence",
+    detailsTitle: "Project details",
     blocksLabel: "Blocks",
     canvasLabel: "Program",
     openProject: "Open a project to start building.",
@@ -285,7 +293,15 @@ export const COPY = {
     },
   },
   es: {
-    agentLabel: "Agente",
+    agentLabel: "Ori, compañero de aprendizaje",
+    oriTitle: "Ori",
+    oriSubtitle: "Pensemos juntos el próximo paso",
+    ideEyebrow: "AGORIX STUDIO / AVANZADO",
+    ideTitle: "Creá. Ejecutá. Comprobá.",
+    ideSubtitle: "El código es tuyo. Ori te ayuda a razonar; el runtime muestra qué pasó.",
+    toolsTitle: "Bloques para crear",
+    evidenceTitle: "Ejecución y evidencia",
+    detailsTitle: "Detalles del proyecto",
     blocksLabel: "Bloques",
     canvasLabel: "Programa",
     openProject: "Abri un proyecto para empezar a construir.",

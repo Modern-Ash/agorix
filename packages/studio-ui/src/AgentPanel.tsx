@@ -385,6 +385,15 @@ export function AgentPanel({
   const showIntent = stage === undefined || stage === "intent" || stage === "done";
   return (
     <aside className="agent" aria-label={copy.agentLabel}>
+      <header className="ori-header">
+        <span className="ori-mark" aria-hidden="true">
+          ✦
+        </span>
+        <div>
+          <h2>{copy.oriTitle}</h2>
+          <p>{copy.oriSubtitle}</p>
+        </div>
+      </header>
       <Agreements agreements={state.agreements} send={post} copy={copy} />
       <Ribbon stage={stage} copy={copy} />
       {showIntent && (

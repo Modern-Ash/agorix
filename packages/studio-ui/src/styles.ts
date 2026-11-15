@@ -162,5 +162,34 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .sync-badge { margin-left: 8px; font-weight: 600; }
 .fail-badge { color: var(--vscode-errorForeground); }
 .block.ghost-removed .label { text-decoration: line-through; }
+/* Advanced Studio: the program is the desk, Ori is a companion, evidence is the bench below. */
+.workbench { grid-template-columns: minmax(150px, 190px) minmax(320px, 1fr) minmax(270px, 340px); gap: 14px; align-items: start; min-height: 100vh; box-sizing: border-box; background: var(--vscode-editor-background); }
+.workbench[data-density="compact"] { grid-template-columns: minmax(140px, 170px) minmax(320px, 1fr) minmax(250px, 300px); gap: 10px; }
+.studio-banner { grid-column: 1 / -1; display: grid; gap: 4px; padding: 18px 20px 16px; border: 1px solid var(--vscode-panel-border); border-left: 4px solid var(--vscode-charts-purple, var(--vscode-focusBorder)); background: linear-gradient(110deg, color-mix(in srgb, var(--vscode-charts-purple, var(--vscode-focusBorder)), transparent 90%), var(--vscode-editorWidget-background)); }
+.studio-banner span { color: var(--vscode-descriptionForeground); font: 600 0.72em var(--vscode-editor-font-family); letter-spacing: 0.12em; }
+.studio-banner h1 { margin: 0; font-size: clamp(1.25em, 2vw, 1.7em); line-height: 1.2; letter-spacing: -0.025em; }
+.studio-banner p { margin: 0; max-width: 70ch; color: var(--vscode-descriptionForeground); }
+.studio-tools, .studio-program, .studio-evidence, .studio-details, .agent { min-width: 0; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
+.studio-tools { padding: 12px; }
+.studio-tools h2, .studio-program h2, .studio-evidence h2 { margin: 0 0 12px; color: var(--vscode-foreground); font-size: 0.8em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.studio-main { display: grid; gap: 14px; min-width: 0; }
+.studio-program { padding: 16px; border-top: 3px solid var(--vscode-focusBorder); }
+.studio-program .canvas { min-height: 180px; }
+.studio-program .zones { margin-top: 14px; }
+.studio-evidence { padding: 14px; border-top: 3px solid var(--vscode-charts-blue, var(--vscode-focusBorder)); }
+.studio-evidence .stage-panel { margin-bottom: 10px; }
+.studio-details { padding: 10px 14px; }
+.studio-details summary { cursor: pointer; font-weight: 600; }
+.studio-details summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
+.studio-details[open] summary { margin-bottom: 14px; }
+.agent { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; padding: 0 14px 16px; border-top: 3px solid var(--vscode-charts-purple, var(--vscode-focusBorder)); }
+.ori-header { display: flex; align-items: center; gap: 10px; margin: 0 -14px 4px; padding: 16px 14px; border-bottom: 1px solid var(--vscode-panel-border); background: color-mix(in srgb, var(--vscode-charts-purple, var(--vscode-focusBorder)), transparent 91%); }
+.ori-header h2 { margin: 0; font-size: 1.2em; line-height: 1.1; }
+.ori-header p { margin: 4px 0 0; color: var(--vscode-descriptionForeground); font-size: 0.84em; }
+.ori-mark { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border: 1px solid var(--vscode-charts-purple, var(--vscode-focusBorder)); border-radius: 10px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 1.25em; }
+.workbench[data-density="compact"] .studio-banner { padding: 12px 14px; }
+.workbench[data-density="compact"] .studio-program, .workbench[data-density="compact"] .studio-evidence { padding: 10px; }
+@media (max-width: 1050px) { .workbench, .workbench[data-density="compact"] { grid-template-columns: minmax(0, 1fr) minmax(250px, 0.8fr); } .studio-banner { grid-column: 1 / -1; } .studio-tools { grid-column: 1 / -1; } .studio-tools .palette { display: flex; flex-flow: row wrap; align-items: flex-start; gap: 12px; } .studio-tools .palette-search { min-width: 160px; } .studio-tools .palette-section { min-width: 130px; } .agent { grid-column: 2; grid-row: 3; } }
+@media (max-width: 650px) { .workbench, .workbench[data-density="compact"] { grid-template-columns: minmax(0, 1fr); } .studio-banner, .studio-tools, .studio-main, .agent { grid-column: 1; } .agent { grid-row: auto; position: static; max-height: none; } }
 @media (prefers-reduced-motion: reduce) { .slot, .stage-goal, .stage-sprite { transition: none; } }
 `;
