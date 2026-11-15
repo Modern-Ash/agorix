@@ -11,8 +11,10 @@ native code projection stays in the neighboring editor tab, one click away.
 The VS Code primary sidebar and bottom panel close for this project-opening
 flow; learners can reopen them with standard VS Code controls. The Workbench
 puts the editable canonical program first, Ori at the right, and execution
-evidence below the program. The block palette is a closed disclosure by
-default; mission, actors and assets also live in a disclosure section. The
+evidence below the program. The block palette is a visible toolbox with
+drag handles, a click-to-add path and visible insertion targets while dragging.
+An empty script shows its insertion target immediately. Mission, actors and
+assets live in a disclosure section. The
 separate World Preview remains available on demand.
 
 The interface takes inspiration from the project/editor/agent division and

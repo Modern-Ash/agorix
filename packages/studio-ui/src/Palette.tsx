@@ -78,7 +78,8 @@ export function Palette({
                   event.dataTransfer.effectAllowed = "copy";
                 }}
               >
-                {label}
+                <span className="palette-grip" aria-hidden="true" />
+                <span>{label}</span>
               </button>
             );
           })}

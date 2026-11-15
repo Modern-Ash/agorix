@@ -53,9 +53,9 @@ describe("studio-ui", () => {
     expect(html).toContain('class="studio-evidence"');
     expect(html).toContain('class="ori-header"');
     expect(html).toContain('class="studio-tools"');
-    expect(html).toContain("<summary>Bloques para crear</summary>");
-    expect(html.indexOf('class="studio-tools"')).toBeGreaterThan(
-      html.indexOf('class="ori-header"'),
+    expect(html).toContain("Arrastrá al programa o hacé clic para agregar.");
+    expect(html.indexOf('class="studio-tools"')).toBeLessThan(
+      html.indexOf('class="studio-program"'),
     );
     expect(html.indexOf('class="studio-program"')).toBeLessThan(
       html.indexOf('class="studio-evidence"'),

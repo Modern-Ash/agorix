@@ -163,24 +163,43 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .fail-badge { color: var(--vscode-errorForeground); }
 .block.ghost-removed .label { text-decoration: line-through; }
 /* Advanced Studio: the program is the desk, Ori is a companion, evidence is the bench below. */
-.workbench { grid-template-columns: minmax(0, 1fr) minmax(270px, 320px); gap: 12px; align-items: start; min-height: 100vh; box-sizing: border-box; background: var(--vscode-editor-background); }
-.workbench[data-density="compact"] { grid-template-columns: minmax(0, 1fr) minmax(250px, 290px); gap: 8px; }
+.workbench { grid-template-columns: minmax(150px, 170px) minmax(0, 1fr) minmax(240px, 260px); gap: 10px; align-items: start; min-height: 100vh; box-sizing: border-box; background: var(--vscode-editor-background); }
+.workbench[data-density="compact"] { grid-template-columns: minmax(150px, 175px) minmax(0, 1fr) minmax(240px, 270px); gap: 8px; }
 .studio-banner { grid-column: 1 / -1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 10px 14px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
 .studio-banner span { color: var(--vscode-descriptionForeground); font: 600 0.72em var(--vscode-editor-font-family); letter-spacing: 0.12em; }
 .studio-banner h1 { margin: 0; font-size: 1.15em; line-height: 1.2; letter-spacing: -0.02em; }
 .studio-banner p { margin: 0; max-width: 70ch; color: var(--vscode-descriptionForeground); }
 .studio-tools, .studio-program, .studio-evidence, .studio-details, .agent { min-width: 0; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
-.studio-tools { grid-column: 1 / -1; padding: 10px 14px; }
-.studio-tools summary { cursor: pointer; font-weight: 600; }
-.studio-tools summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
-.studio-tools[open] summary { margin-bottom: 12px; }
-.studio-tools .palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; }
-.studio-tools .palette-search { grid-column: 1 / -1; }
+.studio-tools { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; border-top: 3px solid var(--vscode-charts-green, var(--vscode-focusBorder)); }
+.studio-tools h2 { margin: 0 0 5px; font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; }
+.studio-tools > p { margin: 0 0 12px; color: var(--vscode-descriptionForeground); font-size: 0.82em; line-height: 1.35; }
+.studio-tools .palette { display: flex; flex-direction: column; gap: 8px; }
+.studio-tools .palette-section { gap: 5px; }
+.studio-tools .palette button { display: flex; align-items: center; gap: 8px; cursor: grab; }
+.studio-tools .palette button:active { cursor: grabbing; }
+.studio-tools .palette button:disabled { cursor: not-allowed; }
+.palette-grip { flex: 0 0 8px; color: var(--vscode-descriptionForeground); }
+.palette-grip::before { content: "⋮⋮"; }
+.studio-tools .palette-search { margin-bottom: 4px; }
 .studio-program h2, .studio-evidence h2 { margin: 0 0 12px; color: var(--vscode-foreground); font-size: 0.8em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .studio-main { display: grid; gap: 14px; min-width: 0; }
-.studio-program { padding: 16px; border-top: 3px solid var(--vscode-focusBorder); }
-.studio-program .canvas { min-height: 180px; }
+.studio-program { min-height: 340px; padding: 16px; border-top: 3px solid var(--vscode-focusBorder); box-sizing: border-box; }
+.studio-program .canvas { min-height: 220px; }
+.studio-program .block { min-height: 38px; box-sizing: border-box; cursor: grab; }
+.studio-program .block:active { cursor: grabbing; }
+.studio-program .block::before { content: "⋮⋮"; flex: 0 0 12px; color: var(--vscode-descriptionForeground); font-size: 0.85em; }
+.studio-program .block .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-program .block button { flex: 0 0 26px; min-width: 26px; min-height: 28px; padding: 2px; text-align: center; font-size: 1.05em; }
+.studio-program .slot { display: grid; place-items: center; height: 16px; border-top: 1px dashed var(--vscode-panel-border); border-radius: 4px; color: var(--vscode-descriptionForeground); box-sizing: border-box; }
+.studio-program .slot span { visibility: hidden; font-size: 0.8em; }
+.studio-program .slot.is-empty { height: 72px; margin: 8px 0; border: 1px dashed var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 94%); }
+.studio-program .slot.is-empty span { visibility: visible; }
+.workbench[data-dragging="true"] .studio-program .slot { height: 36px; border: 1px dashed var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 93%); }
+.workbench[data-dragging="true"] .studio-program .slot span { visibility: visible; }
+.studio-program .slot.drag-over, .workbench[data-dragging="true"] .studio-program .slot.drag-over { height: 42px; border: 2px solid var(--vscode-focusBorder); background: var(--vscode-list-hoverBackground); }
 .studio-program .zones { margin-top: 14px; }
+.studio-program .zone-hint { margin: 14px 0 0; color: var(--vscode-descriptionForeground); font-size: 0.84em; }
+.studio-program .zones { margin-top: 6px; }
 .studio-evidence { padding: 14px; border-top: 3px solid var(--vscode-charts-blue, var(--vscode-focusBorder)); }
 .studio-evidence .stage-panel { margin-bottom: 10px; }
 .studio-details { padding: 10px 14px; }
@@ -194,6 +213,7 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .ori-mark { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border: 1px solid var(--vscode-charts-purple, var(--vscode-focusBorder)); border-radius: 10px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 1.25em; }
 .workbench[data-density="compact"] .studio-banner { padding: 8px 12px; }
 .workbench[data-density="compact"] .studio-program, .workbench[data-density="compact"] .studio-evidence { padding: 10px; }
+@media (max-width: 850px) { .workbench, .workbench[data-density="compact"] { grid-template-columns: minmax(0, 1fr) minmax(240px, 270px); } .studio-tools { grid-column: 1 / -1; position: static; max-height: 175px; } .studio-tools .palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; } .studio-tools .palette-search { grid-column: 1 / -1; } }
 @media (max-width: 700px) { .workbench, .workbench[data-density="compact"] { grid-template-columns: minmax(0, 1fr); } .studio-banner, .studio-tools, .studio-main, .agent { grid-column: 1; } .agent { position: static; max-height: none; } }
 @media (prefers-reduced-motion: reduce) { .slot, .stage-goal, .stage-sprite { transition: none; } }
 `;

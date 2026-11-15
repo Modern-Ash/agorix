@@ -21,15 +21,19 @@ function readSource(event: DragEvent) {
 function Slot({
   row,
   onIntent,
+  copy,
+  empty = false,
 }: {
   readonly row: Extract<ReturnType<typeof toRows>[number], { kind: "slot" }>;
   readonly onIntent: (intent: Intent) => void;
+  readonly copy: StudioUiCopy;
+  readonly empty?: boolean;
 }) {
   const [over, setOver] = useState(false);
   return (
     <div
       aria-hidden="true"
-      className={`slot depth-${Math.min(row.depth, 4)}${over ? " drag-over" : ""}`}
+      className={`slot depth-${Math.min(row.depth, 4)}${empty ? " is-empty" : ""}${over ? " drag-over" : ""}`}
       onDragOver={(event) => {
         event.preventDefault();
         setOver(true);
@@ -45,7 +49,9 @@ function Slot({
         const intent = resolveDrop(source, target);
         if (intent !== undefined) onIntent(intent);
       }}
-    />
+    >
+      <span>{copy.dropHere}</span>
+    </div>
   );
 }
 
@@ -210,7 +216,18 @@ export function Canvas({
           );
         }
         if (row.kind === "slot") {
-          return <Slot key={key} row={row} onIntent={onIntent} />;
+          return (
+            <Slot
+              key={key}
+              row={row}
+              onIntent={onIntent}
+              copy={copy}
+              empty={
+                row.slot.container.kind === "script" &&
+                workspace.scripts[row.slot.container.scriptIndex]?.statements.length === 0
+              }
+            />
+          );
         }
         const { block } = row;
         const blockLabels: Readonly<Record<string, string>> = copy.blockLabels;
@@ -260,6 +277,7 @@ export function Canvas({
             tabIndex={isTabbable ? 0 : -1}
             data-pos={pos}
             draggable
+            title={copy.dragBlock}
             aria-label={copy.blockPosition(label, index + 1, block.siblingCount, row.depth + 1)}
             onFocus={() => setActiveKey(pos)}
             aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
@@ -310,6 +328,7 @@ export function Canvas({
             <span
               className="label"
               data-testid="block-label"
+              title={`${label}${fields === "" ? "" : ` (${fields})`}`}
               onClick={() => onIntent({ type: "revealNode", nodeId: block.id })}
             >
               {label}
@@ -329,25 +348,28 @@ export function Canvas({
               type="button"
               tabIndex={isTabbable ? 0 : -1}
               aria-label={`${copy.canvasMoveUp}: ${block.label}`}
+              title={copy.canvasMoveUp}
               onClick={() => press("Alt+ArrowUp")}
             >
-              {copy.canvasMoveUp}
+              ↑
             </button>
             <button
               type="button"
               tabIndex={isTabbable ? 0 : -1}
               aria-label={`${copy.canvasMoveDown}: ${block.label}`}
+              title={copy.canvasMoveDown}
               onClick={() => press("Alt+ArrowDown")}
             >
-              {copy.canvasMoveDown}
+              ↓
             </button>
             <button
               type="button"
               tabIndex={isTabbable ? 0 : -1}
               aria-label={`${copy.canvasDelete}: ${block.label}`}
+              title={copy.canvasDelete}
               onClick={() => press("Delete")}
             >
-              {copy.canvasDelete}
+              ×
             </button>
           </div>
         );

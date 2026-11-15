@@ -241,6 +241,79 @@ describe("canvas keyboard and screen reader behaviour", () => {
 });
 
 describe("workbench live region and focus after inserting from the palette", () => {
+  it("shows the toolbox and accepts a palette drag on an empty script", () => {
+    let listener: ((message: HostMessage) => void) | undefined;
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: (next) => {
+        listener = next;
+        return () => undefined;
+      },
+    };
+    const empty = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }],
+    }).workspace;
+    act(() => root.render(<Workbench bridge={bridge} locale="es" />));
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace: empty,
+        programHash: "sha:empty",
+      }),
+    );
+    const tool = Array.from(host.querySelectorAll<HTMLButtonElement>(".palette button")).find(
+      (button) => button.textContent?.includes("Mover [N] pasos"),
+    );
+    const slot = host.querySelector<HTMLElement>(".slot.is-empty");
+    expect(tool?.draggable).toBe(true);
+    expect(slot?.textContent).toContain("Soltá un bloque acá");
+    const values = new Map<string, string>();
+    const dataTransfer = {
+      setData: (type: string, value: string) => values.set(type, value),
+      getData: (type: string) => values.get(type) ?? "",
+      effectAllowed: "none",
+    };
+    const dispatchDrag = (target: Element, type: string) => {
+      const event = new dom.window.Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+      act(() => target.dispatchEvent(event));
+    };
+    const beforeInvalidDrop = posted.length;
+    dispatchDrag(slot!, "drop");
+    expect(posted).toHaveLength(beforeInvalidDrop);
+    dispatchDrag(tool!, "dragstart");
+    expect(host.querySelector(".workbench")?.getAttribute("data-dragging")).toBe("true");
+    dispatchDrag(slot!, "dragover");
+    expect(slot?.classList.contains("drag-over")).toBe(true);
+    dispatchDrag(slot!, "drop");
+    expect(posted.at(-1)).toMatchObject({
+      type: "intent",
+      intent: { type: "insertBlock", blockType: "motion_move" },
+    });
+    expect(host.querySelector(".workbench")?.getAttribute("data-dragging")).toBe("false");
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace: initial,
+        programHash: "sha:filled",
+      }),
+    );
+    const block = host.querySelector<HTMLElement>(".block[data-pos]");
+    const explain = Array.from(host.querySelectorAll<HTMLElement>(".zone")).find(
+      (zone) => zone.textContent === "Explicar",
+    );
+    dispatchDrag(block!, "dragstart");
+    dispatchDrag(explain!, "drop");
+    expect(posted.at(-1)).toMatchObject({
+      type: "intent",
+      intent: { type: "askAgent", verb: "explain" },
+    });
+  });
+
   it("keeps the announcement over the generic update and focuses the new block", () => {
     let listener: ((message: HostMessage) => void) | undefined;
     const posted: unknown[] = [];
