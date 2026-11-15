@@ -31,6 +31,23 @@ For automation, `Open Project` accepts a `Uri` argument (skips the file picker),
 
 Account integration is optional. Tokens are saved only through VS Code `SecretStorage`; server URL is the only account-related setting. Remote project id/revision is kept in Studio session state and excluded from canonical program semantics and portable `.agorix` files.
 
+### Ori Companion adapter (issue #1621)
+
+When a local Agorix tutor API is running, set
+`agorixStudio.agent.endpoint` to
+`http://127.0.0.1:8471/api/tutor/studio-companion`. The extension's existing
+provider-neutral client then uses `/health` and `/companion` under that base
+path. The VS Code extension does not call a model directly or carry its
+credentials. If the service or model is unavailable, the existing deterministic
+Companion and built-in proposal path remains available. The separate
+`/api/tutor/studio/ori` route is for the Kids scene and cannot accept a general
+VS Code project.
+
+This adapter supplies bounded teaching text for explain, debug, challenge and
+reflect. Builder proposals remain deterministic until #1623 completes the
+reviewed Ori proposal flow. #1620 connects all Companion actions to the adapter
+in the learner-facing UI.
+
 ## Supported VS Code versions
 
 `engines.vscode` is `^1.95.0`. The Extension Host integration suite runs in CI against 1.95.0 (the minimum) and the latest stable release, and was run locally against 1.95.0, 1.105.0 and 1.140.0. `activationEvents` is empty on purpose: since VS Code 1.74 contributed commands activate the extension automatically, and the engine floor is above that.
