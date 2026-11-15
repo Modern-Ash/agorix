@@ -4037,6 +4037,130 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each([
+    ["round", 1.6, ["B", "C"]],
+    ["abs", -3, ["A", "C"]],
+    ["floor", 2.9, ["B", "C"]],
+    ["ceiling", 2.1, ["A", "C"]],
+  ])(
+    "searches for %s of a number to choose a list position",
+    async (functionName, value, remaining) => {
+      const opcode = functionName === "round" ? "operator_round" : "operator_mathop";
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "math", [10, ""]] },
+            }),
+            math: block(opcode, {
+              fields: { OPERATOR: [functionName, null] },
+              inputs: { NUM: lit(value) },
+            }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(remaining);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("searches with the current rounded variable and keeps an absent result unchanged", () => {
+    const math = () =>
+      block("operator_round", { inputs: { NUM: [3, [12, "position", "v1"], [4, "0"]] } });
+    const search = (suffix: string) =>
+      block("data_itemnumoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { ITEM: [3, `math${suffix}`, [10, ""]] },
+      });
+    const remove = (suffix: string, next: string | null) =>
+      block("data_deleteoflist", {
+        ...onList,
+        next,
+        inputs: { INDEX: [3, `search${suffix}`, [4, "1"]] },
+      });
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("setTwo"),
+          setTwo: block("data_setvariableto", {
+            next: "removeFirst",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(2) },
+          }),
+          removeFirst: remove("First", "setThree"),
+          searchFirst: search("First"),
+          mathFirst: math(),
+          setThree: block("data_setvariableto", {
+            next: "removeSecond",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(3) },
+          }),
+          removeSecond: remove("Second", "setMissing"),
+          searchSecond: search("Second"),
+          mathSecond: math(),
+          setMissing: block("data_setvariableto", {
+            next: "removeMissing",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(9) },
+          }),
+          removeMissing: remove("Missing", null),
+          searchMissing: search("Missing"),
+          mathMissing: math(),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
+        { v1: ["position", 0] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+  });
+
+  it.each(["missing", "nested", "sqrt"])("reports %s math searched for a list position", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "search", [4, "1"]] },
+          }),
+          search: block("data_itemnumoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { ITEM: [3, "math", [10, ""]] },
+          }),
+          math: block("operator_mathop", {
+            fields: { OPERATOR: [kind === "sqrt" ? "sqrt" : "abs", null] },
+            inputs: {
+              NUM:
+                kind === "missing"
+                  ? [3, [12, "missing", "missing"], [4, "0"]]
+                  : kind === "nested"
+                    ? [3, "sum", [4, "0"]]
+                    : lit(4),
+            },
+          }),
+          sum: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
   it.each(["direct", "search"])(
     "uses a sprite's changing x property to choose a source item for a %s list position",
     async (kind) => {
