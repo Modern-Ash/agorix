@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runMultiActorProgram } from "@agorix/runtime";
@@ -26,7 +26,7 @@ describe("Scratch import measured on the team's corpus", () => {
   it("never lets the fidelity get worse", () => {
     const total = fidelityTotals(measureFidelity(SCRATCH_CORPUS));
     expect(total.imported).toBeLessThanOrEqual(total.statements);
-    // Floors: an import change may raise these (then raise them here and regenerate the report).
+    // Floors: an import change may raise these (then raise them here and update the report).
     expect(total.statements).toBe(FLOORS.statements);
     expect(total.imported).toBeGreaterThanOrEqual(FLOORS.imported);
     expect(total.scripts).toBe(FLOORS.scripts);
@@ -37,19 +37,15 @@ describe("Scratch import measured on the team's corpus", () => {
     const table = fidelityMarkdown(measureFidelity(SCRATCH_CORPUS));
     const doc = readFileSync(REPORT, "utf8");
     const block = `${START}\n\n${table}\n\n${END}`;
-    if (process.env["UPDATE_FIDELITY"] === "1") {
-      const from = doc.indexOf(START);
-      const to = doc.indexOf(END) + END.length;
-      writeFileSync(REPORT, `${doc.slice(0, from)}${block}${doc.slice(to)}`);
-      return;
-    }
-    // Regenerate with: UPDATE_FIDELITY=1 pnpm vitest run kidsScratchCorpus
     // Prettier pads the table and adds blank lines around it; compare without them.
     const plain = (text: string) =>
       text
         .replace(/[ \t]+/g, " ")
         .replace(/\n\s*\n/g, "\n")
         .replace(/-{3,}/g, "---");
-    expect(plain(doc)).toContain(plain(block));
+    expect(
+      plain(doc).includes(plain(block)),
+      `SCRATCH_IMPORT_FIDELITY.md is out of date. Replace what is between the fidelity markers with:\n${block}`,
+    ).toBe(true);
   });
 });

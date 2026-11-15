@@ -2,7 +2,7 @@
 
 How much of a Scratch project comes across when it is opened in Agorix. Measured on the corpus the team builds (`apps/web/src/kids/__fixtures__/scratch/corpus.ts`): synthetic projects of the kind a child makes, so the numbers show which blocks the importer handles, not how often children use them. There is still no corpus of real children's files.
 
-A block counts as brought across when it is in the converted program (nested blocks included); a script counts as kept when it is not left out. The test `kidsScratchCorpus.test.ts` fails if either number drops, and fails if this table is out of date. After an importer change, regenerate it with `UPDATE_FIDELITY=1 pnpm vitest run kidsScratchCorpus` and raise the floors in the test.
+A block counts as brought across when it is in the converted program (nested blocks included); a script counts as kept when it is not left out. The test `kidsScratchCorpus.test.ts` fails if either number drops, and fails if this table is out of date. After an importer change, copy the table the failing test prints between the markers below, and raise the floors in the test.
 
 <!-- fidelity:start -->
 
