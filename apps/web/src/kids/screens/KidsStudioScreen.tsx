@@ -38,6 +38,8 @@ import {
   type StudioCategory,
 } from "../kidsStudioCategories.js";
 import { valueHistory } from "../kidsRunHistory.js";
+import { firstDivergence } from "../kidsRunCompare.js";
+import { KidsRunCompare } from "./KidsRunCompare.js";
 import { KidsRunHistory } from "./KidsRunHistory.js";
 import { md5Hex } from "../kidsScratchPack.js";
 import { starterShelf, starterStatement, type StudioStarterKind } from "../kidsPaletteCatalog.js";
@@ -2485,6 +2487,18 @@ export function KidsStudioScreen({
   const valueChanges = useMemo(
     () => (run ? valueHistory(history.current, run) : { changes: [], more: 0 }),
     [run, history.current],
+  );
+  // The last finished run, kept in memory only, so this one can be compared with it.
+  const finishedRun = useRef<MultiActorRunResult | null>(null);
+  const [previousRun, setPreviousRun] = useState<MultiActorRunResult | null>(null);
+  useEffect(() => {
+    if (playing || !run || run === finishedRun.current) return;
+    if (finishedRun.current !== null) setPreviousRun(finishedRun.current);
+    finishedRun.current = run;
+  }, [playing, run]);
+  const divergence = useMemo(
+    () => (run && previousRun && previousRun !== run ? firstDivergence(previousRun, run) : null),
+    [run, previousRun],
   );
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
@@ -5106,6 +5120,17 @@ export function KidsStudioScreen({
                 changes={valueChanges.changes}
                 more={valueChanges.more}
                 frame={frame}
+                locale={locale}
+                onSeek={(traceIndex) => {
+                  stopLive();
+                  setStepped(true);
+                  setFrame(traceIndex);
+                }}
+              />
+            ) : null}
+            {run && !playing && divergence ? (
+              <KidsRunCompare
+                divergence={divergence}
                 locale={locale}
                 onSeek={(traceIndex) => {
                   stopLive();

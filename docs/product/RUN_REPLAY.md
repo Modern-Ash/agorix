@@ -14,3 +14,7 @@ Beside **Otra vez**, **Guardar repetición** saves the last run's inputs as `ago
 ## What changed in a run (#1579, #1580)
 
 `valueHistory` (kidsRunHistory.ts) reads the run's own trace and lists every number or word variable that took a new value, in order, each with the block that changed it; a loop or custom block is not blamed, the blocks inside it are. The Studio shows it under the timeline as "Qué cambió (N)": each line is a step, and pressing it goes to that step of the run. `lastChangeBefore` answers "which block gave this variable its value at this step". At most 60 changes are listed and the rest are counted. Breakpoints (pausing at a chosen block) are not built yet.
+
+## Comparing two runs (#1581)
+
+`firstDivergence` (kidsRunCompare.ts) reads two runs' traces and says where they stop agreeing: the first step with another block, with the character ending somewhere else, or with a value that came out different; or that one run is longer after agreeing on all of the shorter; or that they are the same. The Studio keeps the last finished run in memory only and shows "Comparar con la vez anterior" under the timeline, with one sentence and a button to go to that step of the current run. The same program giving the same run shows as "Igual que la vez anterior", which is what determinism looks like to a child.
