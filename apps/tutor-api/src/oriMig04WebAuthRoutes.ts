@@ -7,7 +7,10 @@ type Actions = ReturnType<typeof createOriMig04AuthenticatedSessionActions>;
 const MAX_BYTES = 4096;
 
 /** Explicit opt-in web authentication endpoints; never trust client owner/session IDs. */
-export function createOriMig04WebAuthRoutes(auth: Pick<AuthService, "register" | "signIn">, actions: Actions) {
+export function createOriMig04WebAuthRoutes(
+  auth: Pick<AuthService, "register" | "signIn">,
+  actions: Actions,
+) {
   const cookies = createOriMig04SessionCookieTransport();
   async function body(request: IncomingMessage): Promise<Record<string, unknown>> {
     let raw = "";
@@ -52,7 +55,10 @@ export function createOriMig04WebAuthRoutes(auth: Pick<AuthService, "register" |
     } catch {
       sameOrigin = false;
     }
-    if (!sameOrigin || !/^application\/json(?:\s*;|\s*$)/i.test(request.headers["content-type"] ?? "")) {
+    if (
+      !sameOrigin ||
+      !/^application\/json(?:\s*;|\s*$)/i.test(request.headers["content-type"] ?? "")
+    ) {
       json(response, 403, { error: "origin-denied" });
       return true;
     }

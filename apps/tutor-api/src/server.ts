@@ -10,7 +10,13 @@ import { validateOriContextInput, type OriContextInput } from "./oriContextPrevi
 import type { OriRuntimePreview } from "./oriRuntimePreview.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createOriExternalShadowDispatcher, type OriExternalShadow } from "./oriExternalShadow.js";
-import { validateTutorRequest } from "@agorix/tutor-contract";
+import {
+  createDeterministicLearningCompanionResponse,
+  validateLearningCompanionRequest,
+  validateLearningCompanionSafety,
+  validateTutorRequest,
+  type LearningCompanionRequest,
+} from "@agorix/tutor-contract";
 import {
   createFreeWorldMission,
   getKidsMission,
@@ -330,7 +336,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
       // by the production learning-context provider.
       if (options.oriTrustedLearningEvent) {
         const recorded = await options.oriTrustedLearningEvent(
-          identity.ownerId, identity.projectId, { kind: "hint" },
+          identity.ownerId,
+          identity.projectId,
+          { kind: "hint" },
         );
         if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
       }
@@ -399,7 +407,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
         return send(response, 409, error("review-not-finalized"));
       if (ticket.status === "accepted" && options.oriTrustedLearningEvent) {
         const recorded = await options.oriTrustedLearningEvent(
-          identity.ownerId, identity.projectId, { kind: "stage", stage: "connect" },
+          identity.ownerId,
+          identity.projectId,
+          { kind: "stage", stage: "connect" },
         );
         if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
       }
@@ -463,7 +473,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (options.oriTrustedLearningEvent) {
         try {
           evidenceRecorded = await options.oriTrustedLearningEvent(
-            current.ownerId, current.projectId, { kind: "stage", stage: "translate" },
+            current.ownerId,
+            current.projectId,
+            { kind: "stage", stage: "translate" },
           );
         } catch {
           evidenceRecorded = false;
@@ -542,6 +554,17 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (path === "/api/tutor/studio/ori") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondStudio(request, response);
+    }
+    if (path === "/api/tutor/studio-companion/health") {
+      if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
+      const current = await options.ori?.health();
+      return send(response, 200, {
+        status: current?.available ? "available" : current?.configured ? "degraded" : "unavailable",
+      });
+    }
+    if (path === "/api/tutor/studio-companion/companion") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondStudioCompanion(request, response);
     }
     if (path === "/api/tutor/chat") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
@@ -903,6 +926,32 @@ export function createTutorServer(options: TutorServerOptions): Server {
       message: decision.message,
       ...(decision.proposal ? { proposal: decision.proposal } : {}),
     });
+  }
+
+  async function respondStudioCompanion(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    let context: LearningCompanionRequest;
+    try {
+      context = validateLearningCompanionRequest(JSON.parse(body));
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
+    if (!allowed(request, "studio")) return send(response, 429, error("rate-limited"));
+    try {
+      const result = options.ori?.companion
+        ? await options.ori.companion(context)
+        : createDeterministicLearningCompanionResponse(context);
+      return send(response, 200, validateLearningCompanionSafety(context, result));
+    } catch {
+      return send(response, 200, createDeterministicLearningCompanionResponse(context));
+    }
   }
 
   async function respondChat(request: IncomingMessage, response: ServerResponse): Promise<void> {

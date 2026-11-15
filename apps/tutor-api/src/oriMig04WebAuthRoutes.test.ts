@@ -36,10 +36,19 @@ function response() {
 describe("MIG-04 opt-in web auth HTTP routes", () => {
   it("rejects cross-origin and non-HTTPS requests before authentication", async () => {
     let calls = 0;
-    const routes = createOriMig04WebAuthRoutes({
-      register: async () => { calls++; return {} as never; },
-      signIn: async () => { calls++; return {} as never; },
-    }, {} as never);
+    const routes = createOriMig04WebAuthRoutes(
+      {
+        register: async () => {
+          calls++;
+          return {} as never;
+        },
+        signIn: async () => {
+          calls++;
+          return {} as never;
+        },
+      },
+      {} as never,
+    );
     for (const origin of ["https://attacker.example", "http://agorix.example", "invalid"]) {
       const { state, reply } = response();
       await routes(request("/api/tutor/ori/auth/login", origin, {}), reply);
@@ -50,18 +59,26 @@ describe("MIG-04 opt-in web auth HTTP routes", () => {
 
   it("registers with real service boundary without returning credentials", async () => {
     let username = "";
-    const routes = createOriMig04WebAuthRoutes({
-      register: async (input) => {
-        username = input.username;
-        return {} as never;
+    const routes = createOriMig04WebAuthRoutes(
+      {
+        register: async (input) => {
+          username = input.username;
+          return {} as never;
+        },
+        signIn: async () => ({}) as never,
       },
-      signIn: async () => ({} as never),
-    }, {} as never);
+      {} as never,
+    );
     const { state, reply } = response();
-    expect(await routes(request("/api/tutor/ori/auth/register", "https://agorix.example", {
-      username: "learner",
-      password: "secret",
-    }), reply)).toBe(true);
+    expect(
+      await routes(
+        request("/api/tutor/ori/auth/register", "https://agorix.example", {
+          username: "learner",
+          password: "secret",
+        }),
+        reply,
+      ),
+    ).toBe(true);
     expect(state.status).toBe(201);
     expect(username).toBe("learner");
     expect(state.body).not.toContain("secret");
@@ -76,10 +93,19 @@ describe("MIG-04 opt-in web auth HTTP routes", () => {
 
   it("rejects JSON lookalike media types before calling AuthService", async () => {
     let called = false;
-    const routes = createOriMig04WebAuthRoutes({
-      register: async () => { called = true; return {} as never; },
-      signIn: async () => { called = true; return {} as never; },
-    }, {} as never);
+    const routes = createOriMig04WebAuthRoutes(
+      {
+        register: async () => {
+          called = true;
+          return {} as never;
+        },
+        signIn: async () => {
+          called = true;
+          return {} as never;
+        },
+      },
+      {} as never,
+    );
     const input = request("/api/tutor/ori/auth/register", "https://agorix.example", {});
     input.headers["content-type"] = "application/json-malicious";
     const { state, reply } = response();
@@ -99,6 +125,8 @@ describe("MIG-04 opt-in web auth HTTP routes", () => {
   it("leaves unrelated TutorServer routes untouched", async () => {
     const routes = createOriMig04WebAuthRoutes({} as never, {} as never);
     const { reply } = response();
-    expect(await routes(request("/api/tutor/health", "https://agorix.example", {}), reply)).toBe(false);
+    expect(await routes(request("/api/tutor/health", "https://agorix.example", {}), reply)).toBe(
+      false,
+    );
   });
 });

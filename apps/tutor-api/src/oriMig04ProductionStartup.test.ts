@@ -40,9 +40,9 @@ describe("MIG-04 production process startup", () => {
     await expect(
       startOriMig04ProductionStartup({ ...options, connectionString: "" }),
     ).rejects.toThrow("durable PostgreSQL");
-    await expect(
-      startOriMig04ProductionStartup({ ...options, ori: {} as never }),
-    ).rejects.toThrow("shared trusted AuthService");
+    await expect(startOriMig04ProductionStartup({ ...options, ori: {} as never })).rejects.toThrow(
+      "shared trusted AuthService",
+    );
   });
 
   it("does not open an HTTP listener if PostgreSQL is unavailable", async () => {

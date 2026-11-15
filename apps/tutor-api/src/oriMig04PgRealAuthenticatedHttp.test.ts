@@ -148,7 +148,8 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           body: JSON.stringify({ projectId: "not-owned-by-learner" }),
         });
         expect(unownedProject.ok).toBe(false);
-        const issuedCookie = unownedProject.headers.get("set-cookie")?.split(";")[0] ?? rotatedCookie;
+        const issuedCookie =
+          unownedProject.headers.get("set-cookie")?.split(";")[0] ?? rotatedCookie;
         expect(issuedCookie).toBeTruthy();
         const httpLogout = await fetch(`${authBase}/logout`, {
           method: "POST",
@@ -221,7 +222,9 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
       }
     } finally {
       if (browserAccountId) {
-        await admin.query("delete from agorix_ori_session_projects where account_id = $1", [browserAccountId]);
+        await admin.query("delete from agorix_ori_session_projects where account_id = $1", [
+          browserAccountId,
+        ]);
       }
       if (ownedProjectId) {
         await admin.query("delete from agorix_projects where project_id = $1", [ownedProjectId]);

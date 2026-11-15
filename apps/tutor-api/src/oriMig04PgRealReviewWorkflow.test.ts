@@ -17,11 +17,13 @@ run("MIG-04 canonical review workflow with real PostgreSQL persistence", () => {
     const owner = `owner_${Date.now().toString(36)}_${Math.floor(Math.random() * 100000)}`;
     const program: ProjectProgram = {
       schema: SCHEMA_VERSION,
-      scripts: [{
-        id: "main",
-        trigger: { type: "onStart" },
-        statements: [{ type: "move", steps: 1 }],
-      }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "move", steps: 1 }],
+        },
+      ],
     };
     let projectId: string | undefined;
     try {
@@ -67,7 +69,9 @@ run("MIG-04 canonical review workflow with real PostgreSQL persistence", () => {
       if (!ticket) throw Error("Expected review ticket");
       expect(await workflow.decide("intruder", projectId, ticket.id, "accept")).toBeNull();
       expect(await workflow.applyAccepted(owner, projectId, ticket.id, "main")).toBe("rejected");
-      expect((await workflow.decide(owner, projectId, ticket.id, "accept"))?.status).toBe("accepted");
+      expect((await workflow.decide(owner, projectId, ticket.id, "accept"))?.status).toBe(
+        "accepted",
+      );
       expect(await workflow.applyAccepted(owner, projectId, ticket.id, "main")).toBe("applied");
       const persisted = await infra.repository.get(owner, projectId);
       expect(persisted.revision).toBe(record.revision + 1);
@@ -80,7 +84,8 @@ run("MIG-04 canonical review workflow with real PostgreSQL persistence", () => {
     } finally {
       if (projectId) {
         await admin.query("delete from agorix_projects where owner_id = $1 and project_id = $2", [
-          owner, projectId,
+          owner,
+          projectId,
         ]);
       }
       await infra.close();

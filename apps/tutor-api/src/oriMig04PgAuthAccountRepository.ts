@@ -1,5 +1,9 @@
 import type { Pool } from "pg";
-import type { AccountRecord, AccountRepository, PasswordCredentialRecord } from "@agorix/auth-service";
+import type {
+  AccountRecord,
+  AccountRepository,
+  PasswordCredentialRecord,
+} from "@agorix/auth-service";
 
 /** Durable AuthService accounts, shared by web login and tutor-api. */
 export function createOriMig04PgAuthAccountRepository(
@@ -26,10 +30,7 @@ export function createOriMig04PgAuthAccountRepository(
         [record.account.accountId, record.credential.normalizedUsername, JSON.stringify(record)],
       );
     },
-    async updateCredential(
-      accountId: string,
-      credential: PasswordCredentialRecord,
-    ): Promise<void> {
+    async updateCredential(accountId: string, credential: PasswordCredentialRecord): Promise<void> {
       const result = await pool.query(
         `update agorix_auth_accounts
          set record = jsonb_set(record, '{credential}', $2::jsonb)

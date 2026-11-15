@@ -19,9 +19,7 @@ describe("MIG-04 session project lifecycle", () => {
     const lifecycle = createOriMig04PgSessionProjectLifecycle({
       query: async () => ({ rowCount: 0 }) as never,
     } as never);
-    await expect(lifecycle.select("owner", "session", "other")).rejects.toThrow(
-      "ownership denied",
-    );
+    await expect(lifecycle.select("owner", "session", "other")).rejects.toThrow("ownership denied");
   });
 
   it("revokes and rotates only the authenticated session mapping", async () => {

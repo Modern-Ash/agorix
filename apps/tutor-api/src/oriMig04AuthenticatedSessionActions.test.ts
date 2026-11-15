@@ -33,12 +33,16 @@ describe("MIG-04 trusted AuthService session actions", () => {
     const actions = createOriMig04AuthenticatedSessionActions({
       auth: {
         resolveSession: async () => identity as never,
-        signOut: async () => { calls.push("token"); },
+        signOut: async () => {
+          calls.push("token");
+        },
         deleteAccount: async () => undefined,
       },
       projects: {
         selectProject: async () => undefined,
-        logout: async () => { calls.push("mapping"); },
+        logout: async () => {
+          calls.push("mapping");
+        },
         revokeAccountSessions: async () => undefined,
       },
     });
@@ -52,12 +56,16 @@ describe("MIG-04 trusted AuthService session actions", () => {
       auth: {
         resolveSession: async () => identity as never,
         signOut: async () => undefined,
-        deleteAccount: async () => { throw Error("INVALID_CREDENTIALS"); },
+        deleteAccount: async () => {
+          throw Error("INVALID_CREDENTIALS");
+        },
       },
       projects: {
         selectProject: async () => undefined,
         logout: async () => undefined,
-        revokeAccountSessions: async () => { revoked = true; },
+        revokeAccountSessions: async () => {
+          revoked = true;
+        },
       },
     });
     await expect(actions.deleteAccount("token", "wrong")).rejects.toThrow();
@@ -68,18 +76,23 @@ describe("MIG-04 trusted AuthService session actions", () => {
     const calls: string[] = [];
     const actions = createOriMig04AuthenticatedSessionActions({
       auth: {
-        resolveSession: async () => ({
-          ...identity,
-          rotated: true,
-          previousSessionId: "old",
-          sessionToken: "new-token",
-        }) as never,
+        resolveSession: async () =>
+          ({
+            ...identity,
+            rotated: true,
+            previousSessionId: "old",
+            sessionToken: "new-token",
+          }) as never,
         signOut: async () => undefined,
         deleteAccount: async () => undefined,
       },
       projects: {
-        selectProject: async () => { calls.push("select"); },
-        logout: async (session) => { calls.push(session.sessionId); },
+        selectProject: async () => {
+          calls.push("select");
+        },
+        logout: async (session) => {
+          calls.push(session.sessionId);
+        },
         revokeAccountSessions: async () => undefined,
       },
     });
@@ -93,18 +106,23 @@ describe("MIG-04 trusted AuthService session actions", () => {
     const calls: string[] = [];
     const actions = createOriMig04AuthenticatedSessionActions({
       auth: {
-        resolveSession: async () => ({
-          ...identity,
-          rotated: true,
-          previousSessionId: "old",
-          sessionToken: "replacement",
-        }) as never,
-        signOut: async (token) => { calls.push(token); },
+        resolveSession: async () =>
+          ({
+            ...identity,
+            rotated: true,
+            previousSessionId: "old",
+            sessionToken: "replacement",
+          }) as never,
+        signOut: async (token) => {
+          calls.push(token);
+        },
         deleteAccount: async () => undefined,
       },
       projects: {
         selectProject: async () => undefined,
-        logout: async (session) => { calls.push(session.sessionId); },
+        logout: async (session) => {
+          calls.push(session.sessionId);
+        },
         revokeAccountSessions: async () => undefined,
       },
     });

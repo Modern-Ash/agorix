@@ -10,9 +10,7 @@ export async function assertOriMig04PgAuthSchemaReadiness(
        and table_name in ($1, $2)`,
     ["agorix_auth_accounts", "agorix_auth_sessions"],
   );
-  const columns = new Set(
-    result.rows.map((row) => `${row.table_name}.${row.column_name}`),
-  );
+  const columns = new Set(result.rows.map((row) => `${row.table_name}.${row.column_name}`));
   const required = [
     "agorix_auth_accounts.account_id",
     "agorix_auth_accounts.normalized_username",

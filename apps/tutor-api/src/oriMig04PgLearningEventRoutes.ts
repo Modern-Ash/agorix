@@ -15,7 +15,11 @@ export function createOriMig04PgLearningEventRoutes({
 }: {
   readonly auth: Pick<AuthService, "resolveSession">;
   readonly activeProject: (accountId: string, sessionId: string) => Promise<string | null>;
-  readonly record: (accountId: string, projectId: string, event: OriLearningEvent) => Promise<boolean>;
+  readonly record: (
+    accountId: string,
+    projectId: string,
+    event: OriLearningEvent,
+  ) => Promise<boolean>;
 }) {
   const cookies = createOriMig04SessionCookieTransport();
   return async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
@@ -28,40 +32,65 @@ export function createOriMig04PgLearningEventRoutes({
       });
       response.end(status === 204 ? undefined : JSON.stringify({ status: "denied" }));
     };
-    if (request.method !== "POST") { send(405); return true; }
+    if (request.method !== "POST") {
+      send(405);
+      return true;
+    }
     let originOk = false;
     try {
       const origin = new URL(request.headers.origin ?? "");
       originOk = origin.protocol === "https:" && origin.host === request.headers.host;
-    } catch { originOk = false; }
-    if (!originOk || !/^application\/json(?:\s*;|\s*$)/i.test(request.headers["content-type"] ?? "")) {
-      send(403); return true;
+    } catch {
+      originOk = false;
+    }
+    if (
+      !originOk ||
+      !/^application\/json(?:\s*;|\s*$)/i.test(request.headers["content-type"] ?? "")
+    ) {
+      send(403);
+      return true;
     }
     try {
       const token = cookies.sessionToken(request);
-      if (!token) { send(401); return true; }
+      if (!token) {
+        send(401);
+        return true;
+      }
       let raw = "";
       for await (const chunk of request) {
         raw += String(chunk);
-        if (raw.length > 1024) { send(413); return true; }
+        if (raw.length > 1024) {
+          send(413);
+          return true;
+        }
       }
       const payload: unknown = JSON.parse(raw);
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-        send(400); return true;
+        send(400);
+        return true;
       }
       const fields = payload as Record<string, unknown>;
-      if (Object.keys(fields).sort().join() !== "kind" &&
-          Object.keys(fields).sort().join() !== "kind,stage") {
-        send(400); return true;
+      if (
+        Object.keys(fields).sort().join() !== "kind" &&
+        Object.keys(fields).sort().join() !== "kind,stage"
+      ) {
+        send(400);
+        return true;
       }
       const kind = fields["kind"];
       const event: OriLearningEvent | null =
         kind === "attempt" || kind === "hint"
-          ? Object.keys(fields).length === 1 ? { kind } : null
-          : kind === "stage" && ["explore", "connect", "translate"].includes(String(fields["stage"]))
+          ? Object.keys(fields).length === 1
+            ? { kind }
+            : null
+          : kind === "stage" &&
+              ["explore", "connect", "translate"].includes(String(fields["stage"]))
             ? { kind, stage: fields["stage"] as "explore" | "connect" | "translate" }
             : null;
-      if (!event) { send(400); return true; }
+      if (!event) {
+        send(400);
+        return true;
+      }
       // Browser events cannot prove pedagogical provenance. Only trusted
       // server-side execution/hint handlers may call the recorder.
       void auth;
