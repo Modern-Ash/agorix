@@ -311,6 +311,7 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
         value.value.type === "costumeNumber" ||
         value.value.type === "backdropNumber" ||
         (value.value.type === "actorProperty" && checkedNumber(value.value, program)) ||
+        (value.value.type === "mathFunction" && checkedStudioIndex(value.value, program)) ||
         (value.value.type === "listItem" &&
           ((value.value.index.type === "numericLiteral" &&
             checkedStudioIndex(value.value.index, program)) ||
@@ -337,7 +338,9 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
               value.value.index.min.value === 1 &&
               value.value.index.max.type === "listLength" &&
               value.value.index.max.listId === value.value.listId)))) &&
-      checkedListItem(value.value, program, 0)
+      (value.value.type === "mathFunction"
+        ? checkedStudioIndex(value.value, program)
+        : checkedListItem(value.value, program, 0))
     );
   if (value.type === "variable")
     return program.variables?.some((item) => item.id === value.variableId) === true;
