@@ -351,10 +351,7 @@ export function activate(context: vscode.ExtensionContext): void {
         events: session.agentEvents,
       }),
   });
-  const revealProjectSurfaces = (): void => {
-    surfaceCommands.openWorldPreview();
-    void vscode.commands.executeCommand("agorixStudio.companion.focus");
-  };
+  const revealProjectSurfaces = (): Promise<void> => surfaceCommands.openWorkbench();
   const projectCommands = createStudioProjectCommandHandlers({
     getCurrentProjectionId: () => session.currentProjectionId,
     setCurrentProject: (project) => {
@@ -371,7 +368,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   const projectEditorProvider: vscode.CustomTextEditorProvider = {
     resolveCustomTextEditor: async (document, webviewPanel) => {
-      await projectCommands.openProject(document.uri);
+      await projectCommands.openProject(document.uri, { revealSurfaces: false });
       if (requireProject() === undefined) {
         webviewPanel.dispose();
         return;
@@ -453,7 +450,7 @@ export function activate(context: vscode.ExtensionContext): void {
       ),
       ...registerStudioCommands(output, {
         createProject: projectCommands.createProject,
-        openProject: projectCommands.openProject,
+        openProject: (target) => projectCommands.openProject(target),
         exportAgorixProject: projectCommands.exportAgorixProject,
         exportEducatorEvidence: evidenceExportCommands.exportEducatorEvidence,
         checkAgentHealth: accountCommands.checkAgentHealth,

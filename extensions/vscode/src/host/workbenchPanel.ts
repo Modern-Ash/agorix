@@ -141,7 +141,7 @@ export function openWorkbenchPanel(
   const distRoot = vscode.Uri.file(context.asAbsolutePath("dist"));
   attachWorkbenchPanel(
     context,
-    vscode.window.createWebviewPanel(VIEW_TYPE, "Agorix Workbench", vscode.ViewColumn.Beside, {
+    vscode.window.createWebviewPanel(VIEW_TYPE, "Agorix Studio · Ori", vscode.ViewColumn.Beside, {
       enableScripts: true,
       localResourceRoots: [distRoot],
       retainContextWhenHidden: true,

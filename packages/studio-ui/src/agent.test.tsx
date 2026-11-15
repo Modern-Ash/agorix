@@ -168,7 +168,7 @@ describe("clarification ui", () => {
     const intent = renderToStaticMarkup(
       <AgentPanel state={initialAgentUi()} send={() => undefined} locale="es" />,
     );
-    expect(intent).toContain('aria-label="Agente"');
+    expect(intent).toContain('aria-label="Ori, compañero de aprendizaje"');
     expect(intent).toContain("Que queres crear?");
     expect(intent).toContain("Pedir");
   });

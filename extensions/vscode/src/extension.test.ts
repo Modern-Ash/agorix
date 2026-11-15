@@ -479,7 +479,7 @@ describe("Studio extension wiring", () => {
 
     expect(panel.webview.html).toContain("Agorix Workbench");
     expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", true]);
-    expect(webviewPanels.some((item) => item.html.includes("Mundo Agorix"))).toBe(true);
+    expect(webviewPanels.some((item) => item.html.includes("Mundo Agorix"))).toBe(false);
   });
 
   it("asks to open a project before evidence or suggestions", async () => {
@@ -499,7 +499,7 @@ describe("Studio extension wiring", () => {
     await flushWorkbench();
 
     expect(webviewPanels.filter((p) => p.html.includes("Agorix Workbench"))).toHaveLength(1);
-    expect(workbenchPanel()?.reveal).toHaveBeenCalledTimes(1);
+    expect(workbenchPanel()?.reveal).toHaveBeenCalledTimes(2);
     expect(workbenchPanel()?.html).toContain("Content-Security-Policy");
     expect(workbenchPanel()?.html).toContain("Agorix Workbench");
     const sent = workbenchPanel()?.messages as { type: string }[];
@@ -541,10 +541,10 @@ describe("Studio extension wiring", () => {
     expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(afterActorUpdate);
   });
 
-  it("reveals Mundo Agorix and the Companion when a project is opened", async () => {
+  it("reveals the Ori Workbench when a project is opened", async () => {
     await openFile("/p/reveal.json", stored([]));
-    expect(webviewPanels.some((panel) => panel.html.includes("Mundo Agorix"))).toBe(true);
-    expect(commandCalls).toContainEqual(["agorixStudio.companion.focus"]);
+    expect(workbenchPanel()?.html).toContain("Agorix Workbench");
+    expect(webviewPanels.some((panel) => panel.html.includes("Mundo Agorix"))).toBe(false);
   });
 
   it("shows clean-install project actions before a project is open", () => {
@@ -666,25 +666,25 @@ describe("Studio extension wiring", () => {
 
     const preview = await handlers.get("agorixStudio.openWorldPreview")!();
     expect(preview).toMatchObject({ selectedFrameIndex: 1 });
-    expect(webviewPanels).toHaveLength(1);
-    expect(webviewPanels[0]?.html).toContain("Content-Security-Policy");
-    expect(webviewPanels[0]?.html).toContain("canonical runtime");
-    expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({
+    const previewPanel = webviewPanels.find((panel) => panel.html.includes("Mundo Agorix"));
+    expect(previewPanel?.html).toContain("Content-Security-Policy");
+    expect(previewPanel?.html).toContain("canonical runtime");
+    expect(previewPanel?.messages.at(-1)).toMatchObject({
       type: "agorix-frame",
       view: { selectedFrameIndex: 1 },
     });
 
-    const html = webviewPanels[0]?.html ?? "";
+    const html = previewPanel?.html ?? "";
     expect(html).not.toMatch(/unsafe-inline|unsafe-eval/);
     expect(html).toMatch(/script-src 'nonce-[A-Za-z0-9_-]{16,}'/);
 
     // Webview -> host messages are validated: malformed input is dropped, valid input handled.
-    const receive = webviewPanels[0]?.receive;
+    const receive = previewPanel?.receive;
     expect(receive).toBeDefined();
-    const before = webviewPanels[0]?.messages.length ?? 0;
+    const before = previewPanel?.messages.length ?? 0;
     receive?.({ type: "agorix-ready" });
     await Promise.resolve();
-    expect(webviewPanels[0]?.messages.length).toBe(before + 1);
+    expect(previewPanel?.messages.length).toBe(before + 1);
     receive?.({ type: "agorix-reveal-node", nodeId: "<script>alert(1)</script>" });
     receive?.({ type: "not-a-message" });
     receive?.("string");

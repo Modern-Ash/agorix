@@ -47,6 +47,14 @@ describe("studio-ui", () => {
       />,
     );
     expect(html).toContain('data-density="compact"');
+    expect(html).toContain("AGORIX STUDIO / AVANZADO");
+    expect(html).toContain("Creá. Ejecutá. Comprobá.");
+    expect(html).toContain('class="studio-program"');
+    expect(html).toContain('class="studio-evidence"');
+    expect(html).toContain('class="ori-header"');
+    expect(html.indexOf('class="studio-program"')).toBeLessThan(
+      html.indexOf('class="studio-evidence"'),
+    );
     expect(html).toContain("Ejecucion");
     expect(html).toContain("Reproducir");
     expect(html).toContain("Pausa");

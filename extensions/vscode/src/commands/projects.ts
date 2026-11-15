@@ -35,7 +35,7 @@ export interface StudioProjectCommandPort {
 }
 
 export interface StudioProjectCommandHandlers {
-  openProject(target?: unknown): Promise<void>;
+  openProject(target?: unknown, options?: { revealSurfaces?: boolean }): Promise<void>;
   createProject(target?: unknown): Promise<vscode.Uri | undefined>;
   exportAgorixProject(): Promise<vscode.Uri | undefined>;
 }
@@ -43,7 +43,10 @@ export interface StudioProjectCommandHandlers {
 export function createStudioProjectCommandHandlers(
   port: StudioProjectCommandPort,
 ): StudioProjectCommandHandlers {
-  const openProject = async (target?: unknown): Promise<void> => {
+  const openProject = async (
+    target?: unknown,
+    options: { revealSurfaces?: boolean } = {},
+  ): Promise<void> => {
     const uri = isUriLike(target)
       ? target
       : ((await vscode.window.showOpenDialog({
@@ -72,7 +75,7 @@ export function createStudioProjectCommandHandlers(
     port.refreshCompanionViews();
     port.updateStudioContext();
     await port.openProjection(port.getCurrentProjectionId());
-    await port.afterProjectOpened?.();
+    if (options.revealSurfaces !== false) await port.afterProjectOpened?.();
   };
 
   const createProject = async (target?: unknown): Promise<vscode.Uri | undefined> => {
