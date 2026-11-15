@@ -344,7 +344,7 @@ export function StagePanel({
           bottom: stagePercent(state.goal.y, state.viewport.height),
         };
   return (
-    <section className="stage-panel" aria-label={copy.stage}>
+    <section className="stage-panel" aria-label={copy.stage} data-empty={state === undefined}>
       <header className="stage-panel-header">
         <strong>{copy.stage}</strong>
         <div aria-live="polite">
@@ -912,6 +912,21 @@ export function Workbench({
         <Palette copy={copy} onAdd={add} />
       </aside>
       <main className="studio-main">
+        <section className="studio-play" aria-label={copy.evidenceTitle}>
+          <ExecutionToolbar
+            copy={copy}
+            disabled={workspace === undefined}
+            playing={playing}
+            state={execution}
+            onCommand={execute}
+          />
+          <StagePanel
+            copy={copy}
+            frame={stageFrame}
+            assets={assets}
+            selectedActorId={selectedActorId}
+          />
+        </section>
         <section className="studio-program" aria-label={copy.canvasLabel}>
           <h2>{copy.canvasLabel}</h2>
           {workspace === undefined ? (
@@ -951,19 +966,6 @@ export function Workbench({
         </section>
         <section className="studio-evidence" aria-label={copy.evidenceTitle}>
           <h2>{copy.evidenceTitle}</h2>
-          <ExecutionToolbar
-            copy={copy}
-            disabled={workspace === undefined}
-            playing={playing}
-            state={execution}
-            onCommand={execute}
-          />
-          <StagePanel
-            copy={copy}
-            frame={stageFrame}
-            assets={assets}
-            selectedActorId={selectedActorId}
-          />
           <EventTracePanel copy={copy} state={execution} selectedActorId={selectedActorId} />
           <ValidationPanel copy={copy} issues={validationIssues} />
         </section>

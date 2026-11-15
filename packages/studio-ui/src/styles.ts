@@ -2,6 +2,7 @@
 export const WORKBENCH_CSS = `
 :root { color-scheme: light dark; }
 body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .workbench { display: grid; grid-template-columns: minmax(160px, 220px) 1fr minmax(220px, 300px); gap: 12px; padding: 12px; }
 .workbench[data-density="compact"] { grid-template-columns: minmax(140px, 180px) 1fr minmax(200px, 260px); gap: 8px; padding: 8px; font-size: 0.95em; }
 @media (max-width: 900px) { .workbench { grid-template-columns: 1fr; } }
@@ -140,6 +141,9 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .status { margin-top: 12px; min-height: 1.4em; color: var(--vscode-descriptionForeground); }
 .agent { display: flex; flex-direction: column; gap: 10px; }
 .agent button, .agent input, .agent select { min-height: 32px; }
+.agent input, .agent select, .agent textarea { max-width: 100%; box-sizing: border-box; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 4px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; }
+.agent button { border: 1px solid var(--vscode-panel-border); border-radius: 4px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
+.agent button:focus-visible, .agent input:focus-visible, .agent select:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; }
 .ribbon { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 0.85em; }
 .ribbon li { padding: 2px 8px; border: 1px solid var(--vscode-panel-border); border-radius: 10px; }
 .ribbon li.done { opacity: 0.6; }
@@ -183,13 +187,21 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-tools .palette-search { margin-bottom: 4px; }
 .studio-program h2, .studio-evidence h2 { margin: 0 0 12px; color: var(--vscode-foreground); font-size: 0.8em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .studio-main { display: grid; gap: 14px; min-width: 0; }
+.studio-play { display: grid; gap: 8px; min-width: 0; padding: 10px; border: 1px solid var(--vscode-panel-border); border-top: 3px solid var(--vscode-charts-blue, var(--vscode-focusBorder)); background: var(--vscode-editorWidget-background); }
+.studio-play .execution-toolbar, .studio-play .stage-panel { margin: 0; }
+.studio-play .stage-viewport { min-height: 180px; max-height: 260px; }
+.studio-play .stage-panel[data-empty="true"] .stage-viewport { min-height: 54px; }
 .studio-program { min-height: 340px; padding: 16px; border-top: 3px solid var(--vscode-focusBorder); box-sizing: border-box; }
 .studio-program .canvas { min-height: 220px; }
 .studio-program .block { min-height: 38px; box-sizing: border-box; cursor: grab; }
 .studio-program .block:active { cursor: grabbing; }
 .studio-program .block::before { content: "⋮⋮"; flex: 0 0 12px; color: var(--vscode-descriptionForeground); font-size: 0.85em; }
 .studio-program .block .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-program .block-field { display: grid; gap: 2px; flex: 0 0 64px; color: var(--vscode-descriptionForeground); font-size: 0.74em; }
+.studio-program .block-field input { width: 64px; min-height: 28px; box-sizing: border-box; padding: 2px 4px; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 4px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: 0.96rem var(--vscode-editor-font-family); }
+.studio-program .block-field input:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; }
 .studio-program .block button { flex: 0 0 26px; min-width: 26px; min-height: 28px; padding: 2px; text-align: center; font-size: 1.05em; }
+.studio-program .block button.block-ori { flex-basis: 34px; min-width: 34px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 0.78em; font-weight: 700; }
 .studio-program .slot { display: grid; place-items: center; height: 16px; border-top: 1px dashed var(--vscode-panel-border); border-radius: 4px; color: var(--vscode-descriptionForeground); box-sizing: border-box; }
 .studio-program .slot span { visibility: hidden; font-size: 0.8em; }
 .studio-program .slot.is-empty { height: 72px; margin: 8px 0; border: 1px dashed var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 94%); }

@@ -1,6 +1,8 @@
 import {
   createDefaultBlock,
   type BlockType,
+  type BlockWorkspaceSnapshot,
+  type BlockNode,
   type StatementContainerPath,
   type StatementLocation,
   type WorkspaceChange,
@@ -36,6 +38,12 @@ export type Intent =
   | { readonly type: "insertBlock"; readonly blockType: BlockType; readonly to: InsertionPoint }
   | { readonly type: "moveBlock"; readonly from: StatementLocation; readonly to: InsertionPoint }
   | { readonly type: "deleteBlock"; readonly location: StatementLocation }
+  | {
+      readonly type: "setNumericField";
+      readonly location: StatementLocation;
+      readonly field: string;
+      readonly value: number;
+    }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
   | { readonly type: "highlightNodes"; readonly nodeIds: readonly string[] }
@@ -99,6 +107,7 @@ export function resolveDrop(source: DragSource, target: DropTarget): Intent | un
 export function intentToChange(
   intent: Intent,
   newBlockId: () => string,
+  workspace?: BlockWorkspaceSnapshot,
 ): WorkspaceChange | undefined {
   switch (intent.type) {
     case "insertBlock":
@@ -112,6 +121,25 @@ export function intentToChange(
       return { type: "moveBlock", from: intent.from, to: intent.to };
     case "deleteBlock":
       return { type: "deleteBlock", location: intent.location };
+    case "setNumericField": {
+      if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
+      const { container, index } = intent.location;
+      let statements: readonly BlockNode[] | undefined =
+        workspace.scripts[container.scriptIndex]?.statements;
+      if (container.kind !== "script") {
+        for (const pathIndex of container.statementPath) {
+          const parent: BlockNode | undefined = statements?.[pathIndex];
+          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
+        }
+      }
+      const block = statements?.[index];
+      if (block === undefined || typeof block.fields?.[intent.field] !== "number") return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: { ...block, fields: { ...block.fields, [intent.field]: intent.value } },
+      };
+    }
     default:
       return undefined;
   }

@@ -915,6 +915,18 @@ function parseIntent(value: unknown): Intent | undefined {
       const location = parseLocation(value["location"]);
       return location === undefined ? undefined : { type: "deleteBlock", location };
     }
+    case "setNumericField": {
+      const location = parseLocation(value["location"]);
+      const field = value["field"];
+      const number = value["value"];
+      return location === undefined ||
+        typeof field !== "string" ||
+        !/^[a-zA-Z][a-zA-Z0-9]{0,31}$/.test(field) ||
+        typeof number !== "number" ||
+        !Number.isFinite(number)
+        ? undefined
+        : { type: "setNumericField", location, field, value: number };
+    }
     case "askAgent": {
       const about = parseAnchorRef(value["about"]);
       const verb = (AGENT_VERBS as readonly unknown[]).includes(value["verb"])

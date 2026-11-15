@@ -91,6 +91,45 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("lets the learner edit a numeric block value in place", () => {
+    const intents: Intent[] = [];
+    render(initial, { onIntent: (intent) => intents.push(intent) });
+    const input = host.querySelector<HTMLInputElement>(
+      '.block-field input[aria-label="Move [N] steps: steps"]',
+    );
+    expect(input).not.toBeNull();
+    expect(input?.value).toBe("3");
+    act(() => {
+      input!.value = "8";
+      input!.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setNumericField",
+      location: { container: script, index: 0 },
+      field: "steps",
+      value: 8,
+    });
+    expect(input?.value).toBe("3");
+    act(() => {
+      input!.value = "";
+      input!.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(input?.value).toBe("3");
+    expect(intents).toHaveLength(1);
+  });
+
+  it("asks Ori about the chosen block with one explicit action", () => {
+    const intents: Intent[] = [];
+    render(initial, { onIntent: (intent) => intents.push(intent) });
+    const button = host.querySelector<HTMLButtonElement>(".block .block-ori");
+    expect(button?.getAttribute("aria-label")).toContain("Ask Ori");
+    act(() => button?.click());
+    expect(intents).toContainEqual({
+      type: "askAgent",
+      verb: "explain",
+      about: { kind: "node", id: initial.scripts[0]?.statements[0]?.id },
+    });
+  });
   it("has one tab stop and gives every block a name with position and level", () => {
     render(initial);
     const all = blocks();
@@ -101,7 +140,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
     expect(all[2]?.getAttribute("aria-label")).toBe("Turn [N] degrees, 1 of 1, level 2");
     const buttons = host.querySelectorAll<HTMLButtonElement>(".block button");
     const tabbableButtons = Array.from(buttons).filter((button) => button.tabIndex === 0);
-    expect(tabbableButtons).toHaveLength(3);
+    expect(tabbableButtons).toHaveLength(4);
     expect(host.querySelector("section")?.getAttribute("aria-describedby")).toBe(
       "canvas-keyboard-help",
     );

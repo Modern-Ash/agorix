@@ -54,6 +54,24 @@ describe("studio-protocol", () => {
     });
   });
 
+  it("accepts finite numeric field edits and rejects malformed values", () => {
+    const location = { container: script, index: 0 };
+    const valid = {
+      schema,
+      type: "intent",
+      intent: { type: "setNumericField", location, field: "steps", value: 12 },
+    };
+    expect(parseUiMessage(valid)).toMatchObject(valid);
+    for (const value of ["12", Infinity, NaN]) {
+      expect(
+        parseUiMessage({ schema, type: "intent", intent: { ...valid.intent, value } }),
+      ).toBeUndefined();
+    }
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...valid.intent, field: "__proto__" } }),
+    ).toBeUndefined();
+  });
+
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
     for (const junk of [
       null,

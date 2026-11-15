@@ -82,4 +82,37 @@ describe("interaction-core", () => {
     );
     expect(intentToChange({ type: "revealNode", nodeId: "n" }, newId)).toBeUndefined();
   });
+
+  it("edits an existing numeric field through a canonical change and refuses unknown fields", () => {
+    const workspace = createStarterWorkspace();
+    const inserted = applyWorkspaceChange(workspace, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: { id: "move:1", type: "motion_move", fields: { steps: 10 } },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const change = intentToChange(
+      { type: "setNumericField", location, field: "steps", value: 24 },
+      newId,
+      inserted,
+    );
+    expect(
+      applyWorkspaceChange(inserted, change!).workspace.scripts[0]?.statements[0]?.fields?.steps,
+    ).toBe(24);
+    expect(
+      intentToChange(
+        { type: "setNumericField", location, field: "missing", value: 1 },
+        newId,
+        inserted,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setNumericField", location, field: "steps", value: Infinity },
+        newId,
+        inserted,
+      ),
+    ).toBeUndefined();
+  });
 });
