@@ -1262,6 +1262,7 @@ class Converter {
           this.numericListProperty(found.value) ||
           isSimpleMathIndex(found.value) ||
           isSimpleArithmeticIndex(found.value) ||
+          isSimpleTextIndex(found.value) ||
           (found.value.type === "listItem" &&
             ((found.value.index.type === "numericLiteral" &&
               Number.isInteger(found.value.index.value) &&

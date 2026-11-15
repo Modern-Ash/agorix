@@ -314,6 +314,8 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
         (value.value.type === "mathFunction" && checkedStudioIndex(value.value, program)) ||
         (["add", "subtract", "multiply", "divide", "modulo"].includes(value.value.type) &&
           checkedStudioIndex(value.value, program)) ||
+        ((value.value.type === "textLength" || value.value.type === "letterOf") &&
+          checkedStudioIndex(value.value, program)) ||
         (value.value.type === "listItem" &&
           ((value.value.index.type === "numericLiteral" &&
             checkedStudioIndex(value.value.index, program)) ||
@@ -341,7 +343,9 @@ function checkedStudioIndex(value: Expression, program: ProjectProgram): boolean
               value.value.index.max.type === "listLength" &&
               value.value.index.max.listId === value.value.listId)))) &&
       (value.value.type === "mathFunction" ||
-      ["add", "subtract", "multiply", "divide", "modulo"].includes(value.value.type)
+      ["add", "subtract", "multiply", "divide", "modulo"].includes(value.value.type) ||
+      value.value.type === "textLength" ||
+      value.value.type === "letterOf"
         ? checkedStudioIndex(value.value, program)
         : checkedListItem(value.value, program, 0))
     );
