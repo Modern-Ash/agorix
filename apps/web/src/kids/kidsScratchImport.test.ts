@@ -3971,7 +3971,8 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
             target: block("sensing_of_object_menu", {
               fields: { OBJECT: [kind === "unknown target" ? "Missing" : "Cat", null] },
             }),
-            sum: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+            sum: block("operator_add", { inputs: { NUM1: [3, "inner", [4, "0"]], NUM2: lit(2) } }),
+            inner: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(1) } }),
           },
           { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
         ),
@@ -4153,6 +4154,127 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
             },
           }),
           sum: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
+      ),
+    );
+    expect(program.scripts[0]!.statements).toEqual([]);
+    expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+  });
+
+  it.each([
+    ["operator_add", 1, 1, ["B", "C"]],
+    ["operator_subtract", 4, 1, ["A", "C"]],
+    ["operator_multiply", 1, 2, ["B", "C"]],
+    ["operator_divide", 6, 2, ["A", "C"]],
+    ["operator_mod", 5, 3, ["B", "C"]],
+  ])(
+    "searches for %s of two numbers to choose a list position",
+    async (opcode, left, right, remaining) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { ITEM: [3, "arithmetic", [10, ""]] },
+            }),
+            arithmetic: block(opcode, { inputs: { NUM1: lit(left), NUM2: lit(right) } }),
+          },
+          { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(remaining);
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it("searches with a changing numeric variable and leaves an absent result unchanged", () => {
+    const arithmetic = () =>
+      block("operator_add", {
+        inputs: { NUM1: [3, [12, "position", "v1"], [4, "0"]], NUM2: lit(1) },
+      });
+    const search = (suffix: string) =>
+      block("data_itemnumoflist", {
+        fields: { LIST: ["Fuente", "L2"] },
+        inputs: { ITEM: [3, `sum${suffix}`, [10, ""]] },
+      });
+    const remove = (suffix: string, next: string | null) =>
+      block("data_deleteoflist", {
+        ...onList,
+        next,
+        inputs: { INDEX: [3, `search${suffix}`, [4, "1"]] },
+      });
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("setOne"),
+          setOne: block("data_setvariableto", {
+            next: "removeFirst",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(1) },
+          }),
+          removeFirst: remove("First", "setTwo"),
+          searchFirst: search("First"),
+          sumFirst: arithmetic(),
+          setTwo: block("data_setvariableto", {
+            next: "removeSecond",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(2) },
+          }),
+          removeSecond: remove("Second", "setMissing"),
+          searchSecond: search("Second"),
+          sumSecond: arithmetic(),
+          setMissing: block("data_setvariableto", {
+            next: "removeMissing",
+            fields: { VARIABLE: ["position", "v1"] },
+            inputs: { VALUE: lit(8) },
+          }),
+          removeMissing: remove("Missing", null),
+          searchMissing: search("Missing"),
+          sumMissing: arithmetic(),
+        },
+        { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
+        { v1: ["position", 0] },
+      ),
+    );
+    expect(report.dropped).toEqual([]);
+    const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(["B"]);
+  });
+
+  it.each(["missing", "nested"])("reports a %s operand in a searched arithmetic value", (kind) => {
+    const { program, report } = convertScratchProject(
+      listProject(
+        {
+          hat: flag("remove"),
+          remove: block("data_deleteoflist", {
+            ...onList,
+            inputs: { INDEX: [3, "search", [4, "1"]] },
+          }),
+          search: block("data_itemnumoflist", {
+            fields: { LIST: ["Fuente", "L2"] },
+            inputs: { ITEM: [3, "sum", [10, ""]] },
+          }),
+          sum: block("operator_add", {
+            inputs: {
+              NUM1:
+                kind === "missing"
+                  ? [3, [12, "missing", "missing"], [4, "0"]]
+                  : [3, "inner", [4, "0"]],
+              NUM2: lit(1),
+            },
+          }),
+          inner: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(1) } }),
         },
         { L1: ["Compras", ["A", "B", "C"]], L2: ["Fuente", [2, 3]] },
       ),

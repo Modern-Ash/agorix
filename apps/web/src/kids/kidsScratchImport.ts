@@ -1261,6 +1261,7 @@ class Converter {
           found.value.type === "backdropNumber" ||
           this.numericListProperty(found.value) ||
           isSimpleMathIndex(found.value) ||
+          isSimpleArithmeticIndex(found.value) ||
           (found.value.type === "listItem" &&
             ((found.value.index.type === "numericLiteral" &&
               Number.isInteger(found.value.index.value) &&
