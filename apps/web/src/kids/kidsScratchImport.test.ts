@@ -4662,6 +4662,74 @@ describe("Scratch lists, which hold numbers or words (design: word lists)", () =
     },
   );
 
+  it.each(["direct", "search"])(
+    "uses floor to select a source item for a %s list position",
+    async (kind) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, kind === "direct" ? "source" : "search", [4, "1"]] },
+            }),
+            search: block("data_itemnumoflist", {
+              ...onList,
+              inputs: { ITEM: [3, "source", [10, ""]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { INDEX: [3, "floor", [4, "1"]] },
+            }),
+            floor: block("operator_mathop", {
+              fields: { OPERATOR: ["floor", null] },
+              inputs: { NUM: lit(1.9) },
+            }),
+          },
+          { L1: ["Compras", [2, 1, 3]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(report.dropped).toEqual([]);
+      expect(validateStudioProgram(program)).toEqual(program);
+      const run = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+      expect(run.actors[0]!.world.lists?.["studio-list-1"]?.items).toEqual(
+        kind === "direct" ? [2, 3] : [1, 3],
+      );
+      const { bytes } = exportScratchProject(program, "forest", "es");
+      const back = convertScratchProject(await readScratchProject(bytes.buffer as ArrayBuffer));
+      expect(back.program.scripts[0]!.statements).toEqual(program.scripts[0]!.statements);
+    },
+  );
+
+  it.each(["nested", "unsupported"])(
+    "reports a %s math function inside a source item position",
+    (kind) => {
+      const { program, report } = convertScratchProject(
+        listProject(
+          {
+            hat: flag("remove"),
+            remove: block("data_deleteoflist", {
+              ...onList,
+              inputs: { INDEX: [3, "source", [4, "1"]] },
+            }),
+            source: block("data_itemoflist", {
+              fields: { LIST: ["Fuente", "L2"] },
+              inputs: { INDEX: [3, "math", [4, "1"]] },
+            }),
+            math: block("operator_mathop", {
+              fields: { OPERATOR: [kind === "nested" ? "floor" : "sqrt", null] },
+              inputs: { NUM: kind === "nested" ? [3, "sum", [4, "0"]] : lit(4) },
+            }),
+            sum: block("operator_add", { inputs: { NUM1: lit(1), NUM2: lit(2) } }),
+          },
+          { L1: ["Compras", [1, 2, 3]], L2: ["Fuente", [2, 3]] },
+        ),
+      );
+      expect(program.scripts[0]!.statements).toEqual([]);
+      expect(report.dropped.some((item) => item.what.includes("data_deleteoflist"))).toBe(true);
+    },
+  );
+
   it.each([
     { kind: "direct", count: [] },
     { kind: "search", count: [] },
