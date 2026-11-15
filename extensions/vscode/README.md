@@ -46,8 +46,9 @@ VS Code project.
 Explicit explain, debug, challenge and reflect actions use this adapter when
 configured and permitted by the shared request budget. The Companion History
 keeps the interpretation beside bounded runtime facts; selecting a turn reveals
-its canonical node. Builder proposals remain deterministic until #1623
-completes the reviewed Ori proposal flow.
+its canonical node. Ori can also propose one bounded move or turn. Studio shows
+the diff and requires the learner to apply, modify or reject it; invalid model
+output falls back to the deterministic proposal.
 
 ## Supported VS Code versions
 

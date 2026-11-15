@@ -97,6 +97,9 @@ export function createProposalSource(options: ProposalSourceOptions): ProposalSo
           return builtIn("rejected", outcome.message);
         }
         const raw = outcome.response;
+        if (raw.metadata.provenance === "deterministic-fake") {
+          return builtIn("unavailable");
+        }
         if (raw.capability !== "builder" || raw.payload.validation.status !== "valid") {
           return builtIn("invalid");
         }

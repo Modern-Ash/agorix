@@ -502,7 +502,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
     }
     if (path === "/api/tutor/studio-companion/health") {
       if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
-      const current = await options.ori?.health();
+      const current = await options.ori?.health("studio");
       return send(response, 200, {
         status: current?.available ? "available" : current?.configured ? "degraded" : "unavailable",
       });

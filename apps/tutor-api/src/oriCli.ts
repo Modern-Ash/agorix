@@ -55,7 +55,7 @@ export interface OriCliHealth {
   readonly providerInUse: "codex" | "opencode" | "deterministic";
 }
 export interface OriCliService {
-  health(): Promise<OriCliHealth>;
+  health(capability?: AiCapability): Promise<OriCliHealth>;
   diagnostics(): OriCliDiagnostics;
   respond(context: OriAgentContext): Promise<OriAgentDecision>;
   chat(context: OriChatContext): Promise<string>;
@@ -241,8 +241,8 @@ export function createOriCliService(
         p95Ms: percentile(0.95),
       };
     },
-    async health() {
-      const policy = policyFor("mission");
+    async health(capability = "mission") {
+      const policy = policyFor(capability);
       const provider = await select(policy);
       return {
         configured: policy.enabled && policy.provider !== "disabled",
