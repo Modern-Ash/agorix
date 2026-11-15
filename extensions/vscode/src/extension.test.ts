@@ -718,6 +718,40 @@ describe("Studio extension wiring", () => {
     expect(JSON.stringify(rows[0])).toContain("runtime facts");
   });
 
+  it("shows an explicit Ori explanation with runtime context and keeps the project unchanged", async () => {
+    const { createDeterministicLearningCompanionResponse } = await import("@agorix/tutor-contract");
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init: { body?: string }) => {
+      calls.push(url);
+      if (url.endsWith("/health"))
+        return { ok: true, status: 200, text: async () => '{"status":"available"}' };
+      const baseline = createDeterministicLearningCompanionResponse(JSON.parse(init.body ?? "{}"));
+      const response = {
+        ...baseline,
+        message: "Compare the move with the runtime position.",
+        metadata: { ...baseline.metadata, provenance: "local-provider" },
+        payload: {
+          ...baseline.payload,
+          explanation: "Compare the move with the runtime position.",
+        },
+      };
+      return { ok: true, status: 200, text: async () => JSON.stringify(response) };
+    });
+    try {
+      agentConfig["endpoint"] = "http://127.0.0.1:9/api/tutor/studio-companion";
+      await openFile("/p/ori-help.json", repeated);
+      const original = new TextDecoder().decode(files.get("/p/ori-help.json"));
+      await handlers.get("agorixStudio.run")!();
+      const turn = await handlers.get("agorixStudio.companionExplain")!();
+      expect(turn?.message).toContain("runtime position");
+      expect(turn?.diagnostics.providerSelection).toBe("provider");
+      expect(calls.some((url) => url.endsWith("/companion"))).toBe(true);
+      expect(new TextDecoder().decode(files.get("/p/ori-help.json"))).toBe(original);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("runs and stops through coherent execution controls", async () => {
     await openFile("/p/a.json", repeated);
 

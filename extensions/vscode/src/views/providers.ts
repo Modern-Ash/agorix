@@ -132,7 +132,10 @@ export class CompanionHistoryItem extends vscode.TreeItem {
       turn.diagnostics.providerSelection,
       turn.diagnostics.runtimeFactCount,
     );
-    this.accessibilityInformation = { label: `${turn.action}: ${turn.message}` };
+    const facts = turn.request.runtimeFacts.slice(0, 3).map((fact) => fact.fact.slice(0, 160));
+    this.accessibilityInformation = {
+      label: [turn.action, turn.message, ...facts].join(". "),
+    };
     this.contextValue = turn.proposal === undefined ? "agorixCompanionTurn" : "agorixProposal";
     this.tooltip = [
       turn.message,
@@ -140,6 +143,7 @@ export class CompanionHistoryItem extends vscode.TreeItem {
       t("decision: {0}", turn.diagnostics.decisionSource),
       t("context: {0}", turn.diagnostics.contextNeed),
       t("runtime facts: {0}", turn.diagnostics.runtimeFactCount),
+      ...facts,
       turn.proposal === undefined ? t("no proposal") : t("proposal: {0}", turn.proposal.purpose),
     ].join("\n");
     if (turn.selectedNodeIds[0] !== undefined) {
