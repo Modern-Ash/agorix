@@ -118,6 +118,30 @@ describe("canvas keyboard and screen reader behaviour", () => {
     expect(intents).toHaveLength(1);
   });
 
+  it("lets the learner edit visible text on a visual block", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: { id: "say:1", type: "looks_say", fields: { text: "Hello" } },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const input = host.querySelector<HTMLInputElement>('.block-field input[type="text"]');
+    expect(input?.value).toBe("Hello");
+    act(() => {
+      input!.value = "Hola";
+      input!.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setTextField",
+      location: { container: script, index: 0 },
+      field: "text",
+      value: "Hola",
+    });
+    expect(input?.value).toBe("Hello");
+  });
+
   it("asks Ori about the chosen block with one explicit action", () => {
     const intents: Intent[] = [];
     render(initial, { onIntent: (intent) => intents.push(intent) });
@@ -304,7 +328,7 @@ describe("workbench live region and focus after inserting from the palette", () 
       }),
     );
     const tool = Array.from(host.querySelectorAll<HTMLButtonElement>(".palette button")).find(
-      (button) => button.textContent?.includes("Mover [N] pasos"),
+      (button) => button.textContent?.includes("Mover"),
     );
     const slot = host.querySelector<HTMLElement>(".slot.is-empty");
     expect(tool?.draggable).toBe(true);

@@ -98,6 +98,18 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("validates text edits without accepting oversized or forged field names", () => {
+    const location = { container: script, index: 0 };
+    const intent = { type: "setTextField", location, field: "text", value: "Hola" };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, value: "x".repeat(161) } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, field: "__proto__" } }),
+    ).toBeUndefined();
+  });
+
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
     for (const junk of [
       null,

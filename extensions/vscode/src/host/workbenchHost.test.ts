@@ -193,6 +193,43 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(1);
   });
 
+  it("commits text edits only to existing string fields", async () => {
+    const { host, get, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "insertBlock", blockType: "looks_say", to: { container: script, index: 0 } },
+      baseHash: programSemanticHash(base),
+    });
+    const current = get()!;
+    const edited = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "text",
+        value: "Hola",
+      },
+      baseHash: programSemanticHash(current),
+    });
+    expect(edited[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({ type: "say", text: "Hola" });
+    const refused = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "steps",
+        value: "bad",
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(2);
+  });
+
   it("moves exactly like applying the same change through block-editor", async () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };

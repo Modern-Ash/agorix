@@ -172,7 +172,7 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .fail-badge { color: var(--vscode-errorForeground); }
 .block.ghost-removed .label { text-decoration: line-through; }
 /* Advanced Studio: the program is the desk, Ori is a companion, evidence is the bench below. */
-.workbench { grid-template-columns: minmax(150px, 170px) minmax(0, 1fr) minmax(240px, 260px); gap: 10px; align-items: start; min-height: 100vh; box-sizing: border-box; background: var(--vscode-editor-background); }
+.workbench { grid-template-columns: minmax(178px, 198px) minmax(0, 1fr) minmax(240px, 260px); gap: 10px; align-items: start; min-height: 100vh; box-sizing: border-box; background: var(--vscode-editor-background); }
 .workbench[data-density="compact"] { grid-template-columns: minmax(150px, 175px) minmax(0, 1fr) minmax(240px, 270px); gap: 8px; }
 .studio-banner { grid-column: 1 / -1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 10px 14px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
 .studio-banner span { color: var(--vscode-descriptionForeground); font: 600 0.72em var(--vscode-editor-font-family); letter-spacing: 0.12em; }
@@ -187,7 +187,30 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-tools .palette button { display: flex; align-items: center; gap: 8px; cursor: grab; }
 .studio-tools .palette button:active { cursor: grabbing; }
 .studio-tools .palette button:disabled { cursor: not-allowed; }
-.palette-grip { flex: 0 0 8px; color: var(--vscode-descriptionForeground); }
+.palette button[data-tone="start"], .studio-program .block[data-tone="start"] { --block-accent: var(--vscode-charts-yellow, var(--vscode-focusBorder)); }
+.palette button[data-tone="motion"], .studio-program .block[data-tone="motion"] { --block-accent: var(--vscode-charts-blue, var(--vscode-focusBorder)); }
+.palette button[data-tone="looks"], .studio-program .block[data-tone="looks"] { --block-accent: var(--vscode-charts-purple, var(--vscode-focusBorder)); }
+.palette button[data-tone="sound"], .studio-program .block[data-tone="sound"] { --block-accent: var(--vscode-charts-red, var(--vscode-focusBorder)); }
+.palette button[data-tone="control"], .studio-program .block[data-tone="control"] { --block-accent: var(--vscode-charts-orange, var(--vscode-focusBorder)); }
+.palette button[data-tone="sensing"], .studio-program .block[data-tone="sensing"] { --block-accent: var(--vscode-charts-green, var(--vscode-focusBorder)); }
+.palette button[data-tone="operators"], .studio-program .block[data-tone="operators"] { --block-accent: var(--vscode-charts-green, var(--vscode-focusBorder)); }
+.palette button[data-tone="variables"], .studio-program .block[data-tone="variables"] { --block-accent: var(--vscode-charts-orange, var(--vscode-focusBorder)); }
+.studio-tools .palette button[data-tone], .studio-program .block[data-tone] { position: relative; border-color: color-mix(in srgb, var(--block-accent), var(--vscode-panel-border) 42%); border-left: 5px solid var(--block-accent); background: linear-gradient(90deg, color-mix(in srgb, var(--block-accent), transparent 79%), var(--vscode-editorWidget-background) 78%); box-shadow: inset 0 1px color-mix(in srgb, var(--block-accent), transparent 60%); }
+.studio-tools .palette button[data-shape="reporter"] { border-radius: 20px; }
+.studio-tools .palette button[data-shape="hat"] { border-radius: 14px 14px 5px 5px; }
+.studio-tools .palette button[data-shape="container"], .studio-program .block[data-shape="container"] { border-radius: 8px 8px 3px 3px; }
+.studio-tools .palette button[data-shape="stack"]::after, .studio-program .block[data-shape="stack"]::after, .studio-program .block[data-shape="container"]::after { content: ""; position: absolute; left: 18px; bottom: -5px; width: 19px; height: 5px; border: 1px solid var(--block-accent); border-top: 0; border-radius: 0 0 5px 5px; background: color-mix(in srgb, var(--block-accent), var(--vscode-editorWidget-background) 65%); z-index: 1; }
+.palette-block-label { flex: 1; }
+.palette-block-symbol { color: var(--block-accent); font-size: 1.1em; }
+.studio-tools .palette button[data-tone="motion"] .palette-grip::before, .studio-program .block[data-tone="motion"]::before { content: "➜"; }
+.studio-tools .palette button[data-tone="looks"] .palette-grip::before, .studio-program .block[data-tone="looks"]::before { content: "◉"; }
+.studio-tools .palette button[data-tone="sound"] .palette-grip::before, .studio-program .block[data-tone="sound"]::before { content: "♪"; }
+.studio-tools .palette button[data-tone="start"] .palette-grip::before, .studio-program .block[data-tone="start"]::before { content: "⚑"; }
+.studio-tools .palette button[data-tone="control"] .palette-grip::before, .studio-program .block[data-tone="control"]::before { content: "↻"; }
+.studio-tools .palette button[data-tone="sensing"] .palette-grip::before, .studio-program .block[data-tone="sensing"]::before { content: "◎"; }
+.studio-tools .palette button[data-tone="operators"] .palette-grip::before, .studio-program .block[data-tone="operators"]::before { content: "ƒ"; }
+.studio-tools .palette button[data-tone="variables"] .palette-grip::before, .studio-program .block[data-tone="variables"]::before { content: "▦"; }
+.palette-grip { flex: 0 0 18px; color: var(--block-accent, var(--vscode-descriptionForeground)); font-size: 1.05em; text-align: center; }
 .palette-grip::before { content: "⋮⋮"; }
 .studio-tools .palette-search { margin-bottom: 4px; }
 .studio-program h2, .studio-evidence h2 { margin: 0 0 12px; color: var(--vscode-foreground); font-size: 0.8em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -200,13 +223,20 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-program .canvas { min-height: 220px; }
 .studio-program .block { min-height: 38px; box-sizing: border-box; cursor: grab; }
 .studio-program .block:active { cursor: grabbing; }
-.studio-program .block::before { content: "⋮⋮"; flex: 0 0 12px; color: var(--vscode-descriptionForeground); font-size: 0.85em; }
-.studio-program .block .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-program .block::before { content: "⋮⋮"; flex: 0 0 18px; color: var(--block-accent, var(--vscode-descriptionForeground)); font-size: 1.05em; text-align: center; }
+.studio-program .block .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.studio-program .block[data-shape="container"] { border-bottom-width: 4px; }
+.studio-program .block.depth-1, .studio-program .slot.depth-1 { margin-left: 24px; border-left: 3px solid color-mix(in srgb, var(--vscode-charts-orange, var(--vscode-focusBorder)), transparent 45%); }
+.studio-program .block.depth-2, .studio-program .slot.depth-2 { margin-left: 48px; border-left: 3px solid color-mix(in srgb, var(--vscode-charts-orange, var(--vscode-focusBorder)), transparent 45%); }
+.studio-program .block.depth-3, .studio-program .slot.depth-3 { margin-left: 72px; border-left: 3px solid color-mix(in srgb, var(--vscode-charts-orange, var(--vscode-focusBorder)), transparent 45%); }
+.studio-program .block.depth-4, .studio-program .slot.depth-4 { margin-left: 96px; border-left: 3px solid color-mix(in srgb, var(--vscode-charts-orange, var(--vscode-focusBorder)), transparent 45%); }
 .studio-program .block-field { display: grid; gap: 2px; flex: 0 0 64px; color: var(--vscode-descriptionForeground); font-size: 0.74em; }
+.studio-program .block-field:has(input[type="text"]) { flex-basis: clamp(76px, 14vw, 170px); }
 .studio-program .block-field input { width: 64px; min-height: 28px; box-sizing: border-box; padding: 2px 4px; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 4px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: 0.96rem var(--vscode-editor-font-family); }
+.studio-program .block-field input[type="text"] { width: clamp(76px, 14vw, 170px); }
 .studio-program .block-field input:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; }
 .studio-program .block button { flex: 0 0 26px; min-width: 26px; min-height: 28px; padding: 2px; text-align: center; font-size: 1.05em; }
-.studio-program .block button.block-ori { flex-basis: 34px; min-width: 34px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 0.78em; font-weight: 700; }
+.studio-program .block button.block-ori { margin-left: auto; flex-basis: 34px; min-width: 34px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 0.78em; font-weight: 700; }
 .studio-program .slot { display: grid; place-items: center; height: 16px; border-top: 1px dashed var(--vscode-panel-border); border-radius: 4px; color: var(--vscode-descriptionForeground); box-sizing: border-box; }
 .studio-program .slot span { visibility: hidden; font-size: 0.8em; }
 .studio-program .slot.is-empty { height: 72px; margin: 8px 0; border: 1px dashed var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 94%); }

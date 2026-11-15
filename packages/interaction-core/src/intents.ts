@@ -44,6 +44,12 @@ export type Intent =
       readonly field: string;
       readonly value: number;
     }
+  | {
+      readonly type: "setTextField";
+      readonly location: StatementLocation;
+      readonly field: string;
+      readonly value: string;
+    }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
   | { readonly type: "highlightNodes"; readonly nodeIds: readonly string[] }
@@ -121,8 +127,14 @@ export function intentToChange(
       return { type: "moveBlock", from: intent.from, to: intent.to };
     case "deleteBlock":
       return { type: "deleteBlock", location: intent.location };
-    case "setNumericField": {
-      if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
+    case "setNumericField":
+    case "setTextField": {
+      if (
+        workspace === undefined ||
+        (intent.type === "setNumericField" && !Number.isFinite(intent.value)) ||
+        (intent.type === "setTextField" && intent.value.length > 160)
+      )
+        return undefined;
       const { container, index } = intent.location;
       let statements: readonly BlockNode[] | undefined =
         workspace.scripts[container.scriptIndex]?.statements;
@@ -133,7 +145,8 @@ export function intentToChange(
         }
       }
       const block = statements?.[index];
-      if (block === undefined || typeof block.fields?.[intent.field] !== "number") return undefined;
+      if (block === undefined || typeof block.fields?.[intent.field] !== typeof intent.value)
+        return undefined;
       return {
         type: "editBlock",
         location: intent.location,

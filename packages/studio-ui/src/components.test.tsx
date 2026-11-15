@@ -94,7 +94,7 @@ describe("studio-ui", () => {
     expect(html).toContain("Ejecuta o avanza el programa");
     expect(html).toContain("Que queres crear?");
     expect(html).toContain("Bloques");
-    expect(html).toContain("Mover [N] pasos");
+    expect(html).toContain("Mover");
     expect(html).toContain("Abri un proyecto para empezar a construir.");
     expect(html).toContain("Explicar");
     expect(html).toContain("Depurar");
@@ -151,6 +151,8 @@ describe("studio-ui", () => {
     expect(palette).toContain("Control");
     expect(palette).toContain("Sensing");
     expect(palette).toContain("move steps");
+    expect(palette).toContain('data-tone="motion"');
+    expect(palette).toContain('data-shape="container"');
     expect(palette).not.toContain("when run starts");
     expect(palette).toContain("Touching the goal?");
     expect(palette).toContain("disabled");
@@ -158,6 +160,8 @@ describe("studio-ui", () => {
     const canvas = renderToStaticMarkup(
       <Canvas workspace={workspace} onIntent={() => undefined} />,
     );
+    expect(canvas).toContain('data-tone="motion"');
+    expect(canvas).toContain('data-shape="container"');
     // Roving tabindex: one tab stop for the whole canvas, the rest reachable with arrow keys.
     expect(canvas.match(/role="group"[^>]*tabindex="0"/g)).toHaveLength(1);
     expect(canvas).toContain("aria-keyshortcuts");
