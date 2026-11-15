@@ -37,6 +37,8 @@ import {
   studioCategoryId,
   type StudioCategory,
 } from "../kidsStudioCategories.js";
+import { valueHistory } from "../kidsRunHistory.js";
+import { KidsRunHistory } from "./KidsRunHistory.js";
 import { md5Hex } from "../kidsScratchPack.js";
 import { starterShelf, starterStatement, type StudioStarterKind } from "../kidsPaletteCatalog.js";
 import {
@@ -2480,6 +2482,10 @@ export function KidsStudioScreen({
         : frame > 0
           ? frame - 1
           : null;
+  const valueChanges = useMemo(
+    () => (run ? valueHistory(history.current, run) : { changes: [], more: 0 }),
+    [run, history.current],
+  );
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
@@ -5093,6 +5099,19 @@ export function KidsStudioScreen({
                         setFrame(frameBefore);
                       },
                     })}
+              />
+            ) : null}
+            {run && !playing && valueChanges.changes.length > 0 ? (
+              <KidsRunHistory
+                changes={valueChanges.changes}
+                more={valueChanges.more}
+                frame={frame}
+                locale={locale}
+                onSeek={(traceIndex) => {
+                  stopLive();
+                  setStepped(true);
+                  setFrame(traceIndex);
+                }}
               />
             ) : null}
             {listening ? (
