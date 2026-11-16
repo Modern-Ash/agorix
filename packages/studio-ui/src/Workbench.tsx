@@ -1191,6 +1191,7 @@ export function Workbench({
               copy={copy}
               workspace={workspace}
               assets={assets}
+              actors={actors?.actors ?? []}
               visibleScriptIds={activeScriptIds}
               selectedScriptId={activeScriptId}
               onSelectScript={setSelectedScriptId}

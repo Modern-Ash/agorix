@@ -101,3 +101,5 @@ Scene can add an owned green-flag or message-receiver script to the selected act
 Studio Blocks can declare named numeric lists and insert Add, Remove, Insert and Replace operations. List blocks select a declared list and edit literal item values and indices directly. The shared child-facing POC toolbox stays unchanged; these definitions are surfaced only in Studio.
 
 Numeric sockets on variable and list operations can switch between a literal, a declared variable, list length and a list item. Each choice is a validated canonical edit; existing expression types outside this first socket vocabulary keep their visible label instead of being presented as a number.
+
+Boolean literals and actor-contact conditions expose direct controls on the `if` block. The actor selector comes from project actors, and the host rejects unknown ids before committing the canonical condition.

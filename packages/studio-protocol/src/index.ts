@@ -988,9 +988,16 @@ function parseIntent(value: unknown): Intent | undefined {
       const location = parseLocation(value["location"]);
       const blockType = value["blockType"];
       return location === undefined ||
-        !(STUDIO_CONDITION_BLOCK_TYPES as readonly unknown[]).includes(blockType)
+        !(STUDIO_CONDITION_BLOCK_TYPES as readonly unknown[]).includes(blockType) ||
+        (value["actorId"] !== undefined &&
+          (blockType !== "sensing_touching_actor" || !isSafeId(value["actorId"])))
         ? undefined
-        : { type: "replaceCondition", location, blockType: blockType as BlockType };
+        : {
+            type: "replaceCondition",
+            location,
+            blockType: blockType as BlockType,
+            ...(typeof value["actorId"] === "string" ? { actorId: value["actorId"] } : {}),
+          };
     }
     case "setConditionNumber": {
       const location = parseLocation(value["location"]);
@@ -999,6 +1006,18 @@ function parseIntent(value: unknown): Intent | undefined {
         !isFiniteNumber(value["value"])
         ? undefined
         : { type: "setConditionNumber", location, side: value["side"], value: value["value"] };
+    }
+    case "setConditionBoolean": {
+      const location = parseLocation(value["location"]);
+      return location !== undefined && typeof value["value"] === "boolean"
+        ? { type: "setConditionBoolean", location, value: value["value"] }
+        : undefined;
+    }
+    case "setConditionActor": {
+      const location = parseLocation(value["location"]);
+      return location !== undefined && isSafeId(value["actorId"])
+        ? { type: "setConditionActor", location, actorId: value["actorId"] }
+        : undefined;
     }
     case "addVariable": {
       const name = value["name"];

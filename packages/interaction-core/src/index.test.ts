@@ -255,6 +255,60 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("edits only Boolean literals and actor contact conditions", () => {
+    const location = { container: script, index: 0 };
+    const initial = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:one",
+        type: "control_if",
+        inputs: {
+          condition: { id: "boolean:one", type: "literal_boolean", fields: { value: true } },
+          then: [],
+        },
+      },
+    }).workspace;
+    const changed = intentToChange(
+      { type: "setConditionBoolean", location, value: false },
+      newId,
+      initial,
+    );
+    expect(applyWorkspaceChange(initial, changed!).program.scripts[0]?.statements[0]).toMatchObject(
+      { type: "if", condition: { type: "booleanLiteral", value: false } },
+    );
+    expect(
+      intentToChange(
+        { type: "setConditionActor", location, actorId: "actor:robot" },
+        newId,
+        initial,
+      ),
+    ).toBeUndefined();
+    const actorCondition = applyWorkspaceChange(
+      initial,
+      intentToChange(
+        { type: "replaceCondition", location, blockType: "sensing_touching_actor" },
+        newId,
+        initial,
+      )!,
+    ).workspace;
+    const actorChange = intentToChange(
+      { type: "setConditionActor", location, actorId: "actor:robot" },
+      newId,
+      actorCondition,
+    );
+    expect(
+      applyWorkspaceChange(actorCondition, actorChange!).program.scripts[0]?.statements[0],
+    ).toMatchObject({ type: "if", condition: { type: "touchingActor", actorId: "actor:robot" } });
+    expect(
+      intentToChange(
+        { type: "setConditionActor", location, actorId: "https://bad" },
+        newId,
+        actorCondition,
+      ),
+    ).toBeUndefined();
+  });
 
   it("creates named variables and edits only valid numeric variable inputs", () => {
     const empty = createStarterWorkspace();
