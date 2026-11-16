@@ -464,6 +464,38 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "operator_less_or_equal",
+    studioOnly: true,
+    label: "[N] ≤ [N]",
+    section: "Operators",
+    placement: "expression",
+    accessibleName: "less than or equal",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "operator_less_or_equal",
+      inputs: {
+        left: createDefaultBlock("variables_value", `${id}:left`),
+        right: { id: `${id}:right`, type: "literal_number", fields: { value: 10 } },
+      },
+    }),
+  },
+  {
+    type: "operator_greater_or_equal",
+    studioOnly: true,
+    label: "[N] ≥ [N]",
+    section: "Operators",
+    placement: "expression",
+    accessibleName: "greater than or equal",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "operator_greater_or_equal",
+      inputs: {
+        left: createDefaultBlock("variables_value", `${id}:left`),
+        right: { id: `${id}:right`, type: "literal_number", fields: { value: 10 } },
+      },
+    }),
+  },
+  {
     type: "operator_equals",
     label: "[N] = [N]",
     section: "Operators",

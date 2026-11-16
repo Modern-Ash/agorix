@@ -203,6 +203,56 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("accepts only structured comparison operand sources", () => {
+    const location = { container: script, index: 0 };
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setComparisonOperand",
+          location,
+          side: "left",
+          source: "variable",
+          referenceId: "score",
+        },
+      }),
+    ).toMatchObject({ intent: { source: "variable", referenceId: "score" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setComparisonOperand", location, side: "left", source: "variable" },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setComparisonOperand",
+          location,
+          side: "right",
+          source: "xPosition",
+          referenceId: "score",
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setComparisonOperand", location, side: "middle", source: "number" },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setComparisonOperand", location, side: "left", source: "operator_add" },
+      }),
+    ).toBeUndefined();
+  });
   it("validates numeric comparison edits and preserves nested operands in snapshots", () => {
     const location = { container: script, index: 0 };
     const intent = { type: "setConditionNumber", location, side: "right", value: 24 };

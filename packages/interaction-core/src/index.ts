@@ -12,6 +12,7 @@ export {
 export type { AgentVerb, DragSource, DropTarget, InsertionPoint, Intent } from "./intents.js";
 export {
   STUDIO_COMPARISON_BLOCK_TYPES,
+  STUDIO_COMPARISON_OPERAND_SOURCES,
   STUDIO_CONDITION_BLOCK_TYPES,
   STUDIO_LOGICAL_OPERAND_TYPES,
   intentToChange,

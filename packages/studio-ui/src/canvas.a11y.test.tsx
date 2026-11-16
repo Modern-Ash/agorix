@@ -461,6 +461,58 @@ describe("canvas keyboard and screen reader behaviour", () => {
     });
     expect(intents).toHaveLength(1);
   });
+  it("offers declared and sensor sources on both comparison sides", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      lists: [{ id: "items", name: "Items", initialItems: [], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "lessOrEqual",
+                left: { type: "numericLiteral", value: 0 },
+                right: { type: "numericLiteral", value: 10 },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const left = host.querySelector<HTMLSelectElement>(
+      '.comparison-operand select[aria-label="Condition: Left value source"]',
+    )!;
+    expect(Array.from(left.options).map((option) => option.value)).toContain("variable");
+    act(() => {
+      left.value = "variable";
+      left.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setComparisonOperand",
+      side: "left",
+      source: "variable",
+      referenceId: "score",
+    });
+    const right = host.querySelector<HTMLSelectElement>(
+      '.comparison-operand select[aria-label="Condition: Right value source"]',
+    )!;
+    act(() => {
+      right.value = "yPosition";
+      right.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setComparisonOperand",
+      side: "right",
+      source: "yPosition",
+    });
+  });
   it("replaces an if condition from a selected reporter and from a palette drop", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

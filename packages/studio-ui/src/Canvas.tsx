@@ -3,6 +3,7 @@ import type { BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import { getBlockDefinition, type BlockType } from "@agorix/block-editor";
 import {
   STUDIO_COMPARISON_BLOCK_TYPES,
+  STUDIO_COMPARISON_OPERAND_SOURCES,
   STUDIO_CONDITION_BLOCK_TYPES,
   STUDIO_LOGICAL_OPERAND_TYPES,
   keyboardIntent,
@@ -1011,42 +1012,126 @@ export function Canvas({
               <span className="comparison-fields">
                 {(["left", "right"] as const).map((side) => {
                   const operand = block.condition?.inputs?.[side];
-                  if (
-                    operand?.type !== "literal_number" ||
-                    typeof operand.fields?.value !== "number"
-                  )
-                    return null;
-                  const value = operand.fields.value;
+                  if (operand === undefined || Array.isArray(operand)) return null;
+                  const source =
+                    operand.type === "literal_number"
+                      ? "number"
+                      : operand.type === "variables_value"
+                        ? "variable"
+                        : operand.type === "lists_length"
+                          ? "listLength"
+                          : operand.type === "sensing_x_position"
+                            ? "xPosition"
+                            : operand.type === "sensing_y_position"
+                              ? "yPosition"
+                              : "other";
+                  const sideLabel = side === "left" ? copy.conditionLeft : copy.conditionRight;
+                  const referenceId =
+                    source === "variable" ? operand.fields?.variableId : operand.fields?.listId;
+                  const choose = (
+                    next: (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number],
+                    id?: string,
+                  ) =>
+                    onIntent({
+                      type: "setComparisonOperand",
+                      location: block.location,
+                      side,
+                      source: next,
+                      ...(id === undefined ? {} : { referenceId: id }),
+                    });
                   return (
-                    <label key={side} className="block-field">
-                      <span>{side === "left" ? copy.conditionLeft : copy.conditionRight}</span>
-                      <input
-                        key={`${pos}:${side}:${value}`}
-                        type="number"
-                        tabIndex={isTabbable ? 0 : -1}
-                        aria-label={`${copy.condition}: ${side === "left" ? copy.conditionLeft : copy.conditionRight}`}
-                        defaultValue={value}
-                        draggable={false}
-                        onDragStart={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => {
-                          event.stopPropagation();
-                          if (event.key === "Enter") event.currentTarget.blur();
-                        }}
-                        onBlur={(event) => {
-                          const raw = event.currentTarget.value.trim();
-                          const next = Number(raw);
-                          if (raw !== "" && Number.isFinite(next) && next !== value) {
-                            onIntent({
-                              type: "setConditionNumber",
-                              location: block.location,
-                              side,
-                              value: next,
-                            });
-                          }
-                          event.currentTarget.value = String(value);
-                        }}
-                      />
-                    </label>
+                    <span key={side} className="block-field comparison-operand">
+                      <label>
+                        <span>{sideLabel}</span>
+                        <select
+                          aria-label={`${copy.condition}: ${sideLabel} ${copy.numericSource}`}
+                          value={source}
+                          onChange={(event) => {
+                            const next = event.currentTarget
+                              .value as (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number];
+                            choose(
+                              next,
+                              next === "variable"
+                                ? workspace.variables?.[0]?.id
+                                : next === "listLength"
+                                  ? workspace.lists?.[0]?.id
+                                  : undefined,
+                            );
+                          }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <option value="number">{copy.numericLiteral}</option>
+                          {workspace.variables?.length ? (
+                            <option value="variable">{copy.variableValue}</option>
+                          ) : null}
+                          {workspace.lists?.length ? (
+                            <option value="listLength">{copy.listLength}</option>
+                          ) : null}
+                          <option value="xPosition">{copy.positionX}</option>
+                          <option value="yPosition">{copy.positionY}</option>
+                          {source === "other" ? (
+                            <option value="other">
+                              {getBlockDefinition(operand.type)?.label ?? operand.type}
+                            </option>
+                          ) : null}
+                        </select>
+                      </label>
+                      {source === "variable" || source === "listLength" ? (
+                        <label>
+                          <span>{copy.numericReference}</span>
+                          <select
+                            aria-label={`${copy.condition}: ${sideLabel} ${copy.numericReference}`}
+                            value={String(referenceId ?? "")}
+                            onChange={(event) => choose(source, event.currentTarget.value)}
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            {(source === "variable"
+                              ? (workspace.variables ?? [])
+                              : (workspace.lists ?? [])
+                            ).map((entry) => (
+                              <option key={entry.id} value={entry.id}>
+                                {entry.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                      {source === "number" && typeof operand.fields?.value === "number" ? (
+                        <label>
+                          <span>{sideLabel}</span>
+                          <input
+                            key={`${pos}:${side}:${operand.fields.value}`}
+                            type="number"
+                            tabIndex={isTabbable ? 0 : -1}
+                            aria-label={`${copy.condition}: ${sideLabel}`}
+                            defaultValue={operand.fields.value}
+                            draggable={false}
+                            onDragStart={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => {
+                              event.stopPropagation();
+                              if (event.key === "Enter") event.currentTarget.blur();
+                            }}
+                            onBlur={(event) => {
+                              const raw = event.currentTarget.value.trim();
+                              const next = Number(raw);
+                              if (
+                                raw !== "" &&
+                                Number.isFinite(next) &&
+                                next !== operand.fields?.value
+                              ) {
+                                onIntent({
+                                  type: "setConditionNumber",
+                                  location: block.location,
+                                  side,
+                                  value: next,
+                                });
+                              }
+                              event.currentTarget.value = String(operand.fields?.value);
+                            }}
+                          />
+                        </label>
+                      ) : null}
+                    </span>
                   );
                 })}
               </span>

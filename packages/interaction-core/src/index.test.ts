@@ -405,6 +405,84 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("selects declared and sensor sources for comparison operands", () => {
+    const location = { container: script, index: 0 };
+    const empty = createStarterWorkspace();
+    const declared = applyWorkspaceChange(
+      empty,
+      intentToChange({ type: "addVariable", name: "score" }, newId, empty)!,
+    ).workspace;
+    const initial = applyWorkspaceChange(declared, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:sources",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: { id: "c:sources", type: "literal_boolean", fields: { value: true } },
+        },
+      },
+    }).workspace;
+    for (const [blockType, type] of [
+      ["operator_less_or_equal", "lessOrEqual"],
+      ["operator_greater_or_equal", "greaterOrEqual"],
+    ] as const) {
+      const changed = applyWorkspaceChange(
+        initial,
+        intentToChange({ type: "replaceCondition", location, blockType }, newId, initial)!,
+      ).workspace;
+      const variable = applyWorkspaceChange(
+        changed,
+        intentToChange(
+          {
+            type: "setComparisonOperand",
+            location,
+            side: "left",
+            source: "variable",
+            referenceId: declared.variables![0]!.id,
+          },
+          newId,
+          changed,
+        )!,
+      );
+      expect(variable.program.scripts[0]?.statements[0]).toMatchObject({
+        condition: { type, left: { type: "variable", variableId: declared.variables![0]!.id } },
+      });
+      const sensor = applyWorkspaceChange(
+        variable.workspace,
+        intentToChange(
+          { type: "setComparisonOperand", location, side: "right", source: "xPosition" },
+          newId,
+          variable.workspace,
+        )!,
+      );
+      expect(sensor.program.scripts[0]?.statements[0]).toMatchObject({
+        condition: { type, right: { type: "xPosition" } },
+      });
+      expect(
+        intentToChange(
+          {
+            type: "setComparisonOperand",
+            location,
+            side: "left",
+            source: "variable",
+            referenceId: "missing",
+          },
+          newId,
+          changed,
+        ),
+      ).toBeUndefined();
+      expect(
+        intentToChange(
+          { type: "setConditionNumber", location, side: "left", value: 3 },
+          newId,
+          variable.workspace,
+        ),
+      ).toBeUndefined();
+    }
+  });
   it("edits only Boolean literals and actor contact conditions", () => {
     const location = { container: script, index: 0 };
     const initial = applyWorkspaceChange(createStarterWorkspace(), {
