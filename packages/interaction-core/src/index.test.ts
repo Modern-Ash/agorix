@@ -827,7 +827,7 @@ describe("interaction-core", () => {
               variableId: "score",
               value: {
                 type: "add",
-              left: { type: "variable", variableId: "score" },
+                left: { type: "variable", variableId: "score" },
                 right: { type: "numericLiteral", value: 2 },
               },
             },
