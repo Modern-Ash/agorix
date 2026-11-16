@@ -526,6 +526,56 @@ describe("workbenchHost", () => {
     ).toMatchObject({ type: "error", code: "STALE_EDIT" });
     expect(labels).toHaveLength(3);
   });
+  it("commits a numeric list reporter and refuses missing references or stale edits", async () => {
+    const { host, get, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "addList", name: "items" },
+      baseHash: programSemanticHash(base),
+    });
+    const listId = get()!.lists![0]!.id;
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "insertBlock", blockType: "lists_add", to: { container: script, index: 0 } },
+      baseHash: programSemanticHash(get()!),
+    });
+    const before = get()!;
+    const intent = {
+      type: "setNumericInput",
+      location: { container: script, index: 0 },
+      input: "value",
+      reporter: "listLength",
+      referenceId: listId,
+    } as const;
+    expect(
+      (
+        await host.handle({ schema, type: "intent", intent, baseHash: programSemanticHash(before) })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "listAdd",
+      value: { type: "listLength", listId },
+    });
+    const count = labels.length;
+    expect(
+      (
+        await host.handle({ schema, type: "intent", intent, baseHash: programSemanticHash(before) })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...intent, referenceId: "missing" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(count);
+  });
 
   it("creates an actor and its script in one project transaction with explicit ownership", async () => {
     const { host, get, metadata, labels } = setup();

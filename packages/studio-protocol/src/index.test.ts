@@ -251,6 +251,27 @@ describe("studio-protocol", () => {
       }),
     ).toBeUndefined();
   });
+  it("accepts only structured numeric reporter edits", () => {
+    const location = { container: script, index: 0 };
+    const intent = {
+      type: "setNumericInput",
+      location,
+      input: "value",
+      reporter: "listItem",
+      referenceId: "list:items",
+      itemIndex: 2,
+    };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, referenceId: "https://bad" } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, itemIndex: Infinity } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, reporter: "number" } }),
+    ).toBeUndefined();
+  });
 
   it("validates actor creation and script ownership in snapshots", () => {
     expect(parseUiMessage({ schema, type: "createActor", name: "Robot" })).toEqual({

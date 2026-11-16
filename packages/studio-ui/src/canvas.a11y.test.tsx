@@ -185,6 +185,72 @@ describe("canvas keyboard and screen reader behaviour", () => {
       value: 9,
     });
   });
+  it("offers declared numeric reporters inside list value sockets", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "v", name: "Energy", initialValue: 0, visible: true }],
+      lists: [{ id: "l", name: "Items", initialItems: [], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "listAdd", listId: "l", value: { type: "numericLiteral", value: 1 } },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="source"]',
+    )!;
+    expect(Array.from(source.options).map((option) => option.value)).toEqual([
+      "number",
+      "variable",
+      "listLength",
+      "listItem",
+    ]);
+    act(() => {
+      source.value = "listLength";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setNumericInput",
+      input: "value",
+      reporter: "listLength",
+      referenceId: "l",
+    });
+  });
+  it("labels an existing arithmetic expression instead of presenting it as a number", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      lists: [{ id: "l", name: "Items", initialItems: [], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "listAdd",
+              listId: "l",
+              value: {
+                type: "add",
+                left: { type: "numericLiteral", value: 1 },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    render(workspace);
+    const source = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="source"]',
+    )!;
+    expect(source.value).toBe("other");
+    expect(source.selectedOptions[0]?.textContent).toContain("+");
+  });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

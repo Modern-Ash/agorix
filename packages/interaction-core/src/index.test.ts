@@ -351,4 +351,82 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("replaces numeric inputs with declared variable and list reporters", () => {
+    let workspace = createStarterWorkspace();
+    workspace = applyWorkspaceChange(
+      workspace,
+      intentToChange({ type: "addVariable", name: "score" }, newId, workspace)!,
+    ).workspace;
+    workspace = applyWorkspaceChange(
+      workspace,
+      intentToChange({ type: "addList", name: "items" }, newId, workspace)!,
+    ).workspace;
+    workspace = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        { type: "insertBlock", blockType: "lists_add", to: { container: script, index: 0 } },
+        newId,
+        workspace,
+      )!,
+    ).workspace;
+    const location = { container: script, index: 0 };
+    const variableId = workspace.variables![0]!.id;
+    const listId = workspace.lists![0]!.id;
+    const variable = intentToChange(
+      {
+        type: "setNumericInput",
+        location,
+        input: "value",
+        reporter: "variable",
+        referenceId: variableId,
+      },
+      newId,
+      workspace,
+    );
+    expect(
+      applyWorkspaceChange(workspace, variable!).program.scripts[0]?.statements[0],
+    ).toMatchObject({ type: "listAdd", value: { type: "variable", variableId } });
+    const item = intentToChange(
+      {
+        type: "setNumericInput",
+        location,
+        input: "value",
+        reporter: "listItem",
+        referenceId: listId,
+        itemIndex: 1,
+      },
+      newId,
+      workspace,
+    );
+    expect(applyWorkspaceChange(workspace, item!).program.scripts[0]?.statements[0]).toMatchObject({
+      type: "listAdd",
+      value: { type: "listItem", listId, index: { type: "numericLiteral", value: 1 } },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setNumericInput",
+          location,
+          input: "value",
+          reporter: "variable",
+          referenceId: "missing",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setNumericInput",
+          location,
+          input: "delta",
+          reporter: "listLength",
+          referenceId: listId,
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
 });
