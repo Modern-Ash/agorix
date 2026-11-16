@@ -554,6 +554,53 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("uses X, Y and actor distance sensors as numeric inputs", () => {
+    const workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "variable:sensor",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: { value: { id: "number:sensor", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    for (const [reporter, type] of [
+      ["xPosition", "xPosition"],
+      ["yPosition", "yPosition"],
+      ["distanceToActor", "distanceToActor"],
+    ] as const) {
+      const change = intentToChange(
+        {
+          type: "setNumericInput",
+          location,
+          input: "value",
+          reporter,
+          ...(reporter === "distanceToActor" ? { referenceId: "actor:robot" } : {}),
+        },
+        newId,
+        workspace,
+      );
+      expect(
+        applyWorkspaceChange(workspace, change!).program.scripts[0]?.statements[0],
+      ).toMatchObject({ type: "setVariable", value: { type } });
+    }
+    expect(
+      intentToChange(
+        {
+          type: "setNumericInput",
+          location,
+          input: "value",
+          reporter: "distanceToActor",
+          referenceId: "../bad",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("replaces numeric inputs with declared variable and list reporters", () => {
     let workspace = createStarterWorkspace();
     workspace = applyWorkspaceChange(

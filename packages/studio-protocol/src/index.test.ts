@@ -327,6 +327,49 @@ describe("studio-protocol", () => {
     };
     expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
     expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { ...intent, reporter: "xPosition", referenceId: undefined, itemIndex: undefined },
+      }),
+    ).toMatchObject({ intent: { reporter: "xPosition" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          ...intent,
+          reporter: "distanceToActor",
+          referenceId: "actor:robot",
+          itemIndex: undefined,
+        },
+      }),
+    ).toMatchObject({ intent: { reporter: "distanceToActor", referenceId: "actor:robot" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          ...intent,
+          reporter: "xPosition",
+          referenceId: "actor:robot",
+          itemIndex: undefined,
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          ...intent,
+          reporter: "distanceToActor",
+          referenceId: "../bad",
+          itemIndex: undefined,
+        },
+      }),
+    ).toBeUndefined();
+    expect(
       parseUiMessage({ schema, type: "intent", intent: { ...intent, referenceId: "https://bad" } }),
     ).toBeUndefined();
     expect(

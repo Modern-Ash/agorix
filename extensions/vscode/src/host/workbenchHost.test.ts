@@ -638,6 +638,51 @@ describe("workbenchHost", () => {
     ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(labels).toHaveLength(count);
   });
+  it("commits actor distance only for a known actor", async () => {
+    const { host, get } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "addVariable", name: "distance" },
+      baseHash: programSemanticHash(get()!),
+    });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "variables_set",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    const intent = {
+      type: "setNumericInput",
+      location: { container: script, index: 0 },
+      input: "value",
+      reporter: "distanceToActor",
+      referenceId: "actor:main",
+    } as const;
+    expect(
+      (
+        await host.handle({ schema, type: "intent", intent, baseHash: programSemanticHash(get()!) })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "setVariable",
+      value: { type: "distanceToActor", actorId: "actor:main" },
+    });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...intent, referenceId: "actor:missing" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+  });
 
   it("creates an actor and its script in one project transaction with explicit ownership", async () => {
     const { host, get, metadata, labels } = setup();
