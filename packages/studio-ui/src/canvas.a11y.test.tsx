@@ -824,6 +824,55 @@ describe("workbench live region and focus after inserting from the palette", () 
       intent: { type: "addVariable", name: "energy" },
     });
   });
+  it("creates lists and exposes list operations only after declaration", () => {
+    let listener: ((message: HostMessage) => void) | undefined;
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: (next) => {
+        listener = next;
+        return () => undefined;
+      },
+    };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    expect(host.querySelector('.palette button[aria-label="add item to list"]')).toBeNull();
+    const input = host.querySelector<HTMLInputElement>(".list-creator input")!;
+    input.value = "items";
+    act(() =>
+      host
+        .querySelector<HTMLFormElement>(".list-creator")!
+        .dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(posted.at(-1)).toMatchObject({
+      type: "intent",
+      intent: { type: "addList", name: "items" },
+    });
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      lists: [{ id: "list:items", name: "items", initialItems: [], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "greenFlag" },
+          statements: [
+            { type: "listAdd", listId: "list:items", value: { type: "numericLiteral", value: 3 } },
+          ],
+        },
+      ],
+    }).workspace;
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace,
+        programHash: "fnv1a32:12345678",
+      }),
+    );
+    expect(
+      host.querySelector<HTMLSelectElement>('.block-field select[aria-label*="Lists"]')?.value,
+    ).toBe("list:items");
+    expect(host.querySelector('.palette button[aria-label="add item to list"]')).not.toBeNull();
+  });
   it("shows the toolbox and accepts a palette drag on an empty script", () => {
     let listener: ((message: HostMessage) => void) | undefined;
     const posted: unknown[] = [];

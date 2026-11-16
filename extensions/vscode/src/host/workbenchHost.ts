@@ -218,6 +218,7 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "replaceCondition" ||
     intent.intent.type === "setConditionNumber" ||
     intent.intent.type === "addVariable" ||
+    intent.intent.type === "addList" ||
     intent.intent.type === "setExpressionNumber"
   );
 }
@@ -408,6 +409,14 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
         }
         if (intent.type === "setTextField") {
+          if (
+            intent.field === "listId" &&
+            !program.lists?.some((list) => list.id === intent.value)
+          ) {
+            return [
+              { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+            ];
+          }
           const kind =
             intent.field === "costumeId"
               ? "costume"
@@ -434,6 +443,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "replaceCondition" ||
               intent.type === "setConditionNumber" ||
               intent.type === "addVariable" ||
+              intent.type === "addList" ||
+              (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||
               intent.type === "setExpressionNumber"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];

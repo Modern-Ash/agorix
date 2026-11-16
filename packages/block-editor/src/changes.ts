@@ -1,5 +1,5 @@
 import { projectProgram, type ProjectionResult } from "@agorix/code-generator";
-import type { ProgramVariable } from "@agorix/program-model";
+import type { ProgramList, ProgramVariable } from "@agorix/program-model";
 import {
   BlockEditorAdapterError,
   workspaceToProgram,
@@ -39,7 +39,8 @@ export type WorkspaceChange =
     }
   | { readonly type: "editBlock"; readonly location: StatementLocation; readonly block: BlockNode }
   | { readonly type: "deleteBlock"; readonly location: StatementLocation }
-  | { readonly type: "addVariable"; readonly variable: ProgramVariable };
+  | { readonly type: "addVariable"; readonly variable: ProgramVariable }
+  | { readonly type: "addList"; readonly list: ProgramList };
 
 export interface StatementLocation {
   readonly container: StatementContainerPath;
@@ -285,6 +286,25 @@ export function applyWorkspaceChange(
       }
       const variables = [...(next.variables ?? []), change.variable];
       (next as unknown as { variables?: readonly ProgramVariable[] }).variables = variables;
+      break;
+    }
+    case "addList": {
+      if (
+        next.lists?.some((list) => list.id === change.list.id) ||
+        next.variables?.some((variable) => variable.id === change.list.id) ||
+        next.scripts.some((script) => (script.programId ?? script.id) === change.list.id)
+      ) {
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "lists",
+          "expected a distinct list id",
+          change.list.id,
+        );
+      }
+      (next as unknown as { lists?: readonly ProgramList[] }).lists = [
+        ...(next.lists ?? []),
+        change.list,
+      ];
       break;
     }
   }

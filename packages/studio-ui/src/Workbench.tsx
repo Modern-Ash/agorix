@@ -1089,11 +1089,36 @@ export function Workbench({
                 </ul>
               )}
             </form>
+            <form
+              className="list-creator"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const input = event.currentTarget.querySelector("input");
+                const name = input?.value.trim() ?? "";
+                if (name === "") return;
+                post({ type: "addList", name });
+                if (input !== null) input.value = "";
+              }}
+            >
+              <label>
+                <span>{copy.listName}</span>
+                <input maxLength={40} />
+              </label>
+              <button type="submit">{copy.listAdd}</button>
+              {(workspace?.lists ?? []).length === 0 ? null : (
+                <ul>
+                  {workspace?.lists?.map((list) => (
+                    <li key={list.id}>{list.name}</li>
+                  ))}
+                </ul>
+              )}
+            </form>
             <Palette
               copy={copy}
               onAdd={add}
               onSelectExpression={setSelectedExpression}
               selectedExpression={selectedExpression}
+              hasLists={(workspace?.lists?.length ?? 0) > 0}
             />
           </div>
         ) : (

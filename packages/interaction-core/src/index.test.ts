@@ -300,4 +300,55 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("creates lists and edits numeric list operands through canonical changes", () => {
+    const empty = createStarterWorkspace();
+    const declaration = intentToChange({ type: "addList", name: "items" }, newId, empty);
+    const declared = applyWorkspaceChange(empty, declaration!).workspace;
+    const listId = declared.lists![0]!.id;
+    expect(declared.lists![0]).toMatchObject({ name: "items", initialItems: [] });
+    expect(intentToChange({ type: "addList", name: "ITEMS" }, newId, declared)).toBeUndefined();
+    const inserted = intentToChange(
+      { type: "insertBlock", blockType: "lists_insert_at", to: { container: script, index: 0 } },
+      newId,
+      declared,
+    );
+    const withBlock = applyWorkspaceChange(declared, inserted!).workspace;
+    for (const blockType of [
+      "lists_add",
+      "lists_remove_at",
+      "lists_insert_at",
+      "lists_replace_at",
+    ] as const) {
+      const candidate = intentToChange(
+        { type: "insertBlock", blockType, to: { container: script, index: 0 } },
+        newId,
+        declared,
+      );
+      expect(() => applyWorkspaceChange(declared, candidate!)).not.toThrow();
+    }
+    expect(withBlock.scripts[0]?.statements[0]?.fields?.listId).toBe(listId);
+    const location = { container: script, index: 0 };
+    const change = intentToChange(
+      { type: "setExpressionNumber", location, input: "index", value: 2 },
+      newId,
+      withBlock,
+    );
+    expect(
+      applyWorkspaceChange(withBlock, change!).program.scripts[0]?.statements[0],
+    ).toMatchObject({ type: "listInsertAt", index: { type: "numericLiteral", value: 2 } });
+    expect(
+      intentToChange(
+        { type: "insertBlock", blockType: "lists_add", to: { container: script, index: 0 } },
+        newId,
+        empty,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setExpressionNumber", location, input: "delta", value: 2 },
+        newId,
+        withBlock,
+      ),
+    ).toBeUndefined();
+  });
 });

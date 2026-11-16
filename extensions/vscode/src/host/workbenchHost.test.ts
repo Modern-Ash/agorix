@@ -450,6 +450,83 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(4);
   });
 
+  it("creates a list and visual list operations while rejecting stale and unknown list edits", async () => {
+    const { host, get, labels } = setup();
+    const post = (intent: Parameters<typeof host.handle>[0] & { type: "intent" }) =>
+      host.handle(intent);
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "addList", name: "items" },
+      baseHash: programSemanticHash(base),
+    });
+    const listId = get()!.lists![0]!.id;
+    expect(get()?.lists?.[0]).toMatchObject({ name: "items", initialItems: [] });
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: { type: "addList", name: "ITEMS" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    await post({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "lists_insert_at",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({ type: "listInsertAt", listId });
+    const before = get()!;
+    await post({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setExpressionNumber",
+        location: { container: script, index: 0 },
+        input: "index",
+        value: 2,
+      },
+      baseHash: programSemanticHash(before),
+    });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "listInsertAt",
+      index: { type: "numericLiteral", value: 2 },
+    });
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: {
+            type: "setTextField",
+            location: { container: script, index: 0 },
+            field: "listId",
+            value: "missing",
+          },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: { type: "addList", name: "later" },
+          baseHash: programSemanticHash(before),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(labels).toHaveLength(3);
+  });
+
   it("creates an actor and its script in one project transaction with explicit ownership", async () => {
     const { host, get, metadata, labels } = setup();
     const result = await host.handle({ schema, type: "createActor", name: "Robot" });

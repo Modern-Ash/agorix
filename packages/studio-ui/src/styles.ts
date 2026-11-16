@@ -54,10 +54,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .expression-socket:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .comparison-fields { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .comparison-fields .block-field { min-width: 74px; }
-.variable-creator { display: grid; gap: 6px; margin: 8px 0 14px; padding: 8px; border: 1px solid var(--vscode-panel-border); }
-.variable-creator label { display: grid; gap: 3px; }
-.variable-creator input { min-width: 0; }
-.variable-creator ul { margin: 0; padding-left: 18px; }
+.variable-creator, .list-creator { display: grid; gap: 6px; margin: 8px 0 14px; padding: 8px; border: 1px solid var(--vscode-panel-border); }
+.variable-creator label, .list-creator label { display: grid; gap: 3px; }
+.variable-creator input, .list-creator input { min-width: 0; }
+.variable-creator ul, .list-creator ul { margin: 0; padding-left: 18px; }
 .scene-create-actor { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .scene-create-actor input { flex: 1 1 120px; min-width: 0; }
 .block-asset-field { display: inline-flex; align-items: center; gap: 5px; }
