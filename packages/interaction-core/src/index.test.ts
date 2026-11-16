@@ -192,6 +192,54 @@ describe("interaction-core", () => {
     ).toBeUndefined();
   });
 
+  it("inserts repeat-until, edits its condition, and accepts nested statements canonically", () => {
+    const starter = createStarterWorkspace();
+    const insert = intentToChange(
+      {
+        type: "insertBlock",
+        blockType: "control_repeat_until",
+        to: { container: script, index: 0 },
+      },
+      newId,
+      starter,
+    );
+    const workspace = applyWorkspaceChange(starter, insert!).workspace;
+    const location = { container: script, index: 0 };
+    const replace = intentToChange(
+      { type: "replaceCondition", location, blockType: "literal_boolean" },
+      newId,
+      workspace,
+    );
+    const conditioned = applyWorkspaceChange(workspace, replace!).workspace;
+    const body = { kind: "repeatUntilBody", scriptIndex: 0, statementPath: [0] } as const;
+    const nested = intentToChange(
+      { type: "insertBlock", blockType: "motion_move", to: { container: body, index: 0 } },
+      newId,
+      conditioned,
+    );
+    const result = applyWorkspaceChange(conditioned, nested!);
+    expect(result.program.scripts[0]?.statements[0]).toMatchObject({
+      type: "repeatUntil",
+      condition: { type: "booleanLiteral", value: true },
+      body: [{ type: "move", steps: 10 }],
+    });
+    expect(
+      intentToChange(
+        { type: "replaceCondition", location, blockType: "operator_add" },
+        newId,
+        conditioned,
+      ),
+    ).toBeUndefined();
+    expect(() =>
+      applyWorkspaceChange(conditioned, {
+        type: "addBlock",
+        container: { kind: "repeatBody", scriptIndex: 0, statementPath: [0] },
+        index: 0,
+        block: { id: "bad:body", type: "motion_move", fields: { steps: 1 } },
+      }),
+    ).toThrow(BlockEditorAdapterError);
+  });
+
   it("builds a comparison with editable numeric operands and refuses invalid operand edits", () => {
     const workspace = applyWorkspaceChange(createStarterWorkspace(), {
       type: "addBlock",

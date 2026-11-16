@@ -651,7 +651,7 @@ export function Canvas({
                 </div>
               );
             })}
-            {block.type === "control_if" ? (
+            {block.type === "control_if" || block.type === "control_repeat_until" ? (
               <button
                 type="button"
                 className="expression-socket"
@@ -701,7 +701,8 @@ export function Canvas({
                   : (getBlockDefinition(block.condition.type)?.label ?? block.condition.type)}
               </button>
             ) : null}
-            {block.type === "control_if" && block.condition?.type === "literal_boolean" ? (
+            {(block.type === "control_if" || block.type === "control_repeat_until") &&
+            block.condition?.type === "literal_boolean" ? (
               <label className="block-field condition-detail">
                 <span>{copy.conditionValue}</span>
                 <select
@@ -721,7 +722,8 @@ export function Canvas({
                 </select>
               </label>
             ) : null}
-            {block.type === "control_if" && block.condition?.type === "sensing_touching_actor" ? (
+            {(block.type === "control_if" || block.type === "control_repeat_until") &&
+            block.condition?.type === "sensing_touching_actor" ? (
               <label className="block-field condition-detail">
                 <span>{copy.conditionActor}</span>
                 <select
@@ -749,7 +751,7 @@ export function Canvas({
                 </select>
               </label>
             ) : null}
-            {block.type === "control_if" &&
+            {(block.type === "control_if" || block.type === "control_repeat_until") &&
             block.condition !== undefined &&
             (STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(block.condition.type) ? (
               <span className="comparison-fields">

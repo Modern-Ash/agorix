@@ -237,6 +237,21 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "control_repeat_until",
+    label: "Repeat until ___",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "repeat until condition",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "control_repeat_until",
+      inputs: {
+        condition: createDefaultBlock("sensing_touching_goal", `${id}:condition`),
+        body: [],
+      },
+    }),
+  },
+  {
     type: "control_if",
     label: "If ___, then",
     section: "Repeat & Decide",

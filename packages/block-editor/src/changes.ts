@@ -20,7 +20,7 @@ export interface BlockEditorProjectionUpdate {
 export type StatementContainerPath =
   | { readonly kind: "script"; readonly scriptIndex: number }
   | {
-      readonly kind: "repeatBody" | "ifThen";
+      readonly kind: "repeatBody" | "repeatUntilBody" | "ifThen";
       readonly scriptIndex: number;
       readonly statementPath: readonly number[];
     };
@@ -153,6 +153,20 @@ function mutableStatementsFor(
         "INVALID_FIELD_TYPE",
         current?.id ?? "statementPath",
         "expected a repeat block",
+        current?.type,
+        "NOT_A_CONTAINER",
+      );
+    }
+    const mutable = current as MutableBlockNode;
+    mutable.inputs = { ...mutable.inputs, body: (mutable.inputs?.body ?? []) as BlockNode[] };
+    return mutable.inputs.body as BlockNode[];
+  }
+  if (container.kind === "repeatUntilBody") {
+    if (current?.type !== "control_repeat_until") {
+      throw new BlockEditorAdapterError(
+        "INVALID_FIELD_TYPE",
+        current?.id ?? "statementPath",
+        "expected a repeat until block",
         current?.type,
         "NOT_A_CONTAINER",
       );

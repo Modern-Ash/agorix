@@ -337,7 +337,7 @@ export function intentToChange(
         }
       }
       const block = statements?.[index];
-      if (block?.type !== "control_if") return undefined;
+      if (block?.type !== "control_if" && block?.type !== "control_repeat_until") return undefined;
       const condition = createDefaultBlock(intent.blockType, newBlockId());
       if (
         intent.blockType === "sensing_touching_actor" &&
@@ -388,7 +388,7 @@ export function intentToChange(
       const block = statements?.[index];
       const condition = block?.inputs?.condition;
       if (
-        block?.type !== "control_if" ||
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
         condition === undefined ||
         !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(condition.type)
       )
@@ -428,7 +428,11 @@ export function intentToChange(
       }
       const block = statements?.[index];
       const condition = block?.inputs?.condition;
-      if (block?.type !== "control_if" || condition === undefined) return undefined;
+      if (
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
+        condition === undefined
+      )
+        return undefined;
       if (intent.type === "setConditionBoolean" && condition.type !== "literal_boolean")
         return undefined;
       if (
