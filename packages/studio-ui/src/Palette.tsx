@@ -45,7 +45,12 @@ export function Palette({
       ]
         .map((section) => ({
           name: sectionLabel(section.name, copy),
-          blocks: section.blocks
+          blocks: [
+            ...section.blocks,
+            ...POC_BLOCK_DEFINITIONS.filter(
+              (definition) => definition.studioOnly && definition.section === section.name,
+            ),
+          ]
             .filter((block) => getBlockDefinition(block.type)?.placement !== "trigger")
             .filter((block) => hasLists || !block.type.startsWith("lists_"))
             .filter(

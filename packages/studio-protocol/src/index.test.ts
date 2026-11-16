@@ -6,6 +6,34 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("accepts advanced motion and timing blocks only through typed insert intents", () => {
+    for (const blockType of [
+      "motion_go_to",
+      "motion_glide_to",
+      "motion_bounce_on_edge",
+      "control_wait",
+      "looks_change_size",
+    ]) {
+      expect(
+        parseUiMessage({
+          schema,
+          type: "intent",
+          intent: { type: "insertBlock", blockType, to: { container: script, index: 0 } },
+        }),
+      ).toMatchObject({ intent: { blockType } });
+    }
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "insertBlock",
+          blockType: "motion_unknown",
+          to: { container: script, index: 0 },
+        },
+      }),
+    ).toBeUndefined();
+  });
   it("validates branch paths for nested else insertions", () => {
     const intent = {
       type: "insertBlock",
