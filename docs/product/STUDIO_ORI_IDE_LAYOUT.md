@@ -40,6 +40,10 @@ program transaction. The palette hides blocks without a complete visual
 insertion path; the remaining vocabulary is recorded in
 [`STUDIO_COMPONENT_MATRIX.md`](./STUDIO_COMPONENT_MATRIX.md).
 
+The Blocks library also creates named variables and exposes their declarations.
+Variable statements use a declaration picker and direct numeric value editing,
+with the same canonical and stale-edit checks.
+
 The left library switches between Blocks and Scene. Scene shows actor cards and
 visual costume/backdrop choices from the project's validated assets. Selection
 is an explicit metadata edit; the host refuses unknown asset ids and refreshes

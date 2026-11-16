@@ -213,7 +213,9 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setNumericField" ||
     intent.intent.type === "setTextField" ||
     intent.intent.type === "replaceCondition" ||
-    intent.intent.type === "setConditionNumber"
+    intent.intent.type === "setConditionNumber" ||
+    intent.intent.type === "addVariable" ||
+    intent.intent.type === "setExpressionNumber"
   );
 }
 
@@ -409,7 +411,9 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
             return intent.type === "setNumericField" ||
               intent.type === "setTextField" ||
               intent.type === "replaceCondition" ||
-              intent.type === "setConditionNumber"
+              intent.type === "setConditionNumber" ||
+              intent.type === "addVariable" ||
+              intent.type === "setExpressionNumber"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];
           }

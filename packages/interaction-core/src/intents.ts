@@ -78,6 +78,13 @@ export type Intent =
       readonly side: "left" | "right";
       readonly value: number;
     }
+  | { readonly type: "addVariable"; readonly name: string }
+  | {
+      readonly type: "setExpressionNumber";
+      readonly location: StatementLocation;
+      readonly input: "value" | "delta";
+      readonly value: number;
+    }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
   | { readonly type: "highlightNodes"; readonly nodeIds: readonly string[] }
@@ -155,6 +162,48 @@ export function intentToChange(
       return { type: "moveBlock", from: intent.from, to: intent.to };
     case "deleteBlock":
       return { type: "deleteBlock", location: intent.location };
+    case "addVariable": {
+      const name = intent.name.trim();
+      if (workspace === undefined || name.length < 1 || name.length > 40) return undefined;
+      if (
+        workspace.variables?.some((variable) => variable.name.toLowerCase() === name.toLowerCase())
+      )
+        return undefined;
+      return {
+        type: "addVariable",
+        variable: { id: newBlockId(), name, initialValue: 0, visible: true },
+      };
+    }
+    case "setExpressionNumber": {
+      if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
+      const { container, index } = intent.location;
+      let statements: readonly BlockNode[] | undefined =
+        workspace.scripts[container.scriptIndex]?.statements;
+      if (container.kind !== "script") {
+        for (const pathIndex of container.statementPath) {
+          const parent: BlockNode | undefined = statements?.[pathIndex];
+          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
+        }
+      }
+      const block = statements?.[index];
+      if (block?.type !== "variables_set" && block?.type !== "variables_change") return undefined;
+      if (block.type === "variables_set" && intent.input !== "value") return undefined;
+      if (block.type === "variables_change" && intent.input !== "delta") return undefined;
+      const operand = block.inputs?.[intent.input];
+      if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
+        return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            [intent.input]: { ...operand, fields: { ...operand.fields, value: intent.value } },
+          },
+        },
+      };
+    }
     case "replaceCondition": {
       if (
         workspace === undefined ||

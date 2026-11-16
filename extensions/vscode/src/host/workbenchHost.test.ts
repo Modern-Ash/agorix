@@ -379,6 +379,72 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(2);
   });
 
+  it("commits variable creation, selection and values while refusing stale edits", async () => {
+    const { host, get, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "addVariable", name: "energy" },
+      baseHash: programSemanticHash(base),
+    });
+    expect(get()?.variables?.[0]).toMatchObject({ name: "energy", initialValue: 0 });
+    const variableId = get()!.variables![0]!.id;
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "variables_set",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "variableId",
+        value: variableId,
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    const before = get()!;
+    const intent = {
+      type: "setExpressionNumber",
+      location: { container: script, index: 0 },
+      input: "value",
+      value: 14,
+    } as const;
+    expect(
+      (
+        await host.handle({ schema, type: "intent", intent, baseHash: programSemanticHash(before) })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "setVariable",
+      variableId,
+      value: { type: "numericLiteral", value: 14 },
+    });
+    expect(
+      (
+        await host.handle({ schema, type: "intent", intent, baseHash: programSemanticHash(before) })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...intent, input: "delta" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(4);
+  });
+
   it("moves exactly like applying the same change through block-editor", async () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };

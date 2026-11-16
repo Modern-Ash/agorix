@@ -178,6 +178,44 @@ describe("studio-protocol", () => {
     expect(parseHostMessage(message)).toMatchObject({ workspace });
   });
 
+  it("validates variable intents and preserves declarations and value inputs", () => {
+    const location = { container: script, index: 0 };
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { type: "addVariable", name: "energy" } }),
+    ).toMatchObject({ intent: { type: "addVariable", name: "energy" } });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { type: "addVariable", name: " " } }),
+    ).toBeUndefined();
+    const intent = { type: "setExpressionNumber", location, input: "value", value: 12 };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, input: "unknown" } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, value: Infinity } }),
+    ).toBeUndefined();
+    const workspace = {
+      variables: [{ id: "energy", name: "Energy", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { id: "start", type: "event_on_start" },
+          statements: [
+            {
+              id: "set",
+              type: "variables_set",
+              fields: { variableId: "energy" },
+              inputs: { value: { id: "num", type: "literal_number", fields: { value: 12 } } },
+            },
+          ],
+        },
+      ],
+    };
+    expect(
+      parseHostMessage({ schema, type: "workspace", workspace, programHash: "fnv1a32:variable" }),
+    ).toMatchObject({ workspace });
+  });
+
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
     for (const junk of [
       null,

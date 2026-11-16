@@ -278,6 +278,7 @@ export function Canvas({
         const fields = fieldEntries
           .filter(
             ([name, value]) =>
+              name !== "variableId" &&
               typeof value !== "number" &&
               !(typeof value === "string" && ["text", "message", "key"].includes(name)),
           )
@@ -349,6 +350,71 @@ export function Canvas({
               {visualLabel(label)}
               {fields === "" ? "" : ` (${fields})`}
             </span>
+            {typeof block.fields.variableId === "string" ? (
+              <label className="block-field">
+                <span>{copy.variables}</span>
+                <select
+                  aria-label={`${label}: ${copy.variables}`}
+                  value={block.fields.variableId}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setTextField",
+                      location: block.location,
+                      field: "variableId",
+                      value: event.currentTarget.value,
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  {workspace.variables?.some(
+                    (variable) => variable.id === block.fields.variableId,
+                  ) ? null : (
+                    <option value={block.fields.variableId}>{block.fields.variableId}</option>
+                  )}
+                  {(workspace.variables ?? []).map((variable) => (
+                    <option key={variable.id} value={variable.id}>
+                      {variable.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {(["value", "delta"] as const).map((input) => {
+              const operand = block[input];
+              if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
+                return null;
+              const value = operand.fields.value;
+              return (
+                <label key={input} className="block-field">
+                  <span>{input === "value" ? copy.variableValue : copy.variableDelta}</span>
+                  <input
+                    key={`${pos}:${input}:${value}`}
+                    type="number"
+                    tabIndex={isTabbable ? 0 : -1}
+                    aria-label={`${label}: ${input === "value" ? copy.variableValue : copy.variableDelta}`}
+                    defaultValue={value}
+                    draggable={false}
+                    onDragStart={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                      if (event.key === "Enter") event.currentTarget.blur();
+                    }}
+                    onBlur={(event) => {
+                      const raw = event.currentTarget.value.trim();
+                      const next = Number(raw);
+                      if (raw !== "" && Number.isFinite(next) && next !== value)
+                        onIntent({
+                          type: "setExpressionNumber",
+                          location: block.location,
+                          input,
+                          value: next,
+                        });
+                      event.currentTarget.value = String(value);
+                    }}
+                  />
+                </label>
+              );
+            })}
             {block.type === "control_if" ? (
               <button
                 type="button"
