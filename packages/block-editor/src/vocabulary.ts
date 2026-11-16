@@ -20,6 +20,8 @@ export interface ToolboxBlockDefinition {
   readonly accessibleName: string;
   /** Kept so old projects load; never offered in the toolbox. */
   readonly legacy?: boolean;
+  /** Offered in Studio's advanced palette without expanding the Kids POC toolbox. */
+  readonly studioOnly?: boolean;
   readonly createDefaultBlock: (id: string) => BlockNode;
 }
 
@@ -116,6 +118,28 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "motion_go_to", fields: { x: 0, y: 0 } }),
   },
   {
+    type: "motion_glide_to",
+    label: "Glide to [X, Y] in [N] seconds",
+    section: "Move",
+    placement: "statement",
+    accessibleName: "glide to coordinates",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({
+      id,
+      type: "motion_glide_to",
+      fields: { x: 0, y: 0, seconds: 1 },
+    }),
+  },
+  {
+    type: "motion_bounce_on_edge",
+    label: "Bounce on edge",
+    section: "Move",
+    placement: "statement",
+    accessibleName: "bounce on edge",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({ id, type: "motion_bounce_on_edge" }),
+  },
+  {
     type: "motion_turn",
     label: "Turn [N] degrees",
     section: "Move",
@@ -162,6 +186,15 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     placement: "statement",
     accessibleName: "set actor size",
     createDefaultBlock: (id) => ({ id, type: "looks_set_size", fields: { size: 100 } }),
+  },
+  {
+    type: "looks_change_size",
+    label: "Change size by [N]",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "change actor size",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({ id, type: "looks_change_size", fields: { delta: 10 } }),
   },
   {
     type: "looks_switch_costume",
@@ -235,6 +268,15 @@ const definitions: readonly ToolboxBlockDefinition[] = [
       fields: { count: 3 },
       inputs: { body: [] },
     }),
+  },
+  {
+    type: "control_wait",
+    label: "Wait [N] seconds",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "wait seconds",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({ id, type: "control_wait", fields: { seconds: 1 } }),
   },
   {
     type: "control_repeat_until",
@@ -608,7 +650,8 @@ export const POC_BLOCK_DEFINITIONS = definitions;
 export const POC_TOOLBOX: readonly ToolboxSection[] = TOOLBOX_SECTION_ORDER.map((name) => ({
   name,
   blocks: definitions.filter(
-    (definition) => definition.section === name && definition.legacy !== true,
+    (definition) =>
+      definition.section === name && definition.legacy !== true && definition.studioOnly !== true,
   ),
 }));
 

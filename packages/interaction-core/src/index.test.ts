@@ -3,6 +3,7 @@ import {
   BlockEditorAdapterError,
   applyWorkspaceChange,
   createStarterWorkspace,
+  projectWorkspace,
 } from "@agorix/block-editor";
 import {
   createAnchorRef,
@@ -112,6 +113,53 @@ describe("interaction-core", () => {
         { type: "setNumericField", location, field: "steps", value: Infinity },
         newId,
         inserted,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("inserts advanced motion and timing blocks with editable numeric fields", () => {
+    const cases = [
+      { blockType: "motion_go_to", field: "x", value: 80, type: "goTo" },
+      { blockType: "motion_glide_to", field: "seconds", value: 2, type: "glideTo" },
+      { blockType: "motion_bounce_on_edge", field: undefined, value: 0, type: "bounceOnEdge" },
+      { blockType: "control_wait", field: "seconds", value: 0.5, type: "wait" },
+      { blockType: "looks_change_size", field: "delta", value: -20, type: "changeSize" },
+    ] as const;
+    let workspace = createStarterWorkspace();
+    for (const [index, item] of cases.entries()) {
+      const location = { container: script, index };
+      const insertion = intentToChange(
+        { type: "insertBlock", blockType: item.blockType, to: location },
+        newId,
+        workspace,
+      );
+      workspace = applyWorkspaceChange(workspace, insertion!).workspace;
+      if (item.field !== undefined) {
+        const edit = intentToChange(
+          { type: "setNumericField", location, field: item.field, value: item.value },
+          newId,
+          workspace,
+        );
+        workspace = applyWorkspaceChange(workspace, edit!).workspace;
+        expect(workspace.scripts[0]?.statements[index]?.fields?.[item.field]).toBe(item.value);
+      }
+    }
+    expect(workspace.scripts[0]?.statements.map((block) => block.type)).toEqual(
+      cases.map((item) => item.blockType),
+    );
+    expect(
+      projectWorkspace(workspace).program.scripts[0]?.statements.map((statement) => statement.type),
+    ).toEqual(cases.map((item) => item.type));
+    expect(
+      intentToChange(
+        {
+          type: "setNumericField",
+          location: { container: script, index: 0 },
+          field: "x",
+          value: Infinity,
+        },
+        newId,
+        workspace,
       ),
     ).toBeUndefined();
   });

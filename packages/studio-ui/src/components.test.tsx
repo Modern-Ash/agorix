@@ -234,6 +234,15 @@ describe("studio-ui", () => {
     expect(palette).toContain("Control");
     expect(palette).toContain("Sensing");
     expect(palette).toContain("move steps");
+    for (const label of [
+      "go to coordinates",
+      "glide to coordinates",
+      "bounce on edge",
+      "wait seconds",
+      "change actor size",
+    ]) {
+      expect(palette).toContain(label);
+    }
     expect(palette).toContain('data-tone="motion"');
     expect(palette).toContain('data-shape="container"');
     expect(palette).not.toContain("when run starts");
