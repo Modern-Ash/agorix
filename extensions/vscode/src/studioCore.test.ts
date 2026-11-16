@@ -80,6 +80,38 @@ const webCreatedProject: StoredProject = {
 };
 
 describe("Agorix Studio first slice", () => {
+  it("runs key and actor-click scripts from explicit stage events with runtime evidence", () => {
+    const project: StoredProject = {
+      ...webCreatedProject,
+      program: {
+        schema: SCHEMA_VERSION,
+        scripts: [
+          { id: "start", trigger: { type: "onStart" }, statements: [{ type: "move", steps: 2 }] },
+          {
+            id: "key",
+            trigger: { type: "onKeyPressed", key: "A" },
+            statements: [{ type: "turn", degrees: 90 }],
+          },
+          {
+            id: "click",
+            trigger: { type: "onActorClicked" },
+            statements: [{ type: "move", steps: 5 }],
+          },
+        ],
+      },
+    };
+    const key = createExecutionEvidence(project, { events: [{ type: "keyPressed", key: "A" }] });
+    expect(key.result.trace.map((entry) => entry.statementType)).toEqual(["turn"]);
+    expect(key.inspectorRows[0]).toMatchObject({ scriptId: "key", actorId: "actor:main" });
+    const click = createExecutionEvidence(project, {
+      events: [{ type: "actorClicked", actorId: "actor:main" }],
+    });
+    expect(click.result.trace.map((entry) => entry.statementType)).toEqual(["move"]);
+    expect(click.inspectorRows[0]).toMatchObject({ scriptId: "click", actorId: "actor:main" });
+    expect(
+      createExecutionEvidence(project, { events: [{ type: "keyPressed", key: "B" }] }).result.trace,
+    ).toEqual([]);
+  });
   it("opens the same stored project semantics as Web", () => {
     const project = parseStoredProject(JSON.stringify(webCreatedProject));
 

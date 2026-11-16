@@ -229,6 +229,15 @@ export function attachWorkbenchPanel(
         await send(executionMessages(view));
         return;
       }
+      if (message.type === "stageEvent") {
+        const view = port.runStageEvent?.(
+          message.event === "keyPressed"
+            ? { type: "keyPressed", key: message.key }
+            : { type: "actorClicked", actorId: message.actorId },
+        );
+        await send(executionMessages(view));
+        return;
+      }
       if (message.type === "ready") {
         await send(await workbench.handle(message));
         await send(agentHost.snapshot());

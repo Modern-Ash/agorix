@@ -540,6 +540,18 @@ describe("studio-protocol", () => {
   });
 
   it("parses Workbench execution controls separately from the agent run message", () => {
+    expect(
+      parseUiMessage({ schema, type: "stageEvent", event: "keyPressed", key: "ArrowRight" }),
+    ).toMatchObject({ type: "stageEvent", key: "ArrowRight" });
+    expect(
+      parseUiMessage({ schema, type: "stageEvent", event: "actorClicked", actorId: "actor:nova" }),
+    ).toMatchObject({ type: "stageEvent", actorId: "actor:nova" });
+    expect(
+      parseUiMessage({ schema, type: "stageEvent", event: "keyPressed", key: "" }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "stageEvent", event: "actorClicked", actorId: "../bad" }),
+    ).toBeUndefined();
     expect(parseUiMessage({ schema, type: "executionCommand", command: "run" })).toEqual({
       schema,
       type: "executionCommand",

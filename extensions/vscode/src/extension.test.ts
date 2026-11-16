@@ -525,6 +525,18 @@ describe("Studio extension wiring", () => {
     expect(sent.some((message) => message.type === "executionState")).toBe(true);
     expect(sent.some((message) => message.type === "stageFrame")).toBe(true);
     expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(before);
+    const eventMessages = sent.length;
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "stageEvent",
+      event: "keyPressed",
+      key: "ArrowRight",
+    });
+    await flushWorkbench();
+    expect(sent.slice(eventMessages).some((message) => message.type === "executionState")).toBe(
+      true,
+    );
+    expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(before);
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "updateActor",

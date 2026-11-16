@@ -773,7 +773,7 @@ export function createNavigationSections(
 
 export function createExecutionEvidence(
   stored: StoredProject,
-  options: { stopAfterSteps?: number } = {},
+  options: { stopAfterSteps?: number; events?: readonly RuntimeEvent[] } = {},
 ): StudioExecutionEvidence {
   if (options.stopAfterSteps !== undefined) {
     return createSingleActorExecutionEvidence(stored, options);
@@ -782,7 +782,10 @@ export function createExecutionEvidence(
   const mission = getLocalizedFirstMission(stored.metadata.locale);
   const creative = creativeStateForExecution(stored);
   const initialWorld = createWorldState(mission.starterStage);
-  const result = runMultiActorProgram(program, creative, { goal: initialWorld.goal });
+  const result = runMultiActorProgram(program, creative, {
+    goal: initialWorld.goal,
+    ...(options.events === undefined ? {} : { events: options.events }),
+  });
   const observations = observationsFromMultiActorRun(result);
   const stepSequence = executionStepsFromRuntimeObservations(observations);
   const previewFrames = framesFromMultiActorRun(result, observations);

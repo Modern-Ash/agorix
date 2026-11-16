@@ -19,6 +19,7 @@ import type { HostPort } from "../host/workbenchHost.js";
 import type { WorkbenchLocale } from "../host/workbenchHtml.js";
 import type { OpenProject } from "../store/session.js";
 import type { SyncHub } from "../sync/syncHub.js";
+import type { RuntimeEvent } from "@agorix/runtime";
 
 export interface StudioSurfaceCommandPort {
   readonly context: vscode.ExtensionContext;
@@ -26,6 +27,7 @@ export interface StudioSurfaceCommandPort {
   requireProject(): OpenProject | undefined;
   currentExecutionView(): StudioExecutionViewState | undefined;
   resetExecution(): StudioExecutionViewState | undefined;
+  runStageEvent?(event: RuntimeEvent): StudioExecutionViewState | undefined;
   getProgram(): ProjectProgram | undefined;
   /** The open project without any prompt; undefined when none is open. */
   getProject(): StudioProject | undefined;
@@ -70,6 +72,7 @@ export function createStudioSurfaceCommandHandlers(
       return;
     }
     const hostPort: HostPort = {
+      ...(port.runStageEvent === undefined ? {} : { runStageEvent: port.runStageEvent }),
       getProgram: port.getProgram,
       getMetadata: port.getMetadata,
       commit: async (program) => {
