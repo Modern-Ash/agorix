@@ -216,6 +216,47 @@ const MOVES = new Set([
   "bounceOnEdge",
 ]);
 
+/**
+ * What can be said about a program before it has ever run: a script that waits for a message no
+ * block sends (anywhere, custom blocks included), or for a backdrop no block switches to. Both are
+ * facts of the program alone, so they hold on every run. Most confident first.
+ */
+export function staticFindings(
+  program: ProjectProgram,
+  creative?: ProjectCreativeState,
+): readonly Finding[] {
+  const sent = new Set<string>();
+  const switchedTo = new Set<string>();
+  const scan = (statements: readonly Statement[], prefix: string) =>
+    walk(statements, prefix, (statement) => {
+      if (statement.type === "broadcast") sent.add(statement.message);
+      if (statement.type === "switchBackdrop") switchedTo.add(statement.backdropId);
+    });
+  program.scripts.forEach((script, index) => {
+    scan(script.statements, `scripts[${index}]`);
+    for (const procedure of script.procedures ?? []) scan(procedure.body, `scripts[${index}]`);
+  });
+  for (const procedure of program.sharedProcedures ?? []) scan(procedure.body, "shared");
+  const out: Finding[] = [];
+  program.scripts.forEach((script, index) => {
+    const event = eventOf(script);
+    const trigger = script.trigger;
+    const unsent = trigger.type === "onMessage" && !sent.has(trigger.message);
+    const unswitched = trigger.type === "onBackdropSwitch" && !switchedTo.has(trigger.backdropId);
+    if (event === undefined || (!unsent && !unswitched)) return;
+    out.push({
+      id: `neverStarted:${script.id}`,
+      kind: "neverStarted",
+      actorId: actorsOfScript(creative, script)[0] ?? "",
+      nodeIds: [`scripts[${index}]`],
+      counts: unsent ? { senders: 0 } : {},
+      event: unsent ? { ...event, senders: 0 } : event,
+      confidence: unsent ? 0.9 : 0.8,
+    });
+  });
+  return out.sort((a, b) => b.confidence - a.confidence);
+}
+
 export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
   const { program, creative, run } = input;
   const final = input.final !== false;

@@ -80,7 +80,10 @@ test("Ori offers the message that is missing, shows the block, and only adds it 
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("combobox", { name: "Cuando" }).selectOption("onMessage");
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  // Before the first Play the program already says a script waits for a message nobody sends.
+  await expect(page.getByTestId("static-finding")).toContainText("nadie lo manda");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("static-finding")).toHaveCount(0);
   await page.getByRole("button", { name: /Ori vio algo/ }).click();
   await expect(page.locator(".kids-ori-noticed-panel")).toContainText("nadie lo manda");
   const diff = page.getByTestId("ori-fix-diff");
