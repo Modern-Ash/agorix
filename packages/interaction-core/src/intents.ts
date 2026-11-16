@@ -86,6 +86,14 @@ export type Intent =
       readonly input: "value" | "delta" | "index";
       readonly value: number;
     }
+  | {
+      readonly type: "setNumericInput";
+      readonly location: StatementLocation;
+      readonly input: "value" | "delta" | "index";
+      readonly reporter: "number" | "variable" | "listLength" | "listItem";
+      readonly referenceId?: string;
+      readonly itemIndex?: number;
+    }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
   | { readonly type: "highlightNodes"; readonly nodeIds: readonly string[] }
@@ -229,6 +237,77 @@ export function intentToChange(
             [intent.input]: { ...operand, fields: { ...operand.fields, value: intent.value } },
           },
         },
+      };
+    }
+    case "setNumericInput": {
+      if (workspace === undefined) return undefined;
+      const { container, index } = intent.location;
+      let statements: readonly BlockNode[] | undefined =
+        workspace.scripts[container.scriptIndex]?.statements;
+      if (container.kind !== "script") {
+        for (const pathIndex of container.statementPath) {
+          const parent: BlockNode | undefined = statements?.[pathIndex];
+          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
+        }
+      }
+      const block = statements?.[index];
+      const supported: Readonly<Record<string, readonly string[]>> = {
+        variables_set: ["value"],
+        variables_change: ["delta"],
+        lists_add: ["value"],
+        lists_remove_at: ["index"],
+        lists_insert_at: ["index", "value"],
+        lists_replace_at: ["index", "value"],
+      };
+      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
+      const current = block.inputs?.[intent.input];
+      if (current === undefined || Array.isArray(current)) return undefined;
+      let replacement: BlockNode;
+      switch (intent.reporter) {
+        case "number":
+          replacement = { id: current.id, type: "literal_number", fields: { value: 0 } };
+          break;
+        case "variable":
+          if (!workspace.variables?.some((variable) => variable.id === intent.referenceId))
+            return undefined;
+          replacement = {
+            id: current.id,
+            type: "variables_value",
+            fields: { variableId: intent.referenceId },
+          };
+          break;
+        case "listLength":
+          if (!workspace.lists?.some((list) => list.id === intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "lists_length",
+            fields: { listId: intent.referenceId },
+          };
+          break;
+        case "listItem":
+          if (
+            !workspace.lists?.some((list) => list.id === intent.referenceId) ||
+            !Number.isFinite(intent.itemIndex ?? 1)
+          )
+            return undefined;
+          replacement = {
+            id: current.id,
+            type: "lists_item",
+            fields: { listId: intent.referenceId },
+            inputs: {
+              index: {
+                id: `${current.id}:index`,
+                type: "literal_number",
+                fields: { value: intent.itemIndex ?? 1 },
+              },
+            },
+          };
+          break;
+      }
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: { ...block, inputs: { ...block.inputs, [intent.input]: replacement } },
       };
     }
     case "replaceCondition": {

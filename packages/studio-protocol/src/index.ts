@@ -1020,6 +1020,36 @@ function parseIntent(value: unknown): Intent | undefined {
         ? undefined
         : { type: "setExpressionNumber", location, input: value["input"], value: value["value"] };
     }
+    case "setNumericInput": {
+      const location = parseLocation(value["location"]);
+      const input = value["input"];
+      const reporter = value["reporter"];
+      const referenceId = value["referenceId"];
+      const itemIndex = value["itemIndex"];
+      if (
+        location === undefined ||
+        (input !== "value" && input !== "delta" && input !== "index") ||
+        (reporter !== "number" &&
+          reporter !== "variable" &&
+          reporter !== "listLength" &&
+          reporter !== "listItem")
+      )
+        return undefined;
+      if (reporter === "number" && (referenceId !== undefined || itemIndex !== undefined))
+        return undefined;
+      if (reporter !== "number" && !isSafeId(referenceId)) return undefined;
+      if (reporter !== "listItem" && itemIndex !== undefined) return undefined;
+      if (reporter === "listItem" && itemIndex !== undefined && !isFiniteNumber(itemIndex))
+        return undefined;
+      return {
+        type: "setNumericInput",
+        location,
+        input,
+        reporter,
+        ...(typeof referenceId === "string" ? { referenceId } : {}),
+        ...(typeof itemIndex === "number" ? { itemIndex } : {}),
+      };
+    }
     case "setNumericField": {
       const location = parseLocation(value["location"]);
       const field = value["field"];

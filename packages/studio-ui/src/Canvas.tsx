@@ -492,9 +492,19 @@ export function Canvas({
             ) : null}
             {(["value", "delta", "index"] as const).map((input) => {
               const operand = block[input];
-              if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
-                return null;
-              const value = operand.fields.value;
+              if (operand === undefined) return null;
+              const reporter =
+                operand.type === "variables_value"
+                  ? "variable"
+                  : operand.type === "lists_length"
+                    ? "listLength"
+                    : operand.type === "lists_item"
+                      ? "listItem"
+                      : operand.type === "literal_number"
+                        ? "number"
+                        : "other";
+              const referenceId =
+                reporter === "variable" ? operand.fields?.variableId : operand.fields?.listId;
               const operandLabel =
                 input === "index"
                   ? copy.listIndex
@@ -503,35 +513,140 @@ export function Canvas({
                     : block.type.startsWith("lists_")
                       ? copy.listValue
                       : copy.variableValue;
+              const choose = (
+                nextReporter: "number" | "variable" | "listLength" | "listItem",
+                nextReference?: string,
+                nextIndex?: number,
+              ) =>
+                onIntent({
+                  type: "setNumericInput",
+                  location: block.location,
+                  input,
+                  reporter: nextReporter,
+                  ...(nextReference === undefined ? {} : { referenceId: nextReference }),
+                  ...(nextIndex === undefined ? {} : { itemIndex: nextIndex }),
+                });
+              const itemIndex = operand.inputs?.index?.fields?.value;
               return (
-                <label key={input} className="block-field">
-                  <span>{operandLabel}</span>
-                  <input
-                    key={`${pos}:${input}:${value}`}
-                    type="number"
-                    tabIndex={isTabbable ? 0 : -1}
-                    aria-label={`${label}: ${operandLabel}`}
-                    defaultValue={value}
-                    draggable={false}
-                    onDragStart={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => {
-                      event.stopPropagation();
-                      if (event.key === "Enter") event.currentTarget.blur();
-                    }}
-                    onBlur={(event) => {
-                      const raw = event.currentTarget.value.trim();
-                      const next = Number(raw);
-                      if (raw !== "" && Number.isFinite(next) && next !== value)
-                        onIntent({
-                          type: "setExpressionNumber",
-                          location: block.location,
-                          input,
-                          value: next,
-                        });
-                      event.currentTarget.value = String(value);
-                    }}
-                  />
-                </label>
+                <div key={input} className="block-field numeric-socket">
+                  <label>
+                    <span>{operandLabel}</span>
+                    <select
+                      aria-label={`${label}: ${operandLabel} ${copy.numericSource}`}
+                      value={reporter}
+                      onChange={(event) => {
+                        const next = event.currentTarget.value as
+                          "number" | "variable" | "listLength" | "listItem";
+                        choose(
+                          next,
+                          next === "variable"
+                            ? workspace.variables?.[0]?.id
+                            : next === "listLength" || next === "listItem"
+                              ? workspace.lists?.[0]?.id
+                              : undefined,
+                        );
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <option value="number">{copy.numericLiteral}</option>
+                      {reporter === "other" ? (
+                        <option value="other">
+                          {getBlockDefinition(operand.type)?.label ?? operand.type}
+                        </option>
+                      ) : null}
+                      {(workspace.variables?.length ?? 0) > 0 ? (
+                        <option value="variable">{copy.variableValue}</option>
+                      ) : null}
+                      {(workspace.lists?.length ?? 0) > 0 ? (
+                        <option value="listLength">{copy.listLength}</option>
+                      ) : null}
+                      {(workspace.lists?.length ?? 0) > 0 ? (
+                        <option value="listItem">{copy.listItem}</option>
+                      ) : null}
+                    </select>
+                  </label>
+                  {reporter === "number" && typeof operand.fields?.value === "number" ? (
+                    <input
+                      key={`${pos}:${input}:${operand.fields.value}`}
+                      type="number"
+                      tabIndex={isTabbable ? 0 : -1}
+                      aria-label={`${label}: ${operandLabel}`}
+                      defaultValue={operand.fields.value}
+                      draggable={false}
+                      onDragStart={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => {
+                        event.stopPropagation();
+                        if (event.key === "Enter") event.currentTarget.blur();
+                      }}
+                      onBlur={(event) => {
+                        const raw = event.currentTarget.value.trim();
+                        const next = Number(raw);
+                        if (raw !== "" && Number.isFinite(next) && next !== operand.fields?.value)
+                          onIntent({
+                            type: "setExpressionNumber",
+                            location: block.location,
+                            input,
+                            value: next,
+                          });
+                        event.currentTarget.value = String(operand.fields?.value);
+                      }}
+                    />
+                  ) : null}
+                  {reporter === "variable" ||
+                  reporter === "listLength" ||
+                  reporter === "listItem" ? (
+                    <label>
+                      <span>{reporter === "variable" ? copy.variables : copy.lists}</span>
+                      <select
+                        aria-label={`${label}: ${operandLabel} ${copy.numericReference}`}
+                        value={String(referenceId ?? "")}
+                        onChange={(event) =>
+                          choose(
+                            reporter,
+                            event.currentTarget.value,
+                            reporter === "listItem" && typeof itemIndex === "number"
+                              ? itemIndex
+                              : undefined,
+                          )
+                        }
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        {(reporter === "variable"
+                          ? (workspace.variables ?? [])
+                          : (workspace.lists ?? [])
+                        ).map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {reporter === "listItem" && typeof itemIndex === "number" ? (
+                    <label>
+                      <span>{copy.listIndex}</span>
+                      <input
+                        type="number"
+                        aria-label={`${label}: ${copy.listIndex}`}
+                        defaultValue={itemIndex}
+                        onKeyDown={(event) => {
+                          event.stopPropagation();
+                          if (event.key === "Enter") event.currentTarget.blur();
+                        }}
+                        onBlur={(event) => {
+                          const next = Number(event.currentTarget.value);
+                          if (
+                            event.currentTarget.value.trim() !== "" &&
+                            Number.isFinite(next) &&
+                            next !== itemIndex
+                          )
+                            choose("listItem", String(referenceId), next);
+                          event.currentTarget.value = String(itemIndex);
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                </div>
               );
             })}
             {block.type === "control_if" ? (

@@ -219,7 +219,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setConditionNumber" ||
     intent.intent.type === "addVariable" ||
     intent.intent.type === "addList" ||
-    intent.intent.type === "setExpressionNumber"
+    intent.intent.type === "setExpressionNumber" ||
+    intent.intent.type === "setNumericInput"
   );
 }
 
@@ -445,7 +446,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "addVariable" ||
               intent.type === "addList" ||
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||
-              intent.type === "setExpressionNumber"
+              intent.type === "setExpressionNumber" ||
+              intent.type === "setNumericInput"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];
           }

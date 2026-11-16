@@ -99,3 +99,5 @@ privacy, safety and reviewed mutations before it is exposed to learners.
 Scene can add an owned green-flag or message-receiver script to the selected actor. Script headers show their real trigger; selecting a header determines where palette clicks insert blocks. The message on a Broadcast block is editable in place. Script creation checks the program hash and commits program and actor ownership together.
 
 Studio Blocks can declare named numeric lists and insert Add, Remove, Insert and Replace operations. List blocks select a declared list and edit literal item values and indices directly. The shared child-facing POC toolbox stays unchanged; these definitions are surfaced only in Studio.
+
+Numeric sockets on variable and list operations can switch between a literal, a declared variable, list length and a list item. Each choice is a validated canonical edit; existing expression types outside this first socket vocabulary keep their visible label instead of being presented as a number.
