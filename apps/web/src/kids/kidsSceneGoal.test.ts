@@ -4,6 +4,7 @@ import {
   describeSceneGoal,
   sceneGoalChoices,
   sceneGoalKey,
+  goalMiss,
   sceneGoalMet,
   sceneGoalValid,
   variableGoalChoices,
@@ -137,6 +138,20 @@ describe("a goal about a value", () => {
 
   it("is not met by a program that never runs a step", () => {
     expect(sceneGoalMet(goal, play([]))).toBe(false);
+  });
+
+  it("says how far the value got and at which step when the goal is missed", () => {
+    expect(goalMiss(goal, play([add(2), add(1)]), () => "puntos", "es")).toBe(
+      "puntos llegó como máximo a 3 (paso 2); la meta es 5.",
+    );
+    expect(goalMiss(goal, play([add(1)]), () => "points", "en")).toBe(
+      "points got up to 1 at most (step 1); the goal is 5.",
+    );
+    expect(goalMiss(goal, play([{ type: "move", steps: 40 }]), () => "puntos", "es")).toBe(
+      "puntos se quedó en 0; la meta es 5. Ningún bloque lo subió.",
+    );
+    expect(goalMiss(goal, play([]), () => "puntos", "es")).toBeNull();
+    expect(goalMiss({ kind: "reachEdge", actorId: NOVA }, play([]), () => "x", "es")).toBeNull();
   });
 
   it("needs its variable to exist, and is offered for each variable", () => {
