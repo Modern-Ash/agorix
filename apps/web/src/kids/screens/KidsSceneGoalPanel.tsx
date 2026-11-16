@@ -8,6 +8,7 @@ import {
   describeSceneGoal,
   sceneGoalChoices,
   sceneGoalKey,
+  goalMiss,
   sceneGoalMet,
   variableGoalChoices,
 } from "../kidsSceneGoal.js";
@@ -277,6 +278,14 @@ export function KidsSceneGoalPanel({
                 : es
                   ? "Todavía no la logra. Cambiá los bloques y probá otra vez."
                   : "Not yet. Change the blocks and try again."}
+              {!met && goal !== null && run !== null
+                ? (() => {
+                    const miss = goalMiss(goal, run, variableName, locale);
+                    return miss === null ? null : (
+                      <span data-testid="scene-goal-miss"> {miss}</span>
+                    );
+                  })()
+                : null}
             </p>
           )}
         </>

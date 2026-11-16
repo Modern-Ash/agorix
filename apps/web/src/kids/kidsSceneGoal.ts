@@ -97,6 +97,45 @@ export function sceneGoalMet(goal: ProjectSceneGoal, run: MultiActorRunResult): 
   return run.frames.some((frame) => metIn(goal, frame.actors));
 }
 
+/**
+ * Why a goal about a value is not met, from the run alone: the highest value it held and the step
+ * it was held at (step 0 is the starting layout), or that it never moved. Null for other goals.
+ */
+export function goalMiss(
+  goal: ProjectSceneGoal,
+  run: MultiActorRunResult,
+  variableName: (variableId: string) => string,
+  locale: Locale,
+): string | null {
+  if (goal.kind !== "variableReaches") return null;
+  // The run's own trace is what the learner steps through, so a step here is a step there.
+  const first = run.frames[0];
+  let peak: number | undefined =
+    run.trace[0]?.worldBefore.variables?.[goal.variableId]?.value ??
+    first?.stage.variables?.[goal.variableId]?.value ??
+    first?.actors
+      .map((actor) => actor.world.variables?.[goal.variableId]?.value)
+      .find((value) => value !== undefined);
+  let step = 0;
+  run.trace.forEach((entry, index) => {
+    const value = entry.worldAfter.variables?.[goal.variableId]?.value;
+    if (value !== undefined && (peak === undefined || value > peak)) {
+      peak = value;
+      step = index + 1;
+    }
+  });
+  if (peak === undefined) return null;
+  const name = variableName(goal.variableId);
+  const es = locale === "es";
+  if (step === 0)
+    return es
+      ? `${name} se quedó en ${peak}; la meta es ${goal.value}. Ningún bloque lo subió.`
+      : `${name} stayed at ${peak}; the goal is ${goal.value}. No block raised it.`;
+  return es
+    ? `${name} llegó como máximo a ${peak} (paso ${step}); la meta es ${goal.value}.`
+    : `${name} got up to ${peak} at most (step ${step}); the goal is ${goal.value}.`;
+}
+
 /** Both characters of a goal must still be in the scene. */
 export function sceneGoalValid(
   goal: ProjectSceneGoal,
