@@ -259,12 +259,14 @@ class Reader {
     private readonly all: readonly Line[],
     private readonly variableIds: ReadonlyMap<string, string>,
     private readonly textIds: ReadonlyMap<string, string>,
+    private readonly listIds: ReadonlyMap<string, string> = new Map(),
   ) {}
 
   private get names(): ExpressionNames {
     return {
       numberId: (name) => this.variableIds.get(name),
       textId: (name) => this.textIds.get(name),
+      listId: (name) => this.listIds.get(name),
     };
   }
 
@@ -291,6 +293,10 @@ class Reader {
   variable(name: string, line: number): string {
     const id = this.variableIds.get(quoted(name, line));
     return id ?? refuse("unknownName", line);
+  }
+
+  list(name: string, line: number): string {
+    return this.listIds.get(quoted(name, line)) ?? refuse("unknownName", line);
   }
 
   number(text: string, line: number): Expression {
@@ -373,6 +379,29 @@ class Reader {
           (text) => quoted(text, line.n),
         ) as Statement;
     }
+    if ((m = new RegExp(`^add (.+) to ${Q}$`).exec(t)))
+      return { type: "listAdd", listId: this.list(m[2]!, line.n), value: this.expr(m[1]!, line.n) };
+    if ((m = new RegExp(`^delete all of ${Q}$`).exec(t)))
+      return { type: "listClear", listId: this.list(m[1]!, line.n) };
+    if ((m = new RegExp(`^remove item (.+) of ${Q}$`).exec(t)))
+      return {
+        type: "listRemoveAt",
+        listId: this.list(m[2]!, line.n),
+        index: this.expr(m[1]!, line.n),
+      };
+    if ((m = new RegExp(`^(insert|replace) item (.+) of ${Q} with (.+)$`).exec(t)))
+      return {
+        type: m[1] === "insert" ? "listInsertAt" : "listReplaceAt",
+        listId: this.list(m[3]!, line.n),
+        index: this.expr(m[2]!, line.n),
+        value: this.expr(m[4]!, line.n),
+      };
+    if (
+      (m = new RegExp(`^(show|hide) ${Q}$`).exec(t)) &&
+      this.listIds.has(quoted(m[2]!, line.n)) &&
+      !this.variableIds.has(quoted(m[2]!, line.n))
+    )
+      return { type: m[1] === "show" ? "showList" : "hideList", listId: this.list(m[2]!, line.n) };
     if ((m = new RegExp(`^show ${Q}$`).exec(t)))
       return { type: "showVariable", variableId: this.variable(m[1]!, line.n) };
     if ((m = new RegExp(`^hide ${Q}$`).exec(t)))
@@ -402,6 +431,24 @@ function trigger(line: Line): Trigger {
   return refuse("unknownLine", line.n);
 }
 
+/** The items of a list declaration: numbers and quoted words, separated by commas. */
+function listItems(text: string, line: number): (number | string)[] {
+  const items: (number | string)[] = [];
+  let rest = text.trim();
+  while (rest.length > 0) {
+    const word = /^"(?:[^"\\]|\\.)*"/.exec(rest);
+    const number = /^-?\d+(?:\.\d+)?/.exec(rest);
+    const found = word ?? number;
+    if (found === null) return refuse("badText", line);
+    items.push(word !== null ? quoted(found[0], line) : Number(found[0]));
+    rest = rest.slice(found[0].length).trim();
+    if (rest.length === 0) break;
+    if (!rest.startsWith(",")) return refuse("badText", line);
+    rest = rest.slice(1).trim();
+  }
+  return items;
+}
+
 /**
  * Text to program. `base` is the program the text was shown from, if there is one: it supplies the
  * variable ids (by name) and the script ids (by position), so an edit keeps what it did not touch.
@@ -412,6 +459,8 @@ export function parseAgorixCode(
   options: {
     /** The id of a variable the text declares and the base does not have; the n-th new one. */
     readonly newVariableId?: (taken: ReadonlySet<string>, n: number) => string;
+    /** The same for a list the base does not have. */
+    readonly newListId?: (taken: ReadonlySet<string>, n: number) => string;
   } = {},
 ): AgorixCodeParse {
   try {
@@ -436,17 +485,59 @@ export function parseAgorixCode(
     const knownText = new Map<string, string>(
       (base?.textVariables ?? []).map((item) => [item.name, item.id] as const),
     );
+    const knownLists = new Map<string, string>(
+      (base?.lists ?? []).map((item) => [item.name, item.id] as const),
+    );
+    const lists: {
+      id: string;
+      name: string;
+      initialItems: (number | string)[];
+      visible: boolean;
+      scope?: "stage";
+    }[] = [];
     let index = 0;
     // Declarations come first: `variable "name" = N` or `text "name" = "words"` (each with
     // `stage ` in front when it is shared by the whole scene), then optionally `show "name"`.
     while (
       index < all.length &&
       all[index]!.depth === 0 &&
-      /^(?:stage )?(?:variable|text) /.test(all[index]!.text)
+      /^(?:stage )?(?:variable|text|list) /.test(all[index]!.text)
     ) {
       const line = all[index]!;
-      const m = /^(stage )?(variable|text) ("(?:[^"\\]|\\.)*") = (.+)$/.exec(line.text);
+      const m = /^(stage )?(variable|text|list) ("(?:[^"\\]|\\.)*") =(?: (.*))?$/.exec(line.text);
       if (m === null) refuse("unknownLine", line.n);
+      if (m![2] === "list") {
+        const name = quoted(m![3]!, line.n);
+        const taken = new Set(lists.map((item) => item.id));
+        const allTaken = new Set([...taken, ...knownLists.values()]);
+        const id =
+          knownLists.get(name) ??
+          options.newListId?.(allTaken, lists.length + 1) ??
+          Array.from({ length: lists.length + 1 }, (_, k) => `list-${k + 1}`).find(
+            (candidate) => !allTaken.has(candidate),
+          )!;
+        knownLists.set(name, id);
+        let visible = false;
+        const next = all[index + 1];
+        if (
+          next !== undefined &&
+          next.depth === 0 &&
+          next.text === `show ${JSON.stringify(name)}`
+        ) {
+          visible = true;
+          index += 1;
+        }
+        lists.push({
+          id,
+          name,
+          initialItems: listItems(m![4] ?? "", line.n),
+          visible,
+          ...(m![1] === undefined ? {} : { scope: "stage" as const }),
+        });
+        index += 1;
+        continue;
+      }
+      if (m![4] === undefined) refuse("unknownLine", line.n);
       const isText = m![2] === "text";
       const name = quoted(m![3]!, line.n);
       const scope = m![1] === undefined ? {} : { scope: "stage" as const };
@@ -473,7 +564,7 @@ export function parseAgorixCode(
       else variables.push({ id, name, initialValue: numberOf(m![4]!, line.n), visible, ...scope });
       index += 1;
     }
-    const reader = new Reader(all.slice(index), known, knownText);
+    const reader = new Reader(all.slice(index), known, knownText, knownLists);
     const scripts: Script[] = [];
     while (!reader.done) {
       const head = reader.take();
@@ -495,6 +586,7 @@ export function parseAgorixCode(
       ...(extensions.length > 0 ? { extensions } : {}),
       ...(variables.length > 0 ? { variables } : {}),
       ...(textVariables.length > 0 ? { textVariables } : {}),
+      ...(lists.length > 0 ? { lists } : {}),
       scripts,
     } as never);
     return { ok: true, program };

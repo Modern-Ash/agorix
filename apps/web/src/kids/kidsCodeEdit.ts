@@ -12,6 +12,17 @@ function newStudioVariableId(taken: ReadonlySet<string>, n: number): string {
   return `studio-var-${n}`;
 }
 
+/** A new list typed by hand gets the next free Studio id (`studio-list-1` to `-3`). */
+function newStudioListId(taken: ReadonlySet<string>, n: number): string {
+  for (let k = Math.max(1, n); k <= 3; k += 1) {
+    const id = `studio-list-${k}`;
+    if (!taken.has(id)) return id;
+  }
+  return `studio-list-${n}`;
+}
+
+const OPTIONS = { newVariableId: newStudioVariableId, newListId: newStudioListId } as const;
+
 /**
  * Whether this program can be edited as text: reading the text it is shown as gives back exactly
  * this program. When a block the text cannot read is in the program, it stays editable with blocks
@@ -19,9 +30,7 @@ function newStudioVariableId(taken: ReadonlySet<string>, n: number): string {
  */
 export function agorixCodeEditable(program: ProjectProgram): boolean {
   try {
-    const parsed = parseAgorixCode(projectAgorixCode(program).text, program, {
-      newVariableId: newStudioVariableId,
-    });
+    const parsed = parseAgorixCode(projectAgorixCode(program).text, program, OPTIONS);
     return parsed.ok && JSON.stringify(parsed.program) === JSON.stringify(program);
   } catch {
     return false;
@@ -34,7 +43,7 @@ export type CodeEditResult =
 
 /** The text the learner typed, read into a program the scene accepts, or the first problem. */
 export function applyAgorixCode(text: string, base: ProjectProgram): CodeEditResult {
-  const parsed = parseAgorixCode(text, base, { newVariableId: newStudioVariableId });
+  const parsed = parseAgorixCode(text, base, OPTIONS);
   if (!parsed.ok) return { ok: false, ...parsed.errors[0]! };
   try {
     return { ok: true, program: validateStudioProgram(parsed.program) };

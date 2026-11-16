@@ -10,6 +10,8 @@ export interface ExpressionNames {
   readonly numberId: (name: string) => string | undefined;
   /** The id of a word variable of this name, if one is declared. */
   readonly textId: (name: string) => string | undefined;
+  /** The id of a list of this name, if one is declared. */
+  readonly listId?: (name: string) => string | undefined;
 }
 
 export class ExpressionError extends Error {}
@@ -98,6 +100,12 @@ class Cursor {
     this.position += word.length;
     return true;
   }
+  list(): string {
+    const id = this.names.listId?.(this.quoted());
+    if (id === undefined) throw new ExpressionError("unknown list");
+    return id;
+  }
+
   expect(word: string): void {
     if (!this.take(word)) throw new ExpressionError(`expected ${word}`);
   }
@@ -140,6 +148,11 @@ class Cursor {
     }
     if (here === '"') {
       const value = this.quoted();
+      const listId = this.names.listId?.(value);
+      if (listId !== undefined && this.startsWith("contains ")) {
+        this.take("contains ");
+        return { type: "listContains", listId, value: this.expression(depth + 1) };
+      }
       const id = this.names.numberId(value);
       if (id !== undefined) return { type: "variable", variableId: id };
       const textId = this.names.textId(value);
@@ -156,7 +169,26 @@ class Cursor {
       this.expect(")");
       return { type: "join", left, right };
     }
-    if (this.take("length of ")) return { type: "textLength", value: this.expression(depth + 1) };
+    if (this.take("item # of ")) {
+      const value = this.expression(depth + 1);
+      this.expect("in ");
+      return { type: "listIndexOf", listId: this.list(), value };
+    }
+    if (this.take("item ")) {
+      const index = this.expression(depth + 1);
+      this.expect("of ");
+      return { type: "listItem", listId: this.list(), index };
+    }
+    if (this.take("length of ")) {
+      const mark = this.position;
+      this.skip();
+      if (this.text[this.position] === '"') {
+        const id = this.names.listId?.(this.quoted());
+        if (id !== undefined) return { type: "listLength", listId: id };
+      }
+      this.position = mark;
+      return { type: "textLength", value: this.expression(depth + 1) };
+    }
     if (this.take("letter ")) {
       const index = this.expression(depth + 1);
       this.expect("of ");
