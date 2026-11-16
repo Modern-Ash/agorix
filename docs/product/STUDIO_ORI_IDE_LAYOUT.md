@@ -32,6 +32,13 @@ including text fields; nested control bodies have a visible rail. Drag,
 keyboard insertion and canonical workspace transactions remain the editing
 authority. The visual block projection owns no separate program state.
 
+The first expression socket appears on `if`: a learner can select a Boolean
+reporter in the palette and click the socket, or drag the reporter onto it.
+The host validates the expression and commits only through the canonical
+program transaction. The palette hides blocks without a complete visual
+insertion path; the remaining vocabulary is recorded in
+[`STUDIO_COMPONENT_MATRIX.md`](./STUDIO_COMPONENT_MATRIX.md).
+
 The left library switches between Blocks and Scene. Scene shows actor cards and
 visual costume/backdrop choices from the project's validated assets. Selection
 is an explicit metadata edit; the host refuses unknown asset ids and refreshes

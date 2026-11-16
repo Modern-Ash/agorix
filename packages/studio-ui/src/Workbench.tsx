@@ -827,6 +827,7 @@ export function Workbench({
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
   const [backdropId, setBackdropId] = useState<string | undefined>();
   const [libraryTab, setLibraryTab] = useState<"blocks" | "scene">("blocks");
+  const [selectedExpression, setSelectedExpression] = useState<BlockType | undefined>();
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
   const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
   const [playing, setPlaying] = useState(false);
@@ -1034,7 +1035,12 @@ export function Workbench({
           <div aria-label={copy.libraryBlocks}>
             <h2>{copy.toolsTitle}</h2>
             <p>{copy.toolsHint}</p>
-            <Palette copy={copy} onAdd={add} />
+            <Palette
+              copy={copy}
+              onAdd={add}
+              onSelectExpression={setSelectedExpression}
+              selectedExpression={selectedExpression}
+            />
           </div>
         ) : (
           <div aria-label={copy.libraryScene}>
@@ -1077,6 +1083,7 @@ export function Workbench({
             <Canvas
               copy={copy}
               workspace={workspace}
+              selectedExpression={selectedExpression}
               onIntent={post}
               onAnnounce={announce}
               focusRequest={focusRequest}

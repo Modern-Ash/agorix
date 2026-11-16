@@ -11,6 +11,14 @@ import { isSafeId, parseAnchorRef, type AgentAnchorRef } from "./anchors.js";
 
 export type AgentVerb = "explain" | "debug" | "challenge";
 
+/** Boolean reporter blocks supported by Studio's first visual condition socket. */
+export const STUDIO_CONDITION_BLOCK_TYPES = [
+  "sensing_touching_goal",
+  "sensing_touching_actor",
+  "sensing_touching_stage_edge",
+  "literal_boolean",
+] as const satisfies readonly BlockType[];
+
 export interface InsertionPoint {
   readonly container: StatementContainerPath;
   readonly index: number;
@@ -49,6 +57,11 @@ export type Intent =
       readonly location: StatementLocation;
       readonly field: string;
       readonly value: string;
+    }
+  | {
+      readonly type: "replaceCondition";
+      readonly location: StatementLocation;
+      readonly blockType: BlockType;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
@@ -127,6 +140,35 @@ export function intentToChange(
       return { type: "moveBlock", from: intent.from, to: intent.to };
     case "deleteBlock":
       return { type: "deleteBlock", location: intent.location };
+    case "replaceCondition": {
+      if (
+        workspace === undefined ||
+        !(STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(intent.blockType)
+      )
+        return undefined;
+      const { container, index } = intent.location;
+      let statements: readonly BlockNode[] | undefined =
+        workspace.scripts[container.scriptIndex]?.statements;
+      if (container.kind !== "script") {
+        for (const pathIndex of container.statementPath) {
+          const parent: BlockNode | undefined = statements?.[pathIndex];
+          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
+        }
+      }
+      const block = statements?.[index];
+      if (block?.type !== "control_if") return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: createDefaultBlock(intent.blockType, newBlockId()),
+          },
+        },
+      };
+    }
     case "setNumericField":
     case "setTextField": {
       if (

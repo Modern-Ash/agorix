@@ -15,6 +15,7 @@ export interface RenderBlock {
   readonly location: StatementLocation;
   readonly siblingCount: number;
   readonly fields: Readonly<Record<string, unknown>>;
+  readonly condition?: BlockNode;
 }
 
 export type RenderRow =
@@ -47,6 +48,7 @@ function pushList(
         location: { container, index },
         siblingCount: list.length,
         fields: node.fields ?? {},
+        ...(node.inputs?.condition === undefined ? {} : { condition: node.inputs.condition }),
       },
     });
     const childPath = [...path, index];

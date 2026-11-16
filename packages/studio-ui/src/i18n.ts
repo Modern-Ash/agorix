@@ -497,7 +497,7 @@ export const COPY = {
     taskRepeatPattern: "Escribir los pasos repetidos una vez con repetir",
     sequence: "Secuencia",
     repetition: "Repeticion",
-    condition: "Condicion",
+    condition: "Condición",
     event: "Evento",
     paletteBlocks: "Bloques",
     paletteSearch: "Buscar bloques",

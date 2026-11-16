@@ -264,6 +264,58 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(2);
   });
 
+  it("commits a visual condition and refuses stale or non-condition edits", async () => {
+    const conditional = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "if", condition: { type: "touchingGoal" }, then: [] }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { host, get, labels } = setup(conditional);
+    const intent = {
+      type: "replaceCondition",
+      location: { container: script, index: 0 },
+      blockType: "literal_boolean",
+    } as const;
+    const accepted = await host.handle({
+      schema,
+      type: "intent",
+      intent,
+      baseHash: programSemanticHash(conditional),
+    });
+    expect(accepted[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "if",
+      condition: { type: "booleanLiteral", value: true },
+    });
+    expect(labels).toHaveLength(1);
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent,
+          baseHash: programSemanticHash(conditional),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...intent, location: { container: script, index: 1 } },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(1);
+  });
+
   it("moves exactly like applying the same change through block-editor", async () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };

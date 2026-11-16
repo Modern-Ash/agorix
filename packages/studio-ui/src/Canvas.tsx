@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import type { BlockWorkspaceSnapshot } from "@agorix/block-editor";
+import { getBlockDefinition, type BlockType } from "@agorix/block-editor";
 import {
+  STUDIO_CONDITION_BLOCK_TYPES,
   keyboardIntent,
   resolveDrop,
   type AgentVerb,
@@ -124,6 +126,7 @@ export function Canvas({
   ambientHint,
   onAnnounce,
   focusRequest,
+  selectedExpression,
 }: {
   readonly copy?: StudioUiCopy;
   readonly workspace: BlockWorkspaceSnapshot;
@@ -135,6 +138,7 @@ export function Canvas({
   /** Receives plain-language announcements for a polite live region. */
   readonly onAnnounce?: ((text: string) => void) | undefined;
   readonly focusRequest?: FocusRequest | undefined;
+  readonly selectedExpression?: BlockType | undefined;
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   const rootRef = useRef<HTMLElement | null>(null);
@@ -344,6 +348,50 @@ export function Canvas({
               {visualLabel(label)}
               {fields === "" ? "" : ` (${fields})`}
             </span>
+            {block.type === "control_if" ? (
+              <button
+                type="button"
+                className="expression-socket"
+                data-tone={
+                  block.condition === undefined ? "sensing" : visualBlock(block.condition.type).tone
+                }
+                aria-label={`${copy.condition}: ${block.condition === undefined ? "" : (getBlockDefinition(block.condition.type)?.label ?? block.condition.type)}`}
+                title={copy.condition}
+                onClick={() => {
+                  if (selectedExpression !== undefined) {
+                    onIntent({
+                      type: "replaceCondition",
+                      location: block.location,
+                      blockType: selectedExpression,
+                    });
+                  }
+                }}
+                onDragOver={(event) => {
+                  // Drag payloads are not readable during dragover in every browser.
+                  // Validate the actual block on drop before creating an intent.
+                  event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const source = readSource(event);
+                  if (
+                    source?.kind === "palette" &&
+                    (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(source.blockType)
+                  ) {
+                    onIntent({
+                      type: "replaceCondition",
+                      location: block.location,
+                      blockType: source.blockType,
+                    });
+                  }
+                }}
+              >
+                {block.condition === undefined
+                  ? copy.condition
+                  : (getBlockDefinition(block.condition.type)?.label ?? block.condition.type)}
+              </button>
+            ) : null}
             {fieldEntries
               .filter(
                 ([name, value]) =>

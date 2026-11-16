@@ -147,4 +147,48 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("replaces only a boolean condition through a canonical workspace edit", () => {
+    const workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:1",
+        type: "control_if",
+        inputs: { condition: { id: "goal:1", type: "sensing_touching_goal" }, then: [] },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const change = intentToChange(
+      { type: "replaceCondition", location, blockType: "literal_boolean" },
+      newId,
+      workspace,
+    );
+    expect(
+      applyWorkspaceChange(workspace, change!).workspace.scripts[0]?.statements[0]?.inputs
+        ?.condition,
+    ).toMatchObject({
+      type: "literal_boolean",
+      fields: { value: true },
+    });
+    expect(
+      intentToChange(
+        { type: "replaceCondition", location, blockType: "operator_add" },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "replaceCondition",
+          location: { container: script, index: 1 },
+          blockType: "literal_boolean",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
 });
