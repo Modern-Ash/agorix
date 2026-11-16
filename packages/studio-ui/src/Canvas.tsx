@@ -519,7 +519,15 @@ export function Canvas({
                             ? "yPosition"
                             : operand.type === "sensing_distance_to_actor"
                               ? "distanceToActor"
-                              : "other";
+                              : operand.type === "operator_add"
+                                ? "add"
+                                : operand.type === "operator_subtract"
+                                  ? "subtract"
+                                  : operand.type === "operator_multiply"
+                                    ? "multiply"
+                                    : operand.type === "operator_divide"
+                                      ? "divide"
+                                      : "other";
               const referenceId =
                 reporter === "variable"
                   ? operand.fields?.variableId
@@ -542,7 +550,11 @@ export function Canvas({
                   | "listItem"
                   | "xPosition"
                   | "yPosition"
-                  | "distanceToActor",
+                  | "distanceToActor"
+                  | "add"
+                  | "subtract"
+                  | "multiply"
+                  | "divide",
                 nextReference?: string,
                 nextIndex?: number,
               ) =>
@@ -570,7 +582,11 @@ export function Canvas({
                           | "listItem"
                           | "xPosition"
                           | "yPosition"
-                          | "distanceToActor";
+                          | "distanceToActor"
+                          | "add"
+                          | "subtract"
+                          | "multiply"
+                          | "divide";
                         choose(
                           next,
                           next === "variable"
@@ -585,6 +601,10 @@ export function Canvas({
                       onKeyDown={(event) => event.stopPropagation()}
                     >
                       <option value="number">{copy.numericLiteral}</option>
+                      <option value="add">{copy.operatorAdd}</option>
+                      <option value="subtract">{copy.operatorSubtract}</option>
+                      <option value="multiply">{copy.operatorMultiply}</option>
+                      <option value="divide">{copy.operatorDivide}</option>
                       <option value="xPosition">{copy.positionX}</option>
                       <option value="yPosition">{copy.positionY}</option>
                       {actors.length > 0 ? (
@@ -632,6 +652,62 @@ export function Canvas({
                         event.currentTarget.value = String(operand.fields?.value);
                       }}
                     />
+                  ) : null}
+                  {(["add", "subtract", "multiply", "divide"] as const).includes(
+                    reporter as "add" | "subtract" | "multiply" | "divide",
+                  ) ? (
+                    <span className="comparison-fields">
+                      {(["left", "right"] as const).map((side) => {
+                        const part = operand.inputs?.[side];
+                        const sideLabel =
+                          side === "left" ? copy.conditionLeft : copy.conditionRight;
+                        if (
+                          part?.type !== "literal_number" ||
+                          typeof part.fields?.value !== "number"
+                        ) {
+                          return (
+                            <span key={side}>
+                              {sideLabel}:{" "}
+                              {part === undefined
+                                ? "?"
+                                : (getBlockDefinition(part.type)?.label ?? part.type)}
+                            </span>
+                          );
+                        }
+                        const value = part.fields.value;
+                        return (
+                          <label key={side} className="block-field">
+                            <span>{sideLabel}</span>
+                            <input
+                              key={`${pos}:${input}:${side}:${value}`}
+                              type="number"
+                              tabIndex={isTabbable ? 0 : -1}
+                              aria-label={`${label}: ${operandLabel} ${sideLabel}`}
+                              defaultValue={value}
+                              draggable={false}
+                              onDragStart={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => {
+                                event.stopPropagation();
+                                if (event.key === "Enter") event.currentTarget.blur();
+                              }}
+                              onBlur={(event) => {
+                                const raw = event.currentTarget.value.trim();
+                                const next = Number(raw);
+                                if (raw !== "" && Number.isFinite(next) && next !== value)
+                                  onIntent({
+                                    type: "setArithmeticOperand",
+                                    location: block.location,
+                                    input,
+                                    side,
+                                    value: next,
+                                  });
+                                event.currentTarget.value = String(value);
+                              }}
+                            />
+                          </label>
+                        );
+                      })}
+                    </span>
                   ) : null}
                   {reporter === "distanceToActor" ? (
                     <label>

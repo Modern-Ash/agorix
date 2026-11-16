@@ -3,6 +3,7 @@ import {
   BlockEditorAdapterError,
   applyWorkspaceChange,
   createStarterWorkspace,
+  programToWorkspace,
   projectWorkspace,
 } from "@agorix/block-editor";
 import {
@@ -600,6 +601,109 @@ describe("interaction-core", () => {
         workspace,
       ),
     ).toBeUndefined();
+  });
+  it("inserts arithmetic sources and edits only their literal operands", () => {
+    const workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "var:math",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: { value: { id: "num:math", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    for (const [reporter, type] of [
+      ["add", "add"],
+      ["subtract", "subtract"],
+      ["multiply", "multiply"],
+      ["divide", "divide"],
+    ] as const) {
+      const changed = applyWorkspaceChange(
+        workspace,
+        intentToChange(
+          { type: "setNumericInput", location, input: "value", reporter },
+          newId,
+          workspace,
+        )!,
+      );
+      expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+        type: "setVariable",
+        value: {
+          type,
+          left: { type: "numericLiteral", value: 0 },
+          right: { type: "numericLiteral", value: 1 },
+        },
+      });
+      const edited = applyWorkspaceChange(
+        changed.workspace,
+        intentToChange(
+          { type: "setArithmeticOperand", location, input: "value", side: "left", value: 7 },
+          newId,
+          changed.workspace,
+        )!,
+      );
+      expect(edited.program.scripts[0]?.statements[0]).toMatchObject({
+        value: { left: { value: 7 }, right: { value: 1 } },
+      });
+      expect(
+        intentToChange(
+          {
+            type: "setArithmeticOperand",
+            location,
+            input: "value",
+            side: "right",
+            value: Infinity,
+          },
+          newId,
+          changed.workspace,
+        ),
+      ).toBeUndefined();
+    }
+    expect(
+      intentToChange(
+        { type: "setArithmeticOperand", location, input: "value", side: "left", value: 3 },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    const mixed = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: { type: "variable", variableId: "score" },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    expect(
+      intentToChange(
+        { type: "setArithmeticOperand", location, input: "value", side: "left", value: 5 },
+        newId,
+        mixed,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setArithmeticOperand", location, input: "value", side: "right", value: 5 },
+        newId,
+        mixed,
+      ),
+    ).toBeDefined();
   });
   it("replaces numeric inputs with declared variable and list reporters", () => {
     let workspace = createStarterWorkspace();

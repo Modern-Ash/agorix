@@ -207,6 +207,10 @@ describe("canvas keyboard and screen reader behaviour", () => {
     )!;
     expect(Array.from(source.options).map((option) => option.value)).toEqual([
       "number",
+      "add",
+      "subtract",
+      "multiply",
+      "divide",
       "xPosition",
       "yPosition",
       "variable",
@@ -270,7 +274,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
       referenceId: "actor:nova",
     });
   });
-  it("labels an existing arithmetic expression instead of presenting it as a number", () => {
+  it("shows and edits arithmetic operands without changing the other operand", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",
       lists: [{ id: "l", name: "Items", initialItems: [], visible: true }],
@@ -292,12 +296,28 @@ describe("canvas keyboard and screen reader behaviour", () => {
         },
       ],
     }).workspace;
-    render(workspace);
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
     const source = host.querySelector<HTMLSelectElement>(
       '.numeric-socket select[aria-label*="source"]',
     )!;
-    expect(source.value).toBe("other");
-    expect(source.selectedOptions[0]?.textContent).toContain("+");
+    expect(source.value).toBe("add");
+    const left = host.querySelector<HTMLInputElement>('.numeric-socket input[aria-label*="Left"]')!;
+    act(() => {
+      left.value = "7";
+      left.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperand",
+      input: "value",
+      side: "left",
+      value: 7,
+    });
+    act(() => {
+      source.value = "divide";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({ type: "setNumericInput", reporter: "divide" });
   });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
     const workspace = applyWorkspaceChange(initial, {

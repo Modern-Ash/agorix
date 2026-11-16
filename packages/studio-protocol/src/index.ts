@@ -1092,11 +1092,21 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter !== "listItem" &&
           reporter !== "xPosition" &&
           reporter !== "yPosition" &&
-          reporter !== "distanceToActor")
+          reporter !== "distanceToActor" &&
+          reporter !== "add" &&
+          reporter !== "subtract" &&
+          reporter !== "multiply" &&
+          reporter !== "divide")
       )
         return undefined;
       if (
-        (reporter === "number" || reporter === "xPosition" || reporter === "yPosition") &&
+        (reporter === "number" ||
+          reporter === "xPosition" ||
+          reporter === "yPosition" ||
+          reporter === "add" ||
+          reporter === "subtract" ||
+          reporter === "multiply" ||
+          reporter === "divide") &&
         (referenceId !== undefined || itemIndex !== undefined)
       )
         return undefined;
@@ -1104,6 +1114,10 @@ function parseIntent(value: unknown): Intent | undefined {
         reporter !== "number" &&
         reporter !== "xPosition" &&
         reporter !== "yPosition" &&
+        reporter !== "add" &&
+        reporter !== "subtract" &&
+        reporter !== "multiply" &&
+        reporter !== "divide" &&
         !isSafeId(referenceId)
       )
         return undefined;
@@ -1118,6 +1132,21 @@ function parseIntent(value: unknown): Intent | undefined {
         ...(typeof referenceId === "string" ? { referenceId } : {}),
         ...(typeof itemIndex === "number" ? { itemIndex } : {}),
       };
+    }
+    case "setArithmeticOperand": {
+      const location = parseLocation(value["location"]);
+      return location !== undefined &&
+        (value["input"] === "value" || value["input"] === "delta" || value["input"] === "index") &&
+        (value["side"] === "left" || value["side"] === "right") &&
+        isFiniteNumber(value["value"])
+        ? {
+            type: "setArithmeticOperand",
+            location,
+            input: value["input"],
+            side: value["side"],
+            value: value["value"],
+          }
+        : undefined;
     }
     case "setNumericField": {
       const location = parseLocation(value["location"]);

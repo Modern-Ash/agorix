@@ -148,9 +148,20 @@ export type Intent =
         | "listItem"
         | "xPosition"
         | "yPosition"
-        | "distanceToActor";
+        | "distanceToActor"
+        | "add"
+        | "subtract"
+        | "multiply"
+        | "divide";
       readonly referenceId?: string;
       readonly itemIndex?: number;
+    }
+  | {
+      readonly type: "setArithmeticOperand";
+      readonly location: StatementLocation;
+      readonly input: "value" | "delta" | "index";
+      readonly side: "left" | "right";
+      readonly value: number;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
@@ -360,11 +371,67 @@ export function intentToChange(
             fields: { actorId: intent.referenceId },
           };
           break;
+        case "add":
+        case "subtract":
+        case "multiply":
+        case "divide":
+          replacement = {
+            id: current.id,
+            type: `operator_${intent.reporter}`,
+            inputs: {
+              left: { id: `${current.id}:left`, type: "literal_number", fields: { value: 0 } },
+              right: { id: `${current.id}:right`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
+          break;
       }
       return {
         type: "editBlock",
         location: intent.location,
         block: { ...block, inputs: { ...block.inputs, [intent.input]: replacement } },
+      };
+    }
+    case "setArithmeticOperand": {
+      if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
+      const { container, index } = intent.location;
+      const block = statementsAt(workspace, container)?.[index];
+      const supported: Readonly<Record<string, readonly string[]>> = {
+        variables_set: ["value"],
+        variables_change: ["delta"],
+        lists_add: ["value"],
+        lists_remove_at: ["index"],
+        lists_insert_at: ["index", "value"],
+        lists_replace_at: ["index", "value"],
+      };
+      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
+      const expression = block.inputs?.[intent.input];
+      if (
+        expression === undefined ||
+        Array.isArray(expression) ||
+        !["operator_add", "operator_subtract", "operator_multiply", "operator_divide"].includes(
+          expression.type,
+        )
+      )
+        return undefined;
+      const operand = expression.inputs?.[intent.side];
+      if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
+        return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            [intent.input]: {
+              ...expression,
+              inputs: {
+                ...expression.inputs,
+                [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
+              },
+            },
+          },
+        },
       };
     }
     case "replaceCondition": {

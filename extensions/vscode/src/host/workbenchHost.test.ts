@@ -683,6 +683,72 @@ describe("workbenchHost", () => {
       )[0],
     ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
   });
+  it("commits arithmetic reporters and refuses invalid operand edits", async () => {
+    const { host, get } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "addVariable", name: "math" },
+      baseHash: programSemanticHash(get()!),
+    });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "variables_set",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    const location = { container: script, index: 0 };
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { type: "setNumericInput", location, input: "value", reporter: "multiply" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: {
+            type: "setArithmeticOperand",
+            location,
+            input: "value",
+            side: "right",
+            value: 4,
+          },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "setVariable",
+      value: { type: "multiply", right: { type: "numericLiteral", value: 4 } },
+    });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: {
+            type: "setArithmeticOperand",
+            location,
+            input: "index",
+            side: "right",
+            value: 2,
+          },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+  });
 
   it("creates an actor and its script in one project transaction with explicit ownership", async () => {
     const { host, get, metadata, labels } = setup();
