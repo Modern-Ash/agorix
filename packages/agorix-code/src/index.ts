@@ -203,7 +203,14 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       );
       return;
     case "nextCostume":
-      writeMapped(writer, nodeId, indent + "next costume of " + statement.costumeIds.length + "\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "next costume of " +
+          statement.costumeIds.map((id) => JSON.stringify(id)).join(", ") +
+          "\n",
+      );
       return;
     case "setRotationStyle":
       writeMapped(
@@ -718,7 +725,11 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "distance to " + JSON.stringify(expression.actorId);
     case "actorProperty":
       return (
-        (expression.variableId ?? expression.property) + " of " + JSON.stringify(expression.actorId)
+        (expression.variableId === undefined
+          ? expression.property
+          : variableName(writer, expression.variableId)) +
+        " of " +
+        JSON.stringify(expression.actorId)
       );
     case "xPosition":
       return "x position";

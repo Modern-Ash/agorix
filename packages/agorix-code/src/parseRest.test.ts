@@ -17,6 +17,22 @@ const program: ProjectProgram = {
         { type: "broadcast", message: "again", wait: true },
         { type: "createCopies", count: 3, rule: "fall" },
         { type: "createCopies", count: 2, rule: "follow", withScript: true },
+        { type: "nextCostume", costumeIds: ["c1", "c2"] },
+        {
+          type: "setVariable",
+          variableId: "var-1",
+          value: { type: "actorProperty", actorId: "Nova", property: "xPosition" },
+        },
+        {
+          type: "setText",
+          variableId: "text-1",
+          value: {
+            type: "actorProperty",
+            actorId: "Nova",
+            property: "variable",
+            variableId: "text-1",
+          },
+        },
       ],
     },
     {

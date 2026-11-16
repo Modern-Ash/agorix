@@ -51,9 +51,12 @@ Expressions are read by `parseExpression`. Every operation with two sides is wri
 
 `ask text PROMPT → "name"` and `ask PROMPT → "name"` (the prompt is the catalog id), `broadcast "message"` (with ` and wait`), and `make N copies (spread|fall|follow)` (with ` that run their own script`). `broadcast` is now shown in the text too; before, it was not projected at all.
 
-Still block-only, and therefore a program that has one is not offered for text editing: `next costume` (the text only shows how many costumes, not which, so it cannot be read back) and a property of another character (the text shows a variable by id, not by name).
+## Next costume and a property of another character (built)
+
+`next costume of "id1", "id2"` now lists the costumes (before, only how many, so it could not be read back). `property of "actor"` (`xPosition`, `direction`, `costumeName`, ...) and `"variable" of "actor"` now show the variable by its name, not its id. The text view changed for these two; nothing else did.
+
+Every block the text view shows is now read back. A program is still offered for text editing only when reading its text gives back exactly the program.
 
 ## Next
 
-1. Show `next costume` and a variable of another character by name, so they can be read back.
-2. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.
+1. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.
