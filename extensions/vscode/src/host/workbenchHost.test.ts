@@ -703,6 +703,34 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(before);
   });
 
+  it("creates actor-owned key and click scripts with canonical triggers", async () => {
+    const { host, get, metadata } = setup();
+    await host.handle({ schema, type: "createActor", name: "Robot" });
+    const robot = metadata().actors!.items.find((actor) => actor.name === "Robot")!;
+    await host.handle({
+      schema,
+      type: "createScript",
+      actorId: robot.id,
+      trigger: "onKeyPressed",
+      key: "ArrowRight",
+      baseHash: programSemanticHash(get()!),
+    });
+    const keyScript = get()!.scripts.at(-1)!;
+    expect(keyScript.trigger).toEqual({ type: "onKeyPressed", key: "ArrowRight" });
+    await host.handle({
+      schema,
+      type: "createScript",
+      actorId: robot.id,
+      trigger: "onActorClicked",
+      baseHash: programSemanticHash(get()!),
+    });
+    const clickScript = get()!.scripts.at(-1)!;
+    expect(clickScript.trigger).toEqual({ type: "onActorClicked" });
+    expect(metadata().actors!.items.find((actor) => actor.id === robot.id)?.scripts).toEqual(
+      expect.arrayContaining([keyScript.id, clickScript.id]),
+    );
+  });
+
   it("persists a bounded image and refuses an invalid import without mutation", async () => {
     const { host, metadata, labels } = setup();
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;

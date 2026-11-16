@@ -128,8 +128,9 @@ export type UiMessage =
       readonly schema: Schema;
       readonly type: "createScript";
       readonly actorId: string;
-      readonly trigger: "greenFlag" | "onMessage";
+      readonly trigger: "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked";
       readonly message?: string;
+      readonly key?: string;
       readonly baseHash: string;
     }
   | {
@@ -1952,12 +1953,21 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
       return isSafeId(value["actorId"]) &&
         typeof value["baseHash"] === "string" &&
         /^fnv1a32:[a-f0-9]+$/.test(value["baseHash"]) &&
-        (value["trigger"] === "greenFlag" || value["trigger"] === "onMessage") &&
-        (value["trigger"] === "greenFlag"
-          ? value["message"] === undefined
-          : typeof value["message"] === "string" &&
+        (value["trigger"] === "greenFlag" ||
+          value["trigger"] === "onMessage" ||
+          value["trigger"] === "onKeyPressed" ||
+          value["trigger"] === "onActorClicked") &&
+        (value["trigger"] === "onMessage"
+          ? typeof value["message"] === "string" &&
             value["message"].trim().length > 0 &&
-            value["message"].trim().length <= 80)
+            value["message"].trim().length <= 80 &&
+            value["key"] === undefined
+          : value["trigger"] === "onKeyPressed"
+            ? typeof value["key"] === "string" &&
+              value["key"].trim().length > 0 &&
+              value["key"].trim().length <= 40 &&
+              value["message"] === undefined
+            : value["message"] === undefined && value["key"] === undefined)
         ? {
             schema,
             type: "createScript",
@@ -1965,6 +1975,9 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
             trigger: value["trigger"],
             ...(value["trigger"] === "onMessage"
               ? { message: (value["message"] as string).trim() }
+              : {}),
+            ...(value["trigger"] === "onKeyPressed"
+              ? { key: (value["key"] as string).trim() }
               : {}),
             baseHash: value["baseHash"],
           }

@@ -583,7 +583,11 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         const trigger =
           message.trigger === "onMessage"
             ? { type: "onMessage" as const, message: message.message! }
-            : { type: "greenFlag" as const };
+            : message.trigger === "onKeyPressed"
+              ? { type: "onKeyPressed" as const, key: message.key! }
+              : message.trigger === "onActorClicked"
+                ? { type: "onActorClicked" as const }
+                : { type: "greenFlag" as const };
         const nextProgram = validateProgram({
           ...program,
           scripts: [...program.scripts, { id: scriptId, trigger, statements: [] }],

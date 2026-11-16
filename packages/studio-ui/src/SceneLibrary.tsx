@@ -28,8 +28,8 @@ export function SceneLibrary({
   readonly onCreateActor?: (name: string) => void;
   readonly onCreateScript?: (
     actorId: string,
-    trigger: "greenFlag" | "onMessage",
-    message?: string,
+    trigger: "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked",
+    detail?: string,
   ) => void;
   readonly onImportAsset?: (kind: "costume" | "backdrop", name: string, source: string) => void;
 }) {
@@ -39,8 +39,11 @@ export function SceneLibrary({
   const [assetError, setAssetError] = useState("");
   const [drawingActive, setDrawingActive] = useState(false);
   const [ink, setInk] = useState("#7855d8");
-  const [scriptTrigger, setScriptTrigger] = useState<"greenFlag" | "onMessage">("greenFlag");
+  const [scriptTrigger, setScriptTrigger] = useState<
+    "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked"
+  >("greenFlag");
   const [scriptMessage, setScriptMessage] = useState("");
+  const [scriptKey, setScriptKey] = useState("Space");
   const submitAsset = (name: string, source: string) => {
     if (!validEmbeddedImageSource(source)) {
       setAssetError(copy.sceneInvalidImage);
@@ -124,7 +127,11 @@ export function SceneLibrary({
               onCreateScript(
                 selected.id,
                 scriptTrigger,
-                scriptTrigger === "onMessage" ? scriptMessage.trim() : undefined,
+                scriptTrigger === "onMessage"
+                  ? scriptMessage.trim()
+                  : scriptTrigger === "onKeyPressed"
+                    ? scriptKey
+                    : undefined,
               );
             }}
           >
@@ -133,11 +140,16 @@ export function SceneLibrary({
               <select
                 value={scriptTrigger}
                 onChange={(event) =>
-                  setScriptTrigger(event.currentTarget.value as "greenFlag" | "onMessage")
+                  setScriptTrigger(
+                    event.currentTarget.value as
+                      "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked",
+                  )
                 }
               >
                 <option value="greenFlag">{copy.canvasWhenRun}</option>
                 <option value="onMessage">{copy.sceneOnMessage}</option>
+                <option value="onKeyPressed">{copy.sceneOnKey}</option>
+                <option value="onActorClicked">{copy.sceneOnActorClick}</option>
               </select>
             </label>
             {scriptTrigger === "onMessage" ? (
@@ -147,6 +159,30 @@ export function SceneLibrary({
                 value={scriptMessage}
                 onChange={(event) => setScriptMessage(event.currentTarget.value)}
               />
+            ) : null}
+            {scriptTrigger === "onKeyPressed" ? (
+              <label>
+                {copy.sceneKey}
+                <select
+                  aria-label={copy.sceneKey}
+                  value={scriptKey}
+                  onChange={(event) => setScriptKey(event.currentTarget.value)}
+                >
+                  {[
+                    "Space",
+                    "Enter",
+                    "ArrowUp",
+                    "ArrowDown",
+                    "ArrowLeft",
+                    "ArrowRight",
+                    ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                  ].map((key) => (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : null}
             <button type="submit">{copy.sceneAddScript}</button>
           </form>
