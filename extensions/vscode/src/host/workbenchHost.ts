@@ -217,6 +217,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setTextField" ||
     intent.intent.type === "replaceCondition" ||
     intent.intent.type === "setConditionNumber" ||
+    intent.intent.type === "setConditionBoolean" ||
+    intent.intent.type === "setConditionActor" ||
     intent.intent.type === "addVariable" ||
     intent.intent.type === "addList" ||
     intent.intent.type === "setExpressionNumber" ||
@@ -435,6 +437,22 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
             }
           }
         }
+        if (
+          intent.type === "setConditionActor" ||
+          (intent.type === "replaceCondition" && intent.blockType === "sensing_touching_actor")
+        ) {
+          const metadata = port.getMetadata();
+          const actorId =
+            intent.type === "setConditionActor" ? intent.actorId : (intent.actorId ?? "actor:main");
+          if (
+            metadata === undefined ||
+            !actorsForMetadata(metadata).items.some((actor) => actor.id === actorId)
+          ) {
+            return [
+              { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+            ];
+          }
+        }
         try {
           const { workspace } = programToWorkspace(program);
           const change = intentToChange(intent, newBlockId, workspace);
@@ -443,6 +461,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "setTextField" ||
               intent.type === "replaceCondition" ||
               intent.type === "setConditionNumber" ||
+              intent.type === "setConditionBoolean" ||
+              intent.type === "setConditionActor" ||
               intent.type === "addVariable" ||
               intent.type === "addList" ||
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||

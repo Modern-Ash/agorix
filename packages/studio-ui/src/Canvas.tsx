@@ -10,7 +10,7 @@ import {
   type DropTarget,
   type Intent,
 } from "@agorix/interaction-core";
-import type { AmbientHintView, AssetView, GhostChange } from "@agorix/studio-protocol";
+import type { ActorView, AmbientHintView, AssetView, GhostChange } from "@agorix/studio-protocol";
 import { dropPointFor, locationKey, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
@@ -133,6 +133,7 @@ export function Canvas({
   selectedScriptId,
   onSelectScript,
   assets = [],
+  actors = [],
 }: {
   readonly copy?: StudioUiCopy;
   readonly workspace: BlockWorkspaceSnapshot;
@@ -149,6 +150,7 @@ export function Canvas({
   readonly selectedScriptId?: string | undefined;
   readonly onSelectScript?: ((id: string) => void) | undefined;
   readonly assets?: readonly AssetView[];
+  readonly actors?: readonly ActorView[];
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   const rootRef = useRef<HTMLElement | null>(null);
@@ -664,6 +666,9 @@ export function Canvas({
                       type: "replaceCondition",
                       location: block.location,
                       blockType: selectedExpression,
+                      ...(selectedExpression === "sensing_touching_actor" && actors[0] !== undefined
+                        ? { actorId: actors[0].id }
+                        : {}),
                     });
                   }
                 }}
@@ -684,6 +689,9 @@ export function Canvas({
                       type: "replaceCondition",
                       location: block.location,
                       blockType: source.blockType,
+                      ...(source.blockType === "sensing_touching_actor" && actors[0] !== undefined
+                        ? { actorId: actors[0].id }
+                        : {}),
                     });
                   }
                 }}
@@ -692,6 +700,54 @@ export function Canvas({
                   ? copy.condition
                   : (getBlockDefinition(block.condition.type)?.label ?? block.condition.type)}
               </button>
+            ) : null}
+            {block.type === "control_if" && block.condition?.type === "literal_boolean" ? (
+              <label className="block-field condition-detail">
+                <span>{copy.conditionValue}</span>
+                <select
+                  aria-label={`${copy.condition}: ${copy.conditionValue}`}
+                  value={String(block.condition.fields?.value === true)}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setConditionBoolean",
+                      location: block.location,
+                      value: event.currentTarget.value === "true",
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <option value="true">{copy.trueLabel}</option>
+                  <option value="false">{copy.falseLabel}</option>
+                </select>
+              </label>
+            ) : null}
+            {block.type === "control_if" && block.condition?.type === "sensing_touching_actor" ? (
+              <label className="block-field condition-detail">
+                <span>{copy.conditionActor}</span>
+                <select
+                  aria-label={`${copy.condition}: ${copy.conditionActor}`}
+                  value={String(block.condition.fields?.actorId ?? "")}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setConditionActor",
+                      location: block.location,
+                      actorId: event.currentTarget.value,
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  {actors.some((actor) => actor.id === block.condition?.fields?.actorId) ? null : (
+                    <option value={String(block.condition.fields?.actorId ?? "")}>
+                      {String(block.condition.fields?.actorId ?? "")}
+                    </option>
+                  )}
+                  {actors.map((actor) => (
+                    <option key={actor.id} value={actor.id}>
+                      {actor.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : null}
             {block.type === "control_if" &&
             block.condition !== undefined &&

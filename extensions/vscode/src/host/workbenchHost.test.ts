@@ -383,6 +383,68 @@ describe("workbenchHost", () => {
     ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(labels).toHaveLength(2);
   });
+  it("commits Boolean and actor contact edits with actor validation", async () => {
+    const conditional = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "if", condition: { type: "booleanLiteral", value: true }, then: [] },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { host, get, metadata, labels } = setup(conditional);
+    const location = { container: script, index: 0 };
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "setConditionBoolean", location, value: false },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "if",
+      condition: { type: "booleanLiteral", value: false },
+    });
+    await host.handle({ schema, type: "createActor", name: "Robot" });
+    const robotId = metadata().actors!.items.find((actor) => actor.name === "Robot")!.id;
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "replaceCondition", location, blockType: "sensing_touching_actor" },
+      baseHash: programSemanticHash(get()!),
+    });
+    const before = get()!;
+    const intent = { type: "setConditionActor", location, actorId: robotId } as const;
+    expect(
+      (
+        await host.handle({ schema, type: "intent", intent, baseHash: programSemanticHash(before) })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "if",
+      condition: { type: "touchingActor", actorId: robotId },
+    });
+    const count = labels.length;
+    expect(
+      (
+        await host.handle({ schema, type: "intent", intent, baseHash: programSemanticHash(before) })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...intent, actorId: "actor:missing" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(count);
+  });
 
   it("commits variable creation, selection and values while refusing stale edits", async () => {
     const { host, get, labels } = setup();

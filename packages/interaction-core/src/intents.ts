@@ -71,12 +71,23 @@ export type Intent =
       readonly type: "replaceCondition";
       readonly location: StatementLocation;
       readonly blockType: BlockType;
+      readonly actorId?: string;
     }
   | {
       readonly type: "setConditionNumber";
       readonly location: StatementLocation;
       readonly side: "left" | "right";
       readonly value: number;
+    }
+  | {
+      readonly type: "setConditionBoolean";
+      readonly location: StatementLocation;
+      readonly value: boolean;
+    }
+  | {
+      readonly type: "setConditionActor";
+      readonly location: StatementLocation;
+      readonly actorId: string;
     }
   | { readonly type: "addVariable"; readonly name: string }
   | { readonly type: "addList"; readonly name: string }
@@ -328,6 +339,12 @@ export function intentToChange(
       const block = statements?.[index];
       if (block?.type !== "control_if") return undefined;
       const condition = createDefaultBlock(intent.blockType, newBlockId());
+      if (
+        intent.blockType === "sensing_touching_actor" &&
+        intent.actorId !== undefined &&
+        !isSafeId(intent.actorId)
+      )
+        return undefined;
       const comparison = (STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(
         intent.blockType,
       );
@@ -342,7 +359,9 @@ export function intentToChange(
               },
             },
           }
-        : condition;
+        : intent.blockType === "sensing_touching_actor" && intent.actorId !== undefined
+          ? { ...condition, fields: { ...condition.fields, actorId: intent.actorId } }
+          : condition;
       return {
         type: "editBlock",
         location: intent.location,
@@ -391,6 +410,44 @@ export function intentToChange(
                 [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
               },
             },
+          },
+        },
+      };
+    }
+    case "setConditionBoolean":
+    case "setConditionActor": {
+      if (workspace === undefined) return undefined;
+      const { container, index } = intent.location;
+      let statements: readonly BlockNode[] | undefined =
+        workspace.scripts[container.scriptIndex]?.statements;
+      if (container.kind !== "script") {
+        for (const pathIndex of container.statementPath) {
+          const parent: BlockNode | undefined = statements?.[pathIndex];
+          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
+        }
+      }
+      const block = statements?.[index];
+      const condition = block?.inputs?.condition;
+      if (block?.type !== "control_if" || condition === undefined) return undefined;
+      if (intent.type === "setConditionBoolean" && condition.type !== "literal_boolean")
+        return undefined;
+      if (
+        intent.type === "setConditionActor" &&
+        (condition.type !== "sensing_touching_actor" || !isSafeId(intent.actorId))
+      )
+        return undefined;
+      const fields =
+        intent.type === "setConditionBoolean"
+          ? { value: intent.value }
+          : { actorId: intent.actorId };
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: { ...condition, fields: { ...condition.fields, ...fields } },
           },
         },
       };

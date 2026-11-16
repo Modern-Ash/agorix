@@ -340,6 +340,79 @@ describe("canvas keyboard and screen reader behaviour", () => {
       blockType: "sensing_touching_stage_edge",
     });
   });
+  it("shows editable Boolean and actor targets inside conditions", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "if", condition: { type: "booleanLiteral", value: true }, then: [] },
+            { type: "if", condition: { type: "touchingActor", actorId: "actor:main" }, then: [] },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    const actors = [
+      {
+        id: "actor:main",
+        name: "Main",
+        x: 0,
+        y: 0,
+        direction: 0,
+        size: 100,
+        visible: true,
+        scriptCount: 1,
+        scriptIds: ["main"],
+      },
+      {
+        id: "actor:robot",
+        name: "Robot",
+        x: 0,
+        y: 0,
+        direction: 0,
+        size: 100,
+        visible: true,
+        scriptCount: 0,
+        scriptIds: [],
+      },
+    ];
+    act(() =>
+      root.render(
+        <Canvas
+          workspace={workspace}
+          actors={actors}
+          onIntent={(intent) => intents.push(intent)}
+        />,
+      ),
+    );
+    const boolean = host.querySelector<HTMLSelectElement>(
+      '.condition-detail select[aria-label="Condition: Boolean value"]',
+    )!;
+    act(() => {
+      boolean.value = "false";
+      boolean.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setConditionBoolean",
+      value: false,
+      location: { index: 0 },
+    });
+    const actor = host.querySelector<HTMLSelectElement>(
+      '.condition-detail select[aria-label="Condition: Target actor"]',
+    )!;
+    act(() => {
+      actor.value = "actor:robot";
+      actor.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setConditionActor",
+      actorId: "actor:robot",
+      location: { index: 1 },
+    });
+  });
   it("selects and places a stage actor through an explicit drag", () => {
     const selected: string[] = [];
     const placed: { actorId: string; x: number; y: number }[] = [];

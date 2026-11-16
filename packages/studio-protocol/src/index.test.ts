@@ -272,6 +272,37 @@ describe("studio-protocol", () => {
       parseUiMessage({ schema, type: "intent", intent: { ...intent, reporter: "number" } }),
     ).toBeUndefined();
   });
+  it("validates Boolean and actor condition controls", () => {
+    const location = { container: script, index: 0 };
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setConditionBoolean", location, value: false },
+      }),
+    ).toMatchObject({ intent: { type: "setConditionBoolean", value: false } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setConditionBoolean", location, value: "false" },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setConditionActor", location, actorId: "actor:robot" },
+      }),
+    ).toMatchObject({ intent: { type: "setConditionActor", actorId: "actor:robot" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setConditionActor", location, actorId: "https://bad" },
+      }),
+    ).toBeUndefined();
+  });
 
   it("validates actor creation and script ownership in snapshots", () => {
     expect(parseUiMessage({ schema, type: "createActor", name: "Robot" })).toEqual({
