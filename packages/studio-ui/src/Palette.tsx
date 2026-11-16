@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { POC_TOOLBOX, getBlockDefinition, type BlockType } from "@agorix/block-editor";
 import { dragPayload } from "./drag.js";
+import { STUDIO_CONDITION_BLOCK_TYPES } from "@agorix/interaction-core";
+import { STUDIO_INSERTABLE_STATEMENTS } from "@agorix/studio-protocol";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
 import { visualBlock, visualLabel } from "./visualBlocks.js";
 
@@ -14,9 +16,13 @@ function sectionLabel(name: string, copy: StudioUiCopy): string {
 export function Palette({
   copy = copyFor("en"),
   onAdd,
+  onSelectExpression,
+  selectedExpression,
 }: {
   readonly copy?: StudioUiCopy;
   readonly onAdd: (blockType: BlockType) => void;
+  readonly onSelectExpression?: (blockType: BlockType) => void;
+  readonly selectedExpression?: BlockType | undefined;
 }) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
@@ -26,6 +32,11 @@ export function Palette({
         name: sectionLabel(section.name, copy),
         blocks: section.blocks
           .filter((block) => getBlockDefinition(block.type)?.placement !== "trigger")
+          .filter(
+            (block) =>
+              STUDIO_INSERTABLE_STATEMENTS.includes(block.type) ||
+              (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(block.type),
+          )
           .filter((block) =>
             normalizedQuery.length === 0
               ? true
@@ -52,6 +63,10 @@ export function Palette({
           {section.blocks.map((block) => {
             const visual = visualBlock(block.type);
             const canInsertInScript = block.placement === "statement";
+            const canUseAsCondition = (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(
+              block.type,
+            );
+            const enabled = canInsertInScript || canUseAsCondition;
             const labels: Readonly<Record<string, string>> = copy.blockLabels;
             const accessibleNames: Readonly<Record<string, string>> = copy.blockAccessibleNames;
             const label = labels[block.type] ?? block.label;
@@ -62,19 +77,25 @@ export function Palette({
                 data-tone={visual.tone}
                 data-shape={visual.shape}
                 type="button"
-                disabled={!canInsertInScript}
-                draggable={canInsertInScript}
-                title={canInsertInScript ? accessibleName : copy.paletteNestedOnly}
-                aria-label={
+                disabled={!enabled}
+                draggable={enabled}
+                aria-pressed={canUseAsCondition ? selectedExpression === block.type : undefined}
+                title={
                   canInsertInScript
                     ? accessibleName
-                    : `${accessibleName}. ${copy.paletteNestedOnly}`
+                    : canUseAsCondition
+                      ? `${accessibleName}: ${copy.condition}`
+                      : copy.paletteNestedOnly
+                }
+                aria-label={
+                  enabled ? accessibleName : `${accessibleName}. ${copy.paletteNestedOnly}`
                 }
                 onClick={() => {
                   if (canInsertInScript) onAdd(block.type);
+                  else if (canUseAsCondition) onSelectExpression?.(block.type);
                 }}
                 onDragStart={(event) => {
-                  if (!canInsertInScript) return;
+                  if (!enabled) return;
                   event.dataTransfer.setData(
                     "application/x-agorix-drag",
                     dragPayload({ kind: "palette", blockType: block.type }),

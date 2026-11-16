@@ -211,7 +211,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "moveBlock" ||
     intent.intent.type === "deleteBlock" ||
     intent.intent.type === "setNumericField" ||
-    intent.intent.type === "setTextField"
+    intent.intent.type === "setTextField" ||
+    intent.intent.type === "replaceCondition"
   );
 }
 
@@ -404,7 +405,9 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           const { workspace } = programToWorkspace(program);
           const change = intentToChange(intent, newBlockId, workspace);
           if (change === undefined) {
-            return intent.type === "setNumericField" || intent.type === "setTextField"
+            return intent.type === "setNumericField" ||
+              intent.type === "setTextField" ||
+              intent.type === "replaceCondition"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];
           }

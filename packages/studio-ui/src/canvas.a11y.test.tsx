@@ -92,6 +92,49 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("replaces an if condition from a selected reporter and from a palette drop", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:socket",
+        type: "control_if",
+        inputs: { condition: { id: "goal:socket", type: "sensing_touching_goal" }, then: [] },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    act(() =>
+      root.render(
+        <Canvas
+          workspace={workspace}
+          selectedExpression="literal_boolean"
+          onIntent={(intent) => intents.push(intent)}
+        />,
+      ),
+    );
+    const socket = host.querySelector<HTMLButtonElement>(".expression-socket")!;
+    expect(socket.textContent).toContain("Touching the goal?");
+    act(() => socket.click());
+    expect(intents[0]).toMatchObject({
+      type: "replaceCondition",
+      blockType: "literal_boolean",
+      location: { index: 0 },
+    });
+    const dataTransfer = {
+      getData: (kind: string) =>
+        kind === "application/x-agorix-drag"
+          ? JSON.stringify({ kind: "palette", blockType: "sensing_touching_stage_edge" })
+          : "",
+    };
+    const drop = new dom.window.MouseEvent("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, "dataTransfer", { value: dataTransfer });
+    act(() => socket.dispatchEvent(drop));
+    expect(intents[1]).toMatchObject({
+      type: "replaceCondition",
+      blockType: "sensing_touching_stage_edge",
+    });
+  });
   it("selects and places a stage actor through an explicit drag", () => {
     const selected: string[] = [];
     const placed: { actorId: string; x: number; y: number }[] = [];

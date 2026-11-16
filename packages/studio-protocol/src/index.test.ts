@@ -123,6 +123,22 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("allows only bounded boolean reporter choices for visual conditions", () => {
+    const location = { container: script, index: 0 };
+    const intent = { type: "replaceCondition", location, blockType: "sensing_touching_stage_edge" };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, blockType: "operator_add" } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { ...intent, location: { container: script, index: -1 } },
+      }),
+    ).toBeUndefined();
+  });
+
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
     for (const junk of [
       null,

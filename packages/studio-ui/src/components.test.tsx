@@ -203,8 +203,9 @@ describe("studio-ui", () => {
     expect(palette).toContain('data-shape="container"');
     expect(palette).not.toContain("when run starts");
     expect(palette).toContain("Touching the goal?");
-    expect(palette).toContain("disabled");
-    expect(palette).toContain("This block fits inside another block");
+    expect(palette).not.toContain("disabled");
+    expect(palette).toContain('draggable="true"');
+    expect(palette).not.toContain("[N] + [N]");
     const canvas = renderToStaticMarkup(
       <Canvas workspace={workspace} onIntent={() => undefined} />,
     );
@@ -222,7 +223,7 @@ describe("studio-ui", () => {
     expect(palette).toContain("Buscar bloques");
     expect(palette).toContain("Movimiento");
     expect(palette).toContain("Sensores");
-    expect(palette).toContain("Este bloque va dentro de otro bloque");
+    expect(palette).toContain('aria-pressed="false"');
   });
 
   it("renders multi-actor stage frames and marks the selected actor", () => {

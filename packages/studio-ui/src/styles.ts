@@ -48,6 +48,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .stage-sprite[draggable="true"]:active { cursor: grabbing; }
 .stage-sprite { padding: 0; color: var(--vscode-foreground); }
 .stage-sprite:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
+.expression-socket { min-height: 28px; padding: 3px 10px; border: 1px solid var(--vscode-focusBorder); border-radius: 15px; background: var(--vscode-editorWidget-background); color: var(--vscode-foreground); cursor: pointer; }
+.expression-socket[data-tone="sensing"] { border-color: var(--vscode-charts-blue); }
+.expression-socket[data-tone="operators"] { border-color: var(--vscode-charts-green); }
+.expression-socket:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .stage-sprite[data-costume-id="asset:costume.default"] { border-color: var(--vscode-charts-blue); background: color-mix(in srgb, var(--vscode-charts-blue), transparent 58%); }
 .stage-sprite[data-costume-id="asset:costume.spark"] { border-color: var(--vscode-charts-green); background: color-mix(in srgb, var(--vscode-charts-green), transparent 54%); }
 .stage-sprite.selected { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }

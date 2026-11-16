@@ -14,6 +14,7 @@ import {
   type WorkflowStage,
   type WorkflowState,
 } from "@agorix/agent-workflow";
+import { getBlockDefinition } from "@agorix/block-editor";
 import type {
   BlockNode,
   PlacementReason,
@@ -21,7 +22,12 @@ import type {
   BlockType,
   BlockWorkspaceSnapshot,
 } from "@agorix/block-editor";
-import { isSafeId, parseAnchorRef, type Intent } from "@agorix/interaction-core";
+import {
+  STUDIO_CONDITION_BLOCK_TYPES,
+  isSafeId,
+  parseAnchorRef,
+  type Intent,
+} from "@agorix/interaction-core";
 import { validEmbeddedImageSource } from "@agorix/program-model";
 
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
@@ -514,9 +520,16 @@ const BLOCK_TYPES = [
   "control_repeat",
   "control_if",
   "sensing_touching_goal",
+  "sensing_touching_actor",
+  "sensing_touching_stage_edge",
   "literal_boolean",
   "literal_number",
 ] as const;
+
+/** Only blocks with a complete direct-insertion path are shown in Studio's palette. */
+export const STUDIO_INSERTABLE_STATEMENTS: readonly BlockType[] = BLOCK_TYPES.filter(
+  (type) => getBlockDefinition(type)?.placement === "statement",
+);
 
 type Obj = Record<string, unknown>;
 type Container = Extract<Intent, { type: "insertBlock" }>["to"]["container"];
@@ -930,6 +943,14 @@ function parseIntent(value: unknown): Intent | undefined {
     case "deleteBlock": {
       const location = parseLocation(value["location"]);
       return location === undefined ? undefined : { type: "deleteBlock", location };
+    }
+    case "replaceCondition": {
+      const location = parseLocation(value["location"]);
+      const blockType = value["blockType"];
+      return location === undefined ||
+        !(STUDIO_CONDITION_BLOCK_TYPES as readonly unknown[]).includes(blockType)
+        ? undefined
+        : { type: "replaceCondition", location, blockType: blockType as BlockType };
     }
     case "setNumericField": {
       const location = parseLocation(value["location"]);
