@@ -11,7 +11,7 @@ import {
 import type { Intent } from "@agorix/interaction-core";
 import { Canvas, type FocusRequest } from "./Canvas.js";
 import { SceneLibrary } from "./SceneLibrary.js";
-import { Workbench } from "./Workbench.js";
+import { StagePanel, Workbench } from "./Workbench.js";
 import type { HostBridge } from "./bridge.js";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
 import { locationKey } from "./blockView.js";
@@ -92,6 +92,80 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("selects and places a stage actor through an explicit drag", () => {
+    const selected: string[] = [];
+    const placed: { actorId: string; x: number; y: number }[] = [];
+    act(() =>
+      root.render(
+        <StagePanel
+          copy={copyFor("en")}
+          selectedActorId={undefined}
+          onSelectActor={(actorId) => selected.push(actorId)}
+          onPlaceActor={(actorId, position) => placed.push({ actorId, ...position })}
+          frame={{
+            state: {
+              sprite: { x: 10, y: 10, heading: 0, radius: 10 },
+              goal: { x: 200, y: 100, radius: 12 },
+              viewport: { width: 240, height: 180 },
+              actors: [
+                {
+                  id: "actor:nova",
+                  name: "Nova",
+                  x: 10,
+                  y: 10,
+                  direction: 0,
+                  size: 100,
+                  visible: true,
+                },
+              ],
+            },
+            frameIndex: 0,
+            frameCount: 1,
+            step: 0,
+            running: false,
+            reachedGoal: false,
+          }}
+        />,
+      ),
+    );
+    const actor = host.querySelector<HTMLButtonElement>(".stage-sprite")!;
+    const viewport = host.querySelector<HTMLElement>(".stage-viewport")!;
+    act(() => actor.click());
+    expect(selected).toEqual(["actor:nova"]);
+    const transfer = new Map<string, string>();
+    const dataTransfer = {
+      setData: (key: string, value: string) => transfer.set(key, value),
+      getData: (key: string) => transfer.get(key) ?? "",
+      effectAllowed: "none",
+    };
+    const start = new dom.window.Event("dragstart", { bubbles: true, cancelable: true });
+    Object.defineProperty(start, "dataTransfer", { value: dataTransfer });
+    act(() => actor.dispatchEvent(start));
+    expect(transfer.get("application/x-agorix-stage-actor")).toBe("actor:nova");
+    viewport.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 480,
+      height: 360,
+      right: 480,
+      bottom: 360,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const drop = new dom.window.MouseEvent("drop", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 240,
+      clientY: 180,
+    });
+    Object.defineProperty(drop, "dataTransfer", { value: dataTransfer });
+    act(() => viewport.dispatchEvent(drop));
+    expect(placed).toEqual([{ actorId: "actor:nova", x: 120, y: 90 }]);
+    transfer.set("application/x-agorix-stage-actor", "actor:unknown");
+    act(() => viewport.dispatchEvent(drop));
+    expect(placed).toHaveLength(1);
+  });
   it("selects a costume and backdrop explicitly from the scene library", () => {
     const costumes: string[] = [];
     const backdrops: string[] = [];

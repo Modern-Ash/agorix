@@ -153,6 +153,53 @@ function stagePercent(value: number, max: number): string {
   return `${Math.max(-20, Math.min(120, (value / max) * 100))}%`;
 }
 
+export function stageDropPosition(
+  clientX: number,
+  clientY: number,
+  bounds: {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+  },
+  viewport: { readonly width: number; readonly height: number },
+): { x: number; y: number } | undefined {
+  if (
+    ![
+      clientX,
+      clientY,
+      bounds.left,
+      bounds.top,
+      bounds.width,
+      bounds.height,
+      viewport.width,
+      viewport.height,
+    ].every(Number.isFinite) ||
+    bounds.width <= 0 ||
+    bounds.height <= 0 ||
+    viewport.width <= 0 ||
+    viewport.height <= 0
+  )
+    return undefined;
+  return {
+    x: Math.round(
+      Math.max(
+        0,
+        Math.min(viewport.width, ((clientX - bounds.left) / bounds.width) * viewport.width),
+      ),
+    ),
+    y: Math.round(
+      Math.max(
+        0,
+        Math.min(
+          viewport.height,
+          ((bounds.top + bounds.height - clientY) / bounds.height) * viewport.height,
+        ),
+      ),
+    ),
+  };
+}
+
 function ExecutionToolbar({
   copy,
   disabled,
@@ -314,11 +361,15 @@ export function StagePanel({
   frame,
   assets = [],
   selectedActorId,
+  onSelectActor,
+  onPlaceActor,
 }: {
   readonly copy: StudioUiCopy;
   readonly frame: StageFrameMessage["frame"] | undefined;
   readonly assets?: readonly AssetsMessage["assets"][number][];
   readonly selectedActorId: string | undefined;
+  readonly onSelectActor?: (actorId: string) => void;
+  readonly onPlaceActor?: (actorId: string, position: { x: number; y: number }) => void;
 }) {
   const state = frame?.state;
   const assetNames = new Map(assets.map((asset) => [asset.id, asset.name]));
@@ -365,7 +416,26 @@ export function StagePanel({
           )}
         </div>
       </header>
-      <div className="stage-viewport" data-running={frame?.running ? "true" : "false"}>
+      <div
+        className="stage-viewport"
+        data-running={frame?.running ? "true" : "false"}
+        onDragOver={(event) => {
+          if (!frame?.running && onPlaceActor !== undefined) event.preventDefault();
+        }}
+        onDrop={(event) => {
+          if (state === undefined || frame?.running || onPlaceActor === undefined) return;
+          event.preventDefault();
+          const actorId = event.dataTransfer.getData("application/x-agorix-stage-actor");
+          if (!stageActors.some((actor) => actor.id === actorId)) return;
+          const position = stageDropPosition(
+            event.clientX,
+            event.clientY,
+            event.currentTarget.getBoundingClientRect(),
+            state.viewport,
+          );
+          if (position !== undefined) onPlaceActor(actorId, position);
+        }}
+      >
         {state === undefined ? (
           <p>{copy.stageNoFrame}</p>
         ) : (
@@ -391,11 +461,20 @@ export function StagePanel({
                 const size = Math.max(28, Math.min(110, Math.round((actor.size / 100) * 48)));
                 const costumeImage = imageForId(actor.costumeId ?? "asset:costume.default", assets);
                 return (
-                  <div
+                  <button
                     key={actor.id}
+                    type="button"
                     className={
                       actor.id === selectedActorId ? "stage-sprite selected" : "stage-sprite"
                     }
+                    draggable={!frame?.running && onPlaceActor !== undefined}
+                    onClick={() => onSelectActor?.(actor.id)}
+                    onDragStart={(event) => {
+                      if (frame?.running || onPlaceActor === undefined) return;
+                      onSelectActor?.(actor.id);
+                      event.dataTransfer.setData("application/x-agorix-stage-actor", actor.id);
+                      event.dataTransfer.effectAllowed = "move";
+                    }}
                     data-costume-id={actor.costumeId ?? "default"}
                     style={{
                       left: stagePercent(actor.x, state.viewport.width),
@@ -404,7 +483,6 @@ export function StagePanel({
                       height: `${size}px`,
                       transform: `translate(-50%, 50%) rotate(${-actor.direction}deg)`,
                     }}
-                    role="img"
                     aria-label={`${copy.stageSprite} ${actor.name}: x ${actor.x}, y ${actor.y}, ${copy.actorDirection} ${actor.direction}${actor.costumeId === undefined ? "" : `, ${copy.actorCostume} ${assetNames.get(actor.costumeId) ?? actor.costumeId}`}`}
                   >
                     {costumeImage === undefined ? null : (
@@ -420,7 +498,7 @@ export function StagePanel({
                         {actor.bubble.text}
                       </span>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             {visibleVariables.length === 0 ? null : (
@@ -987,6 +1065,8 @@ export function Workbench({
             frame={stageFrame}
             assets={assets}
             selectedActorId={selectedActorId}
+            onSelectActor={setSelectedActorId}
+            onPlaceActor={(actorId, position) => updateActor(actorId, position)}
           />
         </section>
         <section className="studio-program" aria-label={copy.canvasLabel}>

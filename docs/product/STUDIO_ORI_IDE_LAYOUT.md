@@ -38,6 +38,11 @@ is an explicit metadata edit; the host refuses unknown asset ids and refreshes
 the deterministic stage after a change. Full image import/drawing and broader
 component coverage remain in epic #1648.
 
+The stage itself lets the learner select a visible actor and drag it to a new
+position when execution is idle. Drop coordinates are mapped to the canonical
+viewport, bounded to its edges and sent through the same explicit actor metadata
+edit as the inspector. A running frame cannot be dragged.
+
 The interface takes inspiration from the project/editor/agent division and
 reviewable agent changes described in the [Kiro IDE](https://kiro.dev/ide/).
 Agorix's teaching boundary is different: Ori asks and explains, the learner

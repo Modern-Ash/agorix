@@ -10,6 +10,7 @@ import {
   EventTracePanel,
   MissionSpecPanel,
   StagePanel,
+  stageDropPosition,
   ValidationPanel,
   Workbench,
   statusFor,
@@ -293,6 +294,8 @@ describe("studio-ui", () => {
     );
     expect(markup.match(/class="stage-sprite/g)).toHaveLength(2);
     expect(markup).toContain("stage-sprite selected");
+    expect(markup).toContain('draggable="false"');
+    expect(markup).toContain('type="button"');
     expect(markup).toContain('data-backdrop-id="asset:space.nebula"');
     expect(markup).toContain('data-costume-id="asset:costume.spark"');
     expect(markup).toContain('class="stage-art-backdrop"');
@@ -307,6 +310,16 @@ describe("studio-ui", () => {
     expect(markup).toContain("Active sounds");
     expect(markup).toContain("Beacon ping");
     expect(markup).toContain("40%");
+  });
+
+  it("maps actor drops to bounded stage coordinates and rejects unusable geometry", () => {
+    const bounds = { left: 100, top: 20, width: 480, height: 360 };
+    const viewport = { width: 240, height: 180 };
+    expect(stageDropPosition(340, 200, bounds, viewport)).toEqual({ x: 120, y: 90 });
+    expect(stageDropPosition(20, 900, bounds, viewport)).toEqual({ x: 0, y: 0 });
+    expect(stageDropPosition(900, -20, bounds, viewport)).toEqual({ x: 240, y: 180 });
+    expect(stageDropPosition(NaN, 200, bounds, viewport)).toBeUndefined();
+    expect(stageDropPosition(340, 200, { ...bounds, width: 0 }, viewport)).toBeUndefined();
   });
 
   it("renders actor costume as an asset-backed inspector select", () => {
