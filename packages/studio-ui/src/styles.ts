@@ -155,6 +155,7 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .workbench[data-density="compact"] .script-title { margin: 8px 0 2px; }
 .slot { height: 8px; border-radius: 4px; transition: height 120ms ease; }
 .slot.drag-over { height: 24px; background: var(--vscode-list-hoverBackground); outline: 1px dashed var(--vscode-focusBorder); }
+.branch-label { margin-top: 4px; padding: 4px 10px; border-left: 3px solid var(--vscode-charts-orange, var(--vscode-focusBorder)); color: var(--vscode-descriptionForeground); font-size: 0.85em; font-weight: 600; }
 .block { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--vscode-panel-border); border-radius: 6px; background: var(--vscode-editorWidget-background); }
 .workbench[data-density="compact"] .block { gap: 6px; padding: 4px 8px; }
 .block:focus-visible, .palette button:focus-visible, .block button:focus-visible, .zone:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; }
@@ -285,6 +286,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-program .slot span { visibility: hidden; font-size: 0.8em; }
 .studio-program .slot.is-empty { height: 72px; margin: 8px 0; border: 1px dashed var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 94%); }
 .studio-program .slot.is-empty span { visibility: visible; }
+.studio-program .slot.is-branch-start { min-height: 30px; height: auto; padding: 4px 10px; border: 1px dashed var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
+.studio-program .slot.is-branch-start span { visibility: visible; }
 .workbench[data-dragging="true"] .studio-program .slot { height: 36px; border: 1px dashed var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 93%); }
 .workbench[data-dragging="true"] .studio-program .slot span { visibility: visible; }
 .studio-program .slot.drag-over, .workbench[data-dragging="true"] .studio-program .slot.drag-over { height: 42px; border: 2px solid var(--vscode-focusBorder); background: var(--vscode-list-hoverBackground); }

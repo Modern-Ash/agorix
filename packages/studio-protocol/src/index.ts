@@ -946,12 +946,29 @@ function parseContainer(value: unknown): Container | undefined {
   if (
     (value["kind"] === "repeatBody" ||
       value["kind"] === "repeatUntilBody" ||
-      value["kind"] === "ifThen") &&
+      value["kind"] === "ifThen" ||
+      value["kind"] === "ifElse") &&
     Array.isArray(path) &&
+    path.length > 0 &&
     path.length <= 16 &&
     path.every(isIndex)
   ) {
-    return { kind: value["kind"], scriptIndex, statementPath: [...path] as number[] };
+    const branches = value["branchPath"];
+    if (
+      branches !== undefined &&
+      (!Array.isArray(branches) ||
+        branches.length !== path.length ||
+        !branches.every((branch) => branch === "body" || branch === "then" || branch === "else"))
+    )
+      return undefined;
+    return {
+      kind: value["kind"],
+      scriptIndex,
+      statementPath: [...path] as number[],
+      ...(branches === undefined
+        ? {}
+        : { branchPath: [...branches] as ("body" | "then" | "else")[] }),
+    };
   }
   return undefined;
 }

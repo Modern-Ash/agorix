@@ -24,6 +24,7 @@ export interface RenderBlock {
 export type RenderRow =
   | { readonly kind: "script"; readonly scriptIndex: number }
   | { readonly kind: "slot"; readonly slot: InsertionPoint; readonly depth: number }
+  | { readonly kind: "elseBranch"; readonly scriptIndex: number; readonly depth: number }
   | { readonly kind: "block"; readonly block: RenderBlock; readonly depth: number };
 
 /** Stable DOM identity of a block by where it sits; block ids are positional, so focus follows location. */
@@ -38,6 +39,7 @@ function pushList(
   scriptIndex: number,
   path: readonly number[],
   depth: number,
+  branchPath: readonly ("body" | "then" | "else")[] = [],
 ): void {
   rows.push({ kind: "slot", slot: { container, index: 0 }, depth });
   list.forEach((node, index) => {
@@ -62,28 +64,61 @@ function pushList(
       pushList(
         rows,
         node.inputs?.body ?? [],
-        { kind: "repeatBody", scriptIndex, statementPath: childPath },
+        {
+          kind: "repeatBody",
+          scriptIndex,
+          statementPath: childPath,
+          branchPath: [...branchPath, "body"],
+        },
         scriptIndex,
         childPath,
         depth + 1,
+        [...branchPath, "body"],
       );
     } else if (node.type === "control_repeat_until") {
       pushList(
         rows,
         node.inputs?.body ?? [],
-        { kind: "repeatUntilBody", scriptIndex, statementPath: childPath },
+        {
+          kind: "repeatUntilBody",
+          scriptIndex,
+          statementPath: childPath,
+          branchPath: [...branchPath, "body"],
+        },
         scriptIndex,
         childPath,
         depth + 1,
+        [...branchPath, "body"],
       );
     } else if (node.type === "control_if") {
       pushList(
         rows,
         node.inputs?.then ?? [],
-        { kind: "ifThen", scriptIndex, statementPath: childPath },
+        {
+          kind: "ifThen",
+          scriptIndex,
+          statementPath: childPath,
+          branchPath: [...branchPath, "then"],
+        },
         scriptIndex,
         childPath,
         depth + 1,
+        [...branchPath, "then"],
+      );
+      rows.push({ kind: "elseBranch", scriptIndex, depth: depth + 1 });
+      pushList(
+        rows,
+        node.inputs?.else ?? [],
+        {
+          kind: "ifElse",
+          scriptIndex,
+          statementPath: childPath,
+          branchPath: [...branchPath, "else"],
+        },
+        scriptIndex,
+        childPath,
+        depth + 1,
+        [...branchPath, "else"],
       );
     }
     rows.push({ kind: "slot", slot: { container, index: index + 1 }, depth });

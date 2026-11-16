@@ -38,7 +38,7 @@ function Slot({
   return (
     <div
       aria-hidden="true"
-      className={`slot depth-${Math.min(row.depth, 4)}${empty ? " is-empty" : ""}${over ? " drag-over" : ""}`}
+      className={`slot depth-${Math.min(row.depth, 4)}${empty ? " is-empty" : ""}${row.slot.container.kind === "ifElse" && row.slot.index === 0 ? " is-branch-start" : ""}${over ? " drag-over" : ""}`}
       onDragOver={(event) => {
         event.preventDefault();
         setOver(true);
@@ -162,9 +162,11 @@ export function Canvas({
     const scriptIndex =
       row.kind === "script"
         ? row.scriptIndex
-        : row.kind === "slot"
-          ? row.slot.container.scriptIndex
-          : row.block.location.container.scriptIndex;
+        : row.kind === "elseBranch"
+          ? row.scriptIndex
+          : row.kind === "slot"
+            ? row.slot.container.scriptIndex
+            : row.block.location.container.scriptIndex;
     const script = workspace.scripts[scriptIndex];
     return script !== undefined && visibleScriptIds.includes(script.programId ?? script.id);
   });
@@ -274,6 +276,13 @@ export function Canvas({
                 workspace.scripts[row.slot.container.scriptIndex]?.statements.length === 0
               }
             />
+          );
+        }
+        if (row.kind === "elseBranch") {
+          return (
+            <div key={key} className={`branch-label depth-${Math.min(row.depth, 4)}`}>
+              {copy.elseBranch}
+            </div>
           );
         }
         const { block } = row;

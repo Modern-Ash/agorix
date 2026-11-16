@@ -240,6 +240,59 @@ describe("interaction-core", () => {
     ).toThrow(BlockEditorAdapterError);
   });
 
+  it("edits an else branch and a nested statement without changing the then branch", () => {
+    const base = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:else",
+        type: "control_if",
+        inputs: {
+          condition: { id: "goal:else", type: "sensing_touching_goal" },
+          then: [{ id: "then:move", type: "motion_move", fields: { steps: 1 } }],
+        },
+      },
+    }).workspace;
+    const elsePath = {
+      kind: "ifElse",
+      scriptIndex: 0,
+      statementPath: [0],
+      branchPath: ["else"],
+    } as const;
+    const addRepeat = intentToChange(
+      { type: "insertBlock", blockType: "control_repeat", to: { container: elsePath, index: 0 } },
+      newId,
+      base,
+    );
+    const withRepeat = applyWorkspaceChange(base, addRepeat!).workspace;
+    const repeatBody = {
+      kind: "repeatBody",
+      scriptIndex: 0,
+      statementPath: [0, 0],
+      branchPath: ["else", "body"],
+    } as const;
+    const addMove = intentToChange(
+      { type: "insertBlock", blockType: "motion_move", to: { container: repeatBody, index: 0 } },
+      newId,
+      withRepeat,
+    );
+    const result = applyWorkspaceChange(withRepeat, addMove!).program.scripts[0]?.statements[0];
+    expect(result).toMatchObject({
+      type: "if",
+      then: [{ type: "move", steps: 1 }],
+      else: [{ type: "repeat", body: [{ type: "move", steps: 10 }] }],
+    });
+    expect(() =>
+      applyWorkspaceChange(withRepeat, {
+        type: "addBlock",
+        container: { ...repeatBody, branchPath: ["then", "body"] },
+        index: 0,
+        block: { id: "invalid:move", type: "motion_move", fields: { steps: 1 } },
+      }),
+    ).toThrow(BlockEditorAdapterError);
+  });
+
   it("builds a comparison with editable numeric operands and refuses invalid operand edits", () => {
     const workspace = applyWorkspaceChange(createStarterWorkspace(), {
       type: "addBlock",
