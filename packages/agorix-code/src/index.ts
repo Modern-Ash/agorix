@@ -970,3 +970,12 @@ function addRange(writer: Writer, nodeId: string, start: number, end: number): v
 function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(6)));
 }
+
+export {
+  AGORIX_CODE_MAX_CHARS,
+  AGORIX_CODE_MAX_LINES,
+  parseAgorixCode,
+  type AgorixCodeError,
+  type AgorixCodeErrorCode,
+  type AgorixCodeParse,
+} from "./parse.js";
