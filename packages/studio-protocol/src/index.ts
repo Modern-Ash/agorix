@@ -1096,7 +1096,10 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter !== "add" &&
           reporter !== "subtract" &&
           reporter !== "multiply" &&
-          reporter !== "divide")
+          reporter !== "divide" &&
+          reporter !== "modulo" &&
+          reporter !== "random" &&
+          reporter !== "randomInteger")
       )
         return undefined;
       if (
@@ -1106,7 +1109,10 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter === "add" ||
           reporter === "subtract" ||
           reporter === "multiply" ||
-          reporter === "divide") &&
+          reporter === "divide" ||
+          reporter === "modulo" ||
+          reporter === "random" ||
+          reporter === "randomInteger") &&
         (referenceId !== undefined || itemIndex !== undefined)
       )
         return undefined;
@@ -1118,6 +1124,9 @@ function parseIntent(value: unknown): Intent | undefined {
         reporter !== "subtract" &&
         reporter !== "multiply" &&
         reporter !== "divide" &&
+        reporter !== "modulo" &&
+        reporter !== "random" &&
+        reporter !== "randomInteger" &&
         !isSafeId(referenceId)
       )
         return undefined;
@@ -1137,13 +1146,13 @@ function parseIntent(value: unknown): Intent | undefined {
       const location = parseLocation(value["location"]);
       return location !== undefined &&
         (value["input"] === "value" || value["input"] === "delta" || value["input"] === "index") &&
-        (value["side"] === "left" || value["side"] === "right") &&
+        (["left", "right", "min", "max"] as unknown[]).includes(value["side"]) &&
         isFiniteNumber(value["value"])
         ? {
             type: "setArithmeticOperand",
             location,
             input: value["input"],
-            side: value["side"],
+            side: value["side"] as "left" | "right" | "min" | "max",
             value: value["value"],
           }
         : undefined;

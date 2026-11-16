@@ -620,6 +620,7 @@ describe("interaction-core", () => {
       ["subtract", "subtract"],
       ["multiply", "multiply"],
       ["divide", "divide"],
+      ["modulo", "modulo"],
     ] as const) {
       const changed = applyWorkspaceChange(
         workspace,
@@ -704,6 +705,53 @@ describe("interaction-core", () => {
         mixed,
       ),
     ).toBeDefined();
+  });
+  it("creates bounded random reporters and edits only their literal range", () => {
+    const workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "random:set",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: { value: { id: "random:value", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    for (const [reporter, type] of [
+      ["random", "random"],
+      ["randomInteger", "randomInteger"],
+    ] as const) {
+      const changed = applyWorkspaceChange(
+        workspace,
+        intentToChange(
+          { type: "setNumericInput", location, input: "value", reporter },
+          newId,
+          workspace,
+        )!,
+      );
+      expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+        value: { type, min: { value: 1 }, max: { value: 10 } },
+      });
+      const edit = intentToChange(
+        { type: "setArithmeticOperand", location, input: "value", side: "max", value: 20 },
+        newId,
+        changed.workspace,
+      )!;
+      expect(
+        applyWorkspaceChange(changed.workspace, edit).program.scripts[0]?.statements[0],
+      ).toMatchObject({
+        value: { min: { value: 1 }, max: { value: 20 } },
+      });
+      expect(
+        intentToChange(
+          { type: "setArithmeticOperand", location, input: "value", side: "left", value: 2 },
+          newId,
+          changed.workspace,
+        ),
+      ).toBeUndefined();
+    }
   });
   it("replaces numeric inputs with declared variable and list reporters", () => {
     let workspace = createStarterWorkspace();

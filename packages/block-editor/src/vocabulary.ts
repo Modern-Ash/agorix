@@ -521,6 +521,22 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "operator_modulo",
+    label: "[N] mod [N]",
+    section: "Operators",
+    placement: "expression",
+    accessibleName: "remainder after division",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({
+      id,
+      type: "operator_modulo",
+      inputs: {
+        left: { id: `${id}:left`, type: "literal_number", fields: { value: 0 } },
+        right: { id: `${id}:right`, type: "literal_number", fields: { value: 1 } },
+      },
+    }),
+  },
+  {
     type: "operator_random",
     label: "random [N] to [N]",
     section: "Operators",
@@ -529,6 +545,22 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({
       id,
       type: "operator_random",
+      inputs: {
+        min: { id: `${id}:min`, type: "literal_number", fields: { value: 1 } },
+        max: { id: `${id}:max`, type: "literal_number", fields: { value: 10 } },
+      },
+    }),
+  },
+  {
+    type: "operator_random_integer",
+    label: "random integer [N] to [N]",
+    section: "Operators",
+    placement: "expression",
+    accessibleName: "random integer",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({
+      id,
+      type: "operator_random_integer",
       inputs: {
         min: { id: `${id}:min`, type: "literal_number", fields: { value: 1 } },
         max: { id: `${id}:max`, type: "literal_number", fields: { value: 10 } },

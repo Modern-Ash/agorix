@@ -527,7 +527,13 @@ export function Canvas({
                                     ? "multiply"
                                     : operand.type === "operator_divide"
                                       ? "divide"
-                                      : "other";
+                                      : operand.type === "operator_modulo"
+                                        ? "modulo"
+                                        : operand.type === "operator_random"
+                                          ? "random"
+                                          : operand.type === "operator_random_integer"
+                                            ? "randomInteger"
+                                            : "other";
               const referenceId =
                 reporter === "variable"
                   ? operand.fields?.variableId
@@ -554,7 +560,10 @@ export function Canvas({
                   | "add"
                   | "subtract"
                   | "multiply"
-                  | "divide",
+                  | "divide"
+                  | "modulo"
+                  | "random"
+                  | "randomInteger",
                 nextReference?: string,
                 nextIndex?: number,
               ) =>
@@ -586,7 +595,10 @@ export function Canvas({
                           | "add"
                           | "subtract"
                           | "multiply"
-                          | "divide";
+                          | "divide"
+                          | "modulo"
+                          | "random"
+                          | "randomInteger";
                         choose(
                           next,
                           next === "variable"
@@ -605,6 +617,9 @@ export function Canvas({
                       <option value="subtract">{copy.operatorSubtract}</option>
                       <option value="multiply">{copy.operatorMultiply}</option>
                       <option value="divide">{copy.operatorDivide}</option>
+                      <option value="modulo">{copy.operatorModulo}</option>
+                      <option value="random">{copy.operatorRandom}</option>
+                      <option value="randomInteger">{copy.operatorRandomInteger}</option>
                       <option value="xPosition">{copy.positionX}</option>
                       <option value="yPosition">{copy.positionY}</option>
                       {actors.length > 0 ? (
@@ -653,14 +668,40 @@ export function Canvas({
                       }}
                     />
                   ) : null}
-                  {(["add", "subtract", "multiply", "divide"] as const).includes(
-                    reporter as "add" | "subtract" | "multiply" | "divide",
+                  {(
+                    [
+                      "add",
+                      "subtract",
+                      "multiply",
+                      "divide",
+                      "modulo",
+                      "random",
+                      "randomInteger",
+                    ] as const
+                  ).includes(
+                    reporter as
+                      | "add"
+                      | "subtract"
+                      | "multiply"
+                      | "divide"
+                      | "modulo"
+                      | "random"
+                      | "randomInteger",
                   ) ? (
                     <span className="comparison-fields">
-                      {(["left", "right"] as const).map((side) => {
+                      {(reporter === "random" || reporter === "randomInteger"
+                        ? (["min", "max"] as const)
+                        : (["left", "right"] as const)
+                      ).map((side) => {
                         const part = operand.inputs?.[side];
                         const sideLabel =
-                          side === "left" ? copy.conditionLeft : copy.conditionRight;
+                          side === "left"
+                            ? copy.conditionLeft
+                            : side === "right"
+                              ? copy.conditionRight
+                              : side === "min"
+                                ? copy.rangeMin
+                                : copy.rangeMax;
                         if (
                           part?.type !== "literal_number" ||
                           typeof part.fields?.value !== "number"

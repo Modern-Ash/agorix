@@ -211,6 +211,9 @@ describe("canvas keyboard and screen reader behaviour", () => {
       "subtract",
       "multiply",
       "divide",
+      "modulo",
+      "random",
+      "randomInteger",
       "xPosition",
       "yPosition",
       "variable",
@@ -302,6 +305,9 @@ describe("canvas keyboard and screen reader behaviour", () => {
       '.numeric-socket select[aria-label*="source"]',
     )!;
     expect(source.value).toBe("add");
+    expect(Array.from(source.options).map((option) => option.value)).toEqual(
+      expect.arrayContaining(["modulo", "random", "randomInteger"]),
+    );
     const left = host.querySelector<HTMLInputElement>('.numeric-socket input[aria-label*="Left"]')!;
     act(() => {
       left.value = "7";
@@ -318,6 +324,48 @@ describe("canvas keyboard and screen reader behaviour", () => {
       source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
     });
     expect(intents.at(-1)).toMatchObject({ type: "setNumericInput", reporter: "divide" });
+  });
+  it("edits random range bounds from the numeric socket", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      lists: [{ id: "l", name: "Items", initialItems: [], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "listAdd",
+              listId: "l",
+              value: {
+                type: "randomInteger",
+                min: { type: "numericLiteral", value: 1 },
+                max: { type: "numericLiteral", value: 10 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="source"]',
+    )!;
+    expect(source.value).toBe("randomInteger");
+    const max = host.querySelector<HTMLInputElement>(
+      '.numeric-socket input[aria-label*="Maximum"]',
+    )!;
+    act(() => {
+      max.value = "20";
+      max.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({ type: "setArithmeticOperand", side: "max", value: 20 });
+    act(() => {
+      max.value = "bad";
+      max.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents).toHaveLength(1);
   });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
     const workspace = applyWorkspaceChange(initial, {
