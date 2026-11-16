@@ -44,11 +44,19 @@ The Blocks library also creates named variables and exposes their declarations.
 Variable statements use a declaration picker and direct numeric value editing,
 with the same canonical and stale-edit checks.
 
+Costume, backdrop and sound blocks use direct project-asset selectors. Costume
+and backdrop choices show safe image previews; unknown asset IDs are refused
+before canonical program mutation.
+
 The left library switches between Blocks and Scene. Scene shows actor cards and
 visual costume/backdrop choices from the project's validated assets. Selection
 is an explicit metadata edit; the host refuses unknown asset ids and refreshes
 the deterministic stage after a change. Full image import/drawing and broader
 component coverage remain in epic #1648.
+
+Scene can create an actor with an owned green-flag script in one project write.
+Selecting an actor scopes the visible canvas and palette insertion to that
+actor’s canonical scripts; legacy projects keep their existing unscoped view.
 
 The stage itself lets the learner select a visible actor and drag it to a new
 position when execution is idle. Drop coordinates are mapped to the canonical

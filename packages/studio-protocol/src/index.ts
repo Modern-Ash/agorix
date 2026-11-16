@@ -118,6 +118,14 @@ export type UiMessage =
       readonly actorId: string;
       readonly patch: ActorPatch;
     }
+  | { readonly schema: Schema; readonly type: "createActor"; readonly name: string }
+  | {
+      readonly schema: Schema;
+      readonly type: "importAsset";
+      readonly kind: "costume" | "backdrop";
+      readonly name: string;
+      readonly source: string;
+    }
   | { readonly schema: Schema; readonly type: "updateStage"; readonly backdropId: string }
   | {
       readonly schema: Schema;
@@ -293,11 +301,13 @@ export interface ActorView {
     readonly text: string;
   };
   readonly scriptCount?: number;
+  /** Canonical script ids owned by this actor. Absent for legacy unscoped projects. */
+  readonly scriptIds?: readonly string[];
   /** @deprecated use costumeId. Accepted only for old hosts. */
   readonly appearanceId?: string;
 }
 
-export type ActorPatch = Partial<Omit<ActorView, "id" | "scriptCount">>;
+export type ActorPatch = Partial<Omit<ActorView, "id" | "scriptCount" | "scriptIds">>;
 
 export type AssetKind = "sprite" | "backdrop" | "costume" | "sound";
 
@@ -749,7 +759,11 @@ function parseActor(value: unknown): ActorView | undefined {
     (value["costumeId"] !== undefined && !isSafeId(value["costumeId"])) ||
     (value["appearanceId"] !== undefined && !isSafeId(value["appearanceId"])) ||
     (value["bubble"] !== undefined && bubble === undefined) ||
-    (value["scriptCount"] !== undefined && !isIndex(value["scriptCount"]))
+    (value["scriptCount"] !== undefined && !isIndex(value["scriptCount"])) ||
+    (value["scriptIds"] !== undefined &&
+      (!Array.isArray(value["scriptIds"]) ||
+        value["scriptIds"].length > 64 ||
+        !value["scriptIds"].every(isSafeId)))
   ) {
     return undefined;
   }
@@ -765,6 +779,7 @@ function parseActor(value: unknown): ActorView | undefined {
     ...(costumeId === undefined ? {} : { costumeId: costumeId as string }),
     ...(bubble === undefined ? {} : { bubble }),
     ...(value["scriptCount"] === undefined ? {} : { scriptCount: value["scriptCount"] }),
+    ...(value["scriptIds"] === undefined ? {} : { scriptIds: value["scriptIds"] as string[] }),
   };
 }
 
@@ -1802,6 +1817,26 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
         ? { schema, type: "updateActor", actorId: value["actorId"], patch }
         : undefined;
     }
+    case "createActor":
+      return typeof value["name"] === "string" &&
+        value["name"].trim().length > 0 &&
+        value["name"].trim().length <= 80
+        ? { schema, type: "createActor", name: value["name"].trim() }
+        : undefined;
+    case "importAsset":
+      return (value["kind"] === "costume" || value["kind"] === "backdrop") &&
+        typeof value["name"] === "string" &&
+        value["name"].trim().length > 0 &&
+        value["name"].trim().length <= 80 &&
+        validEmbeddedImageSource(value["source"])
+        ? {
+            schema,
+            type: "importAsset",
+            kind: value["kind"],
+            name: value["name"].trim(),
+            source: value["source"],
+          }
+        : undefined;
     case "updateStage":
       return isSafeId(value["backdropId"])
         ? { schema, type: "updateStage", backdropId: value["backdropId"] }

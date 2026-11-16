@@ -44,6 +44,11 @@ function setup(initial: ProjectProgram | null = base) {
       metadata = next;
       labels.push(label);
     },
+    commitProject: async (nextProgram, nextMetadata, label) => {
+      program = nextProgram;
+      metadata = nextMetadata;
+      labels.push(label);
+    },
     openProposalReview: vi.fn(async () => undefined),
     reveal: vi.fn(async () => undefined),
     askAgent: vi.fn(async () => undefined),
@@ -443,6 +448,96 @@ describe("workbenchHost", () => {
       )[0],
     ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(labels).toHaveLength(4);
+  });
+
+  it("creates an actor and its script in one project transaction with explicit ownership", async () => {
+    const { host, get, metadata, labels } = setup();
+    const result = await host.handle({ schema, type: "createActor", name: "Robot" });
+    const actorSet = metadata().actors!;
+    const robot = actorSet.items.find((actor) => actor.name === "Robot")!;
+    expect(robot.scripts).toHaveLength(1);
+    expect(get()?.scripts.map((script) => script.id)).toContain(robot.scripts![0]);
+    expect(actorSet.items[0]?.scripts).toEqual(base.scripts.map((script) => script.id));
+    expect(metadata().stage?.actorOrder).toContain(robot.id);
+    expect(result.find((message) => message.type === "actors")).toMatchObject({
+      selectedActorId: robot.id,
+      actors: expect.arrayContaining([
+        expect.objectContaining({ id: robot.id, scriptIds: robot.scripts }),
+      ]),
+    });
+    expect(labels).toEqual(["Workbench: create actor and script"]);
+  });
+
+  it("persists a bounded image and refuses an invalid import without mutation", async () => {
+    const { host, metadata, labels } = setup();
+    const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
+    const accepted = await host.handle({
+      schema,
+      type: "importAsset",
+      kind: "costume",
+      name: "Nova",
+      source,
+    });
+    expect(metadata().assets).toEqual([
+      expect.objectContaining({ kind: "costume", name: "Nova", source }),
+    ]);
+    expect(accepted.find((message) => message.type === "assets")).toMatchObject({
+      assets: expect.arrayContaining([expect.objectContaining({ name: "Nova" })]),
+    });
+    expect(labels).toEqual(["Workbench: import image asset"]);
+    const refused = await host.handle({
+      schema,
+      type: "importAsset",
+      kind: "costume",
+      name: "Bad",
+      source: "https://example.com/a.png",
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(1);
+  });
+
+  it("selects only known costume and sound assets for visual blocks", async () => {
+    const { host, get, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "looks_switch_costume",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(base),
+    });
+    const before = get()!;
+    const accepted = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "costumeId",
+        value: "asset:costume.spark",
+      },
+      baseHash: programSemanticHash(before),
+    });
+    expect(accepted[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "switchCostume",
+      costumeId: "asset:costume.spark",
+    });
+    const refused = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "costumeId",
+        value: "https://example.com/image.png",
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(2);
   });
 
   it("moves exactly like applying the same change through block-editor", async () => {

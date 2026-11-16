@@ -92,6 +92,47 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("shows visual asset choices on costume blocks and posts an explicit selection", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "costume:change",
+        type: "looks_switch_costume",
+        fields: { costumeId: "asset:costume.default" },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    act(() =>
+      root.render(
+        <Canvas
+          workspace={workspace}
+          assets={[
+            { id: "asset:costume.default", name: "Nova", kind: "costume", tags: [] },
+            { id: "asset:costume.spark", name: "Spark", kind: "costume", tags: [] },
+          ]}
+          onIntent={(intent) => intents.push(intent)}
+        />,
+      ),
+    );
+    expect(host.querySelector(".block-asset-field img")).not.toBeNull();
+    const select = host.querySelector<HTMLSelectElement>(".block-asset-field select")!;
+    expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
+      "Nova",
+      "Spark",
+    ]);
+    act(() => {
+      select.value = "asset:costume.spark";
+      select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setTextField",
+      location: { container: script, index: 0 },
+      field: "costumeId",
+      value: "asset:costume.spark",
+    });
+  });
   it("selects a declared variable and edits its numeric value", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",
@@ -579,6 +620,131 @@ describe("canvas keyboard and screen reader behaviour", () => {
 });
 
 describe("workbench live region and focus after inserting from the palette", () => {
+  it("routes palette edits to the selected actor's canonical script", () => {
+    let listener: ((message: HostMessage) => void) | undefined;
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: (next) => {
+        listener = next;
+        return () => undefined;
+      },
+    };
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        { id: "main", trigger: { type: "onStart" }, statements: [] },
+        { id: "helper", trigger: { type: "greenFlag" }, statements: [] },
+      ],
+    }).workspace;
+    act(() => root.render(<Workbench bridge={bridge} />));
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace,
+        programHash: "sha:actors",
+      }),
+    );
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "actors",
+        selectedActorId: "actor:helper",
+        actors: [
+          {
+            id: "actor:main",
+            name: "Main",
+            x: 0,
+            y: 0,
+            direction: 0,
+            size: 100,
+            visible: true,
+            scriptCount: 1,
+            scriptIds: ["main"],
+          },
+          {
+            id: "actor:helper",
+            name: "Helper",
+            x: 30,
+            y: 30,
+            direction: 0,
+            size: 100,
+            visible: true,
+            scriptCount: 1,
+            scriptIds: ["helper"],
+          },
+        ],
+      }),
+    );
+    expect(host.querySelectorAll(".script-title")).toHaveLength(1);
+    const move = Array.from(host.querySelectorAll<HTMLButtonElement>(".palette button")).find(
+      (button) => button.textContent?.includes("Move"),
+    )!;
+    act(() => move.click());
+    expect(posted.at(-1)).toMatchObject({
+      type: "intent",
+      intent: { type: "insertBlock", to: { container: { kind: "script", scriptIndex: 1 } } },
+    });
+    act(() =>
+      host.querySelector<HTMLButtonElement>('.library-tabs button[aria-pressed="false"]')?.click(),
+    );
+    const actorName = host.querySelector<HTMLInputElement>(".scene-create-actor input")!;
+    actorName.value = "Robot";
+    act(() =>
+      host
+        .querySelector<HTMLFormElement>(".scene-create-actor")!
+        .dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(posted.at(-1)).toMatchObject({ type: "createActor", name: "Robot" });
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "actors",
+        selectedActorId: "actor:robot",
+        actors: [
+          {
+            id: "actor:main",
+            name: "Main",
+            x: 0,
+            y: 0,
+            direction: 0,
+            size: 100,
+            visible: true,
+            scriptCount: 1,
+            scriptIds: ["main"],
+          },
+          {
+            id: "actor:helper",
+            name: "Helper",
+            x: 30,
+            y: 30,
+            direction: 0,
+            size: 100,
+            visible: true,
+            scriptCount: 1,
+            scriptIds: ["helper"],
+          },
+          {
+            id: "actor:robot",
+            name: "Robot",
+            x: 40,
+            y: 40,
+            direction: 0,
+            size: 100,
+            visible: true,
+            scriptCount: 1,
+            scriptIds: ["robot"],
+          },
+        ],
+      }),
+    );
+    expect(
+      host
+        .querySelector<HTMLButtonElement>('.scene-actors button[title="Robot"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
   it("offers variable creation from the visible Blocks library", () => {
     const posted: unknown[] = [];
     const bridge: HostBridge = {

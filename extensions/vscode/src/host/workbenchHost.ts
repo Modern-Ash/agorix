@@ -7,6 +7,7 @@ import {
 import { intentToChange, type AgentAnchorRef, type AgentVerb } from "@agorix/interaction-core";
 import {
   ProgramValidationError,
+  validateProgram,
   validEmbeddedImageSource,
   type ProjectProgram,
 } from "@agorix/program-model";
@@ -41,6 +42,7 @@ export interface HostPort {
   getMetadata(): ProjectMetadata | undefined;
   commit(program: ProjectProgram, label: string): Promise<void>;
   commitMetadata(metadata: ProjectMetadata, label: string): Promise<void>;
+  commitProject(program: ProjectProgram, metadata: ProjectMetadata, label: string): Promise<void>;
   openProposalReview(proposalId: string): Promise<void>;
   reveal(nodeId: string): Promise<void>;
   askAgent(verb: AgentVerb, nodeId: string | undefined): Promise<void>;
@@ -73,6 +75,7 @@ function actorView(actor: ProjectActor, program: ProjectProgram | undefined): Ac
     visible: actor.visible,
     ...(costumeId === undefined ? {} : { costumeId }),
     scriptCount: actor.scripts?.length ?? program?.scripts.length ?? 0,
+    ...(actor.scripts === undefined ? {} : { scriptIds: actor.scripts }),
   };
 }
 
@@ -127,7 +130,7 @@ function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
 
 function knownAssetIds(
   metadata: ProjectMetadata,
-  kind?: "backdrop" | "costume",
+  kind?: "backdrop" | "costume" | "sound",
 ): ReadonlySet<string> {
   return new Set(
     [...(metadata.assets ?? []), ...studioAssetCatalog()]
@@ -404,6 +407,24 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         if (isMutatingIntent(message) && message.baseHash !== programSemanticHash(program)) {
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
         }
+        if (intent.type === "setTextField") {
+          const kind =
+            intent.field === "costumeId"
+              ? "costume"
+              : intent.field === "backdropId"
+                ? "backdrop"
+                : intent.field === "soundId"
+                  ? "sound"
+                  : undefined;
+          if (kind !== undefined) {
+            const metadata = port.getMetadata();
+            if (metadata === undefined || !knownAssetIds(metadata, kind).has(intent.value)) {
+              return [
+                { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+              ];
+            }
+          }
+        }
         try {
           const { workspace } = programToWorkspace(program);
           const change = intentToChange(intent, newBlockId, workspace);
@@ -457,6 +478,79 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           "Workbench: update actor",
         );
         return [...actorsMessage(), ...validationMessage()];
+      }
+      case "createActor": {
+        const program = port.getProgram();
+        const metadata = port.getMetadata();
+        if (program === undefined || metadata === undefined) return [];
+        const current = actorsForMetadata(metadata);
+        if (current.items.length >= 32 || program.scripts.length >= 64) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        let actorId = "";
+        do {
+          actorId = `actor:${newBlockId().replace(/[^A-Za-z0-9_]/g, "_")}`;
+        } while (current.items.some((actor) => actor.id === actorId));
+        const scriptId = `script:${actorId.slice("actor:".length)}`;
+        if (program.scripts.some((script) => script.id === scriptId)) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const nextProgram = validateProgram({
+          ...program,
+          scripts: [
+            ...program.scripts,
+            { id: scriptId, trigger: { type: "greenFlag" }, statements: [] },
+          ],
+        });
+        const ownedExisting = current.items.map((actor) => ({
+          ...actor,
+          scripts: actor.scripts ?? program.scripts.map((script) => script.id),
+        }));
+        const actor: ProjectActor = {
+          id: actorId,
+          name: message.name,
+          x: 40,
+          y: 40,
+          direction: 0,
+          size: 100,
+          visible: true,
+          costumeId: "asset:costume.default",
+          scripts: [scriptId],
+        };
+        const stage = metadata.stage ?? defaultProjectStage();
+        const nextMetadata: ProjectMetadata = {
+          ...metadata,
+          actors: { activeId: actorId, items: [...ownedExisting, actor] },
+          stage: {
+            ...stage,
+            actorOrder: [...(stage.actorOrder ?? ownedExisting.map((item) => item.id)), actorId],
+          },
+        };
+        await port.commitProject(nextProgram, nextMetadata, "Workbench: create actor and script");
+        return snapshot();
+      }
+      case "importAsset": {
+        const metadata = port.getMetadata();
+        if (metadata === undefined) return [];
+        if (!validEmbeddedImageSource(message.source) || (metadata.assets?.length ?? 0) >= 128) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const known = knownAssetIds(metadata);
+        let id = "";
+        do {
+          id = `asset:studio_${newBlockId().replace(/[^A-Za-z0-9_]/g, "_")}`;
+        } while (known.has(id));
+        await port.commitMetadata(
+          {
+            ...metadata,
+            assets: [
+              ...(metadata.assets ?? []),
+              { id, kind: message.kind, name: message.name, source: message.source },
+            ],
+          },
+          "Workbench: import image asset",
+        );
+        return snapshot();
       }
       case "updateStage": {
         const metadata = port.getMetadata();

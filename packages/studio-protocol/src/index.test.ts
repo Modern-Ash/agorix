@@ -216,6 +216,57 @@ describe("studio-protocol", () => {
     ).toMatchObject({ workspace });
   });
 
+  it("validates actor creation and script ownership in snapshots", () => {
+    expect(parseUiMessage({ schema, type: "createActor", name: "Robot" })).toEqual({
+      schema,
+      type: "createActor",
+      name: "Robot",
+    });
+    expect(parseUiMessage({ schema, type: "createActor", name: " " })).toBeUndefined();
+    expect(parseUiMessage({ schema, type: "createActor", name: "x".repeat(81) })).toBeUndefined();
+    const actor = {
+      id: "actor:robot",
+      name: "Robot",
+      x: 0,
+      y: 0,
+      direction: 0,
+      size: 100,
+      visible: true,
+      scriptCount: 1,
+      scriptIds: ["script:robot"],
+    };
+    expect(
+      parseHostMessage({ schema, type: "actors", actors: [actor], selectedActorId: actor.id }),
+    ).toMatchObject({ actors: [actor] });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "actors",
+        actors: [{ ...actor, scriptIds: ["https://bad"] }],
+        selectedActorId: actor.id,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("accepts only bounded embedded art imports", () => {
+    const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
+    expect(
+      parseUiMessage({ schema, type: "importAsset", kind: "costume", name: " Nova ", source }),
+    ).toEqual({ schema, type: "importAsset", kind: "costume", name: "Nova", source });
+    expect(
+      parseUiMessage({ schema, type: "importAsset", kind: "sound", name: "Nova", source }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "importAsset",
+        kind: "costume",
+        name: "Nova",
+        source: "https://example.com/image.png",
+      }),
+    ).toBeUndefined();
+  });
+
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
     for (const junk of [
       null,

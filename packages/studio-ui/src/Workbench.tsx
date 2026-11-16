@@ -824,6 +824,7 @@ export function Workbench({
   const [stageFrame, setStageFrame] = useState<StageFrameMessage["frame"] | undefined>();
   const [actors, setActors] = useState<ActorsMessage | undefined>();
   const [selectedActorId, setSelectedActorId] = useState<string | undefined>();
+  const pendingActorCreation = useRef(false);
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
   const [backdropId, setBackdropId] = useState<string | undefined>();
   const [libraryTab, setLibraryTab] = useState<"blocks" | "scene">("blocks");
@@ -890,8 +891,12 @@ export function Workbench({
       }
       if (message.type === "actors") {
         setActors(message);
+        const followCreatedActor = pendingActorCreation.current;
+        pendingActorCreation.current = false;
         setSelectedActorId((current) =>
-          current !== undefined && message.actors.some((actor) => actor.id === current)
+          !followCreatedActor &&
+          current !== undefined &&
+          message.actors.some((actor) => actor.id === current)
             ? current
             : (message.selectedActorId ?? message.actors[0]?.id),
         );
@@ -942,9 +947,16 @@ export function Workbench({
   };
 
   const add = (blockType: BlockType) => {
-    const script = workspace?.scripts[0];
+    const scriptIds = actors?.actors.find((actor) => actor.id === selectedActorId)?.scriptIds;
+    const scriptIndex =
+      scriptIds === undefined
+        ? 0
+        : (workspace?.scripts.findIndex((candidate) =>
+            scriptIds.includes(candidate.programId ?? candidate.id),
+          ) ?? -1);
+    const script = workspace?.scripts[scriptIndex];
     if (script === undefined) return;
-    const container = { kind: "script", scriptIndex: 0 } as const;
+    const container = { kind: "script", scriptIndex } as const;
     const labels: Readonly<Record<string, string>> = copy.blockLabels;
     announce(copy.addedAnnouncement(labels[blockType] ?? blockType));
     setFocusRequest((previous) => ({
@@ -1077,6 +1089,19 @@ export function Workbench({
               onSelectActor={setSelectedActorId}
               onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
               onBackdrop={updateBackdrop}
+              onCreateActor={(name) => {
+                pendingActorCreation.current = true;
+                bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
+              }}
+              onImportAsset={(kind, name, source) => {
+                bridge.post({
+                  schema: STUDIO_PROTOCOL_VERSION,
+                  type: "importAsset",
+                  kind,
+                  name,
+                  source,
+                });
+              }}
             />
           </div>
         )}
@@ -1107,6 +1132,10 @@ export function Workbench({
             <Canvas
               copy={copy}
               workspace={workspace}
+              assets={assets}
+              visibleScriptIds={
+                actors?.actors.find((actor) => actor.id === selectedActorId)?.scriptIds
+              }
               selectedExpression={selectedExpression}
               onIntent={post}
               onAnnounce={announce}
