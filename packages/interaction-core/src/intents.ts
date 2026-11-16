@@ -28,6 +28,46 @@ export const STUDIO_COMPARISON_BLOCK_TYPES = [
   "operator_equals",
 ] as const satisfies readonly BlockType[];
 
+function statementsAt(
+  workspace: BlockWorkspaceSnapshot,
+  container: StatementContainerPath,
+): readonly BlockNode[] | undefined {
+  let statements: readonly BlockNode[] | undefined =
+    workspace.scripts[container.scriptIndex]?.statements;
+  if (container.kind === "script") return statements;
+  if (container.statementPath.length === 0) return undefined;
+  if (
+    container.branchPath !== undefined &&
+    container.branchPath.length !== container.statementPath.length
+  )
+    return undefined;
+  for (const [depth, index] of container.statementPath.entries()) {
+    const parent: BlockNode | undefined = statements?.[index];
+    if (parent === undefined) return undefined;
+    const last = depth === container.statementPath.length - 1;
+    const branch =
+      container.branchPath?.[depth] ??
+      (last
+        ? container.kind === "ifThen"
+          ? "then"
+          : container.kind === "ifElse"
+            ? "else"
+            : "body"
+        : parent.type === "control_if"
+          ? "then"
+          : "body");
+    statements =
+      branch === "body"
+        ? parent.type === "control_repeat" || parent.type === "control_repeat_until"
+          ? parent.inputs?.body
+          : undefined
+        : parent.type === "control_if"
+          ? parent.inputs?.[branch]
+          : undefined;
+  }
+  return statements;
+}
+
 export interface InsertionPoint {
   readonly container: StatementContainerPath;
   readonly index: number;
@@ -216,15 +256,7 @@ export function intentToChange(
     case "setExpressionNumber": {
       if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
       const { container, index } = intent.location;
-      let statements: readonly BlockNode[] | undefined =
-        workspace.scripts[container.scriptIndex]?.statements;
-      if (container.kind !== "script") {
-        for (const pathIndex of container.statementPath) {
-          const parent: BlockNode | undefined = statements?.[pathIndex];
-          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
-        }
-      }
-      const block = statements?.[index];
+      const block = statementsAt(workspace, container)?.[index];
       const inputForType: Readonly<Record<string, readonly string[]>> = {
         variables_set: ["value"],
         variables_change: ["delta"],
@@ -253,15 +285,7 @@ export function intentToChange(
     case "setNumericInput": {
       if (workspace === undefined) return undefined;
       const { container, index } = intent.location;
-      let statements: readonly BlockNode[] | undefined =
-        workspace.scripts[container.scriptIndex]?.statements;
-      if (container.kind !== "script") {
-        for (const pathIndex of container.statementPath) {
-          const parent: BlockNode | undefined = statements?.[pathIndex];
-          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
-        }
-      }
-      const block = statements?.[index];
+      const block = statementsAt(workspace, container)?.[index];
       const supported: Readonly<Record<string, readonly string[]>> = {
         variables_set: ["value"],
         variables_change: ["delta"],
@@ -328,15 +352,7 @@ export function intentToChange(
       )
         return undefined;
       const { container, index } = intent.location;
-      let statements: readonly BlockNode[] | undefined =
-        workspace.scripts[container.scriptIndex]?.statements;
-      if (container.kind !== "script") {
-        for (const pathIndex of container.statementPath) {
-          const parent: BlockNode | undefined = statements?.[pathIndex];
-          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
-        }
-      }
-      const block = statements?.[index];
+      const block = statementsAt(workspace, container)?.[index];
       if (block?.type !== "control_if" && block?.type !== "control_repeat_until") return undefined;
       const condition = createDefaultBlock(intent.blockType, newBlockId());
       if (
@@ -377,15 +393,7 @@ export function intentToChange(
     case "setConditionNumber": {
       if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
       const { container, index } = intent.location;
-      let statements: readonly BlockNode[] | undefined =
-        workspace.scripts[container.scriptIndex]?.statements;
-      if (container.kind !== "script") {
-        for (const pathIndex of container.statementPath) {
-          const parent: BlockNode | undefined = statements?.[pathIndex];
-          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
-        }
-      }
-      const block = statements?.[index];
+      const block = statementsAt(workspace, container)?.[index];
       const condition = block?.inputs?.condition;
       if (
         (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
@@ -418,15 +426,7 @@ export function intentToChange(
     case "setConditionActor": {
       if (workspace === undefined) return undefined;
       const { container, index } = intent.location;
-      let statements: readonly BlockNode[] | undefined =
-        workspace.scripts[container.scriptIndex]?.statements;
-      if (container.kind !== "script") {
-        for (const pathIndex of container.statementPath) {
-          const parent: BlockNode | undefined = statements?.[pathIndex];
-          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
-        }
-      }
-      const block = statements?.[index];
+      const block = statementsAt(workspace, container)?.[index];
       const condition = block?.inputs?.condition;
       if (
         (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
@@ -465,15 +465,7 @@ export function intentToChange(
       )
         return undefined;
       const { container, index } = intent.location;
-      let statements: readonly BlockNode[] | undefined =
-        workspace.scripts[container.scriptIndex]?.statements;
-      if (container.kind !== "script") {
-        for (const pathIndex of container.statementPath) {
-          const parent: BlockNode | undefined = statements?.[pathIndex];
-          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
-        }
-      }
-      const block = statements?.[index];
+      const block = statementsAt(workspace, container)?.[index];
       if (block === undefined || typeof block.fields?.[intent.field] !== typeof intent.value)
         return undefined;
       return {

@@ -167,9 +167,44 @@ describe("studio-ui", () => {
       kind: "repeatBody",
       scriptIndex: 0,
       statementPath: [1],
+      branchPath: ["body"],
     });
     const last = rows.filter((r) => r.kind === "slot" && r.depth === 0).pop();
     expect(last).toMatchObject({ slot: { index: 2 } });
+  });
+
+  it("renders separate then and else insertion paths, including controls nested in else", () => {
+    const conditional = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "branches",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: { type: "touchingGoal" },
+              then: [{ type: "move", steps: 1 }],
+              else: [{ type: "repeat", count: 2, body: [{ type: "turn", degrees: 45 }] }],
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const rows = toRows(conditional);
+    expect(rows.some((row) => row.kind === "elseBranch")).toBe(true);
+    expect(rows.some((row) => row.kind === "slot" && row.slot.container.kind === "ifElse")).toBe(
+      true,
+    );
+    expect(
+      rows.find((row) => row.kind === "block" && row.block.type === "motion_turn"),
+    ).toMatchObject({
+      block: { location: { container: { branchPath: ["else", "body"] } } },
+    });
+    const html = renderToStaticMarkup(
+      <Canvas workspace={conditional} copy={copyFor("es")} onIntent={() => undefined} />,
+    );
+    expect(html).toContain("Si no");
   });
 
   it("translates slots to final indexes and drops no-op moves", () => {

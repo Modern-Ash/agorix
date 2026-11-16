@@ -20,9 +20,10 @@ export interface BlockEditorProjectionUpdate {
 export type StatementContainerPath =
   | { readonly kind: "script"; readonly scriptIndex: number }
   | {
-      readonly kind: "repeatBody" | "repeatUntilBody" | "ifThen";
+      readonly kind: "repeatBody" | "repeatUntilBody" | "ifThen" | "ifElse";
       readonly scriptIndex: number;
       readonly statementPath: readonly number[];
+      readonly branchPath?: readonly ("body" | "then" | "else")[];
     };
 
 export type WorkspaceChange =
@@ -120,73 +121,79 @@ function mutableStatementsFor(
   if (container.kind === "script") {
     return script.statements as BlockNode[];
   }
-  let current: BlockNode | undefined;
+  if (container.statementPath.length === 0) {
+    throw new BlockEditorAdapterError(
+      "INVALID_FIELD_TYPE",
+      "statementPath",
+      "expected a non-empty container path",
+      container.statementPath,
+      "NOT_A_CONTAINER",
+    );
+  }
   let list = script.statements as BlockNode[];
-  for (const index of container.statementPath) {
-    current = list[index];
+  if (
+    container.branchPath !== undefined &&
+    container.branchPath.length !== container.statementPath.length
+  ) {
+    throw new BlockEditorAdapterError(
+      "INVALID_FIELD_TYPE",
+      "branchPath",
+      "expected one branch per path segment",
+      container.branchPath,
+      "NOT_A_CONTAINER",
+    );
+  }
+  for (const [depth, index] of container.statementPath.entries()) {
+    const current = list[index];
     if (current === undefined) {
       throw new BlockEditorAdapterError(
         "INVALID_WORKSPACE",
-        `statementPath[${index}]`,
+        `statementPath[${depth}]`,
         "expected a statement block",
         index,
         "BLOCK_NOT_FOUND",
       );
     }
-    if (current.type === "control_repeat" || current.type === "control_repeat_until") {
-      list = (current.inputs?.body ?? []) as BlockNode[];
-    } else if (current.type === "control_if") {
-      list = (current.inputs?.then ?? []) as BlockNode[];
-    } else {
+    const last = depth === container.statementPath.length - 1;
+    const branch =
+      container.branchPath?.[depth] ??
+      (last
+        ? container.kind === "ifThen"
+          ? "then"
+          : container.kind === "ifElse"
+            ? "else"
+            : "body"
+        : current.type === "control_if"
+          ? "then"
+          : "body");
+    const valid =
+      branch === "body"
+        ? current.type === "control_repeat" || current.type === "control_repeat_until"
+        : current.type === "control_if";
+    const matchingKind =
+      !last ||
+      (branch === "body" &&
+        ((container.kind === "repeatBody" && current.type === "control_repeat") ||
+          (container.kind === "repeatUntilBody" && current.type === "control_repeat_until"))) ||
+      (branch === "then" && container.kind === "ifThen") ||
+      (branch === "else" && container.kind === "ifElse");
+    if (!valid || !matchingKind) {
       throw new BlockEditorAdapterError(
         "INVALID_FIELD_TYPE",
         current.id,
-        "expected a container block",
+        "expected a matching container branch",
         current.type,
         "NOT_A_CONTAINER",
       );
     }
-  }
-  if (container.kind === "repeatBody") {
-    if (current?.type !== "control_repeat") {
-      throw new BlockEditorAdapterError(
-        "INVALID_FIELD_TYPE",
-        current?.id ?? "statementPath",
-        "expected a repeat block",
-        current?.type,
-        "NOT_A_CONTAINER",
-      );
-    }
     const mutable = current as MutableBlockNode;
-    mutable.inputs = { ...mutable.inputs, body: (mutable.inputs?.body ?? []) as BlockNode[] };
-    return mutable.inputs.body as BlockNode[];
+    mutable.inputs = {
+      ...mutable.inputs,
+      [branch]: (mutable.inputs?.[branch] ?? []) as BlockNode[],
+    };
+    list = mutable.inputs[branch] as BlockNode[];
   }
-  if (container.kind === "repeatUntilBody") {
-    if (current?.type !== "control_repeat_until") {
-      throw new BlockEditorAdapterError(
-        "INVALID_FIELD_TYPE",
-        current?.id ?? "statementPath",
-        "expected a repeat until block",
-        current?.type,
-        "NOT_A_CONTAINER",
-      );
-    }
-    const mutable = current as MutableBlockNode;
-    mutable.inputs = { ...mutable.inputs, body: (mutable.inputs?.body ?? []) as BlockNode[] };
-    return mutable.inputs.body as BlockNode[];
-  }
-  if (current?.type !== "control_if") {
-    throw new BlockEditorAdapterError(
-      "INVALID_FIELD_TYPE",
-      current?.id ?? "statementPath",
-      "expected an if block",
-      current?.type,
-      "NOT_A_CONTAINER",
-    );
-  }
-  const mutable = current as MutableBlockNode;
-  mutable.inputs = { ...mutable.inputs, then: (mutable.inputs?.then ?? []) as BlockNode[] };
-  return mutable.inputs.then as BlockNode[];
+  return list;
 }
 
 function assertStatementBlock(block: BlockNode): void {

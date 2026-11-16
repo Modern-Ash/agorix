@@ -6,6 +6,42 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("validates branch paths for nested else insertions", () => {
+    const intent = {
+      type: "insertBlock",
+      blockType: "motion_move",
+      to: {
+        container: {
+          kind: "repeatBody",
+          scriptIndex: 0,
+          statementPath: [0, 0],
+          branchPath: ["else", "body"],
+        },
+        index: 0,
+      },
+    };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          ...intent,
+          to: { ...intent.to, container: { ...intent.to.container, branchPath: ["else"] } },
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          ...intent,
+          to: { ...intent.to, container: { kind: "ifElse", scriptIndex: 0, statementPath: [] } },
+        },
+      }),
+    ).toBeUndefined();
+  });
   it("validates scene selection messages and rejects forged backdrop ids", () => {
     expect(
       parseUiMessage({ schema, type: "updateStage", backdropId: "backdrop:moon" }),
