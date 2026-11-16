@@ -293,3 +293,7 @@ The scene goal (one per scene, chosen from closed choices, checked against a run
 ## Status: Ori's fix is tried on a copy first (#1583, #1584)
 
 The "Ori vio algo" card now runs the fix on a copy of the program, like an idea card, and adds the same sentences (`ideaPreviewNotes`): what the fix would stop or leave unchanged. A tidy-up (joining repeated blocks, a block shared by everyone) is meant to do exactly what the program did, so the card says "Lo probé en una copia: el programa hace exactamente lo mismo", or warns when it does not. The proposals that come from a remote Ori still go through the same review and the same card when they are shown in the studio; the Advanced screen is not covered.
+
+## Status: the run tools are in the accessibility gate (#1602, #1603, #1604)
+
+Finding: keyboard editing of blocks (move, move to, up, down, duplicate, Enter to edit a block) and axe scans already existed in 30 specs, so most of #1602 to #1604 was in place. What was not covered were the tools added around a run: rewind, "Qué cambió", "Comparar con la vez anterior", the replay Save and Open controls, and a goal about a value. `kids-a11y-run-tools.spec.ts` checks, at 390 px and 1280 px, that each has a name a screen reader says, that the two details open with the keyboard, that Rewind and a change button work from the keyboard, and that axe finds no serious or critical violation with them open. It found none, so no interface change was needed.
