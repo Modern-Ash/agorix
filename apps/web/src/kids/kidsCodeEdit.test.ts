@@ -16,14 +16,14 @@ describe("editing the program as Agorix Code", () => {
     expect(agorixCodeEditable(program([{ type: "move", steps: 40 }]))).toBe(true);
   });
 
-  it("is not editable when a block the text cannot read is in it", () => {
+  it("is not editable when the text would not give back exactly the program", () => {
     const raw = {
       schema: "agorix/program/v1",
       scripts: [
         {
           id: "studio-actor-1-nova",
           trigger: flag,
-          statements: [{ type: "nextCostume", costumeIds: ["a", "b"] }],
+          statements: [{ type: "setRotationStyle", style: "all", extra: 1 }],
         },
       ],
     } as never;

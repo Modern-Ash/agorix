@@ -1,4 +1,4 @@
-import type { Expression } from "@agorix/program-model";
+import { ACTOR_PROPERTIES, type Expression } from "@agorix/program-model";
 
 /**
  * Agorix Code expressions, read back. Every operation with two sides is written inside brackets,
@@ -150,6 +150,17 @@ class Cursor {
     }
     if (here === '"') {
       const value = this.quoted();
+      if (this.startsWith('of "')) {
+        this.take("of ");
+        const variableId = this.names.numberId(value) ?? this.names.textId(value);
+        if (variableId === undefined) throw new ExpressionError("unknown variable");
+        return {
+          type: "actorProperty",
+          actorId: this.quoted(),
+          property: "variable",
+          variableId,
+        } as Expression;
+      }
       const listId = this.names.listId?.(value);
       if (listId !== undefined && this.startsWith("contains ")) {
         this.take("contains ");
@@ -245,6 +256,12 @@ class Cursor {
       if (match === null) throw new ExpressionError("expected a part of the clock");
       this.position += match[0].length;
       return { type: "currentTime", part: match[0] } as unknown as Expression;
+    }
+    const property = /^[A-Za-z]+(?= of ")/.exec(this.text.slice(this.position))?.[0];
+    if (property !== undefined && (ACTOR_PROPERTIES as readonly string[]).includes(property)) {
+      this.position += property.length;
+      this.expect("of ");
+      return { type: "actorProperty", actorId: this.quoted(), property } as Expression;
     }
     // A number a custom block received, written as its name.
     const params = [...(this.names.params?.() ?? [])].sort((a, b) => b.name.length - a.name.length);

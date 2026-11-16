@@ -392,6 +392,13 @@ class Reader {
         variableId: id,
       } as unknown as Statement;
     }
+    if ((m = /^next costume of ("(?:[^"\\]|\\.)*"(?:, "(?:[^"\\]|\\.)*")*)$/.exec(t)))
+      return {
+        type: "nextCostume",
+        costumeIds: [...m[1]!.matchAll(/"(?:[^"\\]|\\.)*"/g)].map((part) =>
+          quoted(part[0], line.n),
+        ),
+      };
     if ((m = /^call (.+)$/.exec(t))) return this.call(m[1]!, line.n);
     if ((m = /^go to (\S+), (\S+)$/.exec(t)))
       return { type: "goTo", x: numberOf(m[1]!, line.n), y: numberOf(m[2]!, line.n) };
