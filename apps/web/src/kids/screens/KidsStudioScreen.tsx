@@ -59,8 +59,8 @@ import { projectJava } from "@agorix/java-projection";
 import { conceptsOfProgram, reusedConcepts } from "@agorix/learning-evidence";
 import { recordMastery } from "../kidsMastery.js";
 import { ProjectStore, sanitizeAgorixFilename, type ProjectSceneGoal } from "@agorix/persistence";
-import { diagnoseRun, surfacedFinding, type Finding } from "@agorix/run-evidence";
-import { findingBlockIndex, findingScriptIndex } from "../kidsRunFindings.js";
+import { diagnoseRun, staticFindings, surfacedFinding, type Finding } from "@agorix/run-evidence";
+import { findingBlockIndex, findingScriptIndex, findingSentence } from "../kidsRunFindings.js";
 import { diagnoseLoop } from "../kidsOriLoopDebug.js";
 import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsRunMarker } from "./KidsRunMarker.js";
@@ -2441,6 +2441,12 @@ export function KidsStudioScreen({
     );
     // history.current is a ref read; the run and the character decide when to look again.
   }, [run, playing, oriSuggestions, activeActorId, locale, creative, loopRun]);
+  // Before the first run: a script that waits for something no block ever does. A fact of the
+  // program alone, said in the same words as after a run.
+  const beforePlay = useMemo(
+    () => (run || playing ? undefined : surfacedFinding(staticFindings(history.current, creative))),
+    [run, playing, creative, history],
+  );
   const [pointedAt, setPointedAt] = useState<{ finding: Finding; run: unknown } | null>(null);
   const [markerOpenRequest, setMarkerOpenRequest] = useState(0);
   // Where Ori noticed something, so a small mark can sit on that block, script or tab: quiet, and
@@ -5452,6 +5458,11 @@ export function KidsStudioScreen({
               <p className="kids-note" role="status">
                 {oriSuggestions ? "Ori: " : ""}
                 {copy.foreverBudget}
+              </p>
+            ) : null}
+            {beforePlay ? (
+              <p className="kids-note" role="status" data-testid="static-finding">
+                {findingSentence(beforePlay, locale, ageBand ?? "6-8")}
               </p>
             ) : null}
             {noticed ? (

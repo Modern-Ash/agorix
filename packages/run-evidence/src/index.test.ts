@@ -6,7 +6,7 @@ import {
   type Script,
 } from "@agorix/program-model";
 import { runMultiActorProgram } from "@agorix/runtime";
-import { diagnoseRun, surfacedFinding, toProviderFinding } from "./index.js";
+import { diagnoseRun, staticFindings, surfacedFinding, toProviderFinding } from "./index.js";
 
 const program = (scripts: Script[]): ProjectProgram => ({ schema: SCHEMA_VERSION, scripts });
 const creative = (scripts: Script[]): ProjectCreativeState => ({
@@ -684,5 +684,66 @@ describe("a list nothing was ever put in (design: word lists)", () => {
       ]),
     ).toEqual([]);
     expect(find([read()], [1, 2])).toEqual([]);
+  });
+});
+
+describe("static findings, before any run", () => {
+  const flag = { type: "greenFlag" } as const;
+  const program = (scripts: unknown[], extra: Record<string, unknown> = {}) =>
+    ({ schema: "agorix/program/v1", scripts, ...extra }) as never;
+
+  it("names a script that waits for a message nobody sends", () => {
+    const found = staticFindings(
+      program([
+        { id: "a", trigger: flag, statements: [{ type: "show" }] },
+        { id: "b", trigger: { type: "onMessage", message: "go" }, statements: [{ type: "show" }] },
+      ]),
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      kind: "neverStarted",
+      id: "neverStarted:b",
+      counts: { senders: 0 },
+      event: { type: "message", name: "go", senders: 0 },
+      confidence: 0.9,
+    });
+  });
+
+  it("is quiet when a block sends it, also inside a custom block", () => {
+    const receiver = {
+      id: "b",
+      trigger: { type: "onMessage", message: "go" },
+      statements: [{ type: "show" }],
+    };
+    expect(
+      staticFindings(
+        program([
+          { id: "a", trigger: flag, statements: [{ type: "broadcast", message: "go" }] },
+          receiver,
+        ]),
+      ),
+    ).toEqual([]);
+    expect(
+      staticFindings(
+        program([{ id: "a", trigger: flag, statements: [{ type: "show" }] }, receiver], {
+          sharedProcedures: [
+            { id: "shared-1", name: "Tell", body: [{ type: "broadcast", message: "go" }] },
+          ],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("names a backdrop hat that no block switches to", () => {
+    const found = staticFindings(
+      program([
+        {
+          id: "a",
+          trigger: { type: "onBackdropSwitch", backdropId: "b2" },
+          statements: [{ type: "show" }],
+        },
+      ]),
+    );
+    expect(found[0]).toMatchObject({ event: { type: "backdrop", name: "b2" }, confidence: 0.8 });
   });
 });
