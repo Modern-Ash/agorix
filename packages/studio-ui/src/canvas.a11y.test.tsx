@@ -894,6 +894,31 @@ describe("workbench live region and focus after inserting from the palette", () 
       trigger: "greenFlag",
       baseHash: "fnv1a32:12345678",
     });
+    const triggerSelect = host.querySelector<HTMLSelectElement>(".scene-create-script select")!;
+    act(() => {
+      triggerSelect.value = "onKeyPressed";
+      triggerSelect.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    act(() =>
+      host
+        .querySelector<HTMLFormElement>(".scene-create-script")!
+        .dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(posted.at(-1)).toMatchObject({
+      type: "createScript",
+      trigger: "onKeyPressed",
+      key: "Space",
+    });
+    act(() => {
+      triggerSelect.value = "onActorClicked";
+      triggerSelect.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    act(() =>
+      host
+        .querySelector<HTMLFormElement>(".scene-create-script")!
+        .dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(posted.at(-1)).toMatchObject({ type: "createScript", trigger: "onActorClicked" });
     act(() =>
       listener?.({
         schema: STUDIO_PROTOCOL_VERSION,

@@ -443,6 +443,45 @@ describe("studio-protocol", () => {
         schema,
         type: "createScript",
         actorId: "actor:robot",
+        trigger: "onKeyPressed",
+        key: "ArrowRight",
+        baseHash,
+      }),
+    ).toMatchObject({ trigger: "onKeyPressed", key: "ArrowRight" });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "onActorClicked",
+        baseHash,
+      }),
+    ).toMatchObject({ trigger: "onActorClicked" });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "onKeyPressed",
+        key: " ",
+        baseHash,
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "onActorClicked",
+        key: "Space",
+        baseHash,
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
         trigger: "greenFlag",
         baseHash: "bad",
       }),

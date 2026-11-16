@@ -1139,7 +1139,7 @@ export function Workbench({
                 pendingActorCreation.current = true;
                 bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
               }}
-              onCreateScript={(actorId, trigger, message) => {
+              onCreateScript={(actorId, trigger, detail) => {
                 if (programHash === undefined) return;
                 pendingScriptCreation.current = true;
                 bridge.post({
@@ -1147,7 +1147,8 @@ export function Workbench({
                   type: "createScript",
                   actorId,
                   trigger,
-                  ...(message === undefined ? {} : { message }),
+                  ...(trigger === "onMessage" && detail !== undefined ? { message: detail } : {}),
+                  ...(trigger === "onKeyPressed" && detail !== undefined ? { key: detail } : {}),
                   baseHash: programHash,
                 });
               }}
