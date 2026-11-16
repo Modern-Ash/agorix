@@ -220,6 +220,7 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setTextField" ||
     intent.intent.type === "replaceCondition" ||
     intent.intent.type === "setConditionNumber" ||
+    intent.intent.type === "setComparisonOperand" ||
     intent.intent.type === "setConditionBoolean" ||
     intent.intent.type === "setConditionActor" ||
     intent.intent.type === "setLogicalOperand" ||
@@ -477,6 +478,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "setTextField" ||
               intent.type === "replaceCondition" ||
               intent.type === "setConditionNumber" ||
+              intent.type === "setComparisonOperand" ||
               intent.type === "setConditionBoolean" ||
               intent.type === "setConditionActor" ||
               intent.type === "setLogicalOperand" ||

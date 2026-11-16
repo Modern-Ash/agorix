@@ -19,6 +19,8 @@ export const STUDIO_CONDITION_BLOCK_TYPES = [
   "literal_boolean",
   "operator_less_than",
   "operator_greater_than",
+  "operator_less_or_equal",
+  "operator_greater_or_equal",
   "operator_equals",
   "operator_and",
   "operator_or",
@@ -34,8 +36,18 @@ export const STUDIO_LOGICAL_OPERAND_TYPES = [
 export const STUDIO_COMPARISON_BLOCK_TYPES = [
   "operator_less_than",
   "operator_greater_than",
+  "operator_less_or_equal",
+  "operator_greater_or_equal",
   "operator_equals",
 ] as const satisfies readonly BlockType[];
+
+export const STUDIO_COMPARISON_OPERAND_SOURCES = [
+  "number",
+  "variable",
+  "listLength",
+  "xPosition",
+  "yPosition",
+] as const;
 
 function statementsAt(
   workspace: BlockWorkspaceSnapshot,
@@ -127,6 +139,13 @@ export type Intent =
       readonly location: StatementLocation;
       readonly side: "left" | "right";
       readonly value: number;
+    }
+  | {
+      readonly type: "setComparisonOperand";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right";
+      readonly source: (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number];
+      readonly referenceId?: string;
     }
   | {
       readonly type: "setConditionBoolean";
@@ -550,6 +569,61 @@ export function intentToChange(
         intent.type === "setLogicalOperand"
           ? { ...createDefaultBlock(intent.blockType, current.id), id: current.id }
           : { ...current, fields: { ...current.fields, value: intent.value } };
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: { ...condition, inputs: { ...condition.inputs, [intent.side]: next } },
+          },
+        },
+      };
+    }
+    case "setComparisonOperand": {
+      if (
+        workspace === undefined ||
+        !(STUDIO_COMPARISON_OPERAND_SOURCES as readonly string[]).includes(intent.source)
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const condition = block?.inputs?.condition;
+      if (
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
+        condition === undefined ||
+        Array.isArray(condition) ||
+        !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(condition.type)
+      )
+        return undefined;
+      const current = condition.inputs?.[intent.side];
+      if (current === undefined || Array.isArray(current)) return undefined;
+      let next: BlockNode;
+      switch (intent.source) {
+        case "number":
+          next = { id: current.id, type: "literal_number", fields: { value: 0 } };
+          break;
+        case "variable":
+          if (!workspace.variables?.some((entry) => entry.id === intent.referenceId))
+            return undefined;
+          next = {
+            id: current.id,
+            type: "variables_value",
+            fields: { variableId: intent.referenceId },
+          };
+          break;
+        case "listLength":
+          if (!workspace.lists?.some((entry) => entry.id === intent.referenceId)) return undefined;
+          next = { id: current.id, type: "lists_length", fields: { listId: intent.referenceId } };
+          break;
+        case "xPosition":
+        case "yPosition":
+          next = {
+            id: current.id,
+            type: intent.source === "xPosition" ? "sensing_x_position" : "sensing_y_position",
+          };
+          break;
+      }
       return {
         type: "editBlock",
         location: intent.location,

@@ -24,6 +24,7 @@ import type {
 } from "@agorix/block-editor";
 import {
   STUDIO_CONDITION_BLOCK_TYPES,
+  STUDIO_COMPARISON_OPERAND_SOURCES,
   STUDIO_LOGICAL_OPERAND_TYPES,
   isSafeId,
   parseAnchorRef,
@@ -1061,6 +1062,28 @@ function parseIntent(value: unknown): Intent | undefined {
         typeof value["value"] === "boolean"
         ? { type: "setLogicalBoolean", location, side, value: value["value"] }
         : undefined;
+    }
+    case "setComparisonOperand": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      const source = value["source"];
+      const referenceId = value["referenceId"];
+      if (
+        location === undefined ||
+        (side !== "left" && side !== "right") ||
+        !(STUDIO_COMPARISON_OPERAND_SOURCES as readonly unknown[]).includes(source)
+      )
+        return undefined;
+      if (source === "variable" || source === "listLength") {
+        if (!isSafeId(referenceId)) return undefined;
+      } else if (referenceId !== undefined) return undefined;
+      return {
+        type: "setComparisonOperand",
+        location,
+        side,
+        source: source as (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number],
+        ...(typeof referenceId === "string" ? { referenceId } : {}),
+      };
     }
     case "setConditionNumber": {
       const location = parseLocation(value["location"]);
