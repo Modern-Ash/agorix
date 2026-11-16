@@ -119,6 +119,18 @@ export type UiMessage =
     }
   | {
       readonly schema: Schema;
+      readonly type: "stageEvent";
+      readonly event: "keyPressed";
+      readonly key: string;
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "stageEvent";
+      readonly event: "actorClicked";
+      readonly actorId: string;
+    }
+  | {
+      readonly schema: Schema;
       readonly type: "updateActor";
       readonly actorId: string;
       readonly patch: ActorPatch;
@@ -1936,6 +1948,21 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
     case "executionCommand":
       return (EXECUTION_COMMANDS as readonly unknown[]).includes(value["command"])
         ? { schema, type: "executionCommand", command: value["command"] as ExecutionCommand }
+        : undefined;
+    case "stageEvent":
+      if (
+        value["event"] === "keyPressed" &&
+        typeof value["key"] === "string" &&
+        value["key"].length > 0 &&
+        value["key"].length <= 40 &&
+        value["actorId"] === undefined
+      ) {
+        return { schema, type: "stageEvent", event: "keyPressed", key: value["key"] };
+      }
+      return value["event"] === "actorClicked" &&
+        isSafeId(value["actorId"]) &&
+        value["key"] === undefined
+        ? { schema, type: "stageEvent", event: "actorClicked", actorId: value["actorId"] }
         : undefined;
     case "updateActor": {
       const patch = parseActorPatch(value["patch"]);

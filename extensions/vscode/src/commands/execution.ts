@@ -9,6 +9,7 @@ import {
 } from "../studioCore.js";
 import type { OpenProject } from "../store/session.js";
 import { ExecutionInspectorItem } from "../views/providers.js";
+import type { RuntimeEvent } from "@agorix/runtime";
 
 export interface StudioExecutionCommandPort {
   requireProject(): OpenProject | undefined;
@@ -27,6 +28,7 @@ export interface StudioExecutionCommandHandlers {
   currentExecutionView(): StudioExecutionViewState | undefined;
   resetExecution(): StudioExecutionViewState | undefined;
   runExecution(): StudioExecutionViewState | undefined;
+  runEvent(event: RuntimeEvent): StudioExecutionViewState | undefined;
   stepExecution(): StudioExecutionViewState | undefined;
   stopExecution(): StudioExecutionViewState | undefined;
   selectExecutionStep(target?: unknown): Promise<StudioExecutionViewState | undefined>;
@@ -78,6 +80,13 @@ export function createStudioExecutionCommandHandlers(
       return undefined;
     }
     const evidence = createExecutionEvidence(open.project.stored);
+    return setExecution(evidence, evidence.previewFrames.length - 1, "completed");
+  };
+
+  const runEvent = (event: RuntimeEvent): StudioExecutionViewState | undefined => {
+    const open = port.requireProject();
+    if (open === undefined) return undefined;
+    const evidence = createExecutionEvidence(open.project.stored, { events: [event] });
     return setExecution(evidence, evidence.previewFrames.length - 1, "completed");
   };
 
@@ -149,6 +158,7 @@ export function createStudioExecutionCommandHandlers(
     currentExecutionView,
     resetExecution,
     runExecution,
+    runEvent,
     stepExecution,
     stopExecution,
     selectExecutionStep,

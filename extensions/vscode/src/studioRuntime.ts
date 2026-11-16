@@ -323,6 +323,7 @@ export function activate(context: vscode.ExtensionContext): void {
     requireProject,
     currentExecutionView: executionCommands.currentExecutionView,
     resetExecution: executionCommands.resetExecution,
+    runStageEvent: executionCommands.runEvent,
     getProgram: () => session.current?.project.stored.program,
     getProject: () => session.current?.project,
     commitProgram: proposalCommands.commitProgram,

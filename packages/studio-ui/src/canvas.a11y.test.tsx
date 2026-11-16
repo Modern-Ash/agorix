@@ -415,6 +415,9 @@ describe("canvas keyboard and screen reader behaviour", () => {
   });
   it("selects and places a stage actor through an explicit drag", () => {
     const selected: string[] = [];
+    const events: (
+      { event: "keyPressed"; key: string } | { event: "actorClicked"; actorId: string }
+    )[] = [];
     const placed: { actorId: string; x: number; y: number }[] = [];
     act(() =>
       root.render(
@@ -422,6 +425,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
           copy={copyFor("en")}
           selectedActorId={undefined}
           onSelectActor={(actorId) => selected.push(actorId)}
+          onStageEvent={(event) => events.push(event)}
           onPlaceActor={(actorId, position) => placed.push({ actorId, ...position })}
           frame={{
             state: {
@@ -453,6 +457,13 @@ describe("canvas keyboard and screen reader behaviour", () => {
     const viewport = host.querySelector<HTMLElement>(".stage-viewport")!;
     act(() => actor.click());
     expect(selected).toEqual(["actor:nova"]);
+    expect(events).toEqual([{ event: "actorClicked", actorId: "actor:nova" }]);
+    key(viewport, { key: "a" });
+    expect(events.at(-1)).toEqual({ event: "keyPressed", key: "A" });
+    key(viewport, { key: "ArrowRight" });
+    expect(events.at(-1)).toEqual({ event: "keyPressed", key: "ArrowRight" });
+    key(viewport, { key: "Escape" });
+    expect(events).toHaveLength(3);
     const transfer = new Map<string, string>();
     const dataTransfer = {
       setData: (key: string, value: string) => transfer.set(key, value),

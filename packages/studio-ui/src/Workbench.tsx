@@ -363,6 +363,7 @@ export function StagePanel({
   selectedActorId,
   onSelectActor,
   onPlaceActor,
+  onStageEvent,
 }: {
   readonly copy: StudioUiCopy;
   readonly frame: StageFrameMessage["frame"] | undefined;
@@ -370,6 +371,9 @@ export function StagePanel({
   readonly selectedActorId: string | undefined;
   readonly onSelectActor?: (actorId: string) => void;
   readonly onPlaceActor?: (actorId: string, position: { x: number; y: number }) => void;
+  readonly onStageEvent?: (
+    event: { event: "keyPressed"; key: string } | { event: "actorClicked"; actorId: string },
+  ) => void;
 }) {
   const state = frame?.state;
   const assetNames = new Map(assets.map((asset) => [asset.id, asset.name]));
@@ -401,6 +405,7 @@ export function StagePanel({
     <section className="stage-panel" aria-label={copy.stage} data-empty={state === undefined}>
       <header className="stage-panel-header">
         <strong>{copy.stage}</strong>
+        {onStageEvent === undefined ? null : <small>{copy.stageKeyboardHint}</small>}
         <div aria-live="polite">
           <span>
             {frame === undefined
@@ -418,7 +423,34 @@ export function StagePanel({
       </header>
       <div
         className="stage-viewport"
+        role="group"
         data-running={frame?.running ? "true" : "false"}
+        tabIndex={onStageEvent === undefined || state === undefined ? undefined : 0}
+        aria-label={`${copy.stage}: ${copy.stageKeyboardHint}`}
+        onKeyDown={(event) => {
+          if (
+            event.target !== event.currentTarget ||
+            event.altKey ||
+            event.ctrlKey ||
+            event.metaKey ||
+            onStageEvent === undefined ||
+            state === undefined
+          )
+            return;
+          const key =
+            event.key === " "
+              ? "Space"
+              : /^[a-z]$/i.test(event.key)
+                ? event.key.toUpperCase()
+                : event.key;
+          if (
+            !["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key) &&
+            !/^[A-Z]$/.test(key)
+          )
+            return;
+          event.preventDefault();
+          onStageEvent({ event: "keyPressed", key });
+        }}
         onDragOver={(event) => {
           if (!frame?.running && onPlaceActor !== undefined) event.preventDefault();
         }}
@@ -468,7 +500,11 @@ export function StagePanel({
                       actor.id === selectedActorId ? "stage-sprite selected" : "stage-sprite"
                     }
                     draggable={!frame?.running && onPlaceActor !== undefined}
-                    onClick={() => onSelectActor?.(actor.id)}
+                    onClick={() => {
+                      onSelectActor?.(actor.id);
+                      if (state !== undefined)
+                        onStageEvent?.({ event: "actorClicked", actorId: actor.id });
+                    }}
                     onDragStart={(event) => {
                       if (frame?.running || onPlaceActor === undefined) return;
                       onSelectActor?.(actor.id);
@@ -1181,6 +1217,9 @@ export function Workbench({
             selectedActorId={selectedActorId}
             onSelectActor={setSelectedActorId}
             onPlaceActor={(actorId, position) => updateActor(actorId, position)}
+            onStageEvent={(event) =>
+              bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "stageEvent", ...event })
+            }
           />
         </section>
         <section className="studio-program" aria-label={copy.canvasLabel}>

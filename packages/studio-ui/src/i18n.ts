@@ -290,6 +290,8 @@ export const COPY = {
     eventTraceAll: "All",
     eventTraceSelectedActor: "Selected actor",
     stage: "Stage",
+    stageKeyboardHint:
+      "Focus the stage and press a key, or click an actor to run its event script.",
     heading: "Heading",
     activeSounds: "Active sounds",
     stageNoFrame: "Run or step the program to inspect the stage.",
@@ -649,6 +651,8 @@ export const COPY = {
     eventTraceAll: "Todo",
     eventTraceSelectedActor: "Actor seleccionado",
     stage: "Escenario",
+    stageKeyboardHint:
+      "Enfocá el escenario y presioná una tecla, o hacé clic en un personaje para ejecutar su script de evento.",
     heading: "Direccion",
     activeSounds: "Sonidos activos",
     stageNoFrame: "Ejecuta o avanza el programa para inspeccionar el stage.",

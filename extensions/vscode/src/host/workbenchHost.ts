@@ -36,8 +36,11 @@ import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-
 import type { SyncState } from "../sync/syncHub.js";
 import { defaultProjectActor, defaultProjectStage, studioAssetCatalog } from "../studioCore.js";
 import { getLocalizedFirstMission } from "@agorix/curriculum";
+import type { RuntimeEvent } from "@agorix/runtime";
+import type { StudioExecutionViewState } from "../studioCore.js";
 
 export interface HostPort {
+  runStageEvent?(event: RuntimeEvent): StudioExecutionViewState | undefined;
   getProgram(): ProjectProgram | undefined;
   getMetadata(): ProjectMetadata | undefined;
   commit(program: ProjectProgram, label: string): Promise<void>;
