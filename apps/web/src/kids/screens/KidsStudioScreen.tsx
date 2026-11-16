@@ -51,6 +51,7 @@ import {
   type EditorHistory,
 } from "@agorix/block-editor";
 import { projectAgorixCode } from "@agorix/agorix-code";
+import { agorixCodeEditable, applyAgorixCode, codeEditMessage } from "../kidsCodeEdit.js";
 import { Panel, PanelDivider, PanelDock, usePanelLayoutController } from "@agorix/studio-ui";
 import { projectProgram } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
@@ -1731,6 +1732,8 @@ export function KidsStudioScreen({
     if (stepped) setStudioTutorialDone(true);
   }, [stepped]);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript" | "java">("agorix");
+  // The learner's own text edit of Agorix Code: null when not editing.
+  const [codeDraft, setCodeDraft] = useState<string | null>(null);
   const [showMoreLanguages, setShowMoreLanguages] = useState(false);
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
   const [compoundOri, setCompoundOri] = useState<{
@@ -10018,6 +10021,81 @@ export function KidsStudioScreen({
                     </button>
                   ) : null}
                 </div>
+                {shownLanguage === "agorix" ? (
+                  <div className="kids-code-edit">
+                    {codeDraft === null ? (
+                      agorixCodeEditable(history.current) ? (
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() => setCodeDraft(code)}
+                        >
+                          {locale === "es" ? "Editar el texto" : "Edit the text"}
+                        </button>
+                      ) : (
+                        <p className="kids-note">
+                          {locale === "es"
+                            ? "Este programa usa bloques que el texto todavía no sabe leer: editalo con bloques."
+                            : "This program uses blocks the text cannot read yet: edit it with blocks."}
+                        </p>
+                      )
+                    ) : (
+                      (() => {
+                        const result = applyAgorixCode(codeDraft, history.current);
+                        return (
+                          <>
+                            <textarea
+                              className="kids-code-textarea"
+                              aria-label={locale === "es" ? "Texto del programa" : "Program text"}
+                              value={codeDraft}
+                              rows={Math.min(16, codeDraft.split("\n").length + 1)}
+                              spellCheck={false}
+                              onChange={(event) => setCodeDraft(event.target.value)}
+                            />
+                            <p role="status" className="kids-note" data-testid="code-edit-status">
+                              {result.ok
+                                ? locale === "es"
+                                  ? "Se entiende. Podés aplicarlo."
+                                  : "It reads fine. You can apply it."
+                                : codeEditMessage(result.code, result.line, locale)}
+                            </p>
+                            <button
+                              type="button"
+                              className="kids-button kids-primary"
+                              disabled={!result.ok}
+                              onClick={() => {
+                                if (!result.ok) return;
+                                try {
+                                  persist(
+                                    recordCanonicalTransaction(history, {
+                                      label: "Agorix Code edited",
+                                      after: result.program,
+                                    }).history,
+                                  );
+                                  setCodeDraft(null);
+                                  setRun(null);
+                                  setFrame(null);
+                                  setError(false);
+                                } catch {
+                                  setError(true);
+                                }
+                              }}
+                            >
+                              {locale === "es" ? "Aplicar" : "Apply"}
+                            </button>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              onClick={() => setCodeDraft(null)}
+                            >
+                              {locale === "es" ? "Cancelar" : "Cancel"}
+                            </button>
+                          </>
+                        );
+                      })()
+                    )}
+                  </div>
+                ) : null}
                 <pre className="kids-code-strip" tabIndex={0} aria-label={copy.code}>
                   {currentLine ? (
                     <>

@@ -382,7 +382,14 @@ function trigger(line: Line): Trigger {
  * Text to program. `base` is the program the text was shown from, if there is one: it supplies the
  * variable ids (by name) and the script ids (by position), so an edit keeps what it did not touch.
  */
-export function parseAgorixCode(source: string, base?: ProjectProgram): AgorixCodeParse {
+export function parseAgorixCode(
+  source: string,
+  base?: ProjectProgram,
+  options: {
+    /** The id of a variable the text declares and the base does not have; the n-th new one. */
+    readonly newVariableId?: (taken: ReadonlySet<string>, n: number) => string;
+  } = {},
+): AgorixCodeParse {
   try {
     const all = lines(source);
     const variables: { id: string; name: string; initialValue: number; visible: boolean }[] = [];
@@ -396,7 +403,11 @@ export function parseAgorixCode(source: string, base?: ProjectProgram): AgorixCo
       const m = /^variable ("(?:[^"\\]|\\.)*") = (\S+)$/.exec(line.text);
       if (m === null) refuse("unknownLine", line.n);
       const name = quoted(m![1]!, line.n);
-      const id = known.get(name) ?? `var-${variables.length + 1}`;
+      const taken = new Set([...known.values(), ...variables.map((item) => item.id)]);
+      const id =
+        known.get(name) ??
+        options.newVariableId?.(taken, variables.length + 1) ??
+        `var-${variables.length + 1}`;
       known.set(name, id);
       let visible = false;
       const next = all[index + 1];
