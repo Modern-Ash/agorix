@@ -4,6 +4,7 @@ import {
   ProgramValidationError,
   SCHEMA_VERSION,
   type Expression,
+  type Procedure,
   type ProjectProgram,
   type Script,
   type Statement,
@@ -98,6 +99,9 @@ function lines(source: string): Line[] {
   if (out.length > AGORIX_CODE_MAX_LINES) return refuse("tooLong", AGORIX_CODE_MAX_LINES);
   return out;
 }
+
+/** What a block keeps as its fixed number when it takes the number from a custom block. */
+const FALLBACK = { move: 40, turn: 90, wait: 1, repeat: 3 } as const;
 
 const Q = '("(?:[^"\\\\]|\\\\.)*")';
 
@@ -262,11 +266,23 @@ class Reader {
     private readonly listIds: ReadonlyMap<string, string> = new Map(),
   ) {}
 
+  /** The numbers the custom block being read received (name to id), empty outside a block. */
+  params: ReadonlyMap<string, string> = new Map();
+  /** The custom blocks a call can reach from here: the shared ones and this script's own. */
+  procedures: ReadonlyMap<string, { id: string; arity: number }> = new Map();
+
+  /** A fixed number, or the name of one of the block's own numbers. */
+  private fixedOrParam(text: string, line: number): { value: number; from?: string } {
+    const from = this.params.get(text);
+    return from === undefined ? { value: numberOf(text, line) } : { value: 0, from };
+  }
+
   private get names(): ExpressionNames {
     return {
       numberId: (name) => this.variableIds.get(name),
       textId: (name) => this.textIds.get(name),
       listId: (name) => this.listIds.get(name),
+      params: () => [...this.params].map(([name, id]) => ({ name, id })),
     };
   }
 
@@ -295,6 +311,27 @@ class Reader {
     return id ?? refuse("unknownName", line);
   }
 
+  /** `call name` or `call name with 3, size`: a custom block, matched by its name. */
+  private call(rest: string, line: number): Statement {
+    const entry = [...this.procedures]
+      .sort((a, b) => b[0].length - a[0].length)
+      .find(([name]) => rest === name || rest.startsWith(name + " with "));
+    if (entry === undefined) return refuse("unknownName", line);
+    const [name, { id, arity }] = entry;
+    if (rest === name)
+      return arity === 0 ? { type: "callProcedure", procedureId: id } : refuse("notValid", line);
+    const args = rest
+      .slice(name.length + " with ".length)
+      .split(", ")
+      .map((text) => {
+        const arg = this.expr(text, line);
+        return arg.type === "numericLiteral" || arg.type === "param"
+          ? arg
+          : refuse("badExpression", line);
+      });
+    return { type: "callProcedure", procedureId: id, args } as unknown as Statement;
+  }
+
   list(name: string, line: number): string {
     return this.listIds.get(quoted(name, line)) ?? refuse("unknownName", line);
   }
@@ -320,12 +357,27 @@ class Reader {
     if (line.depth > MAX_DEPTH) refuse("tooDeep", line.n);
     const t = line.text;
     let m: RegExpExecArray | null;
-    if ((m = /^move (\S+)$/.exec(t))) return { type: "move", steps: numberOf(m[1]!, line.n) };
-    if ((m = /^turn (\S+)$/.exec(t))) return { type: "turn", degrees: numberOf(m[1]!, line.n) };
+    if ((m = /^move (.+)$/.exec(t))) {
+      const { value, from } = this.fixedOrParam(m[1]!, line.n);
+      return from === undefined
+        ? { type: "move", steps: value }
+        : ({ type: "move", steps: FALLBACK.move, stepsFrom: from } as unknown as Statement);
+    }
+    if ((m = /^turn (.+)$/.exec(t))) {
+      const { value, from } = this.fixedOrParam(m[1]!, line.n);
+      return from === undefined
+        ? { type: "turn", degrees: value }
+        : ({ type: "turn", degrees: FALLBACK.turn, degreesFrom: from } as unknown as Statement);
+    }
+    if ((m = /^call (.+)$/.exec(t))) return this.call(m[1]!, line.n);
     if ((m = /^go to (\S+), (\S+)$/.exec(t)))
       return { type: "goTo", x: numberOf(m[1]!, line.n), y: numberOf(m[2]!, line.n) };
-    if ((m = /^wait (\S+) seconds$/.exec(t)))
-      return { type: "wait", seconds: numberOf(m[1]!, line.n) };
+    if ((m = /^wait (.+) seconds$/.exec(t))) {
+      const { value, from } = this.fixedOrParam(m[1]!, line.n);
+      return from === undefined
+        ? { type: "wait", seconds: value }
+        : ({ type: "wait", seconds: FALLBACK.wait, secondsFrom: from } as unknown as Statement);
+    }
     if (t === "show") return { type: "show" };
     if (t === "hide") return { type: "hide" };
     if ((m = /^(say|think) ("(?:[^"\\]|\\.)*")(?: \+ (.+?))?(?: for (\S+) seconds)?$/.exec(t))) {
@@ -356,8 +408,18 @@ class Reader {
       return { type: "repeatUntil", condition: this.expr(m[1]!, line.n), body: this.block(line) };
     if ((m = /^wait until (.+) \(up to 10 seconds\)$/.exec(t)))
       return { type: "waitUntil", condition: this.expr(m[1]!, line.n) };
-    if ((m = /^repeat (\S+) times$/.exec(t)))
-      return { type: "repeat", count: numberOf(m[1]!, line.n), body: this.block(line) };
+    if ((m = /^repeat (.+) times$/.exec(t))) {
+      const { value, from } = this.fixedOrParam(m[1]!, line.n);
+      const body = this.block(line);
+      return from === undefined
+        ? { type: "repeat", count: value, body }
+        : ({
+            type: "repeat",
+            count: FALLBACK.repeat,
+            countFrom: from,
+            body,
+          } as unknown as Statement);
+    }
     if (/^forever(?: \(bounded by run budget\))?$/.test(t))
       return { type: "forever", body: this.block(line) };
     if ((m = /^if (.+)$/.exec(t))) {
@@ -429,6 +491,23 @@ function trigger(line: Line): Trigger {
   if ((m = /^when loudness is over (\S+)$/.exec(t)))
     return { type: "onLoudnessOver", level: numberOf(m[1]!, line.n) };
   return refuse("unknownLine", line.n);
+}
+
+interface DefineHead {
+  readonly shared: boolean;
+  readonly name: string;
+  readonly params: readonly string[];
+}
+
+/** `define [shared] name [with a, b]`. */
+function defineHead(line: Line): DefineHead {
+  const m = /^define (shared )?(.+?)(?: with (.+))?$/.exec(line.text);
+  if (m === null) return refuse("unknownLine", line.n);
+  return {
+    shared: m[1] !== undefined,
+    name: m[2]!,
+    params: m[3] === undefined ? [] : m[3].split(", "),
+  };
 }
 
 /** The items of a list declaration: numbers and quoted words, separated by commas. */
@@ -564,22 +643,104 @@ export function parseAgorixCode(
       else variables.push({ id, name, initialValue: numberOf(m![4]!, line.n), visible, ...scope });
       index += 1;
     }
-    const reader = new Reader(all.slice(index), known, knownText, knownLists);
+    const rest = all.slice(index);
+    const reader = new Reader(rest, known, knownText, knownLists);
+    // Custom blocks are known before any body is read, because a body may call a later one.
+    const sharedHeads: DefineHead[] = [];
+    const localHeads: DefineHead[][] = [[]];
+    for (const line of rest) {
+      if (line.depth !== 0) continue;
+      if (/^define /.test(line.text)) {
+        const head = defineHead(line);
+        if (head.shared) sharedHeads.push(head);
+        else localHeads[localHeads.length - 1]!.push(head);
+      } else localHeads.push([]);
+    }
+    const sharedIds = new Map<string, { id: string; arity: number }>(
+      sharedHeads.map((head, k) => [
+        head.name,
+        {
+          id:
+            base?.sharedProcedures?.find((item) => item.name === head.name)?.id ??
+            `shared-${k + 1}`,
+          arity: head.params.length,
+        },
+      ]),
+    );
+    const sharedProcedures: Procedure[] = [];
     const scripts: Script[] = [];
+    let pending: Procedure[] = [];
     while (!reader.done) {
       const head = reader.take();
       if (head.depth !== 0) refuse("badIndent", head.n);
+      if (/^define /.test(head.text)) {
+        const define = defineHead(head);
+        const scriptIndex = scripts.length;
+        const locals = new Map<string, { id: string; arity: number }>(
+          (localHeads[scriptIndex] ?? []).map((item, k) => [
+            item.name,
+            {
+              id:
+                base?.scripts[scriptIndex]?.procedures?.find((entry) => entry.name === item.name)
+                  ?.id ?? `proc-${scriptIndex + 1}-${k + 1}`,
+              arity: item.params.length,
+            },
+          ]),
+        );
+        reader.procedures = new Map([...sharedIds, ...(define.shared ? [] : locals)]);
+        reader.params = new Map(define.params.map((name, k) => [name, `p${k + 1}`]));
+        const body = reader.block(head);
+        reader.params = new Map();
+        const entry = (define.shared ? sharedIds : locals).get(define.name)!;
+        const procedure = {
+          id: entry.id,
+          name: define.name,
+          ...(define.params.length === 0
+            ? {}
+            : { params: define.params.map((name, k) => ({ id: `p${k + 1}`, name })) }),
+          body,
+        } as unknown as Procedure;
+        if (define.shared) sharedProcedures.push(procedure);
+        else pending.push(procedure);
+        continue;
+      }
+      const scriptIndex = scripts.length;
+      reader.procedures = new Map([
+        ...sharedIds,
+        ...pending.map(
+          (item) => [item.name, { id: item.id, arity: item.params?.length ?? 0 }] as const,
+        ),
+        ...(localHeads[scriptIndex] ?? []).map(
+          (item, k) =>
+            [
+              item.name,
+              {
+                id:
+                  base?.scripts[scriptIndex]?.procedures?.find((entry) => entry.name === item.name)
+                    ?.id ?? `proc-${scriptIndex + 1}-${k + 1}`,
+                arity: item.params.length,
+              },
+            ] as const,
+        ),
+      ]);
       const kind = trigger(head);
       const statements = reader.block(head);
       scripts.push({
-        id: base?.scripts[scripts.length]?.id ?? `script-${scripts.length + 1}`,
+        id: base?.scripts[scriptIndex]?.id ?? `script-${scriptIndex + 1}`,
         trigger: kind,
         statements,
+        ...(pending.length === 0 ? {} : { procedures: pending }),
       });
+      pending = [];
     }
+    if (pending.length > 0) refuse("unknownLine", rest.length);
     if (scripts.length === 0) refuse("emptyText", 1);
     const packs = new Set<"pen" | "music">();
-    for (const script of scripts) packsUsed(script.statements, packs);
+    for (const script of scripts) {
+      packsUsed(script.statements, packs);
+      for (const procedure of script.procedures ?? []) packsUsed(procedure.body, packs);
+    }
+    for (const procedure of sharedProcedures) packsUsed(procedure.body, packs);
     const extensions = (["pen", "music"] as const).filter((pack) => packs.has(pack));
     const program = validateProgram({
       schema: SCHEMA_VERSION,
@@ -587,6 +748,7 @@ export function parseAgorixCode(
       ...(variables.length > 0 ? { variables } : {}),
       ...(textVariables.length > 0 ? { textVariables } : {}),
       ...(lists.length > 0 ? { lists } : {}),
+      ...(sharedProcedures.length > 0 ? { sharedProcedures } : {}),
       scripts,
     } as never);
     return { ok: true, program };

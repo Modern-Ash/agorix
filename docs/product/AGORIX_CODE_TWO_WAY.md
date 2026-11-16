@@ -43,9 +43,13 @@ Expressions are read by `parseExpression`. Every operation with two sides is wri
 
 `list "name" = 1, "two", 3` (or `stage list`, an empty list is `list "name" =`) followed by `show "name"` when it is visible. Blocks: `add X to "list"`, `delete all of`, `remove item N of`, `insert item N of "list" with X`, `replace item N of "list" with X`, `show`/`hide "list"`. Reporters: `item N of "list"`, `length of "list"`, `"list" contains X`, `item # of X in "list"`. A quoted name is a list only where a list is expected (or where a declared list name is followed by `contains`, or after `length of`); a text equal to a list's name there would read as the list, and such a program is not offered for text editing. A hand-typed list in the Studio gets the next `studio-list-N`.
 
-Still block-only, and therefore a program that has one is not offered for text editing: custom blocks and their calls, ask blocks, `broadcast`, `next costume`, copies, and a property of another character. Several of these the text view does not even show yet.
+## Custom blocks (built)
+
+`define name with size, turns` (or `define shared name`) followed by the indented body, written before the script that owns it; shared blocks come first. `call name with 40, size` calls one: each argument is a fixed number or one of the block's own numbers. Inside a block, a number's name stands in `move`, `turn`, `wait N seconds`, `repeat N times` and in expressions. The text does not show the fixed number such a block keeps beside its own number, so the reader assumes the palette's (move 40, turn 90, wait 1, repeat 3); a program whose block keeps another one is simply not offered for text editing. Ids: the base's by name, else `proc-S-N` and `shared-N`. A call may reach a block defined later.
+
+Still block-only, and therefore a program that has one is not offered for text editing: ask blocks, `broadcast`, `next costume`, copies, and a property of another character. Several of these the text view does not even show yet.
 
 ## Next
 
-1. Widen again: custom blocks and their calls, with a round-trip test.
+1. Widen again: ask, `broadcast`, `next costume`, copies.
 2. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.
