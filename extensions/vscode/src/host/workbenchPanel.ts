@@ -250,7 +250,15 @@ export function attachWorkbenchPanel(
       if (agentMessages !== undefined) {
         await send(agentMessages);
       } else {
-        await send(await workbench.handle(message));
+        const result = await workbench.handle(message);
+        await send(result);
+        if (
+          (message.type === "updateActor" || message.type === "updateStage") &&
+          !result.some((item) => item.type === "error")
+        ) {
+          const refreshed = await vscode.commands.executeCommand("agorixStudio.reset");
+          await send(executionMessages(refreshed));
+        }
         if (message.type === "updateMissionSpec") {
           await send(agentHost.onProgramChanged());
         }

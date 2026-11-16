@@ -10,6 +10,7 @@ import {
 } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import { Canvas, type FocusRequest } from "./Canvas.js";
+import { SceneLibrary } from "./SceneLibrary.js";
 import { Workbench } from "./Workbench.js";
 import type { HostBridge } from "./bridge.js";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
@@ -91,6 +92,65 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("selects a costume and backdrop explicitly from the scene library", () => {
+    const costumes: string[] = [];
+    const backdrops: string[] = [];
+    act(() =>
+      root.render(
+        <SceneLibrary
+          copy={copyFor("en")}
+          actors={[
+            {
+              id: "actor:nova",
+              name: "Nova",
+              x: 0,
+              y: 0,
+              direction: 0,
+              size: 100,
+              visible: true,
+              costumeId: "costume:nova",
+            },
+          ]}
+          assets={[
+            {
+              id: "costume:nova",
+              name: "Nova",
+              kind: "costume",
+              tags: [],
+              source: "builtin:kids-gallery-costume:nova",
+            },
+            {
+              id: "costume:mika",
+              name: "Mika",
+              kind: "costume",
+              tags: [],
+              source: "builtin:kids-gallery-costume:mika",
+            },
+            {
+              id: "backdrop:moon",
+              name: "Moon",
+              kind: "backdrop",
+              tags: [],
+              source: "builtin:kids-gallery-backdrop:moon",
+            },
+          ]}
+          selectedActorId="actor:nova"
+          backdropId="backdrop:moon"
+          onSelectActor={() => undefined}
+          onCostume={(actorId, id) => costumes.push(`${actorId}:${id}`)}
+          onBackdrop={(id) => backdrops.push(id)}
+        />,
+      ),
+    );
+    act(() =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Choose costume: Mika"]')?.click(),
+    );
+    act(() =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Choose backdrop: Moon"]')?.click(),
+    );
+    expect(costumes).toEqual(["actor:nova:costume:mika"]);
+    expect(backdrops).toEqual(["backdrop:moon"]);
+  });
   it("lets the learner edit a numeric block value in place", () => {
     const intents: Intent[] = [];
     render(initial, { onIntent: (intent) => intents.push(intent) });

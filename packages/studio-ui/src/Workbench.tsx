@@ -13,6 +13,7 @@ import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
 import { locationKey } from "./blockView.js";
 import { Palette } from "./Palette.js";
+import { SceneLibrary } from "./SceneLibrary.js";
 import { densityAnnouncement } from "./density.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
 import { AgentPanel } from "./AgentPanel.js";
@@ -746,6 +747,8 @@ export function Workbench({
   const [actors, setActors] = useState<ActorsMessage | undefined>();
   const [selectedActorId, setSelectedActorId] = useState<string | undefined>();
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
+  const [backdropId, setBackdropId] = useState<string | undefined>();
+  const [libraryTab, setLibraryTab] = useState<"blocks" | "scene">("blocks");
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
   const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
   const [playing, setPlaying] = useState(false);
@@ -819,6 +822,10 @@ export function Workbench({
         setAssets(message.assets);
         return;
       }
+      if (message.type === "scene") {
+        setBackdropId(message.backdropId);
+        return;
+      }
       if (message.type === "validation") {
         setValidationIssues(message.issues);
         return;
@@ -883,6 +890,10 @@ export function Workbench({
     bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "updateActor", actorId, patch });
   };
 
+  const updateBackdrop = (id: string) => {
+    bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "updateStage", backdropId: id });
+  };
+
   const updateMissionSpec = (spec: Omit<MissionSpecView, "hash">) => {
     bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "updateMissionSpec", spec });
     announce(copy.missionSpecSaved);
@@ -925,9 +936,42 @@ export function Workbench({
         <p>{copy.ideSubtitle}</p>
       </header>
       <aside className="studio-tools" aria-label={copy.toolsTitle}>
-        <h2>{copy.toolsTitle}</h2>
-        <p>{copy.toolsHint}</p>
-        <Palette copy={copy} onAdd={add} />
+        <div className="library-tabs" role="group" aria-label={copy.libraryScene}>
+          <button
+            type="button"
+            aria-pressed={libraryTab === "blocks"}
+            onClick={() => setLibraryTab("blocks")}
+          >
+            {copy.libraryBlocks}
+          </button>
+          <button
+            type="button"
+            aria-pressed={libraryTab === "scene"}
+            onClick={() => setLibraryTab("scene")}
+          >
+            {copy.libraryScene}
+          </button>
+        </div>
+        {libraryTab === "blocks" ? (
+          <div aria-label={copy.libraryBlocks}>
+            <h2>{copy.toolsTitle}</h2>
+            <p>{copy.toolsHint}</p>
+            <Palette copy={copy} onAdd={add} />
+          </div>
+        ) : (
+          <div aria-label={copy.libraryScene}>
+            <SceneLibrary
+              copy={copy}
+              actors={actors?.actors ?? []}
+              assets={assets}
+              selectedActorId={selectedActorId}
+              backdropId={backdropId}
+              onSelectActor={setSelectedActorId}
+              onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
+              onBackdrop={updateBackdrop}
+            />
+          </div>
+        )}
       </aside>
       <main className="studio-main">
         <section className="studio-play" aria-label={copy.evidenceTitle}>
