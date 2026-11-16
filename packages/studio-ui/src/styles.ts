@@ -44,6 +44,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .stage-goal { transform: translate(-50%, 50%); border: 2px solid var(--vscode-testing-iconPassed); border-radius: 50%; background: color-mix(in srgb, var(--vscode-testing-iconPassed), transparent 78%); }
 .stage-goal.reached { box-shadow: 0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconPassed), transparent 72%); }
 .stage-sprite { border: 2px solid var(--vscode-charts-orange); border-radius: 45% 45% 45% 8px; background: color-mix(in srgb, var(--vscode-charts-orange), transparent 64%); }
+.stage-sprite[draggable="true"] { cursor: grab; }
+.stage-sprite[draggable="true"]:active { cursor: grabbing; }
+.stage-sprite { padding: 0; color: var(--vscode-foreground); }
+.stage-sprite:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
 .stage-sprite[data-costume-id="asset:costume.default"] { border-color: var(--vscode-charts-blue); background: color-mix(in srgb, var(--vscode-charts-blue), transparent 58%); }
 .stage-sprite[data-costume-id="asset:costume.spark"] { border-color: var(--vscode-charts-green); background: color-mix(in srgb, var(--vscode-charts-green), transparent 54%); }
 .stage-sprite.selected { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
