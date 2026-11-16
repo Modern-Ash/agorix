@@ -71,6 +71,27 @@ describe("editing the program as Agorix Code", () => {
       expect(JSON.stringify(result.program.scripts[0]!.statements[1])).toContain('"value":5');
   });
 
+  it("is editable with lists, and applies an edit that adds an item and a new list", () => {
+    const listed = program(
+      [{ type: "listAdd", listId: "studio-list-1", value: { type: "numericLiteral", value: 6 } }],
+      { lists: [{ id: "studio-list-1", name: "Puntos", initialItems: [], visible: true }] },
+    );
+    expect(agorixCodeEditable(listed)).toBe(true);
+    const text = projectAgorixCode(listed).text.replace("add 6", "add 7");
+    const edited = applyAgorixCode(
+      text.replace('show "Puntos"\n', 'show "Puntos"\nstage list "Otra" = "a"\nshow "Otra"\n'),
+      listed,
+    );
+    expect(edited.ok).toBe(true);
+    if (edited.ok) {
+      expect(edited.program.lists?.map((item) => item.id)).toEqual([
+        "studio-list-1",
+        "studio-list-2",
+      ]);
+      expect(JSON.stringify(edited.program.scripts)).toContain('"value":7');
+    }
+  });
+
   it("applies an edit and keeps what it did not touch", () => {
     const base = program([
       { type: "move", steps: 40 },
