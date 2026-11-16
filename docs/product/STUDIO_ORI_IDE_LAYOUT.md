@@ -26,6 +26,18 @@ Project PNG/WebP artwork is accepted only through the bounded creative asset
 contract. The next visual parity work is tracked in epic #1648: richer visual
 block composition, direct costume editing and full asset workflows.
 
+The palette and canvas derive visual category tones and shapes from the shared
+block vocabulary. Accepted blocks show typed values directly in their face,
+including text fields; nested control bodies have a visible rail. Drag,
+keyboard insertion and canonical workspace transactions remain the editing
+authority. The visual block projection owns no separate program state.
+
+The left library switches between Blocks and Scene. Scene shows actor cards and
+visual costume/backdrop choices from the project's validated assets. Selection
+is an explicit metadata edit; the host refuses unknown asset ids and refreshes
+the deterministic stage after a change. Full image import/drawing and broader
+component coverage remain in epic #1648.
+
 The interface takes inspiration from the project/editor/agent division and
 reviewable agent changes described in the [Kiro IDE](https://kiro.dev/ide/).
 Agorix's teaching boundary is different: Ori asks and explains, the learner

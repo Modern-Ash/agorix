@@ -33,7 +33,7 @@ import {
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-plane";
 import type { SyncState } from "../sync/syncHub.js";
-import { defaultProjectActor, studioAssetCatalog } from "../studioCore.js";
+import { defaultProjectActor, defaultProjectStage, studioAssetCatalog } from "../studioCore.js";
 import { getLocalizedFirstMission } from "@agorix/curriculum";
 
 export interface HostPort {
@@ -210,7 +210,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "insertBlock" ||
     intent.intent.type === "moveBlock" ||
     intent.intent.type === "deleteBlock" ||
-    intent.intent.type === "setNumericField"
+    intent.intent.type === "setNumericField" ||
+    intent.intent.type === "setTextField"
   );
 }
 
@@ -253,6 +254,13 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     return [{ schema, type: "validation", issues: validationIssuesForMetadata(metadata) }];
   }
 
+  function sceneMessage(): HostMessage[] {
+    const metadata = port.getMetadata();
+    if (metadata === undefined) return [];
+    const backdropId = metadata.stage?.backdropId ?? defaultProjectStage().backdropId;
+    return [{ schema, type: "scene", ...(backdropId === undefined ? {} : { backdropId }) }];
+  }
+
   function snapshot(): HostMessage[] {
     const program = port.getProgram();
     if (program === undefined) {
@@ -263,6 +271,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       return [
         { schema, type: "workspace", workspace, programHash: programSemanticHash(program) },
         ...actorsMessage(),
+        ...sceneMessage(),
         {
           schema,
           type: "assets",
@@ -395,7 +404,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           const { workspace } = programToWorkspace(program);
           const change = intentToChange(intent, newBlockId, workspace);
           if (change === undefined) {
-            return intent.type === "setNumericField"
+            return intent.type === "setNumericField" || intent.type === "setTextField"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];
           }
@@ -439,6 +448,18 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           "Workbench: update actor",
         );
         return [...actorsMessage(), ...validationMessage()];
+      }
+      case "updateStage": {
+        const metadata = port.getMetadata();
+        if (metadata === undefined) return [];
+        if (!knownAssetIds(metadata, "backdrop").has(message.backdropId)) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        await port.commitMetadata(
+          { ...metadata, stage: { ...metadata.stage, backdropId: message.backdropId } },
+          "Workbench: update stage backdrop",
+        );
+        return [...sceneMessage(), ...validationMessage()];
       }
       case "updateMissionSpec": {
         const metadata = port.getMetadata();

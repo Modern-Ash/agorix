@@ -55,6 +55,39 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("persists a known backdrop and refuses unknown assets", async () => {
+    const { host, port, metadata, labels } = setup();
+    await port.commitMetadata(
+      {
+        ...metadata(),
+        assets: [
+          {
+            id: "backdrop:moon",
+            kind: "backdrop",
+            name: "Moon",
+            source: "builtin:kids-gallery-backdrop:moon",
+          },
+        ],
+      },
+      "test fixture",
+    );
+    const before = labels.length;
+    const accepted = await host.handle({
+      schema,
+      type: "updateStage",
+      backdropId: "backdrop:moon",
+    });
+    expect(accepted).toContainEqual({ schema, type: "scene", backdropId: "backdrop:moon" });
+    expect(metadata().stage?.backdropId).toBe("backdrop:moon");
+    const refused = await host.handle({
+      schema,
+      type: "updateStage",
+      backdropId: "backdrop:missing",
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(metadata().stage?.backdropId).toBe("backdrop:moon");
+    expect(labels).toHaveLength(before + 1);
+  });
   it("sends project costume and backdrop art alongside the built-in catalog", async () => {
     const { host, port, metadata } = setup();
     await port.commitMetadata(
@@ -105,6 +138,7 @@ describe("workbenchHost", () => {
         type: "actors",
         actors: [{ id: "actor:main", costumeId: "asset:costume.default", scriptCount: 1 }],
       },
+      { schema, type: "scene", backdropId: "asset:space.trailhead" },
       { schema, type: "assets" },
       { schema, type: "validation", issues: [] },
       { schema, type: "missionSpec", spec: { successCheck: "touches-goal" } },
@@ -191,6 +225,43 @@ describe("workbenchHost", () => {
     });
     expect(bad[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(labels).toHaveLength(1);
+  });
+
+  it("commits text edits only to existing string fields", async () => {
+    const { host, get, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "insertBlock", blockType: "looks_say", to: { container: script, index: 0 } },
+      baseHash: programSemanticHash(base),
+    });
+    const current = get()!;
+    const edited = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "text",
+        value: "Hola",
+      },
+      baseHash: programSemanticHash(current),
+    });
+    expect(edited[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({ type: "say", text: "Hola" });
+    const refused = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "steps",
+        value: "bad",
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(2);
   });
 
   it("moves exactly like applying the same change through block-editor", async () => {

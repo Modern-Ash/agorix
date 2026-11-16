@@ -112,6 +112,7 @@ export type UiMessage =
       readonly actorId: string;
       readonly patch: ActorPatch;
     }
+  | { readonly schema: Schema; readonly type: "updateStage"; readonly backdropId: string }
   | {
       readonly schema: Schema;
       readonly type: "updateMissionSpec";
@@ -446,6 +447,7 @@ export type HostMessage =
       readonly type: "assets";
       readonly assets: readonly AssetView[];
     }
+  | { readonly schema: Schema; readonly type: "scene"; readonly backdropId?: string }
   | {
       readonly schema: Schema;
       readonly type: "validation";
@@ -940,6 +942,18 @@ function parseIntent(value: unknown): Intent | undefined {
         !Number.isFinite(number)
         ? undefined
         : { type: "setNumericField", location, field, value: number };
+    }
+    case "setTextField": {
+      const location = parseLocation(value["location"]);
+      const field = value["field"];
+      const text = value["value"];
+      return location === undefined ||
+        typeof field !== "string" ||
+        !/^[a-zA-Z][a-zA-Z0-9]{0,31}$/.test(field) ||
+        typeof text !== "string" ||
+        text.length > 160
+        ? undefined
+        : { type: "setTextField", location, field, value: text };
     }
     case "askAgent": {
       const about = parseAnchorRef(value["about"]);
@@ -1701,6 +1715,10 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
         ? { schema, type: "updateActor", actorId: value["actorId"], patch }
         : undefined;
     }
+    case "updateStage":
+      return isSafeId(value["backdropId"])
+        ? { schema, type: "updateStage", backdropId: value["backdropId"] }
+        : undefined;
     case "updateMissionSpec": {
       const spec = parseMissionSpec(value["spec"]);
       return spec === undefined ? undefined : { schema, type: "updateMissionSpec", spec };
@@ -1860,6 +1878,14 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         ? { schema, type: "assets", assets: parsed as AssetView[] }
         : undefined;
     }
+    case "scene":
+      return value["backdropId"] === undefined || isSafeId(value["backdropId"])
+        ? {
+            schema,
+            type: "scene",
+            ...(value["backdropId"] === undefined ? {} : { backdropId: value["backdropId"] }),
+          }
+        : undefined;
     case "validation": {
       const issues = value["issues"];
       if (!Array.isArray(issues) || issues.length > 128) return undefined;

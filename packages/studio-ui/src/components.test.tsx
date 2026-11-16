@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
 import { Palette } from "./Palette.js";
+import { SceneLibrary } from "./SceneLibrary.js";
 import {
   ActorInspector,
   AssetPanel,
@@ -36,6 +37,51 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("shows actor, costume and backdrop previews in the scene library", () => {
+    const markup = renderToStaticMarkup(
+      <SceneLibrary
+        copy={copyFor("es")}
+        actors={[
+          {
+            id: "actor:nova",
+            name: "Nova",
+            x: 0,
+            y: 0,
+            direction: 0,
+            size: 100,
+            visible: true,
+            costumeId: "costume:nova",
+          },
+        ]}
+        assets={[
+          {
+            id: "costume:nova",
+            name: "Nova",
+            kind: "costume",
+            tags: [],
+            source: "builtin:kids-gallery-costume:nova",
+          },
+          {
+            id: "backdrop:moon",
+            name: "Luna",
+            kind: "backdrop",
+            tags: [],
+            source: "builtin:kids-gallery-backdrop:moon",
+          },
+        ]}
+        selectedActorId="actor:nova"
+        backdropId="backdrop:moon"
+        onSelectActor={() => undefined}
+        onCostume={() => undefined}
+        onBackdrop={() => undefined}
+      />,
+    );
+    expect(markup).toContain("Personajes");
+    expect(markup).toContain("Disfraces");
+    expect(markup).toContain("Fondos");
+    expect(markup.match(/<img/g)).toHaveLength(3);
+    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(3);
+  });
   it("renders shared gallery art and rejects remote or unknown image sources", () => {
     const costume = {
       id: "costume:nova",
@@ -80,6 +126,7 @@ describe("studio-ui", () => {
     expect(html).toContain('class="studio-evidence"');
     expect(html).toContain('class="ori-header"');
     expect(html).toContain('class="studio-tools"');
+    expect(html).toContain("Escena");
     expect(html).toContain("Arrastrá al programa o hacé clic para agregar.");
     expect(html.indexOf('class="studio-tools"')).toBeLessThan(
       html.indexOf('class="studio-program"'),
@@ -94,7 +141,7 @@ describe("studio-ui", () => {
     expect(html).toContain("Ejecuta o avanza el programa");
     expect(html).toContain("Que queres crear?");
     expect(html).toContain("Bloques");
-    expect(html).toContain("Mover [N] pasos");
+    expect(html).toContain("Mover");
     expect(html).toContain("Abri un proyecto para empezar a construir.");
     expect(html).toContain("Explicar");
     expect(html).toContain("Depurar");
@@ -151,6 +198,8 @@ describe("studio-ui", () => {
     expect(palette).toContain("Control");
     expect(palette).toContain("Sensing");
     expect(palette).toContain("move steps");
+    expect(palette).toContain('data-tone="motion"');
+    expect(palette).toContain('data-shape="container"');
     expect(palette).not.toContain("when run starts");
     expect(palette).toContain("Touching the goal?");
     expect(palette).toContain("disabled");
@@ -158,6 +207,8 @@ describe("studio-ui", () => {
     const canvas = renderToStaticMarkup(
       <Canvas workspace={workspace} onIntent={() => undefined} />,
     );
+    expect(canvas).toContain('data-tone="motion"');
+    expect(canvas).toContain('data-shape="container"');
     // Roving tabindex: one tab stop for the whole canvas, the rest reachable with arrow keys.
     expect(canvas.match(/role="group"[^>]*tabindex="0"/g)).toHaveLength(1);
     expect(canvas).toContain("aria-keyshortcuts");

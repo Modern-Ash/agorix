@@ -11,6 +11,7 @@ import type { AmbientHintView, GhostChange } from "@agorix/studio-protocol";
 import { dropPointFor, locationKey, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
+import { visualBlock, visualLabel } from "./visualBlocks.js";
 
 const DRAG_TYPE = "application/x-agorix-drag";
 
@@ -267,9 +268,14 @@ export function Canvas({
         const isSel = sync?.selectedBlockId === block.id;
         const isExec = sync?.executingBlockId === block.id;
         const isFail = sync?.failedBlockId === block.id;
+        const visual = visualBlock(block.type);
         const fieldEntries = Object.entries(block.fields);
         const fields = fieldEntries
-          .filter(([, value]) => typeof value !== "number")
+          .filter(
+            ([name, value]) =>
+              typeof value !== "number" &&
+              !(typeof value === "string" && ["text", "message", "key"].includes(name)),
+          )
           .map(([name, value]) => `${fieldLabel(name, copy)}: ${String(value)}`)
           .join(", ");
         return (
@@ -278,6 +284,8 @@ export function Canvas({
             role="group"
             tabIndex={isTabbable ? 0 : -1}
             data-pos={pos}
+            data-tone={visual.tone}
+            data-shape={visual.shape}
             draggable
             title={copy.dragBlock}
             aria-label={copy.blockPosition(label, index + 1, block.siblingCount, row.depth + 1)}
@@ -333,20 +341,25 @@ export function Canvas({
               title={`${label}${fields === "" ? "" : ` (${fields})`}`}
               onClick={() => onIntent({ type: "revealNode", nodeId: block.id })}
             >
-              {label}
+              {visualLabel(label)}
               {fields === "" ? "" : ` (${fields})`}
             </span>
             {fieldEntries
-              .filter(([, value]) => typeof value === "number")
+              .filter(
+                ([name, value]) =>
+                  typeof value === "number" ||
+                  (typeof value === "string" && ["text", "message", "key"].includes(name)),
+              )
               .map(([name, value]) => (
                 <label key={name} className="block-field">
                   <span>{fieldLabel(name, copy)}</span>
                   <input
                     key={`${pos}:${name}:${value}`}
-                    type="number"
+                    type={typeof value === "number" ? "number" : "text"}
+                    maxLength={typeof value === "string" ? 160 : undefined}
                     tabIndex={isTabbable ? 0 : -1}
                     aria-label={`${label}: ${fieldLabel(name, copy)}`}
-                    defaultValue={value as number}
+                    defaultValue={value as string | number}
                     draggable={false}
                     onDragStart={(event) => event.stopPropagation()}
                     onKeyDown={(event) => {
@@ -355,6 +368,18 @@ export function Canvas({
                     }}
                     onBlur={(event) => {
                       const raw = event.currentTarget.value.trim();
+                      if (typeof value === "string") {
+                        if (raw !== value) {
+                          onIntent({
+                            type: "setTextField",
+                            location: block.location,
+                            field: name,
+                            value: raw,
+                          });
+                          event.currentTarget.value = value;
+                        }
+                        return;
+                      }
                       const number = Number(raw);
                       if (raw === "" || !Number.isFinite(number)) {
                         event.currentTarget.value = String(value);

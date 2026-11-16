@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { POC_TOOLBOX, getBlockDefinition, type BlockType } from "@agorix/block-editor";
 import { dragPayload } from "./drag.js";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
+import { visualBlock, visualLabel } from "./visualBlocks.js";
 
 function sectionLabel(name: string, copy: StudioUiCopy): string {
   if (name === "Move") return copy.paletteMotion;
@@ -49,6 +50,7 @@ export function Palette({
         <section key={section.name} className="palette-section">
           <h2>{section.name}</h2>
           {section.blocks.map((block) => {
+            const visual = visualBlock(block.type);
             const canInsertInScript = block.placement === "statement";
             const labels: Readonly<Record<string, string>> = copy.blockLabels;
             const accessibleNames: Readonly<Record<string, string>> = copy.blockAccessibleNames;
@@ -57,6 +59,8 @@ export function Palette({
             return (
               <button
                 key={block.type}
+                data-tone={visual.tone}
+                data-shape={visual.shape}
                 type="button"
                 disabled={!canInsertInScript}
                 draggable={canInsertInScript}
@@ -79,7 +83,10 @@ export function Palette({
                 }}
               >
                 <span className="palette-grip" aria-hidden="true" />
-                <span>{label}</span>
+                <span className="palette-block-label">{visualLabel(label)}</span>
+                <span className="palette-block-symbol" aria-hidden="true">
+                  {visual.shape === "container" ? "⌄" : visual.shape === "reporter" ? "◈" : "▸"}
+                </span>
               </button>
             );
           })}

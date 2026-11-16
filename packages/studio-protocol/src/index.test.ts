@@ -6,6 +6,19 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("validates scene selection messages and rejects forged backdrop ids", () => {
+    expect(
+      parseUiMessage({ schema, type: "updateStage", backdropId: "backdrop:moon" }),
+    ).toMatchObject({ type: "updateStage", backdropId: "backdrop:moon" });
+    expect(
+      parseUiMessage({ schema, type: "updateStage", backdropId: "https://example.com/a" }),
+    ).toBeUndefined();
+    expect(parseHostMessage({ schema, type: "scene", backdropId: "backdrop:moon" })).toMatchObject({
+      type: "scene",
+      backdropId: "backdrop:moon",
+    });
+    expect(parseHostMessage({ schema, type: "scene", backdropId: "../bad" })).toBeUndefined();
+  });
   it("accepts only bounded local image sources in asset messages", () => {
     const asset = {
       id: "costume:nova",
@@ -95,6 +108,18 @@ describe("studio-protocol", () => {
     }
     expect(
       parseUiMessage({ schema, type: "intent", intent: { ...valid.intent, field: "__proto__" } }),
+    ).toBeUndefined();
+  });
+
+  it("validates text edits without accepting oversized or forged field names", () => {
+    const location = { container: script, index: 0 };
+    const intent = { type: "setTextField", location, field: "text", value: "Hola" };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, value: "x".repeat(161) } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, field: "__proto__" } }),
     ).toBeUndefined();
   });
 

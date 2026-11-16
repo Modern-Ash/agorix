@@ -10,6 +10,7 @@ import {
 } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import { Canvas, type FocusRequest } from "./Canvas.js";
+import { SceneLibrary } from "./SceneLibrary.js";
 import { Workbench } from "./Workbench.js";
 import type { HostBridge } from "./bridge.js";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
@@ -91,6 +92,65 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("selects a costume and backdrop explicitly from the scene library", () => {
+    const costumes: string[] = [];
+    const backdrops: string[] = [];
+    act(() =>
+      root.render(
+        <SceneLibrary
+          copy={copyFor("en")}
+          actors={[
+            {
+              id: "actor:nova",
+              name: "Nova",
+              x: 0,
+              y: 0,
+              direction: 0,
+              size: 100,
+              visible: true,
+              costumeId: "costume:nova",
+            },
+          ]}
+          assets={[
+            {
+              id: "costume:nova",
+              name: "Nova",
+              kind: "costume",
+              tags: [],
+              source: "builtin:kids-gallery-costume:nova",
+            },
+            {
+              id: "costume:mika",
+              name: "Mika",
+              kind: "costume",
+              tags: [],
+              source: "builtin:kids-gallery-costume:mika",
+            },
+            {
+              id: "backdrop:moon",
+              name: "Moon",
+              kind: "backdrop",
+              tags: [],
+              source: "builtin:kids-gallery-backdrop:moon",
+            },
+          ]}
+          selectedActorId="actor:nova"
+          backdropId="backdrop:moon"
+          onSelectActor={() => undefined}
+          onCostume={(actorId, id) => costumes.push(`${actorId}:${id}`)}
+          onBackdrop={(id) => backdrops.push(id)}
+        />,
+      ),
+    );
+    act(() =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Choose costume: Mika"]')?.click(),
+    );
+    act(() =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Choose backdrop: Moon"]')?.click(),
+    );
+    expect(costumes).toEqual(["actor:nova:costume:mika"]);
+    expect(backdrops).toEqual(["backdrop:moon"]);
+  });
   it("lets the learner edit a numeric block value in place", () => {
     const intents: Intent[] = [];
     render(initial, { onIntent: (intent) => intents.push(intent) });
@@ -116,6 +176,30 @@ describe("canvas keyboard and screen reader behaviour", () => {
     });
     expect(input?.value).toBe("3");
     expect(intents).toHaveLength(1);
+  });
+
+  it("lets the learner edit visible text on a visual block", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: { id: "say:1", type: "looks_say", fields: { text: "Hello" } },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const input = host.querySelector<HTMLInputElement>('.block-field input[type="text"]');
+    expect(input?.value).toBe("Hello");
+    act(() => {
+      input!.value = "Hola";
+      input!.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setTextField",
+      location: { container: script, index: 0 },
+      field: "text",
+      value: "Hola",
+    });
+    expect(input?.value).toBe("Hello");
   });
 
   it("asks Ori about the chosen block with one explicit action", () => {
@@ -304,7 +388,7 @@ describe("workbench live region and focus after inserting from the palette", () 
       }),
     );
     const tool = Array.from(host.querySelectorAll<HTMLButtonElement>(".palette button")).find(
-      (button) => button.textContent?.includes("Mover [N] pasos"),
+      (button) => button.textContent?.includes("Mover"),
     );
     const slot = host.querySelector<HTMLElement>(".slot.is-empty");
     expect(tool?.draggable).toBe(true);
