@@ -152,7 +152,10 @@ export type Intent =
         | "add"
         | "subtract"
         | "multiply"
-        | "divide";
+        | "divide"
+        | "modulo"
+        | "random"
+        | "randomInteger";
       readonly referenceId?: string;
       readonly itemIndex?: number;
     }
@@ -160,7 +163,7 @@ export type Intent =
       readonly type: "setArithmeticOperand";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
-      readonly side: "left" | "right";
+      readonly side: "left" | "right" | "min" | "max";
       readonly value: number;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
@@ -375,12 +378,24 @@ export function intentToChange(
         case "subtract":
         case "multiply":
         case "divide":
+        case "modulo":
           replacement = {
             id: current.id,
             type: `operator_${intent.reporter}`,
             inputs: {
               left: { id: `${current.id}:left`, type: "literal_number", fields: { value: 0 } },
               right: { id: `${current.id}:right`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
+          break;
+        case "random":
+        case "randomInteger":
+          replacement = {
+            id: current.id,
+            type: intent.reporter === "random" ? "operator_random" : "operator_random_integer",
+            inputs: {
+              min: { id: `${current.id}:min`, type: "literal_number", fields: { value: 1 } },
+              max: { id: `${current.id}:max`, type: "literal_number", fields: { value: 10 } },
             },
           };
           break;
@@ -408,9 +423,23 @@ export function intentToChange(
       if (
         expression === undefined ||
         Array.isArray(expression) ||
-        !["operator_add", "operator_subtract", "operator_multiply", "operator_divide"].includes(
-          expression.type,
-        )
+        ![
+          "operator_add",
+          "operator_subtract",
+          "operator_multiply",
+          "operator_divide",
+          "operator_modulo",
+          "operator_random",
+          "operator_random_integer",
+        ].includes(expression.type)
+      )
+        return undefined;
+      const range =
+        expression.type === "operator_random" || expression.type === "operator_random_integer";
+      if (
+        range
+          ? intent.side !== "min" && intent.side !== "max"
+          : intent.side !== "left" && intent.side !== "right"
       )
         return undefined;
       const operand = expression.inputs?.[intent.side];

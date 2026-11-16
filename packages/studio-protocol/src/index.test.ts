@@ -333,13 +333,29 @@ describe("studio-protocol", () => {
         intent: { ...intent, reporter: "add", referenceId: undefined, itemIndex: undefined },
       }),
     ).toMatchObject({ intent: { reporter: "add" } });
+    for (const reporter of ["divide", "modulo", "random", "randomInteger"]) {
+      expect(
+        parseUiMessage({
+          schema,
+          type: "intent",
+          intent: { ...intent, reporter, referenceId: undefined, itemIndex: undefined },
+        }),
+      ).toMatchObject({ intent: { reporter } });
+      expect(
+        parseUiMessage({
+          schema,
+          type: "intent",
+          intent: { ...intent, reporter, referenceId: "v", itemIndex: undefined },
+        }),
+      ).toBeUndefined();
+    }
     expect(
       parseUiMessage({
         schema,
         type: "intent",
-        intent: { ...intent, reporter: "divide", referenceId: "v", itemIndex: undefined },
+        intent: { type: "setArithmeticOperand", location, input: "value", side: "max", value: 10 },
       }),
-    ).toBeUndefined();
+    ).toMatchObject({ intent: { side: "max" } });
     expect(
       parseUiMessage({
         schema,
