@@ -60,8 +60,27 @@ test("a program with a block the text cannot read stays editable with blocks onl
   page,
 }) => {
   await openScene(page);
-  await page.getByRole("button", { name: "+ Ir a un lugar al azar", exact: true }).click();
+  await page.getByRole("button", { name: "+ Crear copias" }).click();
   await page.getByRole("button", { name: "Código", exact: true }).click();
   await expect(page.getByRole("button", { name: "Editar el texto" })).toHaveCount(0);
   await expect(page.locator(".kids-code-edit")).toContainText("editalo con bloques");
+});
+
+test("the text can use pen, music, motion and looks blocks, and the packs follow", async ({
+  page,
+}) => {
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Código", exact: true }).click();
+  await page.getByRole("button", { name: "Editar el texto" }).click();
+  const box = page.getByRole("textbox", { name: "Texto del programa" });
+  await box.fill(
+    "when start\n  pen down\n  set pen color red\n  move 40\n  play note 60 for 1 beats\n  set size to 150\n  bounce on edge\n",
+  );
+  await expect(page.getByTestId("code-edit-status")).toContainText("Se entiende");
+  await page.getByRole("button", { name: "Aplicar" }).click();
+  await expect(page.locator(".kids-code-strip")).toContainText("pen down");
+  await expect(page.locator(".kids-code-strip")).toContainText("play note 60 for 1 beats");
+  await page.getByRole("button", { name: "Bloques", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(6);
 });
