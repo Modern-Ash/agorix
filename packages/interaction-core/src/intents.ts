@@ -141,7 +141,14 @@ export type Intent =
       readonly type: "setNumericInput";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
-      readonly reporter: "number" | "variable" | "listLength" | "listItem";
+      readonly reporter:
+        | "number"
+        | "variable"
+        | "listLength"
+        | "listItem"
+        | "xPosition"
+        | "yPosition"
+        | "distanceToActor";
       readonly referenceId?: string;
       readonly itemIndex?: number;
     }
@@ -336,6 +343,21 @@ export function intentToChange(
                 fields: { value: intent.itemIndex ?? 1 },
               },
             },
+          };
+          break;
+        case "xPosition":
+        case "yPosition":
+          replacement = {
+            id: current.id,
+            type: intent.reporter === "xPosition" ? "sensing_x_position" : "sensing_y_position",
+          };
+          break;
+        case "distanceToActor":
+          if (!isSafeId(intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "sensing_distance_to_actor",
+            fields: { actorId: intent.referenceId },
           };
           break;
       }

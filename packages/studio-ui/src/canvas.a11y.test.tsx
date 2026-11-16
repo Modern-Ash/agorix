@@ -207,6 +207,8 @@ describe("canvas keyboard and screen reader behaviour", () => {
     )!;
     expect(Array.from(source.options).map((option) => option.value)).toEqual([
       "number",
+      "xPosition",
+      "yPosition",
       "variable",
       "listLength",
       "listItem",
@@ -220,6 +222,52 @@ describe("canvas keyboard and screen reader behaviour", () => {
       input: "value",
       reporter: "listLength",
       referenceId: "l",
+    });
+  });
+  it("offers an actor distance reporter through a named actor selector", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: { type: "numericLiteral", value: 0 },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    const actors = [
+      { id: "actor:nova", name: "Nova", x: 0, y: 0, direction: 0, size: 100, visible: true },
+      { id: "actor:robot", name: "Robot", x: 20, y: 0, direction: 0, size: 100, visible: true },
+    ];
+    act(() =>
+      root.render(
+        <Canvas
+          workspace={workspace}
+          actors={actors}
+          onIntent={(intent) => intents.push(intent)}
+        />,
+      ),
+    );
+    const source = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="source"]',
+    )!;
+    expect(Array.from(source.options).map((option) => option.value)).toContain("distanceToActor");
+    act(() => {
+      source.value = "distanceToActor";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setNumericInput",
+      reporter: "distanceToActor",
+      referenceId: "actor:nova",
     });
   });
   it("labels an existing arithmetic expression instead of presenting it as a number", () => {

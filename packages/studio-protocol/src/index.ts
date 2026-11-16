@@ -1089,12 +1089,24 @@ function parseIntent(value: unknown): Intent | undefined {
         (reporter !== "number" &&
           reporter !== "variable" &&
           reporter !== "listLength" &&
-          reporter !== "listItem")
+          reporter !== "listItem" &&
+          reporter !== "xPosition" &&
+          reporter !== "yPosition" &&
+          reporter !== "distanceToActor")
       )
         return undefined;
-      if (reporter === "number" && (referenceId !== undefined || itemIndex !== undefined))
+      if (
+        (reporter === "number" || reporter === "xPosition" || reporter === "yPosition") &&
+        (referenceId !== undefined || itemIndex !== undefined)
+      )
         return undefined;
-      if (reporter !== "number" && !isSafeId(referenceId)) return undefined;
+      if (
+        reporter !== "number" &&
+        reporter !== "xPosition" &&
+        reporter !== "yPosition" &&
+        !isSafeId(referenceId)
+      )
+        return undefined;
       if (reporter !== "listItem" && itemIndex !== undefined) return undefined;
       if (reporter === "listItem" && itemIndex !== undefined && !isFiniteNumber(itemIndex))
         return undefined;

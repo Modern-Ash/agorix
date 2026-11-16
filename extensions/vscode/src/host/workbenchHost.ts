@@ -456,6 +456,17 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
             ];
           }
         }
+        if (intent.type === "setNumericInput" && intent.reporter === "distanceToActor") {
+          const metadata = port.getMetadata();
+          if (
+            metadata === undefined ||
+            !actorsForMetadata(metadata).items.some((actor) => actor.id === intent.referenceId)
+          ) {
+            return [
+              { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+            ];
+          }
+        }
         try {
           const { workspace } = programToWorkspace(program);
           const change = intentToChange(intent, newBlockId, workspace);

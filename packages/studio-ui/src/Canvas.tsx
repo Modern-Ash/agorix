@@ -513,9 +513,19 @@ export function Canvas({
                       ? "listItem"
                       : operand.type === "literal_number"
                         ? "number"
-                        : "other";
+                        : operand.type === "sensing_x_position"
+                          ? "xPosition"
+                          : operand.type === "sensing_y_position"
+                            ? "yPosition"
+                            : operand.type === "sensing_distance_to_actor"
+                              ? "distanceToActor"
+                              : "other";
               const referenceId =
-                reporter === "variable" ? operand.fields?.variableId : operand.fields?.listId;
+                reporter === "variable"
+                  ? operand.fields?.variableId
+                  : reporter === "distanceToActor"
+                    ? operand.fields?.actorId
+                    : operand.fields?.listId;
               const operandLabel =
                 input === "index"
                   ? copy.listIndex
@@ -525,7 +535,14 @@ export function Canvas({
                       ? copy.listValue
                       : copy.variableValue;
               const choose = (
-                nextReporter: "number" | "variable" | "listLength" | "listItem",
+                nextReporter:
+                  | "number"
+                  | "variable"
+                  | "listLength"
+                  | "listItem"
+                  | "xPosition"
+                  | "yPosition"
+                  | "distanceToActor",
                 nextReference?: string,
                 nextIndex?: number,
               ) =>
@@ -547,19 +564,32 @@ export function Canvas({
                       value={reporter}
                       onChange={(event) => {
                         const next = event.currentTarget.value as
-                          "number" | "variable" | "listLength" | "listItem";
+                          | "number"
+                          | "variable"
+                          | "listLength"
+                          | "listItem"
+                          | "xPosition"
+                          | "yPosition"
+                          | "distanceToActor";
                         choose(
                           next,
                           next === "variable"
                             ? workspace.variables?.[0]?.id
                             : next === "listLength" || next === "listItem"
                               ? workspace.lists?.[0]?.id
-                              : undefined,
+                              : next === "distanceToActor"
+                                ? actors[0]?.id
+                                : undefined,
                         );
                       }}
                       onKeyDown={(event) => event.stopPropagation()}
                     >
                       <option value="number">{copy.numericLiteral}</option>
+                      <option value="xPosition">{copy.positionX}</option>
+                      <option value="yPosition">{copy.positionY}</option>
+                      {actors.length > 0 ? (
+                        <option value="distanceToActor">{copy.distanceToActor}</option>
+                      ) : null}
                       {reporter === "other" ? (
                         <option value="other">
                           {getBlockDefinition(operand.type)?.label ?? operand.type}
@@ -602,6 +632,23 @@ export function Canvas({
                         event.currentTarget.value = String(operand.fields?.value);
                       }}
                     />
+                  ) : null}
+                  {reporter === "distanceToActor" ? (
+                    <label>
+                      <span>{copy.conditionActor}</span>
+                      <select
+                        aria-label={`${label}: ${operandLabel} ${copy.conditionActor}`}
+                        value={String(referenceId ?? "")}
+                        onChange={(event) => choose("distanceToActor", event.currentTarget.value)}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        {actors.map((actor) => (
+                          <option key={actor.id} value={actor.id}>
+                            {actor.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   ) : null}
                   {reporter === "variable" ||
                   reporter === "listLength" ||
