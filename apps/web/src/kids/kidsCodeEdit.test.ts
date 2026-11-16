@@ -92,6 +92,40 @@ describe("editing the program as Agorix Code", () => {
     }
   });
 
+  it("is editable with a custom block and its calls, and applies an edit to the call", () => {
+    const withBlock = validateStudioProgram({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "studio-actor-1-nova",
+          trigger: flag,
+          procedures: [
+            {
+              id: "proc-1-1",
+              name: "Paso",
+              params: [{ id: "p1", name: "largo" }],
+              body: [{ type: "move", steps: 40, stepsFrom: "p1" }],
+            },
+          ],
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc-1-1",
+              args: [{ type: "numericLiteral", value: 40 }],
+            },
+          ],
+        },
+      ],
+    } as never);
+    expect(agorixCodeEditable(withBlock)).toBe(true);
+    const edited = applyAgorixCode(
+      projectAgorixCode(withBlock).text.replace("call Paso with 40", "call Paso with 80"),
+      withBlock,
+    );
+    expect(edited.ok).toBe(true);
+    if (edited.ok) expect(JSON.stringify(edited.program)).toContain('"value":80');
+  });
+
   it("applies an edit and keeps what it did not touch", () => {
     const base = program([
       { type: "move", steps: 40 },

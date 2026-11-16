@@ -12,6 +12,8 @@ export interface ExpressionNames {
   readonly textId: (name: string) => string | undefined;
   /** The id of a list of this name, if one is declared. */
   readonly listId?: (name: string) => string | undefined;
+  /** The numbers the custom block being read received, with their ids; none outside a block. */
+  readonly params?: () => readonly { readonly name: string; readonly id: string }[];
 }
 
 export class ExpressionError extends Error {}
@@ -243,6 +245,11 @@ class Cursor {
       if (match === null) throw new ExpressionError("expected a part of the clock");
       this.position += match[0].length;
       return { type: "currentTime", part: match[0] } as unknown as Expression;
+    }
+    // A number a custom block received, written as its name.
+    const params = [...(this.names.params?.() ?? [])].sort((a, b) => b.name.length - a.name.length);
+    for (const param of params) {
+      if (this.take(param.name)) return { type: "param", paramId: param.id } as Expression;
     }
     // A math function (`round 3`, `sqrt 9`) and the words that stand alone.
     const word = /^[A-Za-z0-9]+/.exec(this.text.slice(this.position))?.[0];
