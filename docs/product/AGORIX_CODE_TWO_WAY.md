@@ -27,8 +27,11 @@ A model could help later in a narrow way: explaining a syntax error in words. Th
 - Anything else is **refused with a code and a line number** (`unknownLine`, `badIndent`, `badNumber`, `badText`, `unknownName`, `elseWithoutIf`, `emptyBody`, `tooDeep`, `tooLong`, `notValid`, `emptyText`), never guessed. A program that uses more than the subset stays editable with blocks; the text view of it stays read-only.
 - Limits: 20,000 characters, 400 lines, 12 levels deep, checked before anything is read.
 
+## The editable Code tab (built)
+
+In the Agorix Code tab of the Studio, "Editar el texto" opens the text. It says "Se entiende" or the first problem as "Línea N: …" (es and en), and "Aplicar" is on only when the text reads into a program the scene accepts; it is applied as one undoable step (`recordCanonicalTransaction`). The button is offered only when the program is editable as text: reading the text it is shown as must give back exactly the program, so an edit can never drop a block the text did not show. Otherwise the tab says to edit with blocks. A variable typed by hand gets the next free `studio-var-N`; changing which characters exist is not possible from text (a script the scene has no character for is refused as `notValid`).
+
 ## Next
 
-1. An editable Code tab: type, see the error codes in the learner's language beside the line, and apply the text as one undoable step when it parses (only for programs whose every block is in the subset).
-2. Widen the subset a block family at a time (sounds, pen, lists, custom blocks, sensors), each with the round-trip test on every statement it adds.
-3. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.
+1. Widen the subset a block family at a time (sounds, pen, lists, custom blocks, sensors), each with the round-trip test on every statement it adds.
+2. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.
