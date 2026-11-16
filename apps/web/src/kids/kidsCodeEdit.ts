@@ -52,6 +52,10 @@ const MESSAGES: Readonly<Record<AgorixCodeErrorCode, readonly [string, string]>>
   ],
   badNumber: ["Acá va un número.", "A number goes here."],
   badText: ["Acá va un texto entre comillas.", "A text in quotes goes here."],
+  badExpression: [
+    "No entiendo esta cuenta o condición. Las operaciones van entre paréntesis.",
+    "I do not understand this calculation or condition. Operations go in brackets.",
+  ],
   unknownName: ["Ese nombre no está declarado arriba.", "That name is not declared above."],
   elseWithoutIf: ["«else» va justo después de un «if».", "“else” goes right after an “if”."],
   emptyBody: ["Esta línea necesita bloques adentro.", "This line needs blocks inside it."],

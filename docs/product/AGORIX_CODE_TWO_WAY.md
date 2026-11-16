@@ -35,9 +35,13 @@ In the Agorix Code tab of the Studio, "Editar el texto" opens the text. It says 
 
 The parser now also reads every block whose parts are only words and numbers: motion (`bounce on edge`, `point in direction`, `point towards`, `set/change x/y`, `glide to`, `go to random position | mouse pointer | "actor"` and the `glide N secs to` forms, `set rotation style`, the layer blocks), looks (`set/change size`, `switch costume/backdrop`, graphic effects), sound (`play sound`, `stop all sounds`, volume), `stop`, `reset timer`, `delete this clone`, `show`/`hide` of a variable, the whole pen pack and the whole music pack, and the other hats (`when actor clicked`, `when backdrop switches to`, `when N seconds have passed`, `when I start as a clone`, `when loudness is over`). A script that uses the pen or music blocks declares the pack itself. Every one has a round-trip test (program to text to the same program), and the canonical validator still judges each value (a colour, a drum, a size the scene offers).
 
-Still block-only, and therefore a program that has one is not offered for text editing: expressions (arithmetic, comparisons, sensors in conditions beyond a key), lists, custom blocks and their calls, ask blocks, `broadcast`, `next costume`, copies, `repeat until`, `wait until`, and text variables. Several of these the text view does not even show yet.
+## Conditions and expressions (built)
+
+Expressions are read by `parseExpression`. Every operation with two sides is written inside brackets, so there is no precedence to guess: `(score + 2)`, `(score > 3)`, `((a > 1) and not key Space is down)`. A quoted word is a variable when one of that name is declared, and a piece of text otherwise (a text that equals a variable's name would read back as the variable, and then the program is not offered for text editing, because the round trip would not be exact). Understood: arithmetic and `mod`, comparisons and `=`, `and`, `or`, `not`, `join`, `length of`, `letter N of`, `contains`, the math functions, `random` and `random whole number`, the number and word variables (and `stage` ones, with `text "name" = "words"`), the sensors (`key K is down`, `touching goal | mouse | "actor" | color C | edge`, `mouse is down`, distances, positions, timer, loudness, costume and backdrop number, the clock), used in `set`, `change`, `if`/`else`, `repeat until`, `wait until` and `say ... + expression`. A line the reader cannot make sense of is `badExpression` with its line, and a bracket left open is named as such.
+
+Still block-only, and therefore a program that has one is not offered for text editing: lists and their blocks and reporters, custom blocks and their calls, ask blocks, `broadcast`, `next costume`, copies, and a property of another character. Several of these the text view does not even show yet.
 
 ## Next
 
-1. Widen again: conditions and expressions, then lists, then custom blocks, each with its round-trip test.
+1. Widen again: lists, then custom blocks, each with its round-trip test.
 2. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.

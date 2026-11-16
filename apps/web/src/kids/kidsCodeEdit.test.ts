@@ -32,6 +32,45 @@ describe("editing the program as Agorix Code", () => {
     ).toBe(true);
   });
 
+  it("is editable with calculations and conditions, and applies an edit to one", () => {
+    const base = validateStudioProgram({
+      schema: "agorix/program/v1",
+      variables: [{ id: "studio-var-1", name: "puntos", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "studio-actor-1-nova",
+          trigger: flag,
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "studio-var-1",
+              value: {
+                type: "add",
+                left: { type: "variable", variableId: "studio-var-1" },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+            {
+              type: "if",
+              condition: {
+                type: "greaterThan",
+                left: { type: "variable", variableId: "studio-var-1" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+              then: [{ type: "show" }],
+            },
+          ],
+        },
+      ],
+    } as never);
+    expect(agorixCodeEditable(base)).toBe(true);
+    const edited = projectAgorixCode(base).text.replace('("puntos" > 1)', '("puntos" > 5)');
+    const result = applyAgorixCode(edited, base);
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(JSON.stringify(result.program.scripts[0]!.statements[1])).toContain('"value":5');
+  });
+
   it("applies an edit and keeps what it did not touch", () => {
     const base = program([
       { type: "move", steps: 40 },

@@ -1,3 +1,4 @@
+import { ExpressionError, parseExpression, type ExpressionNames } from "./parseExpression.js";
 import {
   validateProgram,
   ProgramValidationError,
@@ -26,6 +27,7 @@ export type AgorixCodeErrorCode =
   | "badIndent"
   | "badNumber"
   | "badText"
+  | "badExpression"
   | "unknownName"
   | "elseWithoutIf"
   | "emptyBody"
@@ -256,7 +258,25 @@ class Reader {
   constructor(
     private readonly all: readonly Line[],
     private readonly variableIds: ReadonlyMap<string, string>,
+    private readonly textIds: ReadonlyMap<string, string>,
   ) {}
+
+  private get names(): ExpressionNames {
+    return {
+      numberId: (name) => this.variableIds.get(name),
+      textId: (name) => this.textIds.get(name),
+    };
+  }
+
+  /** One expression, read from the rest of a line. */
+  expr(text: string, line: number): Expression {
+    try {
+      return parseExpression(text, this.names);
+    } catch (error) {
+      if (error instanceof ExpressionError) return refuse("badExpression", line);
+      throw error;
+    }
+  }
 
   get done(): boolean {
     return this.position >= this.all.length;
@@ -302,43 +322,47 @@ class Reader {
       return { type: "wait", seconds: numberOf(m[1]!, line.n) };
     if (t === "show") return { type: "show" };
     if (t === "hide") return { type: "hide" };
-    if ((m = /^(say|think) ("(?:[^"\\]|\\.)*")(?: for (\S+) seconds)?$/.exec(t))) {
+    if ((m = /^(say|think) ("(?:[^"\\]|\\.)*")(?: \+ (.+?))?(?: for (\S+) seconds)?$/.exec(t))) {
       const text = quoted(m[2]!, line.n);
       return {
         type: m[1] as "say" | "think",
         text,
-        ...(m[3] === undefined ? {} : { seconds: numberOf(m[3], line.n) }),
+        ...(m[3] === undefined ? {} : { append: this.expr(m[3], line.n) }),
+        ...(m[4] === undefined ? {} : { seconds: numberOf(m[4], line.n) }),
       };
     }
-    if ((m = /^set ("(?:[^"\\]|\\.)*") to (\S+)$/.exec(t)))
-      return {
-        type: "setVariable",
-        variableId: this.variable(m[1]!, line.n),
-        value: this.number(m[2]!, line.n),
-      };
-    if ((m = /^change ("(?:[^"\\]|\\.)*") by (\S+)$/.exec(t)))
+    if ((m = /^set ("(?:[^"\\]|\\.)*") to (.+)$/.exec(t))) {
+      const name = quoted(m[1]!, line.n);
+      const value = this.expr(m[2]!, line.n);
+      const numberId = this.variableIds.get(name);
+      if (numberId !== undefined) return { type: "setVariable", variableId: numberId, value };
+      const textId = this.textIds.get(name);
+      if (textId !== undefined) return { type: "setText", variableId: textId, value };
+      return refuse("unknownName", line.n);
+    }
+    if ((m = /^change ("(?:[^"\\]|\\.)*") by (.+)$/.exec(t)))
       return {
         type: "changeVariable",
         variableId: this.variable(m[1]!, line.n),
-        delta: this.number(m[2]!, line.n),
+        delta: this.expr(m[2]!, line.n),
       };
+    if ((m = /^repeat until (.+)$/.exec(t)))
+      return { type: "repeatUntil", condition: this.expr(m[1]!, line.n), body: this.block(line) };
+    if ((m = /^wait until (.+) \(up to 10 seconds\)$/.exec(t)))
+      return { type: "waitUntil", condition: this.expr(m[1]!, line.n) };
     if ((m = /^repeat (\S+) times$/.exec(t)))
       return { type: "repeat", count: numberOf(m[1]!, line.n), body: this.block(line) };
     if (/^forever(?: \(bounded by run budget\))?$/.test(t))
       return { type: "forever", body: this.block(line) };
-    if ((m = /^if key (\S+) is down$/.exec(t))) {
+    if ((m = /^if (.+)$/.exec(t))) {
+      const condition = this.expr(m[1]!, line.n);
       const then = this.block(line);
       const next = this.peek();
       if (next !== undefined && next.depth === line.depth && next.text === "else") {
         const elseLine = this.take();
-        return {
-          type: "if",
-          condition: { type: "keyDown", key: m[1]! },
-          then,
-          else: this.block(elseLine),
-        };
+        return { type: "if", condition, then, else: this.block(elseLine) };
       }
-      return { type: "if", condition: { type: "keyDown", key: m[1]! }, then };
+      return { type: "if", condition, then };
     }
     for (const entry of SIMPLE) {
       const found = entry.pattern.exec(t);
@@ -392,33 +416,64 @@ export function parseAgorixCode(
 ): AgorixCodeParse {
   try {
     const all = lines(source);
-    const variables: { id: string; name: string; initialValue: number; visible: boolean }[] = [];
+    const variables: {
+      id: string;
+      name: string;
+      initialValue: number;
+      visible: boolean;
+      scope?: "stage";
+    }[] = [];
+    const textVariables: {
+      id: string;
+      name: string;
+      initialValue: string;
+      visible: boolean;
+      scope?: "stage";
+    }[] = [];
     const known = new Map<string, string>(
       (base?.variables ?? []).map((item) => [item.name, item.id] as const),
     );
+    const knownText = new Map<string, string>(
+      (base?.textVariables ?? []).map((item) => [item.name, item.id] as const),
+    );
     let index = 0;
-    // Declarations come first: `variable "name" = N`, then optionally `show "name"`.
-    while (index < all.length && all[index]!.depth === 0 && /^variable /.test(all[index]!.text)) {
+    // Declarations come first: `variable "name" = N` or `text "name" = "words"` (each with
+    // `stage ` in front when it is shared by the whole scene), then optionally `show "name"`.
+    while (
+      index < all.length &&
+      all[index]!.depth === 0 &&
+      /^(?:stage )?(?:variable|text) /.test(all[index]!.text)
+    ) {
       const line = all[index]!;
-      const m = /^variable ("(?:[^"\\]|\\.)*") = (\S+)$/.exec(line.text);
+      const m = /^(stage )?(variable|text) ("(?:[^"\\]|\\.)*") = (.+)$/.exec(line.text);
       if (m === null) refuse("unknownLine", line.n);
-      const name = quoted(m![1]!, line.n);
-      const taken = new Set([...known.values(), ...variables.map((item) => item.id)]);
+      const isText = m![2] === "text";
+      const name = quoted(m![3]!, line.n);
+      const scope = m![1] === undefined ? {} : { scope: "stage" as const };
+      const taken = new Set([
+        ...known.values(),
+        ...knownText.values(),
+        ...variables.map((item) => item.id),
+        ...textVariables.map((item) => item.id),
+      ]);
+      const own = isText ? knownText : known;
       const id =
-        known.get(name) ??
-        options.newVariableId?.(taken, variables.length + 1) ??
-        `var-${variables.length + 1}`;
-      known.set(name, id);
+        own.get(name) ??
+        options.newVariableId?.(taken, variables.length + textVariables.length + 1) ??
+        `${isText ? "text" : "var"}-${(isText ? textVariables : variables).length + 1}`;
+      own.set(name, id);
       let visible = false;
       const next = all[index + 1];
       if (next !== undefined && next.depth === 0 && next.text === `show ${JSON.stringify(name)}`) {
         visible = true;
         index += 1;
       }
-      variables.push({ id, name, initialValue: numberOf(m![2]!, line.n), visible });
+      if (isText)
+        textVariables.push({ id, name, initialValue: quoted(m![4]!, line.n), visible, ...scope });
+      else variables.push({ id, name, initialValue: numberOf(m![4]!, line.n), visible, ...scope });
       index += 1;
     }
-    const reader = new Reader(all.slice(index), known);
+    const reader = new Reader(all.slice(index), known, knownText);
     const scripts: Script[] = [];
     while (!reader.done) {
       const head = reader.take();
@@ -439,6 +494,7 @@ export function parseAgorixCode(
       schema: SCHEMA_VERSION,
       ...(extensions.length > 0 ? { extensions } : {}),
       ...(variables.length > 0 ? { variables } : {}),
+      ...(textVariables.length > 0 ? { textVariables } : {}),
       scripts,
     } as never);
     return { ok: true, program };
