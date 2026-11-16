@@ -32,6 +32,7 @@ export interface StudioSurfaceCommandPort {
   commitProgram(program: ProjectProgram): Promise<void>;
   getMetadata(): ProjectMetadata | undefined;
   commitMetadata(metadata: ProjectMetadata): Promise<void>;
+  commitProject(program: ProjectProgram, metadata: ProjectMetadata): Promise<void>;
   getActiveProposal(): StudioProposalSession | undefined;
   reviewProposalSession(proposal: StudioProposalSession): Promise<void>;
   revealCanonicalNode(nodeId: string): Promise<void>;
@@ -82,6 +83,10 @@ export function createStudioSurfaceCommandHandlers(
           return;
         }
         await port.commitMetadata(metadata);
+      },
+      commitProject: async (program, metadata) => {
+        if (port.requireProject() === undefined) return;
+        await port.commitProject(program, metadata);
       },
       openProposalReview: async () => {
         const proposal = port.getActiveProposal();

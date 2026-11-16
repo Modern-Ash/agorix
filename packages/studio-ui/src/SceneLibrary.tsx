@@ -11,6 +11,7 @@ export function SceneLibrary({
   onSelectActor,
   onCostume,
   onBackdrop,
+  onCreateActor,
 }: {
   readonly copy: StudioUiCopy;
   readonly actors: readonly ActorView[];
@@ -20,6 +21,7 @@ export function SceneLibrary({
   readonly onSelectActor: (id: string) => void;
   readonly onCostume: (actorId: string, costumeId: string) => void;
   readonly onBackdrop: (backdropId: string) => void;
+  readonly onCreateActor?: (name: string) => void;
 }) {
   const selected = actors.find((actor) => actor.id === selectedActorId) ?? actors[0];
   const costumes = assets.filter((asset) => asset.kind === "costume");
@@ -36,6 +38,22 @@ export function SceneLibrary({
     <div className="scene-library" aria-label={copy.libraryScene}>
       <section aria-label={copy.sceneActors}>
         <h3>{copy.sceneActors}</h3>
+        {onCreateActor === undefined ? null : (
+          <form
+            className="scene-create-actor"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const input = event.currentTarget.querySelector("input");
+              const name = input?.value.trim() ?? "";
+              if (name.length === 0) return;
+              onCreateActor(name);
+              if (input !== null) input.value = "";
+            }}
+          >
+            <input aria-label={copy.sceneActorName} maxLength={80} />
+            <button type="submit">{copy.sceneCreateActor}</button>
+          </form>
+        )}
         <div className="scene-library-grid scene-actors">
           {actors.map((actor) => (
             <button

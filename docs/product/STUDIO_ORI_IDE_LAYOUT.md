@@ -50,6 +50,10 @@ is an explicit metadata edit; the host refuses unknown asset ids and refreshes
 the deterministic stage after a change. Full image import/drawing and broader
 component coverage remain in epic #1648.
 
+Scene can create an actor with an owned green-flag script in one project write.
+Selecting an actor scopes the visible canvas and palette insertion to that
+actor’s canonical scripts; legacy projects keep their existing unscoped view.
+
 The stage itself lets the learner select a visible actor and drag it to a new
 position when execution is idle. Drop coordinates are mapped to the canonical
 viewport, bounded to its edges and sent through the same explicit actor metadata

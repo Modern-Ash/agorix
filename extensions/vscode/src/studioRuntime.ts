@@ -34,6 +34,7 @@ import { createProviderWiring } from "./providerWiring.js";
 import { registerCodeSync } from "./sync/codeSync.js";
 import { programToWorkspace } from "@agorix/block-editor";
 import type { ProjectMetadata } from "@agorix/persistence";
+import type { ProjectProgram } from "@agorix/program-model";
 import { createAgentPort } from "./host/agentPort.js";
 import { registerStudioViews } from "./views/register.js";
 import { AmbientController } from "./ambient/ambientController.js";
@@ -43,6 +44,7 @@ import { StudioSignalAdapter } from "./studioSignals.js";
 import {
   createExecutionEvidence,
   createStoredProjectWithMetadata,
+  createStoredProjectWithProgram,
   countProgramStatements,
   nodeIdsForProjectionLines,
   openProjectionDocument,
@@ -290,6 +292,31 @@ export function activate(context: vscode.ExtensionContext): void {
     afterCanonicalProgramChange();
     await projectionCommands.openProjection(session.currentProjectionId);
   };
+  const commitProject = async (
+    program: ProjectProgram,
+    metadata: ProjectMetadata,
+  ): Promise<void> => {
+    const open = requireProject();
+    if (open === undefined) return;
+    const previousRaw = serializeStoredProject(open.project.stored);
+    const stored = createStoredProjectWithMetadata(
+      createStoredProjectWithProgram(open.project.stored, program),
+      metadata,
+    );
+    const raw = serializeProjectFile(stored, open.uri.fsPath);
+    if (open.uri.scheme !== REMOTE_SCHEME) {
+      await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
+    }
+    session.current = {
+      uri: open.uri,
+      project: parseProjectFile(raw, open.uri.fsPath),
+      ...(open.remote === undefined ? {} : { remote: open.remote }),
+    };
+    session.undoStack.push({ uri: open.uri, raw: previousRaw });
+    session.redoStack.length = 0;
+    afterCanonicalProgramChange();
+    await projectionCommands.openProjection(session.currentProjectionId);
+  };
   const surfaceCommands = createStudioSurfaceCommandHandlers({
     context,
     hub,
@@ -301,6 +328,7 @@ export function activate(context: vscode.ExtensionContext): void {
     commitProgram: proposalCommands.commitProgram,
     getMetadata: () => session.current?.project.stored.metadata,
     commitMetadata,
+    commitProject,
     getActiveProposal: () => session.activeProposal,
     reviewProposalSession: proposalCommands.reviewProposalSession,
     revealCanonicalNode: selectNode,

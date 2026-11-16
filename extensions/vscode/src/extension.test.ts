@@ -542,6 +542,22 @@ describe("Studio extension wiring", () => {
     const afterActorUpdate = new TextDecoder().decode(files.get("/p/workbench.json"));
     expect(afterActorUpdate).toContain('"actors"');
     expect(JSON.parse(afterActorUpdate).metadata.stage.backdropId).toBe("asset:space.nebula");
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "createActor",
+      name: "Robot",
+    });
+    await flushWorkbench();
+    const afterCreateActor = new TextDecoder().decode(files.get("/p/workbench.json"));
+    const created = JSON.parse(afterCreateActor);
+    const robot = created.metadata.actors.items.find(
+      (actor: { name: string }) => actor.name === "Robot",
+    );
+    expect(robot.scripts).toHaveLength(1);
+    expect(
+      created.program.scripts.some((script: { id: string }) => script.id === robot.scripts[0]),
+    ).toBe(true);
+    expect(created.metadata.stage.actorOrder).toContain(robot.id);
     expect(() =>
       workbenchPanel()?.receive({
         schema: "agorix/studio-protocol/v1",
@@ -549,7 +565,7 @@ describe("Studio extension wiring", () => {
         intent: { type: "revealNode", nodeId: "/etc/passwd" },
       }),
     ).not.toThrow();
-    expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(afterActorUpdate);
+    expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(afterCreateActor);
   });
 
   it("reveals the Ori Workbench when a project is opened", async () => {

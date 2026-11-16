@@ -253,7 +253,9 @@ export function attachWorkbenchPanel(
         const result = await workbench.handle(message);
         await send(result);
         if (
-          (message.type === "updateActor" || message.type === "updateStage") &&
+          (message.type === "updateActor" ||
+            message.type === "updateStage" ||
+            message.type === "createActor") &&
           !result.some((item) => item.type === "error")
         ) {
           const refreshed = await vscode.commands.executeCommand("agorixStudio.reset");

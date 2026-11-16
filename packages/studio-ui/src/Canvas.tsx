@@ -128,6 +128,7 @@ export function Canvas({
   onAnnounce,
   focusRequest,
   selectedExpression,
+  visibleScriptIds,
 }: {
   readonly copy?: StudioUiCopy;
   readonly workspace: BlockWorkspaceSnapshot;
@@ -140,13 +141,24 @@ export function Canvas({
   readonly onAnnounce?: ((text: string) => void) | undefined;
   readonly focusRequest?: FocusRequest | undefined;
   readonly selectedExpression?: BlockType | undefined;
+  readonly visibleScriptIds?: readonly string[] | undefined;
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   const rootRef = useRef<HTMLElement | null>(null);
   const pendingFocus = useRef<string | undefined>(undefined);
   const lastNonce = useRef<number | undefined>(undefined);
   const [activeKey, setActiveKey] = useState<string | undefined>();
-  const rows = toRows(workspace);
+  const rows = toRows(workspace).filter((row) => {
+    if (visibleScriptIds === undefined) return true;
+    const scriptIndex =
+      row.kind === "script"
+        ? row.scriptIndex
+        : row.kind === "slot"
+          ? row.slot.container.scriptIndex
+          : row.block.location.container.scriptIndex;
+    const script = workspace.scripts[scriptIndex];
+    return script !== undefined && visibleScriptIds.includes(script.programId ?? script.id);
+  });
   const blockKeys = rows.flatMap((row) =>
     row.kind === "block" ? [locationKey(row.block.location)] : [],
   );

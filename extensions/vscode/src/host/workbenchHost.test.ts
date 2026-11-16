@@ -44,6 +44,11 @@ function setup(initial: ProjectProgram | null = base) {
       metadata = next;
       labels.push(label);
     },
+    commitProject: async (nextProgram, nextMetadata, label) => {
+      program = nextProgram;
+      metadata = nextMetadata;
+      labels.push(label);
+    },
     openProposalReview: vi.fn(async () => undefined),
     reveal: vi.fn(async () => undefined),
     askAgent: vi.fn(async () => undefined),
@@ -443,6 +448,24 @@ describe("workbenchHost", () => {
       )[0],
     ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(labels).toHaveLength(4);
+  });
+
+  it("creates an actor and its script in one project transaction with explicit ownership", async () => {
+    const { host, get, metadata, labels } = setup();
+    const result = await host.handle({ schema, type: "createActor", name: "Robot" });
+    const actorSet = metadata().actors!;
+    const robot = actorSet.items.find((actor) => actor.name === "Robot")!;
+    expect(robot.scripts).toHaveLength(1);
+    expect(get()?.scripts.map((script) => script.id)).toContain(robot.scripts![0]);
+    expect(actorSet.items[0]?.scripts).toEqual(base.scripts.map((script) => script.id));
+    expect(metadata().stage?.actorOrder).toContain(robot.id);
+    expect(result.find((message) => message.type === "actors")).toMatchObject({
+      selectedActorId: robot.id,
+      actors: expect.arrayContaining([
+        expect.objectContaining({ id: robot.id, scriptIds: robot.scripts }),
+      ]),
+    });
+    expect(labels).toEqual(["Workbench: create actor and script"]);
   });
 
   it("moves exactly like applying the same change through block-editor", async () => {
