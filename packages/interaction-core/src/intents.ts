@@ -20,6 +20,15 @@ export const STUDIO_CONDITION_BLOCK_TYPES = [
   "operator_less_than",
   "operator_greater_than",
   "operator_equals",
+  "operator_and",
+  "operator_or",
+  "operator_not",
+] as const satisfies readonly BlockType[];
+
+export const STUDIO_LOGICAL_OPERAND_TYPES = [
+  "literal_boolean",
+  "sensing_touching_goal",
+  "sensing_touching_stage_edge",
 ] as const satisfies readonly BlockType[];
 
 export const STUDIO_COMPARISON_BLOCK_TYPES = [
@@ -128,6 +137,18 @@ export type Intent =
       readonly type: "setConditionActor";
       readonly location: StatementLocation;
       readonly actorId: string;
+    }
+  | {
+      readonly type: "setLogicalOperand";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right" | "value";
+      readonly blockType: (typeof STUDIO_LOGICAL_OPERAND_TYPES)[number];
+    }
+  | {
+      readonly type: "setLogicalBoolean";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right" | "value";
+      readonly value: boolean;
     }
   | { readonly type: "addVariable"; readonly name: string }
   | { readonly type: "addList"; readonly name: string }
@@ -504,6 +525,39 @@ export function intentToChange(
           inputs: {
             ...block.inputs,
             condition: safeCondition,
+          },
+        },
+      };
+    }
+    case "setLogicalOperand":
+    case "setLogicalBoolean": {
+      if (workspace === undefined) return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const condition = block?.inputs?.condition;
+      if (
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
+        condition === undefined ||
+        Array.isArray(condition) ||
+        !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
+        (condition.type === "operator_not" ? intent.side !== "value" : intent.side === "value")
+      )
+        return undefined;
+      const current = condition.inputs?.[intent.side];
+      if (current === undefined || Array.isArray(current)) return undefined;
+      if (intent.type === "setLogicalBoolean" && current.type !== "literal_boolean")
+        return undefined;
+      const next =
+        intent.type === "setLogicalOperand"
+          ? { ...createDefaultBlock(intent.blockType, current.id), id: current.id }
+          : { ...current, fields: { ...current.fields, value: intent.value } };
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: { ...condition, inputs: { ...condition.inputs, [intent.side]: next } },
           },
         },
       };

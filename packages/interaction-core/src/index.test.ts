@@ -460,6 +460,72 @@ describe("interaction-core", () => {
     ).toBeUndefined();
   });
 
+  it("builds logical conditions and edits only valid Boolean operands", () => {
+    const location = { container: script, index: 0 };
+    const initial = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:logic",
+        type: "control_if",
+        inputs: {
+          condition: { id: "c:logic", type: "literal_boolean", fields: { value: true } },
+          then: [],
+        },
+      },
+    }).workspace;
+    for (const [blockType, type] of [
+      ["operator_and", "and"],
+      ["operator_or", "or"],
+      ["operator_not", "not"],
+    ] as const) {
+      const changed = applyWorkspaceChange(
+        initial,
+        intentToChange({ type: "replaceCondition", location, blockType }, newId, initial)!,
+      ).workspace;
+      const side = blockType === "operator_not" ? "value" : "right";
+      const literal = applyWorkspaceChange(
+        changed,
+        intentToChange(
+          { type: "setLogicalOperand", location, side, blockType: "literal_boolean" },
+          newId,
+          changed,
+        )!,
+      ).workspace;
+      const toggled = applyWorkspaceChange(
+        literal,
+        intentToChange(
+          { type: "setLogicalBoolean", location, side, value: false },
+          newId,
+          literal,
+        )!,
+      );
+      expect(toggled.program.scripts[0]?.statements[0]).toMatchObject({
+        condition: { type, [side]: { type: "booleanLiteral", value: false } },
+      });
+      expect(
+        intentToChange(
+          {
+            type: "setLogicalBoolean",
+            location,
+            side: blockType === "operator_not" ? "left" : "value",
+            value: false,
+          },
+          newId,
+          changed,
+        ),
+      ).toBeUndefined();
+      if (blockType === "operator_not")
+        expect(
+          intentToChange(
+            { type: "setLogicalBoolean", location, side: "value", value: false },
+            newId,
+            changed,
+          ),
+        ).toBeUndefined();
+    }
+  });
   it("creates named variables and edits only valid numeric variable inputs", () => {
     const empty = createStarterWorkspace();
     const added = intentToChange({ type: "addVariable", name: "energy" }, newId, empty);

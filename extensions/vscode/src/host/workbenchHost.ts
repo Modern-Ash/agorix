@@ -222,6 +222,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setConditionNumber" ||
     intent.intent.type === "setConditionBoolean" ||
     intent.intent.type === "setConditionActor" ||
+    intent.intent.type === "setLogicalOperand" ||
+    intent.intent.type === "setLogicalBoolean" ||
     intent.intent.type === "addVariable" ||
     intent.intent.type === "addList" ||
     intent.intent.type === "setExpressionNumber" ||
@@ -477,6 +479,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "setConditionNumber" ||
               intent.type === "setConditionBoolean" ||
               intent.type === "setConditionActor" ||
+              intent.type === "setLogicalOperand" ||
+              intent.type === "setLogicalBoolean" ||
               intent.type === "addVariable" ||
               intent.type === "addList" ||
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||

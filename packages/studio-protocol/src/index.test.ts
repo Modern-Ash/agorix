@@ -315,6 +315,49 @@ describe("studio-protocol", () => {
       }),
     ).toBeUndefined();
   });
+  it("validates logical operand edits", () => {
+    const location = { container: script, index: 0 };
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setLogicalOperand",
+          location,
+          side: "right",
+          blockType: "literal_boolean",
+        },
+      }),
+    ).toMatchObject({ intent: { side: "right" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setLogicalOperand", location, side: "right", blockType: "operator_add" },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setLogicalBoolean", location, side: "value", value: false },
+      }),
+    ).toMatchObject({ intent: { value: false } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setLogicalBoolean", location, side: "middle", value: false },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setLogicalBoolean", location, side: "left", value: "false" },
+      }),
+    ).toBeUndefined();
+  });
   it("accepts only structured numeric reporter edits", () => {
     const location = { container: script, index: 0 };
     const intent = {
