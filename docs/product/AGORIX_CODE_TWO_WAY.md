@@ -31,7 +31,13 @@ A model could help later in a narrow way: explaining a syntax error in words. Th
 
 In the Agorix Code tab of the Studio, "Editar el texto" opens the text. It says "Se entiende" or the first problem as "Línea N: …" (es and en), and "Aplicar" is on only when the text reads into a program the scene accepts; it is applied as one undoable step (`recordCanonicalTransaction`). The button is offered only when the program is editable as text: reading the text it is shown as must give back exactly the program, so an edit can never drop a block the text did not show. Otherwise the tab says to edit with blocks. A variable typed by hand gets the next free `studio-var-N`; changing which characters exist is not possible from text (a script the scene has no character for is refused as `notValid`).
 
+## The wider subset (built)
+
+The parser now also reads every block whose parts are only words and numbers: motion (`bounce on edge`, `point in direction`, `point towards`, `set/change x/y`, `glide to`, `go to random position | mouse pointer | "actor"` and the `glide N secs to` forms, `set rotation style`, the layer blocks), looks (`set/change size`, `switch costume/backdrop`, graphic effects), sound (`play sound`, `stop all sounds`, volume), `stop`, `reset timer`, `delete this clone`, `show`/`hide` of a variable, the whole pen pack and the whole music pack, and the other hats (`when actor clicked`, `when backdrop switches to`, `when N seconds have passed`, `when I start as a clone`, `when loudness is over`). A script that uses the pen or music blocks declares the pack itself. Every one has a round-trip test (program to text to the same program), and the canonical validator still judges each value (a colour, a drum, a size the scene offers).
+
+Still block-only, and therefore a program that has one is not offered for text editing: expressions (arithmetic, comparisons, sensors in conditions beyond a key), lists, custom blocks and their calls, ask blocks, `broadcast`, `next costume`, copies, `repeat until`, `wait until`, and text variables. Several of these the text view does not even show yet.
+
 ## Next
 
-1. Widen the subset a block family at a time (sounds, pen, lists, custom blocks, sensors), each with the round-trip test on every statement it adds.
+1. Widen again: conditions and expressions, then lists, then custom blocks, each with its round-trip test.
 2. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.

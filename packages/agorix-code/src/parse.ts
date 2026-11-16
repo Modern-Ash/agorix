@@ -97,6 +97,160 @@ function lines(source: string): Line[] {
   return out;
 }
 
+const Q = '("(?:[^"\\\\]|\\\\.)*")';
+
+/**
+ * Statements whose parts are only words and numbers (no variable, no list, no custom block): each
+ * line is one pattern and one way to build the block. The canonical validator still has the last
+ * word on every value (a colour, a drum, a size the scene offers).
+ */
+const SIMPLE: readonly {
+  readonly pattern: RegExp;
+  readonly build: (
+    m: RegExpExecArray,
+    n: (text: string) => number,
+    q: (text: string) => string,
+  ) => unknown;
+}[] = [
+  { pattern: /^bounce on edge$/, build: () => ({ type: "bounceOnEdge" }) },
+  {
+    pattern: /^point in direction (\S+)$/,
+    build: (m, n) => ({ type: "pointInDirection", degrees: n(m[1]!) }),
+  },
+  {
+    pattern: new RegExp(`^point towards ${Q}$`),
+    build: (m, _n, q) => ({ type: "pointTowards", actorId: q(m[1]!) }),
+  },
+  { pattern: /^set x to (\S+)$/, build: (m, n) => ({ type: "setX", x: n(m[1]!) }) },
+  { pattern: /^set y to (\S+)$/, build: (m, n) => ({ type: "setY", y: n(m[1]!) }) },
+  { pattern: /^change x by (\S+)$/, build: (m, n) => ({ type: "changeX", dx: n(m[1]!) }) },
+  { pattern: /^change y by (\S+)$/, build: (m, n) => ({ type: "changeY", dy: n(m[1]!) }) },
+  {
+    pattern: /^glide to (\S+), (\S+) in (\S+) seconds$/,
+    build: (m, n) => ({ type: "glideTo", x: n(m[1]!), y: n(m[2]!), seconds: n(m[3]!) }),
+  },
+  { pattern: /^go to random position$/, build: () => ({ type: "goToTarget", target: "random" }) },
+  { pattern: /^go to mouse pointer$/, build: () => ({ type: "goToTarget", target: "mouse" }) },
+  {
+    pattern: new RegExp(`^go to ${Q}$`),
+    build: (m, _n, q) => ({ type: "goToTarget", target: "actor", actorId: q(m[1]!) }),
+  },
+  {
+    pattern: new RegExp(`^glide (\\S+) secs to (random position|mouse pointer|${Q})$`),
+    build: (m, n, q) => {
+      const seconds = n(m[1]!);
+      return m[2] === "random position"
+        ? { type: "goToTarget", target: "random", seconds }
+        : m[2] === "mouse pointer"
+          ? { type: "goToTarget", target: "mouse", seconds }
+          : { type: "goToTarget", target: "actor", actorId: q(m[2]!), seconds };
+    },
+  },
+  {
+    pattern: /^set rotation style (left-right|don't rotate|all around)$/,
+    build: (m) => ({
+      type: "setRotationStyle",
+      style: m[1] === "left-right" ? "leftRight" : m[1] === "don't rotate" ? "none" : "all",
+    }),
+  },
+  { pattern: /^go to (front|back) layer$/, build: (m) => ({ type: "goToLayer", layer: m[1] }) },
+  {
+    pattern: /^go (forward|backward) (\S+) layers$/,
+    build: (m, n) => ({ type: "goToLayer", layer: m[1], steps: n(m[2]!) }),
+  },
+  { pattern: /^set size to (\S+)$/, build: (m, n) => ({ type: "setSize", size: n(m[1]!) }) },
+  { pattern: /^change size by (\S+)$/, build: (m, n) => ({ type: "changeSize", delta: n(m[1]!) }) },
+  {
+    pattern: new RegExp(`^switch costume to ${Q}$`),
+    build: (m, _n, q) => ({ type: "switchCostume", costumeId: q(m[1]!) }),
+  },
+  {
+    pattern: new RegExp(`^switch backdrop to ${Q}$`),
+    build: (m, _n, q) => ({ type: "switchBackdrop", backdropId: q(m[1]!) }),
+  },
+  {
+    pattern: /^set (\w+) effect to (\S+)$/,
+    build: (m, n) => ({ type: "setEffect", effect: m[1], value: n(m[2]!) }),
+  },
+  {
+    pattern: /^change (\w+) effect by (\S+)$/,
+    build: (m, n) => ({ type: "changeEffect", effect: m[1], delta: n(m[2]!) }),
+  },
+  { pattern: /^clear graphic effects$/, build: () => ({ type: "clearEffects" }) },
+  {
+    pattern: new RegExp(`^play sound ${Q}$`),
+    build: (m, _n, q) => ({ type: "playSound", soundId: q(m[1]!) }),
+  },
+  { pattern: /^stop all sounds$/, build: () => ({ type: "stopSounds" }) },
+  { pattern: /^set volume to (\S+)$/, build: (m, n) => ({ type: "setVolume", volume: n(m[1]!) }) },
+  {
+    pattern: /^change volume by (\S+)$/,
+    build: (m, n) => ({ type: "changeVolume", delta: n(m[1]!) }),
+  },
+  { pattern: /^stop (script|actor|scene)$/, build: (m) => ({ type: "stop", scope: m[1] }) },
+  { pattern: /^reset timer$/, build: () => ({ type: "resetTimer" }) },
+  { pattern: /^delete this clone$/, build: () => ({ type: "deleteThisClone" }) },
+  { pattern: /^pen down$/, build: () => ({ type: "penDown" }) },
+  { pattern: /^pen up$/, build: () => ({ type: "penUp" }) },
+  { pattern: /^clear pen$/, build: () => ({ type: "clearPen" }) },
+  { pattern: /^stamp$/, build: () => ({ type: "stamp" }) },
+  { pattern: /^set pen color (\w+)$/, build: (m) => ({ type: "setPenColor", color: m[1] }) },
+  { pattern: /^set pen size (\S+)$/, build: (m, n) => ({ type: "setPenSize", size: n(m[1]!) }) },
+  { pattern: /^set pen shade (\w+)$/, build: (m) => ({ type: "setPenShade", shade: m[1] }) },
+  {
+    pattern: /^set pen transparency (\S+)$/,
+    build: (m, n) => ({ type: "setPenTransparency", percent: n(m[1]!) }),
+  },
+  {
+    pattern: /^play note (\S+) for (\S+) beats$/,
+    build: (m, n) => ({ type: "playNote", note: n(m[1]!), beats: n(m[2]!) }),
+  },
+  {
+    pattern: /^play drum (\w+) for (\S+) beats$/,
+    build: (m, n) => ({ type: "playDrum", drum: m[1], beats: n(m[2]!) }),
+  },
+  {
+    pattern: /^set instrument (\w+)$/,
+    build: (m) => ({ type: "setInstrument", instrument: m[1] }),
+  },
+  { pattern: /^set tempo (\S+)$/, build: (m, n) => ({ type: "setTempo", bpm: n(m[1]!) }) },
+  { pattern: /^set pitch (\S+)$/, build: (m, n) => ({ type: "setPitch", semitones: n(m[1]!) }) },
+  { pattern: /^set pan (\S+)$/, build: (m, n) => ({ type: "setPan", pan: n(m[1]!) }) },
+];
+
+const PEN_BLOCKS = new Set([
+  "penDown",
+  "penUp",
+  "clearPen",
+  "stamp",
+  "setPenColor",
+  "setPenSize",
+  "setPenShade",
+  "setPenTransparency",
+]);
+const MUSIC_BLOCKS = new Set([
+  "playNote",
+  "playDrum",
+  "setInstrument",
+  "setTempo",
+  "setPitch",
+  "setPan",
+]);
+
+/** The packs a script's blocks need, found by looking through the nested blocks. */
+function packsUsed(value: unknown, into: Set<"pen" | "music">): void {
+  if (Array.isArray(value)) {
+    for (const item of value) packsUsed(item, into);
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  const record = value as Record<string, unknown>;
+  const type = record["type"];
+  if (typeof type === "string" && PEN_BLOCKS.has(type)) into.add("pen");
+  if (typeof type === "string" && MUSIC_BLOCKS.has(type)) into.add("music");
+  for (const key of ["statements", "then", "else", "body"]) packsUsed(record[key], into);
+}
+
 class Reader {
   position = 0;
   constructor(
@@ -186,6 +340,19 @@ class Reader {
       }
       return { type: "if", condition: { type: "keyDown", key: m[1]! }, then };
     }
+    for (const entry of SIMPLE) {
+      const found = entry.pattern.exec(t);
+      if (found !== null)
+        return entry.build(
+          found,
+          (text) => numberOf(text, line.n),
+          (text) => quoted(text, line.n),
+        ) as Statement;
+    }
+    if ((m = new RegExp(`^show ${Q}$`).exec(t)))
+      return { type: "showVariable", variableId: this.variable(m[1]!, line.n) };
+    if ((m = new RegExp(`^hide ${Q}$`).exec(t)))
+      return { type: "hideVariable", variableId: this.variable(m[1]!, line.n) };
     if (/^(say|think) /.test(t)) return refuse("badText", line.n);
     if (t === "else") return refuse("elseWithoutIf", line.n);
     return refuse("unknownLine", line.n);
@@ -200,6 +367,14 @@ function trigger(line: Line): Trigger {
     return { type: "onKeyPressed", key: quoted(m[1]!, line.n) };
   if ((m = /^when message ("(?:[^"\\]|\\.)*") received$/.exec(t)))
     return { type: "onMessage", message: quoted(m[1]!, line.n) };
+  if (t === "when actor clicked") return { type: "onActorClicked" };
+  if (t === "when I start as a clone") return { type: "onCloneStart" };
+  if ((m = new RegExp(`^when backdrop switches to ${Q}$`).exec(t)))
+    return { type: "onBackdropSwitch", backdropId: quoted(m[1]!, line.n) };
+  if ((m = /^when (\S+) seconds have passed$/.exec(t)))
+    return { type: "onTimerOver", seconds: numberOf(m[1]!, line.n) };
+  if ((m = /^when loudness is over (\S+)$/.exec(t)))
+    return { type: "onLoudnessOver", level: numberOf(m[1]!, line.n) };
   return refuse("unknownLine", line.n);
 }
 
@@ -257,8 +432,12 @@ export function parseAgorixCode(
       });
     }
     if (scripts.length === 0) refuse("emptyText", 1);
+    const packs = new Set<"pen" | "music">();
+    for (const script of scripts) packsUsed(script.statements, packs);
+    const extensions = (["pen", "music"] as const).filter((pack) => packs.has(pack));
     const program = validateProgram({
       schema: SCHEMA_VERSION,
+      ...(extensions.length > 0 ? { extensions } : {}),
       ...(variables.length > 0 ? { variables } : {}),
       scripts,
     } as never);

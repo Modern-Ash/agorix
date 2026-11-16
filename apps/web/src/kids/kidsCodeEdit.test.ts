@@ -17,7 +17,19 @@ describe("editing the program as Agorix Code", () => {
   });
 
   it("is not editable when a block the text cannot read is in it", () => {
-    expect(agorixCodeEditable(program([{ type: "stamp" }], { extensions: ["pen"] }))).toBe(false);
+    expect(agorixCodeEditable(program([{ type: "createCopies", count: 3, rule: "fall" }]))).toBe(
+      false,
+    );
+  });
+
+  it("is editable with pen and music blocks, and the packs follow the blocks", () => {
+    expect(
+      agorixCodeEditable(
+        program([{ type: "penDown" }, { type: "playNote", note: 60, beats: 1 }], {
+          extensions: ["pen", "music"],
+        }),
+      ),
+    ).toBe(true);
   });
 
   it("applies an edit and keeps what it did not touch", () => {
