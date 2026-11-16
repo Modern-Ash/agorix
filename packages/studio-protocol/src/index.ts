@@ -524,6 +524,9 @@ const BLOCK_TYPES = [
   "sensing_touching_stage_edge",
   "literal_boolean",
   "literal_number",
+  "operator_less_than",
+  "operator_greater_than",
+  "operator_equals",
 ] as const;
 
 /** Only blocks with a complete direct-insertion path are shown in Studio's palette. */
@@ -952,6 +955,14 @@ function parseIntent(value: unknown): Intent | undefined {
         ? undefined
         : { type: "replaceCondition", location, blockType: blockType as BlockType };
     }
+    case "setConditionNumber": {
+      const location = parseLocation(value["location"]);
+      return location === undefined ||
+        (value["side"] !== "left" && value["side"] !== "right") ||
+        !isFiniteNumber(value["value"])
+        ? undefined
+        : { type: "setConditionNumber", location, side: value["side"], value: value["value"] };
+    }
     case "setNumericField": {
       const location = parseLocation(value["location"]);
       const field = value["field"];
@@ -1103,6 +1114,8 @@ function parseBlock(
       then?: BlockNode[];
       else?: BlockNode[];
       condition?: BlockNode;
+      left?: BlockNode;
+      right?: BlockNode;
     };
   } = { id, type: type as BlockType };
   const fields = value["fields"];
@@ -1129,6 +1142,8 @@ function parseBlock(
       then?: BlockNode[];
       else?: BlockNode[];
       condition?: BlockNode;
+      left?: BlockNode;
+      right?: BlockNode;
     } = {};
     for (const key of ["body", "then", "else"] as const) {
       if (inputs[key] !== undefined) {
@@ -1145,6 +1160,12 @@ function parseBlock(
         return undefined;
       }
       parsed.condition = condition;
+    }
+    for (const key of ["left", "right"] as const) {
+      if (inputs[key] === undefined) continue;
+      const operand = parseBlock(inputs[key], depth + 1, budget);
+      if (operand === undefined) return undefined;
+      parsed[key] = operand;
     }
     out.inputs = parsed;
   }

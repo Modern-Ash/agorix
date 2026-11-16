@@ -212,7 +212,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "deleteBlock" ||
     intent.intent.type === "setNumericField" ||
     intent.intent.type === "setTextField" ||
-    intent.intent.type === "replaceCondition"
+    intent.intent.type === "replaceCondition" ||
+    intent.intent.type === "setConditionNumber"
   );
 }
 
@@ -407,7 +408,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           if (change === undefined) {
             return intent.type === "setNumericField" ||
               intent.type === "setTextField" ||
-              intent.type === "replaceCondition"
+              intent.type === "replaceCondition" ||
+              intent.type === "setConditionNumber"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];
           }

@@ -17,6 +17,15 @@ export const STUDIO_CONDITION_BLOCK_TYPES = [
   "sensing_touching_actor",
   "sensing_touching_stage_edge",
   "literal_boolean",
+  "operator_less_than",
+  "operator_greater_than",
+  "operator_equals",
+] as const satisfies readonly BlockType[];
+
+export const STUDIO_COMPARISON_BLOCK_TYPES = [
+  "operator_less_than",
+  "operator_greater_than",
+  "operator_equals",
 ] as const satisfies readonly BlockType[];
 
 export interface InsertionPoint {
@@ -62,6 +71,12 @@ export type Intent =
       readonly type: "replaceCondition";
       readonly location: StatementLocation;
       readonly blockType: BlockType;
+    }
+  | {
+      readonly type: "setConditionNumber";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right";
+      readonly value: number;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
@@ -157,6 +172,22 @@ export function intentToChange(
       }
       const block = statements?.[index];
       if (block?.type !== "control_if") return undefined;
+      const condition = createDefaultBlock(intent.blockType, newBlockId());
+      const comparison = (STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(
+        intent.blockType,
+      );
+      const safeCondition = comparison
+        ? {
+            ...condition,
+            inputs: {
+              left: createDefaultBlock("literal_number", newBlockId()),
+              right: {
+                ...createDefaultBlock("literal_number", newBlockId()),
+                fields: { value: 10 },
+              },
+            },
+          }
+        : condition;
       return {
         type: "editBlock",
         location: intent.location,
@@ -164,7 +195,47 @@ export function intentToChange(
           ...block,
           inputs: {
             ...block.inputs,
-            condition: createDefaultBlock(intent.blockType, newBlockId()),
+            condition: safeCondition,
+          },
+        },
+      };
+    }
+    case "setConditionNumber": {
+      if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
+      const { container, index } = intent.location;
+      let statements: readonly BlockNode[] | undefined =
+        workspace.scripts[container.scriptIndex]?.statements;
+      if (container.kind !== "script") {
+        for (const pathIndex of container.statementPath) {
+          const parent: BlockNode | undefined = statements?.[pathIndex];
+          statements = parent?.type === "control_if" ? parent.inputs?.then : parent?.inputs?.body;
+        }
+      }
+      const block = statements?.[index];
+      const condition = block?.inputs?.condition;
+      if (
+        block?.type !== "control_if" ||
+        condition === undefined ||
+        !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(condition.type)
+      )
+        return undefined;
+      const operand = condition.inputs?.[intent.side];
+      if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
+        return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: {
+              ...condition,
+              inputs: {
+                ...condition.inputs,
+                [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
+              },
+            },
           },
         },
       };

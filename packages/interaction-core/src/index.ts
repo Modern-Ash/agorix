@@ -10,6 +10,11 @@ export {
   parseAnchorRef,
 } from "./anchors.js";
 export type { AgentVerb, DragSource, DropTarget, InsertionPoint, Intent } from "./intents.js";
-export { STUDIO_CONDITION_BLOCK_TYPES, intentToChange, resolveDrop } from "./intents.js";
+export {
+  STUDIO_COMPARISON_BLOCK_TYPES,
+  STUDIO_CONDITION_BLOCK_TYPES,
+  intentToChange,
+  resolveDrop,
+} from "./intents.js";
 export type { FocusedBlock, KeyChord } from "./keyboard.js";
 export { keyboardIntent } from "./keyboard.js";

@@ -34,6 +34,7 @@ authority. The visual block projection owns no separate program state.
 
 The first expression socket appears on `if`: a learner can select a Boolean
 reporter in the palette and click the socket, or drag the reporter onto it.
+Comparison reporters (`<`, `>`, `=`) expose numeric operands for direct editing.
 The host validates the expression and commits only through the canonical
 program transaction. The palette hides blocks without a complete visual
 insertion path; the remaining vocabulary is recorded in

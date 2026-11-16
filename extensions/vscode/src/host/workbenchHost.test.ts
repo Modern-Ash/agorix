@@ -316,6 +316,69 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(1);
   });
 
+  it("commits numeric comparison operands and refuses stale or missing comparisons", async () => {
+    const conditional = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "if", condition: { type: "touchingGoal" }, then: [] }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { host, get, labels } = setup(conditional);
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "replaceCondition",
+        location: { container: script, index: 0 },
+        blockType: "operator_greater_than",
+      },
+      baseHash: programSemanticHash(conditional),
+    });
+    const afterComparison = get()!;
+    const intent = {
+      type: "setConditionNumber",
+      location: { container: script, index: 0 },
+      side: "right",
+      value: 5,
+    } as const;
+    const accepted = await host.handle({
+      schema,
+      type: "intent",
+      intent,
+      baseHash: programSemanticHash(afterComparison),
+    });
+    expect(accepted[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "if",
+      condition: { type: "greaterThan", right: { type: "numericLiteral", value: 5 } },
+    });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent,
+          baseHash: programSemanticHash(afterComparison),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...intent, location: { container: script, index: 1 } },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(2);
+  });
+
   it("moves exactly like applying the same change through block-editor", async () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };
