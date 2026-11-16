@@ -112,3 +112,117 @@ describe("Agorix Code read back into the program", () => {
     expect(parsed.ok).toBe(false);
   });
 });
+
+describe("the wider subset: blocks with only words and numbers", () => {
+  const whole = (statements: unknown[], extra: Record<string, unknown> = {}): ProjectProgram =>
+    validateProgram({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "script-1", trigger: { type: "greenFlag" }, statements }],
+      ...extra,
+    } as never);
+  const roundTrips = (program: ProjectProgram) =>
+    expect(parseAgorixCode(projectAgorixCode(program).text, program)).toEqual({
+      ok: true,
+      program,
+    });
+
+  it("reads back motion blocks", () => {
+    roundTrips(
+      whole([
+        { type: "bounceOnEdge" },
+        { type: "pointInDirection", degrees: 90 },
+        { type: "setX", x: 40 },
+        { type: "setY", y: -40 },
+        { type: "changeX", dx: 10 },
+        { type: "changeY", dy: -10 },
+        { type: "glideTo", x: 40, y: 0, seconds: 2 },
+        { type: "goToTarget", target: "random" },
+        { type: "goToTarget", target: "mouse", seconds: 1 },
+        { type: "setRotationStyle", style: "leftRight" },
+        { type: "setRotationStyle", style: "none" },
+        { type: "setRotationStyle", style: "all" },
+        { type: "goToLayer", layer: "front" },
+        { type: "goToLayer", layer: "back" },
+        { type: "goToLayer", layer: "forward", steps: 2 },
+        { type: "goToLayer", layer: "backward", steps: 1 },
+      ]),
+    );
+  });
+
+  it("reads back looks and sound blocks", () => {
+    roundTrips(
+      whole([
+        { type: "setSize", size: 150 },
+        { type: "changeSize", delta: 25 },
+        { type: "setEffect", effect: "ghost", value: 50 },
+        { type: "changeEffect", effect: "color", delta: 25 },
+        { type: "clearEffects" },
+        { type: "stopSounds" },
+        { type: "setVolume", volume: 60 },
+        { type: "changeVolume", delta: -10 },
+        { type: "resetTimer" },
+        { type: "stop", scope: "script" },
+      ]),
+    );
+  });
+
+  it("reads back the pen and music blocks, and declares the packs they need", () => {
+    const program = whole(
+      [
+        { type: "penDown" },
+        { type: "setPenColor", color: "red" },
+        { type: "setPenSize", size: 4 },
+        { type: "setPenShade", shade: "darker" },
+        { type: "setPenTransparency", percent: 50 },
+        { type: "stamp" },
+        { type: "penUp" },
+        { type: "clearPen" },
+        { type: "playNote", note: 60, beats: 0.5 },
+        { type: "playDrum", drum: "kick", beats: 1 },
+        { type: "setInstrument", instrument: "bell" },
+        { type: "setTempo", bpm: 120 },
+        { type: "setPitch", semitones: 2 },
+        { type: "setPan", pan: -50 },
+      ],
+      { extensions: ["pen", "music"] },
+    );
+    roundTrips(program);
+    expect(program.extensions).toEqual(["pen", "music"]);
+  });
+
+  it("reads back the other hats", () => {
+    const program = validateProgram({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        { id: "s1", trigger: { type: "onActorClicked" }, statements: [{ type: "show" }] },
+        { id: "s2", trigger: { type: "onTimerOver", seconds: 3 }, statements: [{ type: "hide" }] },
+        {
+          id: "s3",
+          trigger: { type: "onLoudnessOver", level: 50 },
+          statements: [{ type: "show" }],
+        },
+        { id: "s4", trigger: { type: "onCloneStart" }, statements: [{ type: "hide" }] },
+      ],
+    } as never);
+    roundTrips(program);
+  });
+
+  it("reads show and hide of a variable", () => {
+    roundTrips(
+      whole(
+        [
+          { type: "showVariable", variableId: "var-1" },
+          { type: "hideVariable", variableId: "var-1" },
+        ],
+        { variables: [{ id: "var-1", name: "score", initialValue: 0, visible: false }] },
+      ),
+    );
+  });
+
+  it("refuses a value the scene does not know, by the validator, not by guessing", () => {
+    expect(parseAgorixCode("when start\n  set pen color plaid\n")).toEqual({
+      ok: false,
+      errors: [{ code: "notValid", line: 1 }],
+    });
+  });
+});
