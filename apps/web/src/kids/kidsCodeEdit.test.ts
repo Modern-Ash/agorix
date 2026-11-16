@@ -17,9 +17,17 @@ describe("editing the program as Agorix Code", () => {
   });
 
   it("is not editable when a block the text cannot read is in it", () => {
-    expect(agorixCodeEditable(program([{ type: "createCopies", count: 3, rule: "fall" }]))).toBe(
-      false,
-    );
+    const raw = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "studio-actor-1-nova",
+          trigger: flag,
+          statements: [{ type: "nextCostume", costumeIds: ["a", "b"] }],
+        },
+      ],
+    } as never;
+    expect(agorixCodeEditable(raw)).toBe(false);
   });
 
   it("is editable with pen and music blocks, and the packs follow the blocks", () => {
