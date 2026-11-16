@@ -529,6 +529,46 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         await port.commitProject(nextProgram, nextMetadata, "Workbench: create actor and script");
         return snapshot();
       }
+      case "createScript": {
+        const program = port.getProgram();
+        const metadata = port.getMetadata();
+        if (program === undefined || metadata === undefined) return [];
+        if (message.baseHash !== programSemanticHash(program)) {
+          return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
+        }
+        const current = actorsForMetadata(metadata);
+        if (
+          program.scripts.length >= 64 ||
+          !current.items.some((actor) => actor.id === message.actorId)
+        ) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        let scriptId = "";
+        do {
+          scriptId = `script:studio_${newBlockId().replace(/[^A-Za-z0-9_]/g, "_")}`;
+        } while (program.scripts.some((script) => script.id === scriptId));
+        const trigger =
+          message.trigger === "onMessage"
+            ? { type: "onMessage" as const, message: message.message! }
+            : { type: "greenFlag" as const };
+        const nextProgram = validateProgram({
+          ...program,
+          scripts: [...program.scripts, { id: scriptId, trigger, statements: [] }],
+        });
+        const nextActors = current.items.map((actor) => ({
+          ...actor,
+          scripts:
+            actor.id === message.actorId
+              ? [...(actor.scripts ?? program.scripts.map((script) => script.id)), scriptId]
+              : (actor.scripts ?? program.scripts.map((script) => script.id)),
+        }));
+        await port.commitProject(
+          nextProgram,
+          { ...metadata, actors: { activeId: message.actorId, items: nextActors } },
+          "Workbench: create actor script",
+        );
+        return snapshot();
+      }
       case "importAsset": {
         const metadata = port.getMetadata();
         if (metadata === undefined) return [];

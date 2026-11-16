@@ -51,8 +51,7 @@ before canonical program mutation.
 The left library switches between Blocks and Scene. Scene shows actor cards and
 visual costume/backdrop choices from the project's validated assets. Selection
 is an explicit metadata edit; the host refuses unknown asset ids and refreshes
-the deterministic stage after a change. Full image import/drawing and broader
-component coverage remain in epic #1648.
+the deterministic stage after a change. Image import/drawing are available in Scene; broader component coverage remains in epic #1648.
 
 Scene can create an actor with an owned green-flag script in one project write.
 Selecting an actor scopes the visible canvas and palette insertion to that
@@ -96,3 +95,5 @@ native disclosure element, so they remain keyboard accessible.
 The current intent field is not presented as a conversational Ori chat. A true
 conversation needs a separate product contract for turn history, grounding,
 privacy, safety and reviewed mutations before it is exposed to learners.
+
+Scene can add an owned green-flag or message-receiver script to the selected actor. Script headers show their real trigger; selecting a header determines where palette clicks insert blocks. The message on a Broadcast block is editable in place. Script creation checks the program hash and commits program and actor ownership together.

@@ -121,6 +121,14 @@ export type UiMessage =
   | { readonly schema: Schema; readonly type: "createActor"; readonly name: string }
   | {
       readonly schema: Schema;
+      readonly type: "createScript";
+      readonly actorId: string;
+      readonly trigger: "greenFlag" | "onMessage";
+      readonly message?: string;
+      readonly baseHash: string;
+    }
+  | {
+      readonly schema: Schema;
       readonly type: "importAsset";
       readonly kind: "costume" | "backdrop";
       readonly name: string;
@@ -1822,6 +1830,27 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
         value["name"].trim().length > 0 &&
         value["name"].trim().length <= 80
         ? { schema, type: "createActor", name: value["name"].trim() }
+        : undefined;
+    case "createScript":
+      return isSafeId(value["actorId"]) &&
+        typeof value["baseHash"] === "string" &&
+        /^fnv1a32:[a-f0-9]+$/.test(value["baseHash"]) &&
+        (value["trigger"] === "greenFlag" || value["trigger"] === "onMessage") &&
+        (value["trigger"] === "greenFlag"
+          ? value["message"] === undefined
+          : typeof value["message"] === "string" &&
+            value["message"].trim().length > 0 &&
+            value["message"].trim().length <= 80)
+        ? {
+            schema,
+            type: "createScript",
+            actorId: value["actorId"],
+            trigger: value["trigger"],
+            ...(value["trigger"] === "onMessage"
+              ? { message: (value["message"] as string).trim() }
+              : {}),
+            baseHash: value["baseHash"],
+          }
         : undefined;
     case "importAsset":
       return (value["kind"] === "costume" || value["kind"] === "backdrop") &&

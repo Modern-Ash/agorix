@@ -824,6 +824,8 @@ export function Workbench({
   const [stageFrame, setStageFrame] = useState<StageFrameMessage["frame"] | undefined>();
   const [actors, setActors] = useState<ActorsMessage | undefined>();
   const [selectedActorId, setSelectedActorId] = useState<string | undefined>();
+  const [selectedScriptId, setSelectedScriptId] = useState<string | undefined>();
+  const pendingScriptCreation = useRef(false);
   const pendingActorCreation = useRef(false);
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
   const [backdropId, setBackdropId] = useState<string | undefined>();
@@ -865,6 +867,11 @@ export function Workbench({
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
         setProgramHash(message.programHash);
+        if (pendingScriptCreation.current) {
+          const created = message.workspace.scripts.at(-1);
+          setSelectedScriptId(created?.programId ?? created?.id);
+          pendingScriptCreation.current = false;
+        }
         if (pendingAnnouncement.current !== undefined) {
           setStatus(pendingAnnouncement.current);
           pendingAnnouncement.current = undefined;
@@ -919,6 +926,7 @@ export function Workbench({
         return;
       }
       const text = statusFor(message, copy);
+      if (message.type === "error") pendingScriptCreation.current = false;
       if (text !== undefined) setStatus(text);
     });
     bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "ready" });
@@ -948,11 +956,15 @@ export function Workbench({
 
   const add = (blockType: BlockType) => {
     const scriptIds = actors?.actors.find((actor) => actor.id === selectedActorId)?.scriptIds;
+    const targetScriptId =
+      selectedScriptId !== undefined && scriptIds?.includes(selectedScriptId)
+        ? selectedScriptId
+        : scriptIds?.[0];
     const scriptIndex =
       scriptIds === undefined
         ? 0
-        : (workspace?.scripts.findIndex((candidate) =>
-            scriptIds.includes(candidate.programId ?? candidate.id),
+        : (workspace?.scripts.findIndex(
+            (candidate) => targetScriptId === (candidate.programId ?? candidate.id),
           ) ?? -1);
     const script = workspace?.scripts[scriptIndex];
     if (script === undefined) return;
@@ -1011,6 +1023,12 @@ export function Workbench({
     const timer = window.setTimeout(() => postExecution("step"), 450);
     return () => window.clearTimeout(timer);
   }, [playing, workspace, execution?.status, execution?.frameIndex]);
+
+  const activeScriptIds = actors?.actors.find((actor) => actor.id === selectedActorId)?.scriptIds;
+  const activeScriptId =
+    selectedScriptId !== undefined && activeScriptIds?.includes(selectedScriptId)
+      ? selectedScriptId
+      : activeScriptIds?.[0];
 
   return (
     <div
@@ -1086,12 +1104,27 @@ export function Workbench({
               assets={assets}
               selectedActorId={selectedActorId}
               backdropId={backdropId}
-              onSelectActor={setSelectedActorId}
+              onSelectActor={(id) => {
+                setSelectedActorId(id);
+                setSelectedScriptId(undefined);
+              }}
               onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
               onBackdrop={updateBackdrop}
               onCreateActor={(name) => {
                 pendingActorCreation.current = true;
                 bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
+              }}
+              onCreateScript={(actorId, trigger, message) => {
+                if (programHash === undefined) return;
+                pendingScriptCreation.current = true;
+                bridge.post({
+                  schema: STUDIO_PROTOCOL_VERSION,
+                  type: "createScript",
+                  actorId,
+                  trigger,
+                  ...(message === undefined ? {} : { message }),
+                  baseHash: programHash,
+                });
               }}
               onImportAsset={(kind, name, source) => {
                 bridge.post({
@@ -1133,9 +1166,9 @@ export function Workbench({
               copy={copy}
               workspace={workspace}
               assets={assets}
-              visibleScriptIds={
-                actors?.actors.find((actor) => actor.id === selectedActorId)?.scriptIds
-              }
+              visibleScriptIds={activeScriptIds}
+              selectedScriptId={activeScriptId}
+              onSelectScript={setSelectedScriptId}
               selectedExpression={selectedExpression}
               onIntent={post}
               onAnnounce={announce}

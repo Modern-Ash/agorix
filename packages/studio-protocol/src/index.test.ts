@@ -248,6 +248,55 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("validates actor script creation and message triggers", () => {
+    const baseHash = "fnv1a32:abcdef01";
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "onMessage",
+        message: " go ",
+        baseHash,
+      }),
+    ).toEqual({
+      schema,
+      type: "createScript",
+      actorId: "actor:robot",
+      trigger: "onMessage",
+      message: "go",
+      baseHash,
+    });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "onMessage",
+        message: " ",
+        baseHash,
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "onKeyPressed",
+        baseHash,
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "greenFlag",
+        baseHash: "bad",
+      }),
+    ).toBeUndefined();
+  });
+
   it("accepts only bounded embedded art imports", () => {
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
     expect(
