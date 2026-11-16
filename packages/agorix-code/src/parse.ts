@@ -369,6 +369,29 @@ class Reader {
         ? { type: "turn", degrees: value }
         : ({ type: "turn", degrees: FALLBACK.turn, degreesFrom: from } as unknown as Statement);
     }
+    if ((m = new RegExp(`^broadcast ${Q}( and wait)?$`).exec(t)))
+      return {
+        type: "broadcast",
+        message: quoted(m[1]!, line.n),
+        ...(m[2] === undefined ? {} : { wait: true }),
+      };
+    if ((m = /^make (\d+) copies \((spread|fall|follow)\)( that run their own script)?$/.exec(t)))
+      return {
+        type: "createCopies",
+        count: Number(m[1]),
+        rule: m[2] as "spread" | "fall" | "follow",
+        ...(m[3] === undefined ? {} : { withScript: true }),
+      };
+    if ((m = new RegExp(`^ask (text )?(\\w+) → ${Q}$`).exec(t))) {
+      const name = quoted(m[3]!, line.n);
+      const id = m[1] === undefined ? this.variableIds.get(name) : this.textIds.get(name);
+      if (id === undefined) return refuse("unknownName", line.n);
+      return {
+        type: m[1] === undefined ? "askChoice" : "askText",
+        promptId: m[2]!,
+        variableId: id,
+      } as unknown as Statement;
+    }
     if ((m = /^call (.+)$/.exec(t))) return this.call(m[1]!, line.n);
     if ((m = /^go to (\S+), (\S+)$/.exec(t)))
       return { type: "goTo", x: numberOf(m[1]!, line.n), y: numberOf(m[2]!, line.n) };

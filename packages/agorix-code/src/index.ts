@@ -219,6 +219,17 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           "\n",
       );
       return;
+    case "broadcast":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "broadcast " +
+          JSON.stringify(statement.message) +
+          (statement.wait === true ? " and wait" : "") +
+          "\n",
+      );
+      return;
     case "createCopies":
       writeMapped(
         writer,

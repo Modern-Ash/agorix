@@ -56,14 +56,12 @@ test("the text is edited, says what it does not understand, and applies as one u
   await expect(page.locator(".kids-code-strip")).not.toContainText("move 80");
 });
 
-test("a program with a block the text cannot read stays editable with blocks only", async ({
-  page,
-}) => {
+test("a program with copies is editable as text", async ({ page }) => {
   await openScene(page);
   await page.getByRole("button", { name: "+ Crear copias" }).click();
   await page.getByRole("button", { name: "Código", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Editar el texto" })).toHaveCount(0);
-  await expect(page.locator(".kids-code-edit")).toContainText("editalo con bloques");
+  await expect(page.locator(".kids-code-strip")).toContainText("copies");
+  await expect(page.getByRole("button", { name: "Editar el texto" })).toHaveCount(1);
 });
 
 test("the text can use pen, music, motion and looks blocks, and the packs follow", async ({

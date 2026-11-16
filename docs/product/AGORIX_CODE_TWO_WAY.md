@@ -47,9 +47,13 @@ Expressions are read by `parseExpression`. Every operation with two sides is wri
 
 `define name with size, turns` (or `define shared name`) followed by the indented body, written before the script that owns it; shared blocks come first. `call name with 40, size` calls one: each argument is a fixed number or one of the block's own numbers. Inside a block, a number's name stands in `move`, `turn`, `wait N seconds`, `repeat N times` and in expressions. The text does not show the fixed number such a block keeps beside its own number, so the reader assumes the palette's (move 40, turn 90, wait 1, repeat 3); a program whose block keeps another one is simply not offered for text editing. Ids: the base's by name, else `proc-S-N` and `shared-N`. A call may reach a block defined later.
 
-Still block-only, and therefore a program that has one is not offered for text editing: ask blocks, `broadcast`, `next costume`, copies, and a property of another character. Several of these the text view does not even show yet.
+## Ask, broadcast and copies (built)
+
+`ask text PROMPT → "name"` and `ask PROMPT → "name"` (the prompt is the catalog id), `broadcast "message"` (with ` and wait`), and `make N copies (spread|fall|follow)` (with ` that run their own script`). `broadcast` is now shown in the text too; before, it was not projected at all.
+
+Still block-only, and therefore a program that has one is not offered for text editing: `next costume` (the text only shows how many costumes, not which, so it cannot be read back) and a property of another character (the text shows a variable by id, not by name).
 
 ## Next
 
-1. Widen again: ask, `broadcast`, `next costume`, copies.
+1. Show `next costume` and a variable of another character by name, so they can be read back.
 2. Python and TypeScript stay display-only for now; Agorix Code is the language designed to be read both ways.
