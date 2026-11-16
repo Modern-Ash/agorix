@@ -330,6 +330,53 @@ describe("studio-protocol", () => {
       parseUiMessage({
         schema,
         type: "intent",
+        intent: { ...intent, reporter: "add", referenceId: undefined, itemIndex: undefined },
+      }),
+    ).toMatchObject({ intent: { reporter: "add" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { ...intent, reporter: "divide", referenceId: "v", itemIndex: undefined },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setArithmeticOperand", location, input: "value", side: "left", value: 4 },
+      }),
+    ).toMatchObject({ intent: { type: "setArithmeticOperand", value: 4 } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          side: "middle",
+          value: 4,
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          side: "left",
+          value: Infinity,
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
         intent: { ...intent, reporter: "xPosition", referenceId: undefined, itemIndex: undefined },
       }),
     ).toMatchObject({ intent: { reporter: "xPosition" } });

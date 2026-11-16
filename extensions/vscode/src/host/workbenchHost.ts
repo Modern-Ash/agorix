@@ -481,7 +481,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "addList" ||
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||
               intent.type === "setExpressionNumber" ||
-              intent.type === "setNumericInput"
+              intent.type === "setNumericInput" ||
+              intent.type === "setArithmeticOperand"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];
           }
