@@ -130,7 +130,7 @@ function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
 
 function knownAssetIds(
   metadata: ProjectMetadata,
-  kind?: "backdrop" | "costume",
+  kind?: "backdrop" | "costume" | "sound",
 ): ReadonlySet<string> {
   return new Set(
     [...(metadata.assets ?? []), ...studioAssetCatalog()]
@@ -406,6 +406,24 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         }
         if (isMutatingIntent(message) && message.baseHash !== programSemanticHash(program)) {
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
+        }
+        if (intent.type === "setTextField") {
+          const kind =
+            intent.field === "costumeId"
+              ? "costume"
+              : intent.field === "backdropId"
+                ? "backdrop"
+                : intent.field === "soundId"
+                  ? "sound"
+                  : undefined;
+          if (kind !== undefined) {
+            const metadata = port.getMetadata();
+            if (metadata === undefined || !knownAssetIds(metadata, kind).has(intent.value)) {
+              return [
+                { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+              ];
+            }
+          }
         }
         try {
           const { workspace } = programToWorkspace(program);

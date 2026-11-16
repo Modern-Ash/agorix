@@ -44,6 +44,10 @@ The Blocks library also creates named variables and exposes their declarations.
 Variable statements use a declaration picker and direct numeric value editing,
 with the same canonical and stale-edit checks.
 
+Costume, backdrop and sound blocks use direct project-asset selectors. Costume
+and backdrop choices show safe image previews; unknown asset IDs are refused
+before canonical program mutation.
+
 The left library switches between Blocks and Scene. Scene shows actor cards and
 visual costume/backdrop choices from the project's validated assets. Selection
 is an explicit metadata edit; the host refuses unknown asset ids and refreshes

@@ -468,6 +468,50 @@ describe("workbenchHost", () => {
     expect(labels).toEqual(["Workbench: create actor and script"]);
   });
 
+  it("selects only known costume and sound assets for visual blocks", async () => {
+    const { host, get, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "looks_switch_costume",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(base),
+    });
+    const before = get()!;
+    const accepted = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "costumeId",
+        value: "asset:costume.spark",
+      },
+      baseHash: programSemanticHash(before),
+    });
+    expect(accepted[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "switchCostume",
+      costumeId: "asset:costume.spark",
+    });
+    const refused = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "costumeId",
+        value: "https://example.com/image.png",
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(2);
+  });
+
   it("moves exactly like applying the same change through block-editor", async () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };

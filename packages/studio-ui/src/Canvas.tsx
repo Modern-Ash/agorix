@@ -10,11 +10,12 @@ import {
   type DropTarget,
   type Intent,
 } from "@agorix/interaction-core";
-import type { AmbientHintView, GhostChange } from "@agorix/studio-protocol";
+import type { AmbientHintView, AssetView, GhostChange } from "@agorix/studio-protocol";
 import { dropPointFor, locationKey, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
 import { visualBlock, visualLabel } from "./visualBlocks.js";
+import { imageForId } from "./visualArt.js";
 
 const DRAG_TYPE = "application/x-agorix-drag";
 
@@ -129,6 +130,7 @@ export function Canvas({
   focusRequest,
   selectedExpression,
   visibleScriptIds,
+  assets = [],
 }: {
   readonly copy?: StudioUiCopy;
   readonly workspace: BlockWorkspaceSnapshot;
@@ -142,6 +144,7 @@ export function Canvas({
   readonly focusRequest?: FocusRequest | undefined;
   readonly selectedExpression?: BlockType | undefined;
   readonly visibleScriptIds?: readonly string[] | undefined;
+  readonly assets?: readonly AssetView[];
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   const rootRef = useRef<HTMLElement | null>(null);
@@ -291,6 +294,7 @@ export function Canvas({
           .filter(
             ([name, value]) =>
               name !== "variableId" &&
+              !["costumeId", "backdropId", "soundId"].includes(name) &&
               typeof value !== "number" &&
               !(typeof value === "string" && ["text", "message", "key"].includes(name)),
           )
@@ -362,6 +366,49 @@ export function Canvas({
               {visualLabel(label)}
               {fields === "" ? "" : ` (${fields})`}
             </span>
+            {(["costumeId", "backdropId", "soundId"] as const).map((field) => {
+              const current = block.fields[field];
+              if (typeof current !== "string") return null;
+              const kind =
+                field === "costumeId" ? "costume" : field === "backdropId" ? "backdrop" : "sound";
+              const title =
+                field === "costumeId"
+                  ? copy.sceneCostumes
+                  : field === "backdropId"
+                    ? copy.sceneBackdrops
+                    : copy.sceneSounds;
+              const image = kind === "sound" ? undefined : imageForId(current, assets);
+              return (
+                <label key={field} className="block-field block-asset-field">
+                  <span>{title}</span>
+                  {image === undefined ? null : <img src={image} alt="" />}
+                  <select
+                    aria-label={`${label}: ${title}`}
+                    value={current}
+                    onChange={(event) =>
+                      onIntent({
+                        type: "setTextField",
+                        location: block.location,
+                        field,
+                        value: event.currentTarget.value,
+                      })
+                    }
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    {assets.some((asset) => asset.id === current && asset.kind === kind) ? null : (
+                      <option value={current}>{current}</option>
+                    )}
+                    {assets
+                      .filter((asset) => asset.kind === kind)
+                      .map((asset) => (
+                        <option key={asset.id} value={asset.id}>
+                          {asset.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              );
+            })}
             {typeof block.fields.variableId === "string" ? (
               <label className="block-field">
                 <span>{copy.variables}</span>

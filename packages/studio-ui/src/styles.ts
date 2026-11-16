@@ -60,6 +60,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .variable-creator ul { margin: 0; padding-left: 18px; }
 .scene-create-actor { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .scene-create-actor input { flex: 1 1 120px; min-width: 0; }
+.block-asset-field { display: inline-flex; align-items: center; gap: 5px; }
+.block-asset-field img { width: 28px; height: 28px; object-fit: contain; border: 1px solid var(--vscode-panel-border); }
 .stage-sprite[data-costume-id="asset:costume.default"] { border-color: var(--vscode-charts-blue); background: color-mix(in srgb, var(--vscode-charts-blue), transparent 58%); }
 .stage-sprite[data-costume-id="asset:costume.spark"] { border-color: var(--vscode-charts-green); background: color-mix(in srgb, var(--vscode-charts-green), transparent 54%); }
 .stage-sprite.selected { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }

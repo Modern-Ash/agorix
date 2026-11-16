@@ -92,6 +92,47 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("shows visual asset choices on costume blocks and posts an explicit selection", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "costume:change",
+        type: "looks_switch_costume",
+        fields: { costumeId: "asset:costume.default" },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    act(() =>
+      root.render(
+        <Canvas
+          workspace={workspace}
+          assets={[
+            { id: "asset:costume.default", name: "Nova", kind: "costume", tags: [] },
+            { id: "asset:costume.spark", name: "Spark", kind: "costume", tags: [] },
+          ]}
+          onIntent={(intent) => intents.push(intent)}
+        />,
+      ),
+    );
+    expect(host.querySelector(".block-asset-field img")).not.toBeNull();
+    const select = host.querySelector<HTMLSelectElement>(".block-asset-field select")!;
+    expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
+      "Nova",
+      "Spark",
+    ]);
+    act(() => {
+      select.value = "asset:costume.spark";
+      select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setTextField",
+      location: { container: script, index: 0 },
+      field: "costumeId",
+      value: "asset:costume.spark",
+    });
+  });
   it("selects a declared variable and edits its numeric value", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

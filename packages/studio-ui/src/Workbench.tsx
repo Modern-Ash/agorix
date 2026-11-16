@@ -1123,6 +1123,7 @@ export function Workbench({
             <Canvas
               copy={copy}
               workspace={workspace}
+              assets={assets}
               visibleScriptIds={
                 actors?.actors.find((actor) => actor.id === selectedActorId)?.scriptIds
               }
