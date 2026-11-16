@@ -468,6 +468,34 @@ describe("workbenchHost", () => {
     expect(labels).toEqual(["Workbench: create actor and script"]);
   });
 
+  it("persists a bounded image and refuses an invalid import without mutation", async () => {
+    const { host, metadata, labels } = setup();
+    const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
+    const accepted = await host.handle({
+      schema,
+      type: "importAsset",
+      kind: "costume",
+      name: "Nova",
+      source,
+    });
+    expect(metadata().assets).toEqual([
+      expect.objectContaining({ kind: "costume", name: "Nova", source }),
+    ]);
+    expect(accepted.find((message) => message.type === "assets")).toMatchObject({
+      assets: expect.arrayContaining([expect.objectContaining({ name: "Nova" })]),
+    });
+    expect(labels).toEqual(["Workbench: import image asset"]);
+    const refused = await host.handle({
+      schema,
+      type: "importAsset",
+      kind: "costume",
+      name: "Bad",
+      source: "https://example.com/a.png",
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(1);
+  });
+
   it("selects only known costume and sound assets for visual blocks", async () => {
     const { host, get, labels } = setup();
     await host.handle({

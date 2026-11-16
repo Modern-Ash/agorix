@@ -119,6 +119,13 @@ export type UiMessage =
       readonly patch: ActorPatch;
     }
   | { readonly schema: Schema; readonly type: "createActor"; readonly name: string }
+  | {
+      readonly schema: Schema;
+      readonly type: "importAsset";
+      readonly kind: "costume" | "backdrop";
+      readonly name: string;
+      readonly source: string;
+    }
   | { readonly schema: Schema; readonly type: "updateStage"; readonly backdropId: string }
   | {
       readonly schema: Schema;
@@ -1815,6 +1822,20 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
         value["name"].trim().length > 0 &&
         value["name"].trim().length <= 80
         ? { schema, type: "createActor", name: value["name"].trim() }
+        : undefined;
+    case "importAsset":
+      return (value["kind"] === "costume" || value["kind"] === "backdrop") &&
+        typeof value["name"] === "string" &&
+        value["name"].trim().length > 0 &&
+        value["name"].trim().length <= 80 &&
+        validEmbeddedImageSource(value["source"])
+        ? {
+            schema,
+            type: "importAsset",
+            kind: value["kind"],
+            name: value["name"].trim(),
+            source: value["source"],
+          }
         : undefined;
     case "updateStage":
       return isSafeId(value["backdropId"])

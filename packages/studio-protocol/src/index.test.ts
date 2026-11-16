@@ -248,6 +248,25 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("accepts only bounded embedded art imports", () => {
+    const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
+    expect(
+      parseUiMessage({ schema, type: "importAsset", kind: "costume", name: " Nova ", source }),
+    ).toEqual({ schema, type: "importAsset", kind: "costume", name: "Nova", source });
+    expect(
+      parseUiMessage({ schema, type: "importAsset", kind: "sound", name: "Nova", source }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "importAsset",
+        kind: "costume",
+        name: "Nova",
+        source: "https://example.com/image.png",
+      }),
+    ).toBeUndefined();
+  });
+
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
     for (const junk of [
       null,

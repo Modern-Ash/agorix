@@ -1,6 +1,8 @@
 import type { ActorView, AssetView } from "@agorix/studio-protocol";
 import type { StudioUiCopy } from "./i18n.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
+import { useRef, useState } from "react";
+import { validEmbeddedImageSource } from "@agorix/program-model";
 
 export function SceneLibrary({
   copy,
@@ -12,6 +14,7 @@ export function SceneLibrary({
   onCostume,
   onBackdrop,
   onCreateActor,
+  onImportAsset,
 }: {
   readonly copy: StudioUiCopy;
   readonly actors: readonly ActorView[];
@@ -22,7 +25,39 @@ export function SceneLibrary({
   readonly onCostume: (actorId: string, costumeId: string) => void;
   readonly onBackdrop: (backdropId: string) => void;
   readonly onCreateActor?: (name: string) => void;
+  readonly onImportAsset?: (kind: "costume" | "backdrop", name: string, source: string) => void;
 }) {
+  const drawing = useRef<HTMLCanvasElement>(null);
+  const [assetKind, setAssetKind] = useState<"costume" | "backdrop">("costume");
+  const [assetName, setAssetName] = useState("");
+  const [assetError, setAssetError] = useState("");
+  const [drawingActive, setDrawingActive] = useState(false);
+  const [ink, setInk] = useState("#7855d8");
+  const submitAsset = (name: string, source: string) => {
+    if (!validEmbeddedImageSource(source)) {
+      setAssetError(copy.sceneInvalidImage);
+      return;
+    }
+    onImportAsset?.(assetKind, (name.trim() || copy.sceneNewImage).slice(0, 80), source);
+    setAssetError("");
+  };
+  const paint = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingActive) return;
+    const canvas = drawing.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+    const bounds = canvas.getBoundingClientRect();
+    context.fillStyle = ink;
+    context.beginPath();
+    context.arc(
+      ((event.clientX - bounds.left) * canvas.width) / bounds.width,
+      ((event.clientY - bounds.top) * canvas.height) / bounds.height,
+      5,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
+  };
   const selected = actors.find((actor) => actor.id === selectedActorId) ?? actors[0];
   const costumes = assets.filter((asset) => asset.kind === "costume");
   const backdrops = assets.filter((asset) => asset.kind === "backdrop");
@@ -113,6 +148,99 @@ export function SceneLibrary({
           ))}
         </div>
       </section>
+      {onImportAsset === undefined ? null : (
+        <section aria-label={copy.sceneCreateImage} className="scene-create-image">
+          <h3>{copy.sceneCreateImage}</h3>
+          <select
+            aria-label={copy.sceneImageKind}
+            value={assetKind}
+            onChange={(event) => setAssetKind(event.target.value as "costume" | "backdrop")}
+          >
+            <option value="costume">{copy.sceneCostumes}</option>
+            <option value="backdrop">{copy.sceneBackdrops}</option>
+          </select>
+          <input
+            aria-label={copy.sceneImageName}
+            maxLength={80}
+            value={assetName}
+            onChange={(event) => setAssetName(event.target.value)}
+            placeholder={copy.sceneNewImage}
+          />
+          <label>
+            {copy.sceneImportImage}
+            <input
+              type="file"
+              accept="image/png,image/webp"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (
+                  !file ||
+                  (file.type !== "image/png" && file.type !== "image/webp") ||
+                  file.size >= 60 * 1024
+                ) {
+                  setAssetError(copy.sceneInvalidImage);
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () =>
+                  submitAsset(
+                    assetName || file.name.replace(/\.[^.]+$/, ""),
+                    reader.result as string,
+                  );
+                reader.onerror = () => setAssetError(copy.sceneInvalidImage);
+                reader.readAsDataURL(file);
+              }}
+            />
+          </label>
+          <canvas
+            ref={drawing}
+            width={160}
+            height={120}
+            aria-label={copy.sceneDrawImage}
+            onPointerDown={(event) => {
+              setDrawingActive(true);
+              event.currentTarget.setPointerCapture(event.pointerId);
+              const context = event.currentTarget.getContext("2d");
+              if (context) {
+                const bounds = event.currentTarget.getBoundingClientRect();
+                context.fillStyle = ink;
+                context.fillRect(
+                  ((event.clientX - bounds.left) * 160) / bounds.width,
+                  ((event.clientY - bounds.top) * 120) / bounds.height,
+                  8,
+                  8,
+                );
+              }
+            }}
+            onPointerMove={paint}
+            onPointerUp={() => setDrawingActive(false)}
+          />
+          <div className="scene-draw-actions">
+            <input
+              aria-label={copy.sceneInkColor}
+              type="color"
+              value={ink}
+              onChange={(event) => setInk(event.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => drawing.current?.getContext("2d")?.clearRect(0, 0, 160, 120)}
+            >
+              {copy.sceneClearImage}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const canvas = drawing.current;
+                if (canvas) submitAsset(assetName, canvas.toDataURL("image/png"));
+              }}
+            >
+              {copy.sceneSaveDrawing}
+            </button>
+          </div>
+          {assetError === "" ? null : <p role="alert">{assetError}</p>}
+        </section>
+      )}
     </div>
   );
 }

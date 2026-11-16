@@ -1093,6 +1093,15 @@ export function Workbench({
                 pendingActorCreation.current = true;
                 bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
               }}
+              onImportAsset={(kind, name, source) => {
+                bridge.post({
+                  schema: STUDIO_PROTOCOL_VERSION,
+                  type: "importAsset",
+                  kind,
+                  name,
+                  source,
+                });
+              }}
             />
           </div>
         )}

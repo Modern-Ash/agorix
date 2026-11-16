@@ -529,6 +529,29 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         await port.commitProject(nextProgram, nextMetadata, "Workbench: create actor and script");
         return snapshot();
       }
+      case "importAsset": {
+        const metadata = port.getMetadata();
+        if (metadata === undefined) return [];
+        if (!validEmbeddedImageSource(message.source) || (metadata.assets?.length ?? 0) >= 128) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const known = knownAssetIds(metadata);
+        let id = "";
+        do {
+          id = `asset:studio_${newBlockId().replace(/[^A-Za-z0-9_]/g, "_")}`;
+        } while (known.has(id));
+        await port.commitMetadata(
+          {
+            ...metadata,
+            assets: [
+              ...(metadata.assets ?? []),
+              { id, kind: message.kind, name: message.name, source: message.source },
+            ],
+          },
+          "Workbench: import image asset",
+        );
+        return snapshot();
+      }
       case "updateStage": {
         const metadata = port.getMetadata();
         if (metadata === undefined) return [];

@@ -204,6 +204,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .library-tabs button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 78%); color: var(--vscode-foreground); font-weight: 700; }
 .library-tabs button:focus-visible, .scene-library button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .scene-library { display: grid; gap: 14px; }
+.scene-create-image { display: grid; gap: 7px; }
+.scene-create-image canvas { width: 100%; max-width: 240px; height: auto; border: 1px solid var(--vscode-panel-border); background: #fff; touch-action: none; cursor: crosshair; }
+.scene-create-image input[type="file"] { display: block; max-width: 100%; }
+.scene-draw-actions { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .scene-library section { min-width: 0; }
 .scene-library h3 { margin: 0 0 6px; color: var(--vscode-descriptionForeground); font-size: 0.76em; letter-spacing: 0.06em; text-transform: uppercase; }
 .scene-library-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
