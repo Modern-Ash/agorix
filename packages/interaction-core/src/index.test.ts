@@ -191,4 +191,68 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("builds a comparison with editable numeric operands and refuses invalid operand edits", () => {
+    const workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:compare",
+        type: "control_if",
+        inputs: { condition: { id: "goal:compare", type: "sensing_touching_goal" }, then: [] },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const replacement = intentToChange(
+      { type: "replaceCondition", location, blockType: "operator_less_than" },
+      newId,
+      workspace,
+    );
+    const compared = applyWorkspaceChange(workspace, replacement!).workspace;
+    expect(compared.scripts[0]?.statements[0]?.inputs?.condition).toMatchObject({
+      type: "operator_less_than",
+      inputs: {
+        left: { type: "literal_number", fields: { value: 0 } },
+        right: { type: "literal_number", fields: { value: 10 } },
+      },
+    });
+    const changed = intentToChange(
+      { type: "setConditionNumber", location, side: "left", value: 7 },
+      newId,
+      compared,
+    );
+    expect(
+      applyWorkspaceChange(compared, changed!).program.scripts[0]?.statements[0],
+    ).toMatchObject({
+      type: "if",
+      condition: { type: "lessThan", left: { type: "numericLiteral", value: 7 } },
+    });
+    expect(
+      intentToChange(
+        { type: "setConditionNumber", location, side: "left", value: Infinity },
+        newId,
+        compared,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setConditionNumber",
+          location: { container: script, index: 1 },
+          side: "left",
+          value: 2,
+        },
+        newId,
+        compared,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setConditionNumber", location, side: "left", value: 2 },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
 });

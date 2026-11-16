@@ -92,6 +92,52 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:numbers",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: {
+            id: "cmp",
+            type: "operator_less_than",
+            inputs: {
+              left: { id: "left", type: "literal_number", fields: { value: 0 } },
+              right: { id: "right", type: "literal_number", fields: { value: 10 } },
+            },
+          },
+        },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    act(() =>
+      root.render(<Canvas workspace={workspace} onIntent={(intent) => intents.push(intent)} />),
+    );
+    const left = host.querySelector<HTMLInputElement>(
+      '.comparison-fields input[aria-label="Condition: Left value"]',
+    )!;
+    expect(left.value).toBe("0");
+    act(() => {
+      left.value = "7";
+      left.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setConditionNumber",
+      location: { container: script, index: 0 },
+      side: "left",
+      value: 7,
+    });
+    expect(left.value).toBe("0");
+    act(() => {
+      left.value = "";
+      left.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents).toHaveLength(1);
+  });
   it("replaces an if condition from a selected reporter and from a palette drop", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

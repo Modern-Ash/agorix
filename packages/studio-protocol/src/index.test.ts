@@ -139,6 +139,45 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("validates numeric comparison edits and preserves nested operands in snapshots", () => {
+    const location = { container: script, index: 0 };
+    const intent = { type: "setConditionNumber", location, side: "right", value: 24 };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, side: "middle" } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...intent, value: Infinity } }),
+    ).toBeUndefined();
+    const workspace = {
+      scripts: [
+        {
+          id: "main",
+          trigger: { id: "start", type: "event_on_start" },
+          statements: [
+            {
+              id: "if:1",
+              type: "control_if",
+              inputs: {
+                then: [],
+                condition: {
+                  id: "cmp:1",
+                  type: "operator_less_than",
+                  inputs: {
+                    left: { id: "n:1", type: "literal_number", fields: { value: 0 } },
+                    right: { id: "n:2", type: "literal_number", fields: { value: 24 } },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const message = { schema, type: "workspace", workspace, programHash: "fnv1a32:test" };
+    expect(parseHostMessage(message)).toMatchObject({ workspace });
+  });
+
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
     for (const junk of [
       null,

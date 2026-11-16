@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 
 import type { BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import { getBlockDefinition, type BlockType } from "@agorix/block-editor";
 import {
+  STUDIO_COMPARISON_BLOCK_TYPES,
   STUDIO_CONDITION_BLOCK_TYPES,
   keyboardIntent,
   resolveDrop,
@@ -391,6 +392,52 @@ export function Canvas({
                   ? copy.condition
                   : (getBlockDefinition(block.condition.type)?.label ?? block.condition.type)}
               </button>
+            ) : null}
+            {block.type === "control_if" &&
+            block.condition !== undefined &&
+            (STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(block.condition.type) ? (
+              <span className="comparison-fields">
+                {(["left", "right"] as const).map((side) => {
+                  const operand = block.condition?.inputs?.[side];
+                  if (
+                    operand?.type !== "literal_number" ||
+                    typeof operand.fields?.value !== "number"
+                  )
+                    return null;
+                  const value = operand.fields.value;
+                  return (
+                    <label key={side} className="block-field">
+                      <span>{side === "left" ? copy.conditionLeft : copy.conditionRight}</span>
+                      <input
+                        key={`${pos}:${side}:${value}`}
+                        type="number"
+                        tabIndex={isTabbable ? 0 : -1}
+                        aria-label={`${copy.condition}: ${side === "left" ? copy.conditionLeft : copy.conditionRight}`}
+                        defaultValue={value}
+                        draggable={false}
+                        onDragStart={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => {
+                          event.stopPropagation();
+                          if (event.key === "Enter") event.currentTarget.blur();
+                        }}
+                        onBlur={(event) => {
+                          const raw = event.currentTarget.value.trim();
+                          const next = Number(raw);
+                          if (raw !== "" && Number.isFinite(next) && next !== value) {
+                            onIntent({
+                              type: "setConditionNumber",
+                              location: block.location,
+                              side,
+                              value: next,
+                            });
+                          }
+                          event.currentTarget.value = String(value);
+                        }}
+                      />
+                    </label>
+                  );
+                })}
+              </span>
             ) : null}
             {fieldEntries
               .filter(
