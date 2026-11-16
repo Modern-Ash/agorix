@@ -367,6 +367,54 @@ describe("canvas keyboard and screen reader behaviour", () => {
     });
     expect(intents).toHaveLength(1);
   });
+  it("offers logical operand sources and Boolean values in a condition", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:logic",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: {
+            id: "and:logic",
+            type: "operator_and",
+            inputs: {
+              left: { id: "goal:logic", type: "sensing_touching_goal" },
+              right: { id: "bool:logic", type: "literal_boolean", fields: { value: true } },
+            },
+          },
+        },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.logical-fields select[aria-label="Condition: left source"]',
+    )!;
+    act(() => {
+      source.value = "sensing_touching_stage_edge";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalOperand",
+      side: "left",
+      blockType: "sensing_touching_stage_edge",
+    });
+    const boolean = host.querySelector<HTMLSelectElement>(
+      '.logical-fields select[aria-label="Condition: right Boolean value"]',
+    )!;
+    act(() => {
+      boolean.value = "false";
+      boolean.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalBoolean",
+      side: "right",
+      value: false,
+    });
+  });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

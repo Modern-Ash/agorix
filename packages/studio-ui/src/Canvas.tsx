@@ -4,6 +4,7 @@ import { getBlockDefinition, type BlockType } from "@agorix/block-editor";
 import {
   STUDIO_COMPARISON_BLOCK_TYPES,
   STUDIO_CONDITION_BLOCK_TYPES,
+  STUDIO_LOGICAL_OPERAND_TYPES,
   keyboardIntent,
   resolveDrop,
   type AgentVerb,
@@ -873,6 +874,86 @@ export function Canvas({
                   ? copy.condition
                   : (getBlockDefinition(block.condition.type)?.label ?? block.condition.type)}
               </button>
+            ) : null}
+            {(block.type === "control_if" || block.type === "control_repeat_until") &&
+            block.condition !== undefined &&
+            ["operator_and", "operator_or", "operator_not"].includes(block.condition.type) ? (
+              <span className="comparison-fields logical-fields">
+                {(block.condition.type === "operator_not"
+                  ? (["value"] as const)
+                  : (["left", "right"] as const)
+                ).map((side) => {
+                  const operand = block.condition?.inputs?.[side];
+                  if (operand === undefined || Array.isArray(operand)) return null;
+                  return (
+                    <span key={side} className="block-field">
+                      <label>
+                        <span>
+                          {side === "left"
+                            ? copy.conditionLeft
+                            : side === "right"
+                              ? copy.conditionRight
+                              : copy.conditionValue}
+                        </span>
+                        <select
+                          aria-label={`${copy.condition}: ${side} ${copy.numericSource}`}
+                          value={
+                            (STUDIO_LOGICAL_OPERAND_TYPES as readonly string[]).includes(
+                              operand.type,
+                            )
+                              ? operand.type
+                              : "other"
+                          }
+                          onChange={(event) =>
+                            onIntent({
+                              type: "setLogicalOperand",
+                              location: block.location,
+                              side,
+                              blockType: event.currentTarget
+                                .value as (typeof STUDIO_LOGICAL_OPERAND_TYPES)[number],
+                            })
+                          }
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          {STUDIO_LOGICAL_OPERAND_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {getBlockDefinition(type)?.label ?? type}
+                            </option>
+                          ))}
+                          {(STUDIO_LOGICAL_OPERAND_TYPES as readonly string[]).includes(
+                            operand.type,
+                          ) ? null : (
+                            <option value="other">
+                              {getBlockDefinition(operand.type)?.label ?? operand.type}
+                            </option>
+                          )}
+                        </select>
+                      </label>
+                      {operand.type === "literal_boolean" ? (
+                        <label>
+                          <span>{copy.conditionValue}</span>
+                          <select
+                            aria-label={`${copy.condition}: ${side} ${copy.conditionValue}`}
+                            value={String(operand.fields?.value === true)}
+                            onChange={(event) =>
+                              onIntent({
+                                type: "setLogicalBoolean",
+                                location: block.location,
+                                side,
+                                value: event.currentTarget.value === "true",
+                              })
+                            }
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            <option value="true">{copy.trueLabel}</option>
+                            <option value="false">{copy.falseLabel}</option>
+                          </select>
+                        </label>
+                      ) : null}
+                    </span>
+                  );
+                })}
+              </span>
             ) : null}
             {(block.type === "control_if" || block.type === "control_repeat_until") &&
             block.condition?.type === "literal_boolean" ? (

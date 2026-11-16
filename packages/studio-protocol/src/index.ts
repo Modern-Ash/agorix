@@ -24,6 +24,7 @@ import type {
 } from "@agorix/block-editor";
 import {
   STUDIO_CONDITION_BLOCK_TYPES,
+  STUDIO_LOGICAL_OPERAND_TYPES,
   isSafeId,
   parseAnchorRef,
   type Intent,
@@ -1036,6 +1037,30 @@ function parseIntent(value: unknown): Intent | undefined {
             blockType: blockType as BlockType,
             ...(typeof value["actorId"] === "string" ? { actorId: value["actorId"] } : {}),
           };
+    }
+    case "setLogicalOperand": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      const blockType = value["blockType"];
+      return location !== undefined &&
+        (side === "left" || side === "right" || side === "value") &&
+        (STUDIO_LOGICAL_OPERAND_TYPES as readonly unknown[]).includes(blockType)
+        ? {
+            type: "setLogicalOperand",
+            location,
+            side,
+            blockType: blockType as (typeof STUDIO_LOGICAL_OPERAND_TYPES)[number],
+          }
+        : undefined;
+    }
+    case "setLogicalBoolean": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      return location !== undefined &&
+        (side === "left" || side === "right" || side === "value") &&
+        typeof value["value"] === "boolean"
+        ? { type: "setLogicalBoolean", location, side, value: value["value"] }
+        : undefined;
     }
     case "setConditionNumber": {
       const location = parseLocation(value["location"]);
