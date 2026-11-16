@@ -28,7 +28,12 @@ import {
   parseAnchorRef,
   type Intent,
 } from "@agorix/interaction-core";
-import { validEmbeddedImageSource, type ProgramVariable } from "@agorix/program-model";
+import {
+  LIST_MAX_ITEMS,
+  validEmbeddedImageSource,
+  type ProgramList,
+  type ProgramVariable,
+} from "@agorix/program-model";
 
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
@@ -550,6 +555,10 @@ const BLOCK_TYPES = [
   "variables_change",
   "variables_show",
   "variables_hide",
+  "lists_add",
+  "lists_remove_at",
+  "lists_insert_at",
+  "lists_replace_at",
 ] as const;
 
 /** Only blocks with a complete direct-insertion path are shown in Studio's palette. */
@@ -997,10 +1006,16 @@ function parseIntent(value: unknown): Intent | undefined {
         ? { type: "addVariable", name: name.trim() }
         : undefined;
     }
+    case "addList": {
+      const name = value["name"];
+      return typeof name === "string" && name.trim().length > 0 && name.trim().length <= 40
+        ? { type: "addList", name: name.trim() }
+        : undefined;
+    }
     case "setExpressionNumber": {
       const location = parseLocation(value["location"]);
       return location === undefined ||
-        (value["input"] !== "value" && value["input"] !== "delta") ||
+        (value["input"] !== "value" && value["input"] !== "delta" && value["input"] !== "index") ||
         !isFiniteNumber(value["value"])
         ? undefined
         : { type: "setExpressionNumber", location, input: value["input"], value: value["value"] };
@@ -1268,6 +1283,30 @@ function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
       visible: item["visible"],
     });
   }
+  const rawLists = value["lists"];
+  if (rawLists !== undefined && (!Array.isArray(rawLists) || rawLists.length > 128))
+    return undefined;
+  const lists: ProgramList[] = [];
+  for (const item of (rawLists ?? []) as unknown[]) {
+    if (
+      !isObject(item) ||
+      !isSafeId(item["id"]) ||
+      typeof item["name"] !== "string" ||
+      item["name"].length < 1 ||
+      item["name"].length > 40 ||
+      !Array.isArray(item["initialItems"]) ||
+      item["initialItems"].length > LIST_MAX_ITEMS ||
+      item["initialItems"].some((entry) => !isFiniteNumber(entry)) ||
+      typeof item["visible"] !== "boolean"
+    )
+      return undefined;
+    lists.push({
+      id: item["id"],
+      name: item["name"],
+      initialItems: item["initialItems"] as number[],
+      visible: item["visible"],
+    });
+  }
   const scripts: BlockScript[] = [];
   for (const raw of value["scripts"] as unknown[]) {
     if (!isObject(raw) || typeof raw["id"] !== "string") {
@@ -1286,7 +1325,11 @@ function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
       statements,
     });
   }
-  return { scripts, ...(rawVariables === undefined ? {} : { variables }) };
+  return {
+    scripts,
+    ...(rawVariables === undefined ? {} : { variables }),
+    ...(rawLists === undefined ? {} : { lists }),
+  };
 }
 
 function boundedString(value: unknown, min: number, max: number): string | undefined {

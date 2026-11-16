@@ -1,7 +1,15 @@
 import type { BlockNode, BlockType, BlockWorkspaceSnapshot } from "./adapter.js";
 
 export type ToolboxSectionName =
-  "Start" | "Move" | "Looks" | "Sound" | "Repeat & Decide" | "Check" | "Operators" | "Variables";
+  | "Start"
+  | "Move"
+  | "Looks"
+  | "Sound"
+  | "Repeat & Decide"
+  | "Check"
+  | "Operators"
+  | "Variables"
+  | "Lists";
 export type BlockPlacement = "trigger" | "statement" | "expression";
 
 export interface ToolboxBlockDefinition {
@@ -530,6 +538,38 @@ const definitions: readonly ToolboxBlockDefinition[] = [
       fields: { variableId: "score" },
     }),
   },
+  ...(["lists_add", "lists_remove_at", "lists_insert_at", "lists_replace_at"] as const).map(
+    (type) => ({
+      type,
+      label: {
+        lists_add: "Add [N] to list",
+        lists_remove_at: "Remove item [N]",
+        lists_insert_at: "Insert [N] at [N]",
+        lists_replace_at: "Replace item [N] with [N]",
+      }[type],
+      section: "Lists" as const,
+      placement: "statement" as const,
+      accessibleName: {
+        lists_add: "add item to list",
+        lists_remove_at: "remove item from list",
+        lists_insert_at: "insert item in list",
+        lists_replace_at: "replace item in list",
+      }[type],
+      createDefaultBlock: (id: string): BlockNode => ({
+        id,
+        type,
+        fields: { listId: "items" },
+        inputs: {
+          ...(type === "lists_remove_at"
+            ? {}
+            : { value: { id: `${id}:value`, type: "literal_number", fields: { value: 1 } } }),
+          ...(type === "lists_add"
+            ? {}
+            : { index: { id: `${id}:index`, type: "literal_number", fields: { value: 1 } } }),
+        },
+      }),
+    }),
+  ),
   {
     type: "literal_number",
     label: "[N]",

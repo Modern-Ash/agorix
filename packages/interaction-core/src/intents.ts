@@ -79,10 +79,11 @@ export type Intent =
       readonly value: number;
     }
   | { readonly type: "addVariable"; readonly name: string }
+  | { readonly type: "addList"; readonly name: string }
   | {
       readonly type: "setExpressionNumber";
       readonly location: StatementLocation;
-      readonly input: "value" | "delta";
+      readonly input: "value" | "delta" | "index";
       readonly value: number;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
@@ -151,13 +152,25 @@ export function intentToChange(
   workspace?: BlockWorkspaceSnapshot,
 ): WorkspaceChange | undefined {
   switch (intent.type) {
-    case "insertBlock":
+    case "insertBlock": {
+      const block = createDefaultBlock(intent.blockType, newBlockId());
+      if (intent.blockType.startsWith("lists_")) {
+        const listId = workspace?.lists?.[0]?.id;
+        if (listId === undefined) return undefined;
+        return {
+          type: "addBlock",
+          container: intent.to.container,
+          index: intent.to.index,
+          block: { ...block, fields: { ...block.fields, listId } },
+        };
+      }
       return {
         type: "addBlock",
         container: intent.to.container,
         index: intent.to.index,
-        block: createDefaultBlock(intent.blockType, newBlockId()),
+        block,
       };
+    }
     case "moveBlock":
       return { type: "moveBlock", from: intent.from, to: intent.to };
     case "deleteBlock":
@@ -174,6 +187,13 @@ export function intentToChange(
         variable: { id: newBlockId(), name, initialValue: 0, visible: true },
       };
     }
+    case "addList": {
+      const name = intent.name.trim();
+      if (workspace === undefined || name.length < 1 || name.length > 40) return undefined;
+      if (workspace.lists?.some((list) => list.name.toLowerCase() === name.toLowerCase()))
+        return undefined;
+      return { type: "addList", list: { id: newBlockId(), name, initialItems: [], visible: true } };
+    }
     case "setExpressionNumber": {
       if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
       const { container, index } = intent.location;
@@ -186,9 +206,16 @@ export function intentToChange(
         }
       }
       const block = statements?.[index];
-      if (block?.type !== "variables_set" && block?.type !== "variables_change") return undefined;
-      if (block.type === "variables_set" && intent.input !== "value") return undefined;
-      if (block.type === "variables_change" && intent.input !== "delta") return undefined;
+      const inputForType: Readonly<Record<string, readonly string[]>> = {
+        variables_set: ["value"],
+        variables_change: ["delta"],
+        lists_add: ["value"],
+        lists_remove_at: ["index"],
+        lists_insert_at: ["index", "value"],
+        lists_replace_at: ["index", "value"],
+      };
+      if (block === undefined || !inputForType[block.type]?.includes(intent.input))
+        return undefined;
       const operand = block.inputs?.[intent.input];
       if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
         return undefined;

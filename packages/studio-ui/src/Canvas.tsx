@@ -318,6 +318,7 @@ export function Canvas({
           .filter(
             ([name, value]) =>
               name !== "variableId" &&
+              name !== "listId" &&
               !["costumeId", "backdropId", "soundId"].includes(name) &&
               typeof value !== "number" &&
               !(typeof value === "string" && ["text", "message", "key"].includes(name)),
@@ -462,19 +463,54 @@ export function Canvas({
                 </select>
               </label>
             ) : null}
-            {(["value", "delta"] as const).map((input) => {
+            {typeof block.fields.listId === "string" ? (
+              <label className="block-field">
+                <span>{copy.lists}</span>
+                <select
+                  aria-label={`${label}: ${copy.lists}`}
+                  value={block.fields.listId}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setTextField",
+                      location: block.location,
+                      field: "listId",
+                      value: event.currentTarget.value,
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  {workspace.lists?.some((list) => list.id === block.fields.listId) ? null : (
+                    <option value={block.fields.listId}>{block.fields.listId}</option>
+                  )}
+                  {(workspace.lists ?? []).map((list) => (
+                    <option key={list.id} value={list.id}>
+                      {list.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {(["value", "delta", "index"] as const).map((input) => {
               const operand = block[input];
               if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
                 return null;
               const value = operand.fields.value;
+              const operandLabel =
+                input === "index"
+                  ? copy.listIndex
+                  : input === "delta"
+                    ? copy.variableDelta
+                    : block.type.startsWith("lists_")
+                      ? copy.listValue
+                      : copy.variableValue;
               return (
                 <label key={input} className="block-field">
-                  <span>{input === "value" ? copy.variableValue : copy.variableDelta}</span>
+                  <span>{operandLabel}</span>
                   <input
                     key={`${pos}:${input}:${value}`}
                     type="number"
                     tabIndex={isTabbable ? 0 : -1}
-                    aria-label={`${label}: ${input === "value" ? copy.variableValue : copy.variableDelta}`}
+                    aria-label={`${label}: ${operandLabel}`}
                     defaultValue={value}
                     draggable={false}
                     onDragStart={(event) => event.stopPropagation()}

@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { POC_TOOLBOX, getBlockDefinition, type BlockType } from "@agorix/block-editor";
+import {
+  POC_BLOCK_DEFINITIONS,
+  POC_TOOLBOX,
+  getBlockDefinition,
+  type BlockType,
+} from "@agorix/block-editor";
 import { dragPayload } from "./drag.js";
 import { STUDIO_CONDITION_BLOCK_TYPES } from "@agorix/interaction-core";
 import { STUDIO_INSERTABLE_STATEMENTS } from "@agorix/studio-protocol";
@@ -10,6 +15,7 @@ function sectionLabel(name: string, copy: StudioUiCopy): string {
   if (name === "Move") return copy.paletteMotion;
   if (name === "Repeat & Decide") return copy.paletteControl;
   if (name === "Check") return copy.paletteSensing;
+  if (name === "Lists") return copy.lists;
   return name;
 }
 
@@ -18,34 +24,45 @@ export function Palette({
   onAdd,
   onSelectExpression,
   selectedExpression,
+  hasLists = false,
 }: {
   readonly copy?: StudioUiCopy;
   readonly onAdd: (blockType: BlockType) => void;
   readonly onSelectExpression?: (blockType: BlockType) => void;
   readonly selectedExpression?: BlockType | undefined;
+  readonly hasLists?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
   const sections = useMemo(
     () =>
-      POC_TOOLBOX.map((section) => ({
-        name: sectionLabel(section.name, copy),
-        blocks: section.blocks
-          .filter((block) => getBlockDefinition(block.type)?.placement !== "trigger")
-          .filter(
-            (block) =>
-              STUDIO_INSERTABLE_STATEMENTS.includes(block.type) ||
-              (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(block.type),
-          )
-          .filter((block) =>
-            normalizedQuery.length === 0
-              ? true
-              : `${block.label} ${block.accessibleName} ${section.name}`
-                  .toLowerCase()
-                  .includes(normalizedQuery),
-          ),
-      })).filter((section) => section.blocks.length > 0),
-    [copy, normalizedQuery],
+      [
+        ...POC_TOOLBOX,
+        {
+          name: "Lists" as const,
+          blocks: POC_BLOCK_DEFINITIONS.filter((definition) => definition.section === "Lists"),
+        },
+      ]
+        .map((section) => ({
+          name: sectionLabel(section.name, copy),
+          blocks: section.blocks
+            .filter((block) => getBlockDefinition(block.type)?.placement !== "trigger")
+            .filter((block) => hasLists || !block.type.startsWith("lists_"))
+            .filter(
+              (block) =>
+                STUDIO_INSERTABLE_STATEMENTS.includes(block.type) ||
+                (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(block.type),
+            )
+            .filter((block) =>
+              normalizedQuery.length === 0
+                ? true
+                : `${block.label} ${block.accessibleName} ${section.name}`
+                    .toLowerCase()
+                    .includes(normalizedQuery),
+            ),
+        }))
+        .filter((section) => section.blocks.length > 0),
+    [copy, normalizedQuery, hasLists],
   );
   return (
     <nav className="palette" aria-label={copy.paletteBlocks}>

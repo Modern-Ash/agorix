@@ -216,6 +216,42 @@ describe("studio-protocol", () => {
     ).toMatchObject({ workspace });
   });
 
+  it("validates list declarations and bounded workspace projection", () => {
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { type: "addList", name: "items" } }),
+    ).toMatchObject({ intent: { type: "addList", name: "items" } });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { type: "addList", name: " " } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setExpressionNumber",
+          location: { container: script, index: 0 },
+          input: "index",
+          value: 2,
+        },
+      }),
+    ).toMatchObject({ intent: { input: "index", value: 2 } });
+    const workspace = {
+      lists: [{ id: "l", name: "items", initialItems: [1, 2], visible: true }],
+      scripts: [{ id: "main", trigger: { id: "start", type: "event_on_start" }, statements: [] }],
+    };
+    expect(
+      parseHostMessage({ schema, type: "workspace", workspace, programHash: "fnv1a32:1" }),
+    ).toMatchObject({ workspace });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "workspace",
+        workspace: { ...workspace, lists: [{ ...workspace.lists[0], initialItems: [Infinity] }] },
+        programHash: "fnv1a32:1",
+      }),
+    ).toBeUndefined();
+  });
+
   it("validates actor creation and script ownership in snapshots", () => {
     expect(parseUiMessage({ schema, type: "createActor", name: "Robot" })).toEqual({
       schema,

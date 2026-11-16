@@ -97,3 +97,5 @@ conversation needs a separate product contract for turn history, grounding,
 privacy, safety and reviewed mutations before it is exposed to learners.
 
 Scene can add an owned green-flag or message-receiver script to the selected actor. Script headers show their real trigger; selecting a header determines where palette clicks insert blocks. The message on a Broadcast block is editable in place. Script creation checks the program hash and commits program and actor ownership together.
+
+Studio Blocks can declare named numeric lists and insert Add, Remove, Insert and Replace operations. List blocks select a declared list and edit literal item values and indices directly. The shared child-facing POC toolbox stays unchanged; these definitions are surfaced only in Studio.
