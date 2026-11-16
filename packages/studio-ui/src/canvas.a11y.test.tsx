@@ -643,7 +643,7 @@ describe("workbench live region and focus after inserting from the palette", () 
         schema: STUDIO_PROTOCOL_VERSION,
         type: "workspace",
         workspace,
-        programHash: "sha:actors",
+        programHash: "fnv1a32:12345678",
       }),
     );
     act(() =>
@@ -744,6 +744,65 @@ describe("workbench live region and focus after inserting from the palette", () 
         .querySelector<HTMLButtonElement>('.scene-actors button[title="Robot"]')
         ?.getAttribute("aria-pressed"),
     ).toBe("true");
+    act(() =>
+      host
+        .querySelector<HTMLFormElement>(".scene-create-script")!
+        .dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(posted.at(-1)).toMatchObject({
+      type: "createScript",
+      actorId: "actor:robot",
+      trigger: "greenFlag",
+      baseHash: "fnv1a32:12345678",
+    });
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        programHash: "fnv1a32:23456789",
+        workspace: programToWorkspace({
+          schema: "agorix/program/v1",
+          scripts: [
+            { id: "main", trigger: { type: "onStart" }, statements: [] },
+            { id: "helper", trigger: { type: "greenFlag" }, statements: [] },
+            { id: "receiver", trigger: { type: "onMessage", message: "go" }, statements: [] },
+          ],
+        }).workspace,
+      }),
+    );
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "actors",
+        selectedActorId: "actor:robot",
+        actors: [
+          {
+            id: "actor:robot",
+            name: "Robot",
+            x: 0,
+            y: 0,
+            direction: 0,
+            size: 100,
+            visible: true,
+            scriptCount: 1,
+            scriptIds: ["receiver"],
+          },
+        ],
+      }),
+    );
+    expect(host.querySelector(".script-title")?.textContent).toContain("go");
+    act(() =>
+      host.querySelector<HTMLButtonElement>('.library-tabs button[aria-pressed="false"]')?.click(),
+    );
+    act(() =>
+      Array.from(host.querySelectorAll<HTMLButtonElement>(".palette button"))
+        .find((button) => button.textContent?.includes("Move"))
+        ?.click(),
+    );
+    expect(posted.at(-1)).toMatchObject({
+      type: "intent",
+      intent: { type: "insertBlock", to: { container: { kind: "script", scriptIndex: 2 } } },
+    });
   });
   it("offers variable creation from the visible Blocks library", () => {
     const posted: unknown[] = [];

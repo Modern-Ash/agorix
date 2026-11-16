@@ -130,6 +130,8 @@ export function Canvas({
   focusRequest,
   selectedExpression,
   visibleScriptIds,
+  selectedScriptId,
+  onSelectScript,
   assets = [],
 }: {
   readonly copy?: StudioUiCopy;
@@ -144,6 +146,8 @@ export function Canvas({
   readonly focusRequest?: FocusRequest | undefined;
   readonly selectedExpression?: BlockType | undefined;
   readonly visibleScriptIds?: readonly string[] | undefined;
+  readonly selectedScriptId?: string | undefined;
+  readonly onSelectScript?: ((id: string) => void) | undefined;
   readonly assets?: readonly AssetView[];
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
@@ -230,10 +234,30 @@ export function Canvas({
       ) : null}
       {rows.map((row, key) => {
         if (row.kind === "script") {
+          const script = workspace.scripts[row.scriptIndex];
+          const scriptId = script?.programId ?? script?.id;
+          const trigger = script?.trigger;
+          const eventLabel =
+            trigger?.type === "event_on_message"
+              ? `${copy.sceneOnMessage}: ${String(trigger.fields?.message ?? "")}`
+              : trigger?.type === "event_on_key_pressed"
+                ? `${getBlockDefinition(trigger.type)?.label ?? trigger.type}: ${String(trigger.fields?.key ?? "")}`
+                : trigger?.type === "event_on_actor_clicked"
+                  ? (getBlockDefinition(trigger.type)?.label ?? trigger.type)
+                  : copy.canvasWhenRun;
           return (
-            <div key={key} className="script-title">
-              {copy.canvasScript} {row.scriptIndex + 1}: {copy.canvasWhenRun}
-            </div>
+            <button
+              key={key}
+              type="button"
+              className="script-title"
+              aria-pressed={scriptId === selectedScriptId}
+              aria-label={`${copy.sceneSelectedScript}: ${copy.canvasScript} ${row.scriptIndex + 1}, ${eventLabel}`}
+              onClick={() => {
+                if (scriptId !== undefined) onSelectScript?.(scriptId);
+              }}
+            >
+              {copy.canvasScript} {row.scriptIndex + 1}: {eventLabel}
+            </button>
           );
         }
         if (row.kind === "slot") {

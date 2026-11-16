@@ -468,6 +468,52 @@ describe("workbenchHost", () => {
     expect(labels).toEqual(["Workbench: create actor and script"]);
   });
 
+  it("creates a message script for one actor and refuses stale or unknown targets", async () => {
+    const { host, get, metadata, labels } = setup();
+    await host.handle({ schema, type: "createActor", name: "Robot" });
+    const robot = metadata().actors!.items.find((actor) => actor.name === "Robot")!;
+    const baseHash = programSemanticHash(get()!);
+    const accepted = await host.handle({
+      schema,
+      type: "createScript",
+      actorId: robot.id,
+      trigger: "onMessage",
+      message: "go",
+      baseHash,
+    });
+    const created = get()!.scripts.at(-1)!;
+    expect(created.trigger).toEqual({ type: "onMessage", message: "go" });
+    expect(metadata().actors!.items.find((actor) => actor.id === robot.id)?.scripts).toContain(
+      created.id,
+    );
+    expect(metadata().actors!.items[0]?.scripts).not.toContain(created.id);
+    expect(accepted.find((item) => item.type === "workspace")).toBeDefined();
+    const before = labels.length;
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "createScript",
+          actorId: robot.id,
+          trigger: "greenFlag",
+          baseHash,
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "createScript",
+          actorId: "actor:missing",
+          trigger: "greenFlag",
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(before);
+  });
+
   it("persists a bounded image and refuses an invalid import without mutation", async () => {
     const { host, metadata, labels } = setup();
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;

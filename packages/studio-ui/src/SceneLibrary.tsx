@@ -14,6 +14,7 @@ export function SceneLibrary({
   onCostume,
   onBackdrop,
   onCreateActor,
+  onCreateScript,
   onImportAsset,
 }: {
   readonly copy: StudioUiCopy;
@@ -25,6 +26,11 @@ export function SceneLibrary({
   readonly onCostume: (actorId: string, costumeId: string) => void;
   readonly onBackdrop: (backdropId: string) => void;
   readonly onCreateActor?: (name: string) => void;
+  readonly onCreateScript?: (
+    actorId: string,
+    trigger: "greenFlag" | "onMessage",
+    message?: string,
+  ) => void;
   readonly onImportAsset?: (kind: "costume" | "backdrop", name: string, source: string) => void;
 }) {
   const drawing = useRef<HTMLCanvasElement>(null);
@@ -33,6 +39,8 @@ export function SceneLibrary({
   const [assetError, setAssetError] = useState("");
   const [drawingActive, setDrawingActive] = useState(false);
   const [ink, setInk] = useState("#7855d8");
+  const [scriptTrigger, setScriptTrigger] = useState<"greenFlag" | "onMessage">("greenFlag");
+  const [scriptMessage, setScriptMessage] = useState("");
   const submitAsset = (name: string, source: string) => {
     if (!validEmbeddedImageSource(source)) {
       setAssetError(copy.sceneInvalidImage);
@@ -107,6 +115,42 @@ export function SceneLibrary({
             </button>
           ))}
         </div>
+        {selected === undefined || onCreateScript === undefined ? null : (
+          <form
+            className="scene-create-script"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (scriptTrigger === "onMessage" && scriptMessage.trim() === "") return;
+              onCreateScript(
+                selected.id,
+                scriptTrigger,
+                scriptTrigger === "onMessage" ? scriptMessage.trim() : undefined,
+              );
+            }}
+          >
+            <label>
+              {copy.sceneNewScript}
+              <select
+                value={scriptTrigger}
+                onChange={(event) =>
+                  setScriptTrigger(event.currentTarget.value as "greenFlag" | "onMessage")
+                }
+              >
+                <option value="greenFlag">{copy.canvasWhenRun}</option>
+                <option value="onMessage">{copy.sceneOnMessage}</option>
+              </select>
+            </label>
+            {scriptTrigger === "onMessage" ? (
+              <input
+                aria-label={copy.sceneMessageName}
+                maxLength={80}
+                value={scriptMessage}
+                onChange={(event) => setScriptMessage(event.currentTarget.value)}
+              />
+            ) : null}
+            <button type="submit">{copy.sceneAddScript}</button>
+          </form>
+        )}
       </section>
       <section aria-label={copy.sceneCostumes}>
         <h3>

@@ -149,7 +149,9 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .validation-panel p { margin: 0; color: var(--vscode-foreground); }
 .validation-panel code { overflow: hidden; color: var(--vscode-descriptionForeground); font-family: var(--vscode-editor-font-family); font-size: 0.82em; text-overflow: ellipsis; white-space: nowrap; }
 .workbench[data-density="compact"] .validation-panel { margin-bottom: 6px; padding: 6px; }
-.script-title { margin: 12px 0 4px; font-weight: 600; }
+.script-title { display: block; width: 100%; margin: 12px 0 4px; padding: 5px 8px; text-align: left; font-weight: 600; border: 1px solid var(--vscode-panel-border); border-radius: 5px; color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
+.script-title[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 85%); }
+.script-title:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .workbench[data-density="compact"] .script-title { margin: 8px 0 2px; }
 .slot { height: 8px; border-radius: 4px; transition: height 120ms ease; }
 .slot.drag-over { height: 24px; background: var(--vscode-list-hoverBackground); outline: 1px dashed var(--vscode-focusBorder); }
@@ -204,6 +206,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .library-tabs button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 78%); color: var(--vscode-foreground); font-weight: 700; }
 .library-tabs button:focus-visible, .scene-library button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .scene-library { display: grid; gap: 14px; }
+.scene-create-script { display: grid; gap: 5px; margin-top: 8px; }
+.scene-create-script label { display: grid; gap: 3px; }
 .scene-create-image { display: grid; gap: 7px; }
 .scene-create-image canvas { width: 100%; max-width: 240px; height: auto; border: 1px solid var(--vscode-panel-border); background: #fff; touch-action: none; cursor: crosshair; }
 .scene-create-image input[type="file"] { display: block; max-width: 100%; }
