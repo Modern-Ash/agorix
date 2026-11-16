@@ -67,6 +67,15 @@ function pushList(
         childPath,
         depth + 1,
       );
+    } else if (node.type === "control_repeat_until") {
+      pushList(
+        rows,
+        node.inputs?.body ?? [],
+        { kind: "repeatUntilBody", scriptIndex, statementPath: childPath },
+        scriptIndex,
+        childPath,
+        depth + 1,
+      );
     } else if (node.type === "control_if") {
       pushList(
         rows,

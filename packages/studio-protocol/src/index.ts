@@ -541,6 +541,7 @@ const BLOCK_TYPES = [
   "sound_change_volume",
   "event_broadcast",
   "control_repeat",
+  "control_repeat_until",
   "control_if",
   "sensing_touching_goal",
   "sensing_touching_actor",
@@ -943,7 +944,9 @@ function parseContainer(value: unknown): Container | undefined {
   }
   const path = value["statementPath"];
   if (
-    (value["kind"] === "repeatBody" || value["kind"] === "ifThen") &&
+    (value["kind"] === "repeatBody" ||
+      value["kind"] === "repeatUntilBody" ||
+      value["kind"] === "ifThen") &&
     Array.isArray(path) &&
     path.length <= 16 &&
     path.every(isIndex)

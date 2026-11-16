@@ -86,6 +86,7 @@ describe("block-editor", () => {
       "Set volume to [N]",
       "Change volume by [N]",
       "Repeat [N] times",
+      "Repeat until ___",
       "If ___, then",
       "Touching the goal?",
       "Touching character?",
@@ -112,7 +113,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(45);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(46);
   });
 
   it("creates safe defaults for every required POC block", () => {
