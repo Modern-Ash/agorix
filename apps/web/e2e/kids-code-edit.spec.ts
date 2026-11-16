@@ -84,3 +84,28 @@ test("the text can use pen, music, motion and looks blocks, and the packs follow
   await page.getByRole("button", { name: "Bloques", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(6);
 });
+
+test("the text can change a calculation and a condition, and the run shows the result", async ({
+  page,
+}) => {
+  await openScene(page);
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("7");
+  await page.getByRole("button", { name: "+ Fijar valor" }).click();
+  await page.getByRole("button", { name: "Código", exact: true }).click();
+  await page.getByRole("button", { name: "Editar el texto" }).click();
+  const box = page.getByRole("textbox", { name: "Texto del programa" });
+  const original = await box.inputValue();
+  expect(original).toContain('set "Puntos" to 7');
+  await box.fill(original.replace('set "Puntos" to 7', 'set "Puntos" to ("Puntos" + 5)'));
+  await expect(page.getByTestId("code-edit-status")).toContainText("Se entiende");
+  await page.getByRole("button", { name: "Aplicar" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Puntos: 5")).toBeVisible();
+
+  // A bracket left open is named, with its line.
+  await page.getByRole("button", { name: "Editar el texto" }).click();
+  await box.fill(original.replace('set "Puntos" to 7', 'set "Puntos" to ("Puntos" + 5'));
+  await expect(page.getByTestId("code-edit-status")).toContainText("paréntesis");
+});

@@ -226,3 +226,179 @@ describe("the wider subset: blocks with only words and numbers", () => {
     });
   });
 });
+
+describe("conditions and expressions, read back", () => {
+  const num = (value: number) => ({ type: "numericLiteral", value }) as const;
+  const text = (value: string) => ({ type: "textLiteral", value }) as const;
+  const score = { type: "variable", variableId: "var-1" } as const;
+  const word = { type: "textVariable", variableId: "text-1" } as const;
+  const whole = (statements: unknown[]): ProjectProgram =>
+    validateProgram({
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "var-1", name: "score", initialValue: 0, visible: true },
+        { id: "var-2", name: "level", initialValue: 1, visible: false, scope: "stage" },
+      ],
+      textVariables: [
+        { id: "text-1", name: "name", initialValue: "", visible: false },
+        { id: "text-2", name: "title", initialValue: "hi", visible: true, scope: "stage" },
+      ],
+      scripts: [{ id: "script-1", trigger: { type: "greenFlag" }, statements }],
+    } as never);
+  const roundTrips = (program: ProjectProgram) =>
+    expect(parseAgorixCode(projectAgorixCode(program).text, program)).toEqual({
+      ok: true,
+      program,
+    });
+
+  it("reads calculations and the variables they use", () => {
+    roundTrips(
+      whole([
+        {
+          type: "setVariable",
+          variableId: "var-1",
+          value: { type: "add", left: score, right: num(2) },
+        },
+        {
+          type: "changeVariable",
+          variableId: "var-1",
+          delta: {
+            type: "multiply",
+            left: { type: "subtract", left: score, right: num(1) },
+            right: num(3),
+          },
+        },
+        {
+          type: "setVariable",
+          variableId: "var-2",
+          value: { type: "divide", left: num(9), right: num(2) },
+        },
+        {
+          type: "setVariable",
+          variableId: "var-1",
+          value: { type: "modulo", left: score, right: num(5) },
+        },
+        {
+          type: "setVariable",
+          variableId: "var-1",
+          value: { type: "mathFunction", function: "sqrt", value: num(9) },
+        },
+        {
+          type: "setVariable",
+          variableId: "var-1",
+          value: { type: "randomInteger", min: num(1), max: num(6) },
+        },
+        {
+          type: "setVariable",
+          variableId: "var-1",
+          value: { type: "random", min: num(1), max: num(6) },
+        },
+      ]),
+    );
+  });
+
+  it("reads words: set a word, join, length, letter and contains", () => {
+    roundTrips(
+      whole([
+        { type: "setText", variableId: "text-1", value: text("Ana") },
+        {
+          type: "setText",
+          variableId: "text-1",
+          value: { type: "join", left: word, right: text("!") },
+        },
+        { type: "setVariable", variableId: "var-1", value: { type: "textLength", value: word } },
+        {
+          type: "setText",
+          variableId: "text-2",
+          value: { type: "letterOf", index: num(1), value: word },
+        },
+        {
+          type: "if",
+          condition: { type: "textContains", text: word, part: text("a") },
+          then: [{ type: "say", text: "Hola ", append: word, seconds: 2 }],
+        },
+      ]),
+    );
+  });
+
+  it("reads conditions: comparisons, and, or, not, and the sensors", () => {
+    roundTrips(
+      whole([
+        {
+          type: "if",
+          condition: {
+            type: "and",
+            left: { type: "greaterThan", left: score, right: num(3) },
+            right: { type: "not", value: { type: "keyDown", key: "Space" } },
+          },
+          then: [{ type: "show" }],
+          else: [{ type: "hide" }],
+        },
+        {
+          type: "if",
+          condition: {
+            type: "or",
+            left: { type: "lessOrEqual", left: score, right: num(1) },
+            right: { type: "equals", left: score, right: num(0) },
+          },
+          then: [{ type: "show" }],
+        },
+        { type: "if", condition: { type: "touchingGoal" }, then: [{ type: "show" }] },
+        {
+          type: "if",
+          condition: { type: "touchingActor", actorId: "actor:b" },
+          then: [{ type: "show" }],
+        },
+        { type: "if", condition: { type: "touchingMouse" }, then: [{ type: "show" }] },
+        { type: "if", condition: { type: "mouseDown" }, then: [{ type: "show" }] },
+        {
+          type: "if",
+          condition: { type: "touchingColor", color: "red" },
+          then: [{ type: "show" }],
+        },
+        {
+          type: "if",
+          condition: { type: "lessThan", left: { type: "distanceToMouse" }, right: num(50) },
+          then: [{ type: "show" }],
+        },
+        {
+          type: "if",
+          condition: { type: "greaterOrEqual", left: { type: "xPosition" }, right: num(0) },
+          then: [{ type: "show" }],
+        },
+        {
+          type: "repeatUntil",
+          condition: { type: "booleanLiteral", value: false },
+          body: [{ type: "show" }],
+        },
+        { type: "waitUntil", condition: { type: "keyDown", key: "Space" } },
+      ]),
+    );
+  });
+
+  it("refuses an operation without its brackets, and a name that is not declared", () => {
+    expect(parseAgorixCode('variable "n" = 0\nwhen start\n  set "n" to 1 + 2\n')).toEqual({
+      ok: false,
+      errors: [{ code: "badExpression", line: 3 }],
+    });
+    expect(parseAgorixCode("when start\n  if (1 < 2\n    show\n")).toMatchObject({
+      ok: false,
+      errors: [{ code: "badExpression", line: 2 }],
+    });
+    expect(parseAgorixCode('when start\n  change "ghost" by 1\n')).toMatchObject({
+      ok: false,
+      errors: [{ code: "unknownName" }],
+    });
+  });
+
+  it("reads the stage variables and word variables of a program", () => {
+    const parsed = parseAgorixCode(
+      'stage variable "level" = 1\ntext "name" = "Ana"\nshow "name"\n\nwhen start\n  set "level" to 2\n',
+    );
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.program.variables?.[0]).toMatchObject({ name: "level", scope: "stage" });
+      expect(parsed.program.textVariables?.[0]).toMatchObject({ name: "name", visible: true });
+    }
+  });
+});
