@@ -255,4 +255,49 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("creates named variables and edits only valid numeric variable inputs", () => {
+    const empty = createStarterWorkspace();
+    const added = intentToChange({ type: "addVariable", name: "energy" }, newId, empty);
+    const declared = applyWorkspaceChange(empty, added!).workspace;
+    expect(declared.variables?.[0]).toMatchObject({ name: "energy", initialValue: 0 });
+    expect(
+      intentToChange({ type: "addVariable", name: "ENERGY" }, newId, declared),
+    ).toBeUndefined();
+    const withSet = applyWorkspaceChange(declared, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "set:energy",
+        type: "variables_set",
+        fields: { variableId: declared.variables![0]!.id },
+        inputs: { value: { id: "number:energy", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const edit = intentToChange(
+      { type: "setExpressionNumber", location, input: "value", value: 12 },
+      newId,
+      withSet,
+    );
+    expect(applyWorkspaceChange(withSet, edit!).program.scripts[0]?.statements[0]).toMatchObject({
+      type: "setVariable",
+      value: { type: "numericLiteral", value: 12 },
+    });
+    expect(
+      intentToChange(
+        { type: "setExpressionNumber", location, input: "delta", value: 2 },
+        newId,
+        withSet,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setExpressionNumber", location, input: "value", value: Infinity },
+        newId,
+        withSet,
+      ),
+    ).toBeUndefined();
+  });
 });

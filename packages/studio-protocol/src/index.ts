@@ -28,7 +28,7 @@ import {
   parseAnchorRef,
   type Intent,
 } from "@agorix/interaction-core";
-import { validEmbeddedImageSource } from "@agorix/program-model";
+import { validEmbeddedImageSource, type ProgramVariable } from "@agorix/program-model";
 
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
@@ -527,6 +527,11 @@ const BLOCK_TYPES = [
   "operator_less_than",
   "operator_greater_than",
   "operator_equals",
+  "variables_value",
+  "variables_set",
+  "variables_change",
+  "variables_show",
+  "variables_hide",
 ] as const;
 
 /** Only blocks with a complete direct-insertion path are shown in Studio's palette. */
@@ -963,6 +968,20 @@ function parseIntent(value: unknown): Intent | undefined {
         ? undefined
         : { type: "setConditionNumber", location, side: value["side"], value: value["value"] };
     }
+    case "addVariable": {
+      const name = value["name"];
+      return typeof name === "string" && name.trim().length > 0 && name.trim().length <= 40
+        ? { type: "addVariable", name: name.trim() }
+        : undefined;
+    }
+    case "setExpressionNumber": {
+      const location = parseLocation(value["location"]);
+      return location === undefined ||
+        (value["input"] !== "value" && value["input"] !== "delta") ||
+        !isFiniteNumber(value["value"])
+        ? undefined
+        : { type: "setExpressionNumber", location, input: value["input"], value: value["value"] };
+    }
     case "setNumericField": {
       const location = parseLocation(value["location"]);
       const field = value["field"];
@@ -1116,6 +1135,8 @@ function parseBlock(
       condition?: BlockNode;
       left?: BlockNode;
       right?: BlockNode;
+      value?: BlockNode;
+      delta?: BlockNode;
     };
   } = { id, type: type as BlockType };
   const fields = value["fields"];
@@ -1144,6 +1165,8 @@ function parseBlock(
       condition?: BlockNode;
       left?: BlockNode;
       right?: BlockNode;
+      value?: BlockNode;
+      delta?: BlockNode;
     } = {};
     for (const key of ["body", "then", "else"] as const) {
       if (inputs[key] !== undefined) {
@@ -1161,7 +1184,7 @@ function parseBlock(
       }
       parsed.condition = condition;
     }
-    for (const key of ["left", "right"] as const) {
+    for (const key of ["left", "right", "value", "delta"] as const) {
       if (inputs[key] === undefined) continue;
       const operand = parseBlock(inputs[key], depth + 1, budget);
       if (operand === undefined) return undefined;
@@ -1200,6 +1223,28 @@ function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
     return undefined;
   }
   const budget = { nodes: MAX_NODES };
+  const rawVariables = value["variables"];
+  if (rawVariables !== undefined && (!Array.isArray(rawVariables) || rawVariables.length > 128))
+    return undefined;
+  const variables: ProgramVariable[] = [];
+  for (const item of (rawVariables ?? []) as unknown[]) {
+    if (
+      !isObject(item) ||
+      !isSafeId(item["id"]) ||
+      typeof item["name"] !== "string" ||
+      item["name"].length < 1 ||
+      item["name"].length > 40 ||
+      !isFiniteNumber(item["initialValue"]) ||
+      typeof item["visible"] !== "boolean"
+    )
+      return undefined;
+    variables.push({
+      id: item["id"],
+      name: item["name"],
+      initialValue: item["initialValue"],
+      visible: item["visible"],
+    });
+  }
   const scripts: BlockScript[] = [];
   for (const raw of value["scripts"] as unknown[]) {
     if (!isObject(raw) || typeof raw["id"] !== "string") {
@@ -1218,7 +1263,7 @@ function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
       statements,
     });
   }
-  return { scripts };
+  return { scripts, ...(rawVariables === undefined ? {} : { variables }) };
 }
 
 function boundedString(value: unknown, min: number, max: number): string | undefined {

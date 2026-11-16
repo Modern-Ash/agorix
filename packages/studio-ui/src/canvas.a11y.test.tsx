@@ -92,6 +92,58 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("selects a declared variable and edits its numeric value", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "set:energy",
+        type: "variables_set",
+        fields: { variableId: "energy" },
+        inputs: { value: { id: "num:energy", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const withVariables = {
+      ...workspace,
+      variables: [
+        { id: "energy", name: "Energy", initialValue: 0, visible: true },
+        { id: "score", name: "Score", initialValue: 0, visible: true },
+      ],
+    };
+    const intents: Intent[] = [];
+    render(withVariables, { onIntent: (intent) => intents.push(intent) });
+    const select = host.querySelector<HTMLSelectElement>(
+      '.block-field select[aria-label="Set variable to [N]: Variables"]',
+    )!;
+    expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
+      "Energy",
+      "Score",
+    ]);
+    act(() => {
+      select.value = "score";
+      select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setTextField",
+      location: { container: script, index: 0 },
+      field: "variableId",
+      value: "score",
+    });
+    const input = host.querySelector<HTMLInputElement>(
+      '.block-field input[aria-label="Set variable to [N]: Value"]',
+    )!;
+    act(() => {
+      input.value = "9";
+      input.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents).toContainEqual({
+      type: "setExpressionNumber",
+      location: { container: script, index: 0 },
+      input: "value",
+      value: 9,
+    });
+  });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",
@@ -527,6 +579,26 @@ describe("canvas keyboard and screen reader behaviour", () => {
 });
 
 describe("workbench live region and focus after inserting from the palette", () => {
+  it("offers variable creation from the visible Blocks library", () => {
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: () => () => undefined,
+    };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    const input = host.querySelector<HTMLInputElement>(".variable-creator input")!;
+    input.value = "energy";
+    act(() =>
+      host
+        .querySelector<HTMLFormElement>(".variable-creator")!
+        .dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(posted).toContainEqual({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "intent",
+      intent: { type: "addVariable", name: "energy" },
+    });
+  });
   it("shows the toolbox and accepts a palette drag on an empty script", () => {
     let listener: ((message: HostMessage) => void) | undefined;
     const posted: unknown[] = [];

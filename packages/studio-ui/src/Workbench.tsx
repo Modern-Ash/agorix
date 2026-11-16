@@ -1035,6 +1035,30 @@ export function Workbench({
           <div aria-label={copy.libraryBlocks}>
             <h2>{copy.toolsTitle}</h2>
             <p>{copy.toolsHint}</p>
+            <form
+              className="variable-creator"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const input = event.currentTarget.querySelector("input");
+                const name = input?.value.trim() ?? "";
+                if (name === "") return;
+                post({ type: "addVariable", name });
+                if (input !== null) input.value = "";
+              }}
+            >
+              <label>
+                <span>{copy.variableName}</span>
+                <input maxLength={40} />
+              </label>
+              <button type="submit">{copy.variableAdd}</button>
+              {(workspace?.variables ?? []).length === 0 ? null : (
+                <ul>
+                  {workspace?.variables?.map((variable) => (
+                    <li key={variable.id}>{variable.name}</li>
+                  ))}
+                </ul>
+              )}
+            </form>
             <Palette
               copy={copy}
               onAdd={add}
