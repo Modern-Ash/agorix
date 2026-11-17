@@ -345,6 +345,34 @@ describe("studio-protocol", () => {
     expect(
       parseUiMessage({ schema, type: "intent", intent: { type: "addVariable", name: " " } }),
     ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "renameVariable", variableId: "energy", name: "Power" },
+      }),
+    ).toMatchObject({ intent: { type: "renameVariable", variableId: "energy", name: "Power" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "renameVariable", variableId: "energy", name: " " },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "deleteVariable", variableId: "energy" },
+      }),
+    ).toMatchObject({ intent: { type: "deleteVariable", variableId: "energy" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "deleteVariable", variableId: "../bad" },
+      }),
+    ).toBeUndefined();
     const intent = { type: "setExpressionNumber", location, input: "value", value: 12 };
     expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
     expect(

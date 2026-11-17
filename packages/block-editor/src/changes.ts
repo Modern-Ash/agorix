@@ -41,6 +41,8 @@ export type WorkspaceChange =
   | { readonly type: "editBlock"; readonly location: StatementLocation; readonly block: BlockNode }
   | { readonly type: "deleteBlock"; readonly location: StatementLocation }
   | { readonly type: "addVariable"; readonly variable: ProgramVariable }
+  | { readonly type: "renameVariable"; readonly variableId: string; readonly name: string }
+  | { readonly type: "deleteVariable"; readonly variableId: string }
   | { readonly type: "addList"; readonly list: ProgramList }
   | { readonly type: "renameList"; readonly listId: string; readonly name: string }
   | { readonly type: "deleteList"; readonly listId: string }
@@ -314,6 +316,61 @@ export function applyWorkspaceChange(
       }
       const variables = [...(next.variables ?? []), change.variable];
       (next as unknown as { variables?: readonly ProgramVariable[] }).variables = variables;
+      break;
+    }
+    case "renameVariable": {
+      const variables = [...(next.variables ?? [])];
+      const index = variables.findIndex((variable) => variable.id === change.variableId);
+      if (
+        index < 0 ||
+        !change.name.trim() ||
+        change.name.trim().length > 40 ||
+        variables.some(
+          (variable) =>
+            variable.id !== change.variableId &&
+            variable.name.toLowerCase() === change.name.trim().toLowerCase(),
+        )
+      )
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "variables",
+          "expected a declared variable and distinct valid name",
+          change.variableId,
+        );
+      variables[index] = { ...variables[index]!, name: change.name.trim() };
+      (next as unknown as { variables?: readonly ProgramVariable[] }).variables = variables;
+      break;
+    }
+    case "deleteVariable": {
+      if (!next.variables?.some((variable) => variable.id === change.variableId))
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "variables",
+          "expected a declared variable",
+          change.variableId,
+        );
+      const referencesVariable = (node: BlockNode): boolean =>
+        node.fields?.variableId === change.variableId ||
+        Object.values(node.inputs ?? {}).some((input) =>
+          Array.isArray(input)
+            ? input.some(referencesVariable)
+            : "type" in input && referencesVariable(input),
+        );
+      if (
+        next.scripts.some(
+          (script) =>
+            script.statements.some(referencesVariable) ||
+            script.procedures?.some((procedure) => procedure.body.some(referencesVariable)),
+        )
+      )
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "variables",
+          "variable is referenced by a block",
+          change.variableId,
+        );
+      (next as unknown as { variables?: readonly ProgramVariable[] }).variables =
+        next.variables!.filter((variable) => variable.id !== change.variableId);
       break;
     }
     case "addList": {

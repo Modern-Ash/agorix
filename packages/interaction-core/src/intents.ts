@@ -171,6 +171,8 @@ export type Intent =
       readonly value: boolean;
     }
   | { readonly type: "addVariable"; readonly name: string }
+  | { readonly type: "renameVariable"; readonly variableId: string; readonly name: string }
+  | { readonly type: "deleteVariable"; readonly variableId: string }
   | { readonly type: "addList"; readonly name: string }
   | { readonly type: "renameList"; readonly listId: string; readonly name: string }
   | { readonly type: "deleteList"; readonly listId: string }
@@ -314,6 +316,31 @@ export function intentToChange(
         type: "addVariable",
         variable: { id: newBlockId(), name, initialValue: 0, visible: true },
       };
+    }
+    case "renameVariable": {
+      const name = intent.name.trim();
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.variableId) ||
+        name.length < 1 ||
+        name.length > 40 ||
+        !workspace.variables?.some((variable) => variable.id === intent.variableId) ||
+        workspace.variables.some(
+          (variable) =>
+            variable.id !== intent.variableId && variable.name.toLowerCase() === name.toLowerCase(),
+        )
+      )
+        return undefined;
+      return { type: "renameVariable", variableId: intent.variableId, name };
+    }
+    case "deleteVariable": {
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.variableId) ||
+        !workspace.variables?.some((variable) => variable.id === intent.variableId)
+      )
+        return undefined;
+      return { type: "deleteVariable", variableId: intent.variableId };
     }
     case "addList": {
       const name = intent.name.trim();

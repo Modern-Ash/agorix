@@ -511,6 +511,58 @@ describe("workbenchHost", () => {
     ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(labels).toHaveLength(4);
   });
+  it("renames variables and refuses to delete referenced variables", async () => {
+    const { host, get } = setup();
+    const post = async (intent: Parameters<typeof host.handle>[0] & { type: "intent" }) =>
+      host.handle(intent);
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "addVariable", name: "energy" },
+      baseHash: programSemanticHash(base),
+    });
+    const variableId = get()!.variables![0]!.id;
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "renameVariable", variableId, name: "Power" },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(get()?.variables?.[0]).toMatchObject({ id: variableId, name: "Power" });
+    await post({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "variables_set",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    await post({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "variableId",
+        value: variableId,
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    const before = get()!;
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: { type: "deleteVariable", variableId },
+          baseHash: programSemanticHash(before),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(get()).toEqual(before);
+  });
 
   it("creates a list and visual list operations while rejecting stale and unknown list edits", async () => {
     const { host, get, labels } = setup();

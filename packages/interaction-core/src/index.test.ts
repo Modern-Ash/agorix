@@ -609,6 +609,29 @@ describe("interaction-core", () => {
     const added = intentToChange({ type: "addVariable", name: "energy" }, newId, empty);
     const declared = applyWorkspaceChange(empty, added!).workspace;
     expect(declared.variables?.[0]).toMatchObject({ name: "energy", initialValue: 0 });
+    const variableId = declared.variables![0]!.id;
+    expect(
+      applyWorkspaceChange(
+        declared,
+        intentToChange({ type: "renameVariable", variableId, name: "Power" }, newId, declared)!,
+      ).program.variables?.[0],
+    ).toMatchObject({ id: variableId, name: "Power" });
+    expect(
+      intentToChange(
+        { type: "renameVariable", variableId: "missing", name: "Power" },
+        newId,
+        declared,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange({ type: "renameVariable", variableId, name: " " }, newId, declared),
+    ).toBeUndefined();
+    expect(
+      applyWorkspaceChange(
+        declared,
+        intentToChange({ type: "deleteVariable", variableId }, newId, declared)!,
+      ).program.variables,
+    ).toEqual([]);
     expect(
       intentToChange({ type: "addVariable", name: "ENERGY" }, newId, declared),
     ).toBeUndefined();

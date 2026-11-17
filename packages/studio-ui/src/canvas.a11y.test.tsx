@@ -1247,6 +1247,55 @@ describe("workbench live region and focus after inserting from the palette", () 
       intent: { type: "addVariable", name: "energy" },
     });
   });
+  it("offers explicit variable rename and two-step deletion", () => {
+    let listener: ((message: HostMessage) => void) | undefined;
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: (next) => {
+        listener = next;
+        return () => undefined;
+      },
+    };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "energy", name: "Energy", initialValue: 0, visible: true }],
+      scripts: [],
+    }).workspace;
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace,
+        programHash: "fnv1a32:12345678",
+      }),
+    );
+    const details = host.querySelector<HTMLDetailsElement>(".variable-management")!;
+    act(() => {
+      details.open = true;
+    });
+    const input = details.querySelector<HTMLInputElement>(".variable-management-actions input")!;
+    act(() => {
+      input.value = "Power";
+    });
+    act(() =>
+      details.querySelector<HTMLButtonElement>(".variable-management-actions button")!.click(),
+    );
+    expect(posted.at(-1)).toMatchObject({
+      intent: { type: "renameVariable", variableId: "energy", name: "Power" },
+    });
+    const deleteButton = details.querySelectorAll<HTMLButtonElement>(
+      ".variable-management-actions button",
+    )[1]!;
+    const count = posted.length;
+    act(() => deleteButton.click());
+    expect(posted).toHaveLength(count);
+    act(() => deleteButton.click());
+    expect(posted.at(-1)).toMatchObject({
+      intent: { type: "deleteVariable", variableId: "energy" },
+    });
+  });
   it("navigates editor views and folds tools and Ori without losing their state", () => {
     const bridge: HostBridge = { post: () => undefined, subscribe: () => () => undefined };
     act(() => root.render(<Workbench bridge={bridge} locale="es" />));
