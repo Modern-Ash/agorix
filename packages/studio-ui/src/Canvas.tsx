@@ -1248,6 +1248,27 @@ export function Canvas({
                   />
                 </label>
               ))}
+            {block.type === "looks_go_to_layer" ? (
+              <label className="block-field">
+                <span>{copy.layer}</span>
+                <select
+                  aria-label={`${label}: ${copy.layer}`}
+                  value={String(block.fields?.layer ?? "front")}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setTextField",
+                      location: block.location,
+                      field: "layer",
+                      value: event.currentTarget.value,
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <option value="front">{copy.layerFront}</option>
+                  <option value="back">{copy.layerBack}</option>
+                </select>
+              </label>
+            ) : null}
             {block.type === "motion_point_towards" ? (
               <label className="block-field">
                 <span>{copy.conditionActor}</span>

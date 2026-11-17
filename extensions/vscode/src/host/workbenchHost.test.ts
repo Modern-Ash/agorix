@@ -60,6 +60,41 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("edits a visual layer block through canonical state and refuses invalid layers", async () => {
+    const { host, get, labels } = setup();
+    const inserted = await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "looks_go_to_layer",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(inserted[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({ type: "goToLayer", layer: "front" });
+    const location = { container: script, index: 0 };
+    const changed = await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "setTextField", location, field: "layer", value: "back" },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(changed[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({ type: "goToLayer", layer: "back" });
+    const before = get();
+    const count = labels.length;
+    const rejected = await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "setTextField", location, field: "layer", value: "middle" },
+      baseHash: programSemanticHash(before!),
+    });
+    expect(rejected[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(get()).toBe(before);
+    expect(labels).toHaveLength(count);
+  });
   it("inserts visual pointing blocks and accepts only a known target actor", async () => {
     const { host, get, metadata, labels } = setup();
     await host.handle({ schema, type: "createActor", name: "Robot" });

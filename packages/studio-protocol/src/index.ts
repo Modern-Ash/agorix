@@ -583,6 +583,7 @@ const BLOCK_TYPES = [
   "looks_say",
   "looks_think",
   "looks_show",
+  "looks_go_to_layer",
   "looks_hide",
   "looks_set_size",
   "looks_change_size",
