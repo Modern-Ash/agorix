@@ -275,8 +275,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .scene-library-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
 .scene-library-grid > button, .scene-asset-card > button:first-child { display: grid; justify-items: center; align-content: center; gap: 3px; min-width: 0; min-height: 80px; width: 100%; padding: 4px; border: 1px solid var(--vscode-panel-border); border-radius: 7px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
 .scene-asset-card { display: grid; gap: 3px; min-width: 0; }
-.scene-edit-asset { min-height: 28px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; background: var(--vscode-editorWidget-background); color: var(--vscode-foreground); cursor: pointer; }
-.scene-edit-asset:hover { background: var(--vscode-list-hoverBackground); }
+.scene-edit-asset, .scene-duplicate-asset { min-height: 28px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; background: var(--vscode-editorWidget-background); color: var(--vscode-foreground); cursor: pointer; }
+.scene-edit-asset:hover, .scene-duplicate-asset:hover { background: var(--vscode-list-hoverBackground); }
 .scene-library-grid button[aria-pressed="true"] { border: 2px solid var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 85%); }
 .scene-library-grid button:disabled { opacity: 0.5; cursor: not-allowed; }
 .scene-library-grid img { display: block; width: 60px; height: 48px; object-fit: contain; }
