@@ -17,6 +17,8 @@ The Scene editor now groups actors, costumes, backdrops and image creation into 
 
 Image creation leads with a 160 × 120 drawing canvas and a two-row toolbar that fits a 900 px viewport. The learner can choose brush or eraser, ink color and stroke size, undo up to 12 edits, clear, and save a validated local PNG. Import remains restricted to bounded PNG/WebP data. A drawing is submitted as an asset only after the learner chooses Save; the canonical program is never changed by pointer movement alone.
 
+The costume and backdrop galleries also open an existing image in the same canvas. Save changes replaces its image and optional name under the same asset ID, including bundled catalog images; Cancel edit leaves the project untouched. Image changes require adult media approval before they are persisted. The primary edit actions remain visible above the canvas at 900 × 700.
+
 ## Review captures
 
 These captures use a local synthetic host with a sample canonical program, two actors, assets and a runtime frame. They show layout at the target viewport sizes, not a full VSIX journey.
@@ -36,14 +38,20 @@ The packaged VSIX was also opened in an isolated VS Code profile with a portable
 | ------------------------------------------------------------ | -------------------------------------------------------------- |
 | ![Installed VSIX at 900](./assets/studio-vsix-build-900.png) | ![Installed VSIX at 1440](./assets/studio-vsix-build-1440.png) |
 
+The same installed-VSIX journey captures editing a saved costume at both target sizes:
+
+| 900 × 700                                                         | 1440 × 900                                                          |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| ![Edit costume at 900](./assets/studio-vsix-edit-costume-900.png) | ![Edit costume at 1440](./assets/studio-vsix-edit-costume-1440.png) |
+
 The real-window check exposed three issues now fixed: the custom editor had scripts disabled, the webview CSP blocked catalog images, and the host message parser rejected advanced canonical blocks so Program appeared empty. The 900 px layout also keeps the palette, stage, and Ori side by side with a wider central stage. On initial command-line file opening, VS Code still selects its text editor; **Reopen Editor With → Agorix Workbench** opens the visual editor. The extension declares Agorix Workbench as the default custom editor in its manifest, but automatic selection on command-line opening remains unverified.
 
 The installed-extension suite in `extensions/vscode/test/integration/index.cjs` now opens a project with two actors, two costumes, a backdrop, a visible variable and a condition containing a repeat. Against a packaged VSIX in a clean VS Code profile, it checks the code projection, deterministic execution frames and evidence, a read-only Ori explanation, a proposal diff, explicit rejection with unchanged project bytes, and explicit acceptance with the canonical project saved. The Inspector's flat tree now supports VS Code's reveal contract, which this run exposed.
 
 The local run used VS Code 1.146 via `VSCODE_EXECUTABLE=/usr/share/code/code pnpm --filter agorix-studio test:vsix` and passed all 18 integration cases. This is host-level verification of the installed extension. The real-window captures verify rendering.
 
-The visible `test:visual` journey installs the packaged VSIX into an isolated VS Code profile, selects the second actor, draws and saves a costume after explicit adult media approval, selects it, drags a block into the canonical program, runs the project, opens Evidence, and checks the costume in the saved portable project. It then imports that exact file in the Web advanced editor, compares the canonical program, actors and assets, verifies both actors and the painted costume on the Web stage, runs the program and observes runtime evidence. A declined adult media export creates no download; an approved export retains the program and image. This journey exposed two dead ends: learner-owned scene edits were routed to the unavailable AI host, and saving a project opened the Code projection over the visual workbench. Both paths now remain in Studio.
+The visible `test:visual` journey installs the packaged VSIX into an isolated VS Code profile, selects the second actor, draws and saves a costume after explicit adult media approval, selects it, cancels one edit without changing the project, then edits the costume under the same ID after adult approval. It drags a block into the canonical program, runs the project, opens Evidence, and checks the edited costume in the saved portable project. It then imports that exact file in the Web advanced editor, compares the canonical program, actors and assets, verifies both actors and the painted costume on the Web stage, runs the program and observes runtime evidence. A declined adult media export creates no download; an approved export retains the program and image. This journey exposed two dead ends: learner-owned scene edits were routed to the unavailable AI host, and saving a project opened the Code projection over the visual workbench. Both paths now remain in Studio.
 
 ## Follow-up within #1694
 
-Web now preserves the exact canonical trigger on import, including legacy `onStart`, so opening a Studio project does not silently rewrite it to `greenFlag`. Both triggers continue to execute as the same event. Editing an existing image remains a separate asset workflow gap. Ori's proposals must continue through learner preview and explicit acceptance before canonical mutation.
+Web now preserves the exact canonical trigger on import, including legacy `onStart`, so opening a Studio project does not silently rewrite it to `greenFlag`. Both triggers continue to execute as the same event. Ori's proposals must continue through learner preview and explicit acceptance before canonical mutation.

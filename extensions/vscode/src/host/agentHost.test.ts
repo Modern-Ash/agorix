@@ -80,6 +80,12 @@ describe("agentHost", () => {
         name: "Painted",
         source: "data:image/png;base64,iVBORw0KGgo=",
       },
+      {
+        type: "updateAsset",
+        assetId: "asset:costume.default",
+        name: "Painted",
+        source: "data:image/png;base64,iVBORw0KGgo=",
+      },
       { type: "updateStage", backdropId: "backdrop:moon" },
     ]) {
       expect(await send(message)).toBeUndefined();

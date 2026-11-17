@@ -1103,6 +1103,15 @@ export function Workbench({
       onImportAsset={(kind, name, source) => {
         bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "importAsset", kind, name, source });
       }}
+      onUpdateAsset={(assetId, name, source) => {
+        bridge.post({
+          schema: STUDIO_PROTOCOL_VERSION,
+          type: "updateAsset",
+          assetId,
+          name,
+          source,
+        });
+      }}
     />
   );
 

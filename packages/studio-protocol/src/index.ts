@@ -157,6 +157,13 @@ export type UiMessage =
       readonly name: string;
       readonly source: string;
     }
+  | {
+      readonly schema: Schema;
+      readonly type: "updateAsset";
+      readonly assetId: string;
+      readonly name: string;
+      readonly source: string;
+    }
   | { readonly schema: Schema; readonly type: "updateStage"; readonly backdropId: string }
   | {
       readonly schema: Schema;
@@ -2135,6 +2142,20 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
             schema,
             type: "importAsset",
             kind: value["kind"],
+            name: value["name"].trim(),
+            source: value["source"],
+          }
+        : undefined;
+    case "updateAsset":
+      return isSafeId(value["assetId"]) &&
+        typeof value["name"] === "string" &&
+        value["name"].trim().length > 0 &&
+        value["name"].trim().length <= 80 &&
+        validEmbeddedImageSource(value["source"])
+        ? {
+            schema,
+            type: "updateAsset",
+            assetId: value["assetId"],
             name: value["name"].trim(),
             source: value["source"],
           }
