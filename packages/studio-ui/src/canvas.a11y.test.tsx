@@ -2472,6 +2472,11 @@ describe("workbench live region and focus after inserting from the palette", () 
       beginPath: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      rect: vi.fn(),
+      ellipse: vi.fn(),
+      stroke: vi.fn(),
       fillStyle: "",
     };
     act(() =>
@@ -2503,9 +2508,9 @@ describe("workbench live region and focus after inserting from the palette", () 
       host.querySelectorAll<HTMLButtonElement>(".scene-draw-actions button"),
     ).find((button) => button.textContent === copyFor("es").sceneUndoDrawing)!;
     expect(undo.disabled).toBe(true);
-    const pointer = (type: string) => {
+    const pointer = (type: string, clientX = 20, clientY = 30) => {
       const event = new dom.window.Event(type, { bubbles: true });
-      Object.assign(event, { pointerId: 1, clientX: 20, clientY: 30 });
+      Object.assign(event, { pointerId: 1, clientX, clientY });
       act(() => canvas.dispatchEvent(event));
     };
     pointer("pointerdown");
@@ -2533,6 +2538,27 @@ describe("workbench live region and focus after inserting from the palette", () 
     expect((context.putImageData.mock.calls[1] as unknown[])[0]).toMatchObject({
       data: expect.any(Uint8ClampedArray),
     });
+    const chooseTool = (label: string) =>
+      act(() =>
+        Array.from(host.querySelectorAll<HTMLButtonElement>(".scene-draw-tools button"))
+          .find((button) => button.textContent === label)!
+          .click(),
+      );
+    chooseTool(copyFor("es").sceneLine);
+    pointer("pointerdown");
+    pointer("pointermove", 50, 60);
+    pointer("pointerup", 50, 60);
+    expect(context.moveTo).toHaveBeenCalledWith(20, 30);
+    expect(context.lineTo).toHaveBeenCalledWith(50, 60);
+    chooseTool(copyFor("es").sceneRectangle);
+    pointer("pointerdown");
+    pointer("pointermove", 50, 60);
+    pointer("pointercancel", 50, 60);
+    expect(context.rect).toHaveBeenCalledWith(20, 30, 30, 30);
+    chooseTool(copyFor("es").sceneEllipse);
+    pointer("pointerdown");
+    pointer("pointerup", 60, 70);
+    expect(context.ellipse).toHaveBeenCalledWith(40, 50, 20, 20, 0, 0, Math.PI * 2);
   });
   it("duplicates a costume into a new editable draft and saves it explicitly", () => {
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
