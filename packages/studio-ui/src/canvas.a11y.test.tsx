@@ -11,6 +11,7 @@ import {
 import type { Intent } from "@agorix/interaction-core";
 import { Canvas, type FocusRequest } from "./Canvas.js";
 import { SceneLibrary } from "./SceneLibrary.js";
+import { STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { StagePanel, Workbench } from "./Workbench.js";
 import type { HostBridge } from "./bridge.js";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
@@ -1045,6 +1046,60 @@ describe("canvas keyboard and screen reader behaviour", () => {
     act(() => viewport.dispatchEvent(drop));
     expect(placed).toHaveLength(1);
   });
+  it("drops a known costume onto the targeted stage actor", () => {
+    const applied: string[] = [];
+    const selected: string[] = [];
+    act(() =>
+      root.render(
+        <StagePanel
+          copy={copyFor("en")}
+          selectedActorId="actor:a"
+          onSelectActor={(id) => selected.push(id)}
+          onCostume={(actorId, costumeId) => applied.push(`${actorId}:${costumeId}`)}
+          assets={[
+            { id: "costume:mika", name: "Mika", kind: "costume", tags: [] },
+            { id: "backdrop:moon", name: "Moon", kind: "backdrop", tags: [] },
+          ]}
+          frame={{
+            state: {
+              sprite: { x: 0, y: 0, heading: 0, radius: 10 },
+              goal: { x: 200, y: 100, radius: 12 },
+              viewport: { width: 240, height: 180 },
+              actors: [
+                { id: "actor:a", name: "A", x: 10, y: 10, direction: 0, size: 100, visible: true },
+                { id: "actor:b", name: "B", x: 20, y: 20, direction: 0, size: 100, visible: true },
+              ],
+            },
+            frameIndex: 0,
+            frameCount: 1,
+            step: 0,
+            running: false,
+            reachedGoal: false,
+          }}
+        />,
+      ),
+    );
+    const transfer = new Map<string, string>([[STAGE_COSTUME_DRAG_TYPE, "costume:mika"]]);
+    const drop = new dom.window.MouseEvent("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, "dataTransfer", {
+      value: { getData: (kind: string) => transfer.get(kind) ?? "" },
+    });
+    const actorB = Array.from(host.querySelectorAll<HTMLButtonElement>(".stage-sprite")).find(
+      (button) => button.getAttribute("aria-label")?.includes(" B:"),
+    )!;
+    act(() => actorB.dispatchEvent(drop));
+    expect(applied).toEqual(["actor:b:costume:mika"]);
+    expect(selected).toEqual(["actor:b"]);
+    transfer.set(STAGE_COSTUME_DRAG_TYPE, "costume:unknown");
+    act(() => actorB.dispatchEvent(drop));
+    expect(applied).toHaveLength(1);
+    transfer.set(STAGE_COSTUME_DRAG_TYPE, "backdrop:moon");
+    act(() => actorB.dispatchEvent(drop));
+    expect(applied).toHaveLength(1);
+    transfer.set(STAGE_COSTUME_DRAG_TYPE, "costume:mika");
+    act(() => host.querySelector<HTMLElement>(".stage-viewport")!.dispatchEvent(drop));
+    expect(applied).toEqual(["actor:b:costume:mika", "actor:a:costume:mika"]);
+  });
   it("shows only canonical visible variable and list watchers", () => {
     act(() =>
       root.render(
@@ -1137,6 +1192,21 @@ describe("canvas keyboard and screen reader behaviour", () => {
     );
     expect(costumes).toEqual(["actor:nova:costume:mika"]);
     expect(backdrops).toEqual(["backdrop:moon"]);
+    const transfer = new Map<string, string>();
+    const drag = new dom.window.Event("dragstart", { bubbles: true, cancelable: true });
+    Object.defineProperty(drag, "dataTransfer", {
+      value: {
+        setData: (kind: string, value: string) => transfer.set(kind, value),
+        effectAllowed: "none",
+      },
+    });
+    act(() =>
+      host
+        .querySelector<HTMLButtonElement>('[aria-label="Choose costume: Mika"]')
+        ?.closest(".scene-asset-card")
+        ?.dispatchEvent(drag),
+    );
+    expect(transfer.get(STAGE_COSTUME_DRAG_TYPE)).toBe("costume:mika");
   });
   it("lets the learner edit a numeric block value in place", () => {
     const intents: Intent[] = [];

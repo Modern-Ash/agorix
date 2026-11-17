@@ -15,7 +15,7 @@ import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
 import { locationKey, toRows } from "./blockView.js";
 import { Palette } from "./Palette.js";
-import { SceneLibrary } from "./SceneLibrary.js";
+import { SceneLibrary, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { densityAnnouncement } from "./density.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
 import { AgentPanel } from "./AgentPanel.js";
@@ -366,6 +366,7 @@ export function StagePanel({
   selectedActorId,
   onSelectActor,
   onPlaceActor,
+  onCostume,
   onStageEvent,
 }: {
   readonly copy: StudioUiCopy;
@@ -375,6 +376,7 @@ export function StagePanel({
   readonly selectedActorId: string | undefined;
   readonly onSelectActor?: (actorId: string) => void;
   readonly onPlaceActor?: (actorId: string, position: { x: number; y: number }) => void;
+  readonly onCostume?: (actorId: string, costumeId: string) => void;
   readonly onStageEvent?: (
     event: { event: "keyPressed"; key: string } | { event: "actorClicked"; actorId: string },
   ) => void;
@@ -448,10 +450,24 @@ export function StagePanel({
           onStageEvent({ event: "keyPressed", key });
         }}
         onDragOver={(event) => {
-          if (!frame?.running && onPlaceActor !== undefined) event.preventDefault();
+          if (!frame?.running && (onPlaceActor !== undefined || onCostume !== undefined))
+            event.preventDefault();
         }}
         onDrop={(event) => {
-          if (state === undefined || frame?.running || onPlaceActor === undefined) return;
+          if (state === undefined || frame?.running) return;
+          const costumeId = event.dataTransfer.getData(STAGE_COSTUME_DRAG_TYPE);
+          if (
+            costumeId !== "" &&
+            selectedActorId !== undefined &&
+            onCostume !== undefined &&
+            stageActors.some((actor) => actor.id === selectedActorId) &&
+            assets.some((asset) => asset.kind === "costume" && asset.id === costumeId)
+          ) {
+            event.preventDefault();
+            onCostume(selectedActorId, costumeId);
+            return;
+          }
+          if (onPlaceActor === undefined) return;
           event.preventDefault();
           const actorId = event.dataTransfer.getData("application/x-agorix-stage-actor");
           if (!stageActors.some((actor) => actor.id === actorId)) return;
@@ -506,6 +522,21 @@ export function StagePanel({
                       onSelectActor?.(actor.id);
                       event.dataTransfer.setData("application/x-agorix-stage-actor", actor.id);
                       event.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(event) => {
+                      if (!frame?.running && onCostume !== undefined) event.preventDefault();
+                    }}
+                    onDrop={(event) => {
+                      if (frame?.running || onCostume === undefined) return;
+                      const costumeId = event.dataTransfer.getData(STAGE_COSTUME_DRAG_TYPE);
+                      if (
+                        !assets.some((asset) => asset.kind === "costume" && asset.id === costumeId)
+                      )
+                        return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onSelectActor?.(actor.id);
+                      onCostume(actor.id, costumeId);
                     }}
                     data-costume-id={actor.costumeId ?? "default"}
                     style={{
@@ -1573,6 +1604,7 @@ export function Workbench({
             selectedActorId={selectedActorId}
             onSelectActor={setSelectedActorId}
             onPlaceActor={(actorId, position) => updateActor(actorId, position)}
+            onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
             onStageEvent={(event) =>
               bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "stageEvent", ...event })
             }
