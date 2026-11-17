@@ -31,6 +31,7 @@ export const STUDIO_CONDITION_BLOCK_TYPES = [
 export const STUDIO_LOGICAL_OPERAND_TYPES = [
   "literal_boolean",
   "sensing_touching_goal",
+  "sensing_touching_actor",
   "sensing_touching_stage_edge",
 ] as const satisfies readonly BlockType[];
 
@@ -163,6 +164,13 @@ export type Intent =
       readonly location: StatementLocation;
       readonly side: "left" | "right" | "value";
       readonly blockType: (typeof STUDIO_LOGICAL_OPERAND_TYPES)[number];
+      readonly actorId?: string;
+    }
+  | {
+      readonly type: "setLogicalActor";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right" | "value";
+      readonly actorId: string;
     }
   | {
       readonly type: "setLogicalBoolean";
@@ -827,7 +835,8 @@ export function intentToChange(
       };
     }
     case "setLogicalOperand":
-    case "setLogicalBoolean": {
+    case "setLogicalBoolean":
+    case "setLogicalActor": {
       if (workspace === undefined) return undefined;
       const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
       const condition = block?.inputs?.condition;
@@ -843,10 +852,32 @@ export function intentToChange(
       if (current === undefined || Array.isArray(current)) return undefined;
       if (intent.type === "setLogicalBoolean" && current.type !== "literal_boolean")
         return undefined;
+      if (intent.type === "setLogicalActor" && current.type !== "sensing_touching_actor")
+        return undefined;
+      if (
+        (intent.type === "setLogicalActor" ||
+          (intent.type === "setLogicalOperand" && intent.actorId !== undefined)) &&
+        !isSafeId(intent.actorId ?? "")
+      )
+        return undefined;
       const next =
         intent.type === "setLogicalOperand"
-          ? { ...createDefaultBlock(intent.blockType, current.id), id: current.id }
-          : { ...current, fields: { ...current.fields, value: intent.value } };
+          ? {
+              ...createDefaultBlock(intent.blockType, current.id),
+              id: current.id,
+              ...(intent.blockType === "sensing_touching_actor" && intent.actorId !== undefined
+                ? { fields: { actorId: intent.actorId } }
+                : {}),
+            }
+          : {
+              ...current,
+              fields: {
+                ...current.fields,
+                ...(intent.type === "setLogicalBoolean"
+                  ? { value: intent.value }
+                  : { actorId: intent.actorId }),
+              },
+            };
       return {
         type: "editBlock",
         location: intent.location,

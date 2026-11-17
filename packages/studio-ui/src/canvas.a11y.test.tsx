@@ -14,7 +14,7 @@ import { SceneLibrary } from "./SceneLibrary.js";
 import { STAGE_BACKDROP_DRAG_TYPE, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { StagePanel, Workbench } from "./Workbench.js";
 import type { HostBridge } from "./bridge.js";
-import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
+import { STUDIO_PROTOCOL_VERSION, type ActorView, type HostMessage } from "@agorix/studio-protocol";
 import { locationKey } from "./blockView.js";
 import { copyFor } from "./i18n.js";
 
@@ -331,6 +331,7 @@ function render(
     onAnnounce?: (text: string) => void;
     focusRequest?: FocusRequest;
     locale?: "en" | "es";
+    actors?: readonly ActorView[];
   } = {},
 ) {
   act(() =>
@@ -341,6 +342,7 @@ function render(
         onAnnounce={props.onAnnounce}
         focusRequest={props.focusRequest}
         copy={copyFor(props.locale ?? "en")}
+        {...(props.actors === undefined ? {} : { actors: props.actors })}
       />,
     ),
   );
@@ -778,6 +780,53 @@ describe("canvas keyboard and screen reader behaviour", () => {
       type: "setLogicalBoolean",
       side: "right",
       value: false,
+    });
+  });
+  it("offers actor contact inside logical operands with an actor picker", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:actor-logic",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: {
+            id: "and:actor-logic",
+            type: "operator_and",
+            inputs: {
+              left: { id: "goal:actor-logic", type: "sensing_touching_goal" },
+              right: {
+                id: "touch:actor-logic",
+                type: "sensing_touching_actor",
+                fields: { actorId: "actor:main" },
+              },
+            },
+          },
+        },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, {
+      onIntent: (intent) => intents.push(intent),
+      actors: [
+        { id: "actor:main", name: "Main", x: 0, y: 0, direction: 90, size: 100, visible: true },
+        { id: "actor:robot", name: "Robot", x: 0, y: 0, direction: 90, size: 100, visible: true },
+      ],
+    });
+    const picker = host.querySelector<HTMLSelectElement>(
+      '.logical-fields select[aria-label="Condition: right Target actor"]',
+    )!;
+    expect(picker).not.toBeNull();
+    act(() => {
+      picker.value = "actor:robot";
+      picker.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalActor",
+      side: "right",
+      actorId: "actor:robot",
     });
   });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {

@@ -604,6 +604,74 @@ describe("interaction-core", () => {
         ).toBeUndefined();
     }
   });
+
+  it("selects an actor inside a logical condition and rejects unsafe or mismatched edits", () => {
+    const location = { container: script, index: 0 };
+    const initial = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:actor-logic",
+        type: "control_if",
+        inputs: {
+          condition: {
+            id: "condition:actor-logic",
+            type: "literal_boolean",
+            fields: { value: true },
+          },
+          then: [],
+        },
+      },
+    }).workspace;
+    const logical = applyWorkspaceChange(
+      initial,
+      intentToChange(
+        { type: "replaceCondition", location, blockType: "operator_and" },
+        newId,
+        initial,
+      )!,
+    ).workspace;
+    const actor = applyWorkspaceChange(
+      logical,
+      intentToChange(
+        {
+          type: "setLogicalOperand",
+          location,
+          side: "right",
+          blockType: "sensing_touching_actor",
+          actorId: "actor:main",
+        },
+        newId,
+        logical,
+      )!,
+    ).workspace;
+    const selected = applyWorkspaceChange(
+      actor,
+      intentToChange(
+        { type: "setLogicalActor", location, side: "right", actorId: "actor:robot" },
+        newId,
+        actor,
+      )!,
+    );
+    expect(selected.program.scripts[0]?.statements[0]).toMatchObject({
+      condition: { type: "and", right: { type: "touchingActor", actorId: "actor:robot" } },
+    });
+    expect(
+      intentToChange(
+        { type: "setLogicalActor", location, side: "right", actorId: "https://bad" },
+        newId,
+        actor,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setLogicalActor", location, side: "left", actorId: "actor:robot" },
+        newId,
+        actor,
+      ),
+    ).toBeUndefined();
+  });
   it("creates named variables and edits only valid numeric variable inputs", () => {
     const empty = createStarterWorkspace();
     const added = intentToChange({ type: "addVariable", name: "energy" }, newId, empty);
