@@ -1436,6 +1436,102 @@ describe("canvas keyboard and screen reader behaviour", () => {
     act(() => viewport.dispatchEvent(drop));
     expect(placed).toHaveLength(1);
   });
+  it("nudges and transforms a selected actor directly on the idle stage", () => {
+    const placed: { actorId: string; x: number; y: number }[] = [];
+    const transformed: { actorId: string; direction?: number; size?: number }[] = [];
+    const events: string[] = [];
+    act(() =>
+      root.render(
+        <StagePanel
+          copy={copyFor("en")}
+          selectedActorId="actor:nova"
+          onPlaceActor={(actorId, position) => placed.push({ actorId, ...position })}
+          onTransformActor={(actorId, patch) => transformed.push({ actorId, ...patch })}
+          onStageEvent={(event) => events.push(event.event)}
+          frame={{
+            state: {
+              sprite: { x: 10, y: 10, heading: 0, radius: 10 },
+              goal: { x: 200, y: 100, radius: 12 },
+              viewport: { width: 240, height: 180 },
+              actors: [
+                {
+                  id: "actor:nova",
+                  name: "Nova",
+                  x: 10,
+                  y: 10,
+                  direction: 0,
+                  size: 100,
+                  visible: true,
+                },
+              ],
+            },
+            frameIndex: 0,
+            frameCount: 1,
+            step: 0,
+            running: false,
+            reachedGoal: false,
+          }}
+        />,
+      ),
+    );
+    const actor = host.querySelector<HTMLButtonElement>(".stage-sprite")!;
+    key(actor, { key: "ArrowRight", altKey: true });
+    key(actor, { key: "ArrowUp", altKey: true, shiftKey: true });
+    expect(placed).toEqual([
+      { actorId: "actor:nova", x: 11, y: 10 },
+      { actorId: "actor:nova", x: 10, y: 20 },
+    ]);
+    expect(events).toEqual([]);
+    act(() => host.querySelector<HTMLButtonElement>('[aria-label="Rotate left: Nova"]')!.click());
+    act(() => host.querySelector<HTMLButtonElement>('[aria-label="Make larger: Nova"]')!.click());
+    expect(transformed).toEqual([
+      { actorId: "actor:nova", direction: 345 },
+      { actorId: "actor:nova", size: 110 },
+    ]);
+    expect(events).toEqual([]);
+  });
+  it("does not expose actor transforms while the stage is running", () => {
+    const placed: string[] = [];
+    act(() =>
+      root.render(
+        <StagePanel
+          copy={copyFor("en")}
+          selectedActorId="actor:nova"
+          onPlaceActor={(actorId) => placed.push(actorId)}
+          onTransformActor={() => placed.push("transform")}
+          frame={{
+            state: {
+              sprite: { x: 10, y: 10, heading: 0, radius: 10 },
+              goal: { x: 200, y: 100, radius: 12 },
+              viewport: { width: 240, height: 180 },
+              actors: [
+                {
+                  id: "actor:nova",
+                  name: "Nova",
+                  x: 10,
+                  y: 10,
+                  direction: 0,
+                  size: 100,
+                  visible: true,
+                },
+              ],
+            },
+            frameIndex: 0,
+            frameCount: 1,
+            step: 0,
+            running: true,
+            reachedGoal: false,
+          }}
+        />,
+      ),
+    );
+    expect(host.querySelector(".stage-actor-tools")).toBeNull();
+    key(host.querySelector<HTMLButtonElement>(".stage-sprite")!, {
+      key: "ArrowRight",
+      altKey: true,
+    });
+    expect(placed).toEqual([]);
+  });
   it("drops known costumes and backdrops onto their stage targets", () => {
     const applied: string[] = [];
     const backdrops: string[] = [];
