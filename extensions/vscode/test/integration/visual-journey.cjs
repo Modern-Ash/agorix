@@ -4,12 +4,14 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const cp = require("node:child_process");
+const assert = require("node:assert/strict");
 const { chromium } = require("../../../../apps/web/node_modules/@playwright/test");
 
 const vscode = process.env.VSCODE_EXECUTABLE || "/usr/share/code/code";
 const cli = path.join(path.dirname(vscode), "bin", "code");
 const vsix = path.resolve(__dirname, "../../dist/agorix-studio.vsix");
 const fixture = path.resolve(__dirname, "fixtures/visual-workspace.agorix");
+const repoRoot = path.resolve(__dirname, "../../../..");
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "agorix-studio-visual-"));
 const project = path.join(scratch, "visual.agorix");
 const profile = [
@@ -44,6 +46,8 @@ async function main() {
     { env, detached: true, stdio: "ignore" },
   );
   let browser;
+  let webBrowser;
+  let webChild;
   try {
     for (let attempt = 0; attempt < 60; attempt++) {
       try {
@@ -138,8 +142,91 @@ async function main() {
     if (statementCount(saved.project.program) <= statementCount(initial.project.program)) {
       throw new Error("Dragged block was not persisted");
     }
-    console.log("Visual journey passed");
+    const webPort = 4400 + Math.floor(Math.random() * 300);
+    webChild = cp.spawn(
+      "pnpm",
+      ["--filter", "@agorix/web", "dev", "--host", "127.0.0.1", "--port", String(webPort)],
+      { cwd: repoRoot, env, detached: true, stdio: "ignore" },
+    );
+    const webUrl = `http://127.0.0.1:${webPort}`;
+    for (let attempt = 0; attempt < 60; attempt++) {
+      try {
+        const response = await globalThis.fetch(webUrl);
+        if (response.ok) break;
+      } catch {
+        /* Web is starting */
+      }
+      if (attempt === 59) throw new Error("Web dev server did not start");
+      await pause(500);
+    }
+    webBrowser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+    const webContext = await webBrowser.newContext();
+    await webContext.addInitScript(() => globalThis.localStorage.setItem("agorix.locale", "en"));
+    const webPage = await webContext.newPage();
+    await webPage.goto(`${webUrl}/advanced`);
+    await webPage.locator(".editor-shell").first().waitFor();
+    await webPage.getByLabel("Import Agorix project file").setInputFiles(project);
+    await webPage.getByText("Project imported. Blocks and code loaded from the file.").waitFor();
+    const reopened = await webPage.evaluate(() =>
+      JSON.parse(globalThis.localStorage.getItem("agorix:default-project") || "null"),
+    );
+    if (!reopened) throw new Error("Web did not persist the imported project");
+    assert.deepEqual(reopened.program, saved.project.program);
+    assert.deepEqual(reopened.metadata.actors, saved.project.metadata.actors);
+    const expectedAssets = saved.project.metadata.assets.map((asset) => ({
+      ...asset,
+      source: asset.source.startsWith("embedded:") ? saved.media[asset.id] : asset.source,
+    }));
+    assert.deepEqual(reopened.metadata.assets, expectedAssets);
+    const painted = expectedAssets.find((asset) => asset.name === "My painted star");
+    if (!painted) throw new Error("Painted costume missing after Web import");
+    assert.equal(await webPage.getByTestId("stage-sprite").count(), 2);
+    await webPage
+      .locator(`[data-testid="stage-sprite"][data-costume-id="${painted.id}"]`)
+      .first()
+      .waitFor({ timeout: 5000 });
+    await webPage.locator(".stage-panel").getByRole("button", { name: "Run", exact: true }).click();
+    await webPage.locator('[data-fact-source="runtime"]').first().waitFor({ timeout: 10000 });
+    const openMenu = async () => {
+      const menu = webPage.getByRole("button", { name: "Show app menu" });
+      if (await menu.isVisible()) await menu.click();
+    };
+    const exportButton = () =>
+      webPage.locator("#app-menu").getByRole("button", { name: "Export", exact: true });
+    let downloadCount = 0;
+    webPage.on("download", () => {
+      downloadCount += 1;
+    });
+    await openMenu();
+    webPage.once("dialog", async (dialog) => {
+      assert.match(dialog.message(), /adult/i);
+      await dialog.dismiss();
+    });
+    await exportButton().click();
+    await webPage.waitForTimeout(250);
+    assert.equal(downloadCount, 0, "Declined adult approval must not export media");
+    await openMenu();
+    webPage.once("dialog", async (dialog) => {
+      assert.match(dialog.message(), /adult/i);
+      await dialog.accept();
+    });
+    const downloadPromise = webPage.waitForEvent("download");
+    await exportButton().click();
+    const download = await downloadPromise;
+    const exported = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+    assert.deepEqual(exported.project.program, reopened.program);
+    assert.equal(exported.media?.[painted.id], painted.source);
+    console.log("Reopened the same program, actors and costume in Web; runtime evidence visible");
+    console.log("Visual cross-surface journey passed");
   } finally {
+    await webBrowser?.close();
+    if (webChild !== undefined) {
+      try {
+        process.kill(-webChild.pid, "SIGTERM");
+      } catch {
+        /* already exited */
+      }
+    }
     await browser?.close();
     try {
       process.kill(-child.pid, "SIGTERM");

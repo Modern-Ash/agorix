@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/advanced");
@@ -293,6 +294,51 @@ test("anonymous project exports and imports as a portable .agorix file", async (
   await expect(
     page.getByText("Project imported. Blocks and code loaded from the file."),
   ).toBeVisible();
+});
+
+test("embedded costume export requires an adult decision and preserves media", async ({ page }) => {
+  await page.goto("/advanced");
+  const starterDownload = page.waitForEvent("download");
+  await openAppMenu(page);
+  await appMenuButton(page, "Export").click();
+  const starterPath = await (await starterDownload).path();
+  expect(starterPath).not.toBeNull();
+  const envelope = JSON.parse(await readFile(starterPath!, "utf8"));
+  const id = "asset:painted";
+  const source =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==";
+  envelope.formatVersion = "2";
+  envelope.project.metadata.assets = [
+    ...(envelope.project.metadata.assets ?? []),
+    { id, kind: "costume", name: "Painted", source: `embedded:${id}` },
+  ];
+  envelope.media = { [id]: source };
+  await page.getByLabel("Import Agorix project file").setInputFiles({
+    name: "painted.agorix",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(envelope)),
+  });
+  await expect(
+    page.getByText("Project imported. Blocks and code loaded from the file."),
+  ).toBeVisible();
+
+  let downloads = 0;
+  page.on("download", () => {
+    downloads += 1;
+  });
+  await openAppMenu(page);
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await appMenuButton(page, "Export").click();
+  expect(downloads).toBe(0);
+
+  await openAppMenu(page);
+  page.once("dialog", (dialog) => dialog.accept());
+  const approvedDownload = page.waitForEvent("download");
+  await appMenuButton(page, "Export").click();
+  const exportedPath = await (await approvedDownload).path();
+  expect(exportedPath).not.toBeNull();
+  const exported = JSON.parse(await readFile(exportedPath!, "utf8"));
+  expect(exported.media[id]).toBe(source);
 });
 
 test("locale switch localizes UI without changing canonical program", async ({ page }) => {
