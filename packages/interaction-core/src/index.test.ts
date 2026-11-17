@@ -945,6 +945,92 @@ describe("interaction-core", () => {
       ),
     ).toBeDefined();
   });
+  it("composes a second arithmetic level and edits its literal without replacing siblings", () => {
+    let workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "nested:set",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: { value: { id: "nested:value", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    workspace = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        { type: "setNumericInput", location, input: "value", reporter: "add" },
+        newId,
+        workspace,
+      )!,
+    ).workspace;
+    workspace = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          side: "left",
+          reporter: "multiply",
+        },
+        newId,
+        workspace,
+      )!,
+    ).workspace;
+    const changed = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "right",
+          value: 6,
+        },
+        newId,
+        workspace,
+      )!,
+    );
+    expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+      value: {
+        type: "add",
+        left: { type: "multiply", left: { value: 0 }, right: { value: 6 } },
+        right: { value: 1 },
+      },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["right"],
+          side: "left",
+          value: 2,
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left", "right"],
+          side: "left",
+          value: 2,
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("creates bounded random reporters and edits only their literal range", () => {
     const workspace = applyWorkspaceChange(createStarterWorkspace(), {
       type: "addBlock",

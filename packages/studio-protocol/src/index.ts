@@ -1345,16 +1345,22 @@ function parseIntent(value: unknown): Intent | undefined {
     }
     case "setArithmeticOperand": {
       const location = parseLocation(value["location"]);
+      const path = value["path"];
       return location !== undefined &&
         (value["input"] === "value" || value["input"] === "delta" || value["input"] === "index") &&
         (["left", "right", "min", "max"] as unknown[]).includes(value["side"]) &&
-        isFiniteNumber(value["value"])
+        isFiniteNumber(value["value"]) &&
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length === 1 &&
+            ["left", "right", "min", "max"].includes(path[0])))
         ? {
             type: "setArithmeticOperand",
             location,
             input: value["input"],
             side: value["side"] as "left" | "right" | "min" | "max",
             value: value["value"],
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "min" | "max")[] }),
           }
         : undefined;
     }
@@ -1373,7 +1379,11 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter !== "listLength" &&
           reporter !== "xPosition" &&
           reporter !== "yPosition" &&
-          reporter !== "distanceToActor")
+          reporter !== "distanceToActor" &&
+          reporter !== "add" &&
+          reporter !== "subtract" &&
+          reporter !== "multiply" &&
+          reporter !== "divide")
       )
         return undefined;
       if (reporter === "variable" || reporter === "listLength" || reporter === "distanceToActor") {
