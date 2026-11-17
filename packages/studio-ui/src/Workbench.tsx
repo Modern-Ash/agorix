@@ -12,7 +12,7 @@ import {
 } from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
-import { locationKey } from "./blockView.js";
+import { locationKey, toRows } from "./blockView.js";
 import { Palette } from "./Palette.js";
 import { SceneLibrary } from "./SceneLibrary.js";
 import { densityAnnouncement } from "./density.js";
@@ -1029,15 +1029,40 @@ export function Workbench({
     setSelection(fullSelection(operations));
   }, [proposalId]);
   const anchored = canvasHints(agentUi.proposal, selection);
+  const revealableBlockIds =
+    workspace === undefined
+      ? []
+      : toRows(workspace).flatMap((row) => (row.kind === "block" ? [row.block.id] : []));
 
   const post = (intent: Intent) => {
     if (intent.type === "insertBlock" && window.innerWidth <= 1100) setToolsOpen(false);
+    if (intent.type === "askAgent") setOriOpen(true);
     bridge.post({
       schema: STUDIO_PROTOCOL_VERSION,
       type: "intent",
       intent,
       ...(programHash === undefined ? {} : { baseHash: programHash }),
     });
+  };
+
+  const revealHelpBlock = (blockId: string) => {
+    if (workspace === undefined) return;
+    const row = toRows(workspace).find(
+      (candidate) => candidate.kind === "block" && candidate.block.id === blockId,
+    );
+    if (row?.kind !== "block") return;
+    const script = workspace.scripts[row.block.location.container.scriptIndex];
+    const scriptId = script?.programId ?? script?.id;
+    const owner = actors?.actors.find(
+      (actor) => scriptId !== undefined && actor.scriptIds?.includes(scriptId) === true,
+    );
+    if (owner !== undefined) setSelectedActorId(owner.id);
+    if (scriptId !== undefined) setSelectedScriptId(scriptId);
+    setWorkspaceView("build");
+    setFocusRequest((previous) => ({
+      pos: locationKey(row.block.location),
+      nonce: (previous?.nonce ?? 0) + 1,
+    }));
   };
 
   const announce = (text: string) => {
@@ -1705,6 +1730,8 @@ export function Workbench({
           send={(message) => bridge.post(message)}
           selection={selection}
           onSelectionChange={setSelection}
+          onRevealBlock={revealHelpBlock}
+          revealableBlockIds={revealableBlockIds}
           locale={copyLocale}
         />
       </div>

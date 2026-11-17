@@ -367,12 +367,16 @@ export function AgentPanel({
   send,
   selection,
   onSelectionChange,
+  onRevealBlock,
+  revealableBlockIds,
   locale,
 }: {
   readonly state: AgentUiState;
   readonly send: (message: UiMessage) => void;
   readonly selection?: SelectionState | undefined;
   readonly onSelectionChange?: ((next: SelectionState) => void) | undefined;
+  readonly onRevealBlock?: ((blockId: string) => void) | undefined;
+  readonly revealableBlockIds?: readonly string[] | undefined;
   readonly locale?: StudioUiLocale | undefined;
 }) {
   const copy = copyFor(locale ?? "en");
@@ -503,6 +507,13 @@ export function AgentPanel({
                     : copy.helpPointer
                   : copy.helpNone}
           </p>
+          {state.help.blockIds?.map((blockId, index) =>
+            onRevealBlock === undefined || !revealableBlockIds?.includes(blockId) ? null : (
+              <button key={blockId} type="button" onClick={() => onRevealBlock(blockId)}>
+                {copy.helpLookHere} {index + 1}
+              </button>
+            ),
+          )}
           <p className="ghost-badge">{copy.helpCeilingNote(state.help.ceiling)}</p>
         </aside>
       )}
