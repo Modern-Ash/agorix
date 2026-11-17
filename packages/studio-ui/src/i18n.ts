@@ -52,6 +52,8 @@ export const COPY = {
     sceneDeleteScript: "Delete script",
     sceneConfirmDeleteScript: "Confirm delete",
     sceneCostumes: "Costumes",
+    sceneDragCostume:
+      "Drag a costume onto a character on the stage, or choose it for the selected character.",
     sceneBackdrops: "Backdrops",
     sceneSounds: "Sounds",
     layer: "Layer",
@@ -488,6 +490,8 @@ export const COPY = {
     sceneDeleteScript: "Eliminar script",
     sceneConfirmDeleteScript: "Confirmar eliminación",
     sceneCostumes: "Disfraces",
+    sceneDragCostume:
+      "Arrastrá un disfraz sobre un personaje del escenario, o elegilo para el personaje seleccionado.",
     sceneBackdrops: "Fondos",
     sceneSounds: "Sonidos",
     layer: "Capa",

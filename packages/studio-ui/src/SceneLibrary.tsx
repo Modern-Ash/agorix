@@ -10,6 +10,8 @@ import { useEffect, useRef, useState } from "react";
 import { validEmbeddedImageSource } from "@agorix/program-model";
 import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
 
+export const STAGE_COSTUME_DRAG_TYPE = "application/x-agorix-stage-costume";
+
 export function SceneLibrary({
   copy,
   actors,
@@ -345,9 +347,18 @@ export function SceneLibrary({
           {copy.sceneCostumes}
           {selected === undefined ? "" : ` · ${selected.name}`}
         </h3>
+        <p className="scene-costume-hint">{copy.sceneDragCostume}</p>
         <div className="scene-library-grid">
           {costumes.map((asset) => (
-            <div key={asset.id} className="scene-asset-card">
+            <div
+              key={asset.id}
+              className="scene-asset-card"
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData(STAGE_COSTUME_DRAG_TYPE, asset.id);
+                event.dataTransfer.effectAllowed = "copy";
+              }}
+            >
               <button
                 type="button"
                 disabled={selected === undefined}
