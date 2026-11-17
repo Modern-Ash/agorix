@@ -1018,7 +1018,13 @@ describe("workbenchHost", () => {
         await host.handle({
           schema,
           type: "intent",
-          intent: { ...source, reporter: "number", referenceId: undefined },
+          intent: {
+            type: "setArithmeticOperandSource",
+            location,
+            input: "value",
+            side: "left",
+            reporter: "number",
+          },
           baseHash: programSemanticHash(beforeSource),
         })
       )[0],
