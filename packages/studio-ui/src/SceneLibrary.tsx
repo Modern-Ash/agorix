@@ -1,4 +1,9 @@
-import type { ActorView, AssetView } from "@agorix/studio-protocol";
+import {
+  STUDIO_STAGE_KEYS,
+  studioStageKey,
+  type ActorView,
+  type AssetView,
+} from "@agorix/studio-protocol";
 import type { StudioUiCopy } from "./i18n.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
 import { useEffect, useRef, useState } from "react";
@@ -299,28 +304,37 @@ export function SceneLibrary({
               />
             ) : null}
             {scriptTrigger === "onKeyPressed" ? (
-              <label>
-                {copy.sceneKey}
-                <select
-                  aria-label={copy.sceneKey}
-                  value={scriptKey}
-                  onChange={(event) => setScriptKey(event.currentTarget.value)}
+              <div className="scene-key-picker">
+                <label>
+                  {copy.sceneKey}
+                  <select
+                    aria-label={copy.sceneKey}
+                    value={scriptKey}
+                    onChange={(event) => setScriptKey(event.currentTarget.value)}
+                  >
+                    {STUDIO_STAGE_KEYS.map((key) => (
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  aria-label={copy.sceneCaptureKey}
+                  title={copy.sceneCaptureKey}
+                  onKeyDown={(event) => {
+                    if (event.altKey || event.ctrlKey || event.metaKey) return;
+                    const key = studioStageKey(event.key);
+                    if (key === undefined) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setScriptKey(key);
+                  }}
                 >
-                  {[
-                    "Space",
-                    "Enter",
-                    "ArrowUp",
-                    "ArrowDown",
-                    "ArrowLeft",
-                    "ArrowRight",
-                    ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                  ].map((key) => (
-                    <option key={key} value={key}>
-                      {key}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  {copy.sceneCaptureKey}
+                </button>
+              </div>
             ) : null}
             <button type="submit">{copy.sceneAddScript}</button>
           </form>

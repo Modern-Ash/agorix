@@ -42,6 +42,31 @@ import {
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
 export const PACKAGE_NAME = "@agorix/studio-protocol";
+/** Keys the Studio stage can dispatch and the script builder can bind. */
+export const STUDIO_STAGE_KEYS = [
+  "Space",
+  "Enter",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  ..."0123456789",
+  "-",
+  "=",
+  "[",
+  "]",
+  ";",
+  "'",
+  ",",
+  ".",
+  "/",
+] as const;
+
+export function studioStageKey(key: string): string | undefined {
+  const normalized = key === " " ? "Space" : /^[a-z]$/i.test(key) ? key.toUpperCase() : key;
+  return (STUDIO_STAGE_KEYS as readonly string[]).includes(normalized) ? normalized : undefined;
+}
 
 /** Help shown instead of a proposal when the learner's assistance ceiling is below 4. */
 export type HelpShown = "none" | "question" | "concept" | "pointer";
@@ -2181,8 +2206,7 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
       if (
         value["event"] === "keyPressed" &&
         typeof value["key"] === "string" &&
-        value["key"].length > 0 &&
-        value["key"].length <= 40 &&
+        (STUDIO_STAGE_KEYS as readonly string[]).includes(value["key"]) &&
         value["actorId"] === undefined
       ) {
         return { schema, type: "stageEvent", event: "keyPressed", key: value["key"] };
@@ -2235,8 +2259,7 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
             value["key"] === undefined
           : value["trigger"] === "onKeyPressed"
             ? typeof value["key"] === "string" &&
-              value["key"].trim().length > 0 &&
-              value["key"].trim().length <= 40 &&
+              (STUDIO_STAGE_KEYS as readonly string[]).includes(value["key"]) &&
               value["message"] === undefined
             : value["message"] === undefined && value["key"] === undefined)
         ? {

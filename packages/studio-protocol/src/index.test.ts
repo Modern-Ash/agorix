@@ -833,6 +833,26 @@ describe("studio-protocol", () => {
         schema,
         type: "createScript",
         actorId: "actor:robot",
+        trigger: "onKeyPressed",
+        key: "7",
+        baseHash,
+      }),
+    ).toMatchObject({ trigger: "onKeyPressed", key: "7" });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
+        trigger: "onKeyPressed",
+        key: "Tab",
+        baseHash,
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "createScript",
+        actorId: "actor:robot",
         trigger: "onActorClicked",
         baseHash,
       }),
@@ -964,6 +984,12 @@ describe("studio-protocol", () => {
     expect(
       parseUiMessage({ schema, type: "stageEvent", event: "keyPressed", key: "ArrowRight" }),
     ).toMatchObject({ type: "stageEvent", key: "ArrowRight" });
+    expect(
+      parseUiMessage({ schema, type: "stageEvent", event: "keyPressed", key: "7" }),
+    ).toMatchObject({ type: "stageEvent", key: "7" });
+    expect(
+      parseUiMessage({ schema, type: "stageEvent", event: "keyPressed", key: "Tab" }),
+    ).toBeUndefined();
     expect(
       parseUiMessage({ schema, type: "stageEvent", event: "actorClicked", actorId: "actor:nova" }),
     ).toMatchObject({ type: "stageEvent", actorId: "actor:nova" });

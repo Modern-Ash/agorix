@@ -1168,6 +1168,15 @@ describe("workbenchHost", () => {
       schema,
       type: "createScript",
       actorId: robot.id,
+      trigger: "onKeyPressed",
+      key: "7",
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(get()!.scripts.at(-1)?.trigger).toEqual({ type: "onKeyPressed", key: "7" });
+    await host.handle({
+      schema,
+      type: "createScript",
+      actorId: robot.id,
       trigger: "onActorClicked",
       baseHash: programSemanticHash(get()!),
     });
