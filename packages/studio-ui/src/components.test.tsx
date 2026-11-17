@@ -12,6 +12,7 @@ import {
   StagePanel,
   stageDropPosition,
   stageNudgePosition,
+  stagePointerDragPosition,
   ValidationPanel,
   Workbench,
   statusFor,
@@ -472,6 +473,33 @@ describe("studio-ui", () => {
     expect(stageNudgePosition({ x: 0, y: 0 }, viewport, "ArrowLeft", 10)).toEqual({ x: 0, y: 0 });
     expect(stageNudgePosition({ x: 10, y: 20 }, viewport, "Enter", 1)).toBeUndefined();
     expect(stageNudgePosition({ x: NaN, y: 20 }, viewport, "ArrowUp", 1)).toBeUndefined();
+    expect(
+      stagePointerDragPosition(
+        { x: 10, y: 20 },
+        { x: 100, y: 200 },
+        { x: 300, y: 100 },
+        bounds,
+        viewport,
+      ),
+    ).toEqual({ x: 110, y: 70 });
+    expect(
+      stagePointerDragPosition(
+        { x: 10, y: 20 },
+        { x: 100, y: 200 },
+        { x: -900, y: 900 },
+        bounds,
+        viewport,
+      ),
+    ).toEqual({ x: 0, y: 0 });
+    expect(
+      stagePointerDragPosition(
+        { x: 10, y: 20 },
+        { x: 100, y: 200 },
+        { x: NaN, y: 0 },
+        bounds,
+        viewport,
+      ),
+    ).toBeUndefined();
   });
 
   it("renders actor costume as an asset-backed inspector select", () => {

@@ -232,6 +232,51 @@ export function stageNudgePosition(
   };
 }
 
+export function stagePointerDragPosition(
+  actor: { readonly x: number; readonly y: number },
+  start: { readonly x: number; readonly y: number },
+  current: { readonly x: number; readonly y: number },
+  bounds: { readonly width: number; readonly height: number },
+  viewport: { readonly width: number; readonly height: number },
+): { x: number; y: number } | undefined {
+  if (
+    ![
+      actor.x,
+      actor.y,
+      start.x,
+      start.y,
+      current.x,
+      current.y,
+      bounds.width,
+      bounds.height,
+      viewport.width,
+      viewport.height,
+    ].every(Number.isFinite) ||
+    bounds.width <= 0 ||
+    bounds.height <= 0 ||
+    viewport.width <= 0 ||
+    viewport.height <= 0
+  )
+    return undefined;
+  return {
+    x: Math.round(
+      Math.max(
+        0,
+        Math.min(viewport.width, actor.x + ((current.x - start.x) * viewport.width) / bounds.width),
+      ),
+    ),
+    y: Math.round(
+      Math.max(
+        0,
+        Math.min(
+          viewport.height,
+          actor.y - ((current.y - start.y) * viewport.height) / bounds.height,
+        ),
+      ),
+    ),
+  };
+}
+
 function ExecutionToolbar({
   copy,
   disabled,
@@ -419,6 +464,30 @@ export function StagePanel({
   ) => void;
 }) {
   const state = frame?.state;
+  const pointerDrag = useRef<{
+    actorId: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    x: number;
+    y: number;
+  }>();
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const suppressActorClick = useRef(false);
+  const [dragPreview, setDragPreview] = useState<{ actorId: string; x: number; y: number }>();
+  const dragPosition = (actorId: string, clientX: number, clientY: number) => {
+    const drag = pointerDrag.current;
+    if (drag?.actorId !== actorId || state === undefined) return undefined;
+    const bounds = viewportRef.current?.getBoundingClientRect();
+    if (!bounds) return undefined;
+    return stagePointerDragPosition(
+      { x: drag.x, y: drag.y },
+      { x: drag.startX, y: drag.startY },
+      { x: clientX, y: clientY },
+      bounds,
+      state.viewport,
+    );
+  };
   const assetNames = new Map(assets.map((asset) => [asset.id, asset.name]));
   const backdropImage = imageForId(state?.backdropId, assets);
   const visibleVariables = (state?.variables ?? []).filter((variable) => variable.visible);
@@ -466,6 +535,7 @@ export function StagePanel({
         </div>
       </header>
       <div
+        ref={viewportRef}
         className="stage-viewport"
         role="group"
         data-running={frame?.running ? "true" : "false"}
@@ -552,6 +622,7 @@ export function StagePanel({
             {stageActors
               .filter((actor) => actor.visible)
               .map((actor) => {
+                const position = dragPreview?.actorId === actor.id ? dragPreview : actor;
                 const size = Math.max(28, Math.min(110, Math.round((actor.size / 100) * 48)));
                 const costumeImage = imageForId(actor.costumeId ?? "asset:costume.default", assets);
                 return (
@@ -563,15 +634,62 @@ export function StagePanel({
                     }
                     draggable={!frame?.running && onPlaceActor !== undefined}
                     onClick={() => {
+                      if (suppressActorClick.current) {
+                        suppressActorClick.current = false;
+                        return;
+                      }
                       onSelectActor?.(actor.id);
                       if (state !== undefined)
                         onStageEvent?.({ event: "actorClicked", actorId: actor.id });
                     }}
                     onDragStart={(event) => {
+                      if (pointerDrag.current?.actorId === actor.id) {
+                        event.preventDefault();
+                        return;
+                      }
                       if (frame?.running || onPlaceActor === undefined) return;
                       onSelectActor?.(actor.id);
                       event.dataTransfer.setData("application/x-agorix-stage-actor", actor.id);
                       event.dataTransfer.effectAllowed = "move";
+                    }}
+                    onPointerDown={(event) => {
+                      suppressActorClick.current = false;
+                      if (frame?.running || onPlaceActor === undefined || event.button !== 0)
+                        return;
+                      pointerDrag.current = {
+                        actorId: actor.id,
+                        pointerId: event.pointerId,
+                        startX: event.clientX,
+                        startY: event.clientY,
+                        x: actor.x,
+                        y: actor.y,
+                      };
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      onSelectActor?.(actor.id);
+                    }}
+                    onPointerMove={(event) => {
+                      if (frame?.running) return;
+                      if (pointerDrag.current?.pointerId !== event.pointerId) return;
+                      const next = dragPosition(actor.id, event.clientX, event.clientY);
+                      if (next) setDragPreview({ actorId: actor.id, ...next });
+                    }}
+                    onPointerUp={(event) => {
+                      const drag = pointerDrag.current;
+                      if (drag?.actorId !== actor.id || drag.pointerId !== event.pointerId) return;
+                      const next = dragPosition(actor.id, event.clientX, event.clientY);
+                      pointerDrag.current = undefined;
+                      setDragPreview(undefined);
+                      if (event.currentTarget.hasPointerCapture(event.pointerId))
+                        event.currentTarget.releasePointerCapture(event.pointerId);
+                      if (!frame?.running && next && (next.x !== drag.x || next.y !== drag.y)) {
+                        suppressActorClick.current = true;
+                        onPlaceActor?.(actor.id, next);
+                      }
+                    }}
+                    onPointerCancel={(event) => {
+                      if (pointerDrag.current?.pointerId !== event.pointerId) return;
+                      pointerDrag.current = undefined;
+                      setDragPreview(undefined);
                     }}
                     aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight Alt+ArrowUp Alt+ArrowDown"
                     title={copy.stageActorKeyboardHint}
@@ -613,9 +731,10 @@ export function StagePanel({
                       onCostume(actor.id, costumeId);
                     }}
                     data-costume-id={actor.costumeId ?? "default"}
+                    data-dragging={dragPreview?.actorId === actor.id}
                     style={{
-                      left: stagePercent(actor.x, state.viewport.width),
-                      bottom: stagePercent(actor.y, state.viewport.height),
+                      left: stagePercent(position.x, state.viewport.width),
+                      bottom: stagePercent(position.y, state.viewport.height),
                       width: `${size}px`,
                       height: `${size}px`,
                       transform: `translate(-50%, 50%) rotate(${-actor.direction}deg)`,
