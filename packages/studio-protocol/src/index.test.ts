@@ -349,6 +349,36 @@ describe("studio-protocol", () => {
       parseUiMessage({
         schema,
         type: "intent",
+        intent: { type: "setVariableInitialValue", variableId: "energy", value: 7 },
+      }),
+    ).toMatchObject({
+      intent: { type: "setVariableInitialValue", variableId: "energy", value: 7 },
+    });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setVariableInitialValue", variableId: "energy", value: Infinity },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setVariableVisible", variableId: "energy", visible: false },
+      }),
+    ).toMatchObject({ intent: { type: "setVariableVisible", visible: false } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setVariableVisible", variableId: "energy", visible: "false" },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
         intent: { type: "renameVariable", variableId: "energy", name: "Power" },
       }),
     ).toMatchObject({ intent: { type: "renameVariable", variableId: "energy", name: "Power" } });
@@ -437,6 +467,20 @@ describe("studio-protocol", () => {
     ).toMatchObject({ intent: { type: "addList", name: "items" } });
     expect(
       parseUiMessage({ schema, type: "intent", intent: { type: "addList", name: " " } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setListVisible", listId: "items", visible: false },
+      }),
+    ).toMatchObject({ intent: { type: "setListVisible", visible: false } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setListVisible", listId: "items", visible: 0 },
+      }),
     ).toBeUndefined();
     expect(
       parseUiMessage({

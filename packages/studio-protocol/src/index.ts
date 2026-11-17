@@ -1180,6 +1180,22 @@ function parseIntent(value: unknown): Intent | undefined {
       const variableId = value["variableId"];
       return isSafeId(variableId) ? { type: "deleteVariable", variableId } : undefined;
     }
+    case "setVariableInitialValue": {
+      const variableId = value["variableId"];
+      const initialValue = value["value"];
+      return isSafeId(variableId) &&
+        isFiniteNumber(initialValue) &&
+        initialValue >= NUMERIC_LITERAL_MIN &&
+        initialValue <= NUMERIC_LITERAL_MAX
+        ? { type: "setVariableInitialValue", variableId, value: initialValue }
+        : undefined;
+    }
+    case "setVariableVisible": {
+      const variableId = value["variableId"];
+      return isSafeId(variableId) && typeof value["visible"] === "boolean"
+        ? { type: "setVariableVisible", variableId, visible: value["visible"] }
+        : undefined;
+    }
     case "addList": {
       const name = value["name"];
       return typeof name === "string" && name.trim().length > 0 && name.trim().length <= 40
@@ -1199,6 +1215,12 @@ function parseIntent(value: unknown): Intent | undefined {
     case "deleteList": {
       const listId = value["listId"];
       return isSafeId(listId) ? { type: "deleteList", listId } : undefined;
+    }
+    case "setListVisible": {
+      const listId = value["listId"];
+      return isSafeId(listId) && typeof value["visible"] === "boolean"
+        ? { type: "setListVisible", listId, visible: value["visible"] }
+        : undefined;
     }
     case "setListInitialItems": {
       const listId = value["listId"];

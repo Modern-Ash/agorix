@@ -608,8 +608,28 @@ describe("interaction-core", () => {
     const empty = createStarterWorkspace();
     const added = intentToChange({ type: "addVariable", name: "energy" }, newId, empty);
     const declared = applyWorkspaceChange(empty, added!).workspace;
-    expect(declared.variables?.[0]).toMatchObject({ name: "energy", initialValue: 0 });
     const variableId = declared.variables![0]!.id;
+    expect(
+      intentToChange({ type: "setVariableInitialValue", variableId, value: 5 }, newId, declared),
+    ).toMatchObject({ type: "editVariableInitialValue", variableId, value: 5 });
+    expect(
+      intentToChange({ type: "setVariableVisible", variableId, visible: false }, newId, declared),
+    ).toMatchObject({ type: "editVariableVisibility", variableId, visible: false });
+    expect(
+      intentToChange(
+        { type: "setVariableInitialValue", variableId, value: Infinity },
+        newId,
+        declared,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setVariableVisible", variableId: "missing", visible: false },
+        newId,
+        declared,
+      ),
+    ).toBeUndefined();
+    expect(declared.variables?.[0]).toMatchObject({ name: "energy", initialValue: 0 });
     expect(
       applyWorkspaceChange(
         declared,
@@ -676,6 +696,16 @@ describe("interaction-core", () => {
     const declaration = intentToChange({ type: "addList", name: "items" }, newId, empty);
     const declared = applyWorkspaceChange(empty, declaration!).workspace;
     const listId = declared.lists![0]!.id;
+    expect(
+      intentToChange({ type: "setListVisible", listId, visible: false }, newId, declared),
+    ).toMatchObject({ type: "editListVisibility", listId, visible: false });
+    expect(
+      intentToChange(
+        { type: "setListVisible", listId: "missing", visible: false },
+        newId,
+        declared,
+      ),
+    ).toBeUndefined();
     const renamed = applyWorkspaceChange(
       declared,
       intentToChange({ type: "renameList", listId, name: "inventory" }, newId, declared)!,

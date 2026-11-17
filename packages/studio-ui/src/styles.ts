@@ -70,6 +70,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .variable-management-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
 .variable-management-actions label { flex: 1 1 100%; }
 .variable-management-actions input { width: 100%; box-sizing: border-box; }
+.variable-management-actions .watcher-toggle, .list-management-actions .watcher-toggle { display: flex; align-items: center; flex: 1 1 100%; gap: 6px; }
+.variable-management-actions .watcher-toggle input, .list-management-actions .watcher-toggle input { width: auto; min-width: auto; }
 .scene-create-actor { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .scene-create-actor input { flex: 1 1 120px; min-width: 0; }
 .block-asset-field { display: inline-flex; align-items: center; gap: 5px; }

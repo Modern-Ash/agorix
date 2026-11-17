@@ -563,6 +563,79 @@ describe("workbenchHost", () => {
     ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(get()).toEqual(before);
   });
+  it("commits declaration defaults and watcher toggles while refusing stale and missing edits", async () => {
+    const { host, get } = setup();
+    const post = async (intent: Parameters<typeof host.handle>[0] & { type: "intent" }) =>
+      host.handle(intent);
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "addVariable", name: "score" },
+      baseHash: programSemanticHash(base),
+    });
+    const variableId = get()!.variables![0]!.id;
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "addList", name: "items" },
+      baseHash: programSemanticHash(get()!),
+    });
+    const listId = get()!.lists![0]!.id;
+    const before = get()!;
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "setVariableInitialValue", variableId, value: 7 },
+      baseHash: programSemanticHash(before),
+    });
+    expect(get()?.variables?.[0]?.initialValue).toBe(7);
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: { type: "setVariableVisible", variableId, visible: false },
+          baseHash: programSemanticHash(before),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "setVariableVisible", variableId, visible: false },
+      baseHash: programSemanticHash(get()!),
+    });
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "setListVisible", listId, visible: false },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(get()?.variables?.[0]?.visible).toBe(false);
+    expect(get()?.lists?.[0]?.visible).toBe(false);
+    const accepted = get()!;
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: { type: "setVariableInitialValue", variableId: "missing", value: 1 },
+          baseHash: programSemanticHash(accepted),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: { type: "setListVisible", listId: "missing", visible: true },
+          baseHash: programSemanticHash(accepted),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(get()).toEqual(accepted);
+  });
 
   it("creates a list and visual list operations while rejecting stale and unknown list edits", async () => {
     const { host, get, labels } = setup();
