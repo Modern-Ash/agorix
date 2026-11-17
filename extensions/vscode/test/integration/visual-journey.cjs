@@ -163,6 +163,12 @@ async function main() {
       .locator(".studio-scene-editor .scene-actors button")
       .filter({ hasText: "Helper" })
       .click();
+    const actorInspector = webview.locator(".studio-scene-editor .actor-inspector");
+    assert.equal(await actorInspector.locator("header strong").innerText(), "Helper");
+    const inspectorBounds = await actorInspector.boundingBox();
+    if (!inspectorBounds || inspectorBounds.y > 400)
+      throw new Error("Selected actor controls must be visible beside Scene in the first viewport");
+    assert.equal(await webview.locator(".studio-details .actor-inspector").count(), 0);
     await webview.locator(".scene-create-script button[type='submit']").click();
     const { value: withNewScript } = await waitForProject(
       (envelope) => envelope.project?.program?.scripts?.length === 3,

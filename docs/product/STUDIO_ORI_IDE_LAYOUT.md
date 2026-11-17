@@ -52,6 +52,11 @@ The left library switches between Blocks and Scene. Scene shows actor cards and
 visual costume/backdrop choices from the project's validated assets. Selection
 is an explicit metadata edit; the host refuses unknown asset ids and refreshes
 the deterministic stage after a change. Image import/drawing are available in Scene; broader component coverage remains in epic #1648.
+Scene keeps the selected actor's name, position, direction, size, visibility and
+costume controls beside the stage and asset library. Selecting another actor
+updates these controls immediately; edits still go through the validated host
+metadata path. Project details contain the secondary mission, actor list and
+asset inventory.
 
 Scene can create an actor with an owned green-flag script in one project write.
 Selecting an actor scopes the visible canvas and palette insertion to that

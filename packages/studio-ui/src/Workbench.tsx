@@ -672,7 +672,7 @@ export function ActorInspector({
   return (
     <section className="actor-inspector" aria-label={copy.actorInspector}>
       <header>
-        <strong>{copy.actorInspector}</strong>
+        <strong>{actor.name}</strong>
         <span>
           {actor.scriptCount ?? 0} {copy.actorScripts}
         </span>
@@ -1582,7 +1582,18 @@ export function Workbench({
           hidden={workspaceView !== "scene"}
         >
           <h2>{copy.libraryScene}</h2>
-          {workspaceView === "scene" ? sceneLibrary() : null}
+          {workspaceView === "scene" ? (
+            <>
+              <ActorInspector
+                copy={copy}
+                actors={actors?.actors ?? []}
+                assets={assets}
+                selectedActorId={selectedActorId}
+                onPatch={updateActor}
+              />
+              {sceneLibrary()}
+            </>
+          ) : null}
         </section>
         <section
           className="studio-program"
@@ -1672,13 +1683,6 @@ export function Workbench({
             actors={actors?.actors ?? []}
             selectedActorId={selectedActorId}
             onSelect={setSelectedActorId}
-          />
-          <ActorInspector
-            copy={copy}
-            actors={actors?.actors ?? []}
-            assets={assets}
-            selectedActorId={selectedActorId}
-            onPatch={updateActor}
           />
           <AssetPanel copy={copy} assets={assets} />
         </details>
