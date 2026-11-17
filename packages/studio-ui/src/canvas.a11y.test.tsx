@@ -1436,6 +1436,29 @@ describe("canvas keyboard and screen reader behaviour", () => {
     transfer.set("application/x-agorix-stage-actor", "actor:unknown");
     act(() => viewport.dispatchEvent(drop));
     expect(placed).toHaveLength(1);
+    actor.setPointerCapture = vi.fn();
+    actor.hasPointerCapture = vi.fn(() => true);
+    actor.releasePointerCapture = vi.fn();
+    const pointer = (type: string, clientX: number, clientY: number) => {
+      const event = new dom.window.Event(type, { bubbles: true });
+      Object.assign(event, { pointerId: 1, button: 0, clientX, clientY });
+      act(() => actor.dispatchEvent(event));
+    };
+    pointer("pointerdown", 100, 200);
+    pointer("pointermove", 300, 100);
+    expect(actor.dataset["dragging"]).toBe("true");
+    expect(actor.style.left).toBe("45.83333333333333%");
+    expect(placed).toHaveLength(1);
+    pointer("pointerup", 300, 100);
+    expect(placed.at(-1)).toEqual({ actorId: "actor:nova", x: 110, y: 60 });
+    expect(actor.dataset["dragging"]).toBe("false");
+    act(() => actor.click());
+    expect(events).toHaveLength(4);
+    pointer("pointerdown", 100, 200);
+    pointer("pointermove", 400, 50);
+    pointer("pointercancel", 400, 50);
+    expect(placed).toHaveLength(2);
+    expect(actor.style.left).toBe("4.166666666666666%");
   });
   it("nudges and transforms a selected actor directly on the idle stage", () => {
     const placed: { actorId: string; x: number; y: number }[] = [];

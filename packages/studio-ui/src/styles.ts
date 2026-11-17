@@ -46,6 +46,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .stage-sprite { border: 2px solid var(--vscode-charts-orange); border-radius: 45% 45% 45% 8px; background: color-mix(in srgb, var(--vscode-charts-orange), transparent 64%); }
 .stage-sprite[draggable="true"] { cursor: grab; }
 .stage-sprite[draggable="true"]:active { cursor: grabbing; }
+.stage-sprite[draggable="true"] { touch-action: none; }
+.stage-sprite[data-dragging="true"] { transition: none; cursor: grabbing; z-index: 2; }
 .stage-sprite { padding: 0; color: var(--vscode-foreground); }
 .stage-sprite:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
 .expression-socket { min-height: 28px; padding: 3px 10px; border: 1px solid var(--vscode-focusBorder); border-radius: 15px; background: var(--vscode-editorWidget-background); color: var(--vscode-foreground); cursor: pointer; }
