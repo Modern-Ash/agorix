@@ -1,7 +1,7 @@
 import type { ActorView, AssetView } from "@agorix/studio-protocol";
 import type { StudioUiCopy } from "./i18n.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { validEmbeddedImageSource } from "@agorix/program-model";
 
 export function SceneLibrary({
@@ -41,6 +41,10 @@ export function SceneLibrary({
   >("actors");
   const [assetName, setAssetName] = useState("");
   const [assetError, setAssetError] = useState("");
+  const [pendingAsset, setPendingAsset] = useState<{
+    kind: "costume" | "backdrop";
+    knownIds: readonly string[];
+  }>();
   const [drawingActive, setDrawingActive] = useState(false);
   const [ink, setInk] = useState("#7855d8");
   const [drawTool, setDrawTool] = useState<"brush" | "eraser">("brush");
@@ -56,10 +60,21 @@ export function SceneLibrary({
       setAssetError(copy.sceneInvalidImage);
       return;
     }
+    setPendingAsset({ kind: assetKind, knownIds: assets.map((asset) => asset.id) });
     onImportAsset?.(assetKind, (name.trim() || copy.sceneNewImage).slice(0, 80), source);
     setAssetError("");
-    setActiveSection(assetKind === "costume" ? "costumes" : "backdrops");
   };
+  useEffect(() => {
+    if (
+      pendingAsset !== undefined &&
+      assets.some(
+        (asset) => asset.kind === pendingAsset.kind && !pendingAsset.knownIds.includes(asset.id),
+      )
+    ) {
+      setActiveSection(pendingAsset.kind === "costume" ? "costumes" : "backdrops");
+      setPendingAsset(undefined);
+    }
+  }, [assets, pendingAsset]);
   const rememberDrawing = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
     drawingHistory.current.push(context.getImageData(0, 0, canvas.width, canvas.height));
     if (drawingHistory.current.length > 12) drawingHistory.current.shift();

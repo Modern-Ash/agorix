@@ -284,7 +284,11 @@ export function attachWorkbenchPanel(
         }
       }
       await pushDensity("auto");
-    })().catch(() => undefined);
+    })().catch(() => {
+      void vscode.window.showErrorMessage(
+        "Agorix Studio could not save this change. The project was not modified.",
+      );
+    });
   });
   panel.onDidDispose(() => {
     clearWorkbenchState();

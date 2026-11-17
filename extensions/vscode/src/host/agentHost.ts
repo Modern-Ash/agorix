@@ -357,7 +357,13 @@ export function createAgentHost(port: AgentPort): AgentHost {
       case "ready":
       case "intent":
       case "executionCommand":
+      case "openCode":
+      case "stageEvent":
       case "updateActor":
+      case "createActor":
+      case "createScript":
+      case "importAsset":
+      case "updateStage":
       case "updateMissionSpec":
         return undefined;
       case "agreementsChanged": {

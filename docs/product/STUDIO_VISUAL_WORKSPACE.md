@@ -40,8 +40,10 @@ The real-window check exposed three issues now fixed: the custom editor had scri
 
 The installed-extension suite in `extensions/vscode/test/integration/index.cjs` now opens a project with two actors, two costumes, a backdrop, a visible variable and a condition containing a repeat. Against a packaged VSIX in a clean VS Code profile, it checks the code projection, deterministic execution frames and evidence, a read-only Ori explanation, a proposal diff, explicit rejection with unchanged project bytes, and explicit acceptance with the canonical project saved. The Inspector's flat tree now supports VS Code's reveal contract, which this run exposed.
 
-The local run used VS Code 1.146 via `VSCODE_EXECUTABLE=/usr/share/code/code pnpm --filter agorix-studio test:vsix` and passed all 18 integration cases. This is host-level verification of the installed extension. The real-window captures verify rendering, but pointer drag, canvas drawing, and Web reopening still need end-to-end interaction checks.
+The local run used VS Code 1.146 via `VSCODE_EXECUTABLE=/usr/share/code/code pnpm --filter agorix-studio test:vsix` and passed all 18 integration cases. This is host-level verification of the installed extension. The real-window captures verify rendering.
+
+The visible `test:visual` journey installs the packaged VSIX into an isolated VS Code profile, selects the second actor, draws and saves a costume after explicit adult media approval, selects it, drags a block into the canonical program, runs the project, opens Evidence, and checks the costume in the saved portable project. It exposed two dead ends: learner-owned scene edits were routed to the unavailable AI host, and saving a project opened the Code projection over the visual workbench. Both paths now remain in Studio. Web reopening still needs a separate cross-surface interaction check.
 
 ## Follow-up within #1694
 
-The next slice should automate the remaining visible VSIX interactions: choose a character, create a costume, drag a block, run the stage, inspect evidence, and reopen the saved project in Web. Editing an existing image remains a separate asset workflow gap. Ori's proposals must continue through learner preview and explicit acceptance before canonical mutation.
+The next slice should reopen the saved project in Web and compare its program, actors, costume, and runtime evidence. Editing an existing image remains a separate asset workflow gap. Ori's proposals must continue through learner preview and explicit acceptance before canonical mutation.

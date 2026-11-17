@@ -134,6 +134,22 @@ describe("Agorix Studio first slice", () => {
     );
   });
 
+  it("requires explicit media approval before serializing a drawn costume", () => {
+    const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
+    const project = {
+      ...webCreatedProject,
+      metadata: {
+        ...webCreatedProject.metadata,
+        assets: [{ id: "asset:drawn", kind: "costume" as const, name: "Drawn", source }],
+      },
+    };
+    expect(() => serializeProjectFile(project, "drawn.agorix")).toThrow(/adult opt-in/);
+    const raw = serializeProjectFile(project, "drawn.agorix", { includeMedia: true });
+    expect(parseProjectFile(raw, "drawn.agorix").stored.metadata.assets).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Drawn", source })]),
+    );
+  });
+
   it("creates blank and First Mission starters as canonical stored projects", () => {
     const blank = createStudioStarterProject({
       starter: "blank",
