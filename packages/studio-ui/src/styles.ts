@@ -66,6 +66,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .list-management-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
 .list-management-actions label { flex: 1 1 100%; }
 .list-management-actions input { width: 100%; box-sizing: border-box; }
+.variable-management summary { cursor: pointer; }
+.variable-management-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+.variable-management-actions label { flex: 1 1 100%; }
+.variable-management-actions input { width: 100%; box-sizing: border-box; }
 .scene-create-actor { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .scene-create-actor input { flex: 1 1 120px; min-width: 0; }
 .block-asset-field { display: inline-flex; align-items: center; gap: 5px; }

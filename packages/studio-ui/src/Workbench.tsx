@@ -875,6 +875,7 @@ export function Workbench({
   const [dragging, setDragging] = useState(false);
   const layoutRef = useRef<WorkbenchDensity>(density);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
+  const [pendingVariableDelete, setPendingVariableDelete] = useState<string | undefined>();
   const [pendingListDelete, setPendingListDelete] = useState<string | undefined>();
   const [status, setStatus] = useState("");
   const [execution, setExecution] = useState<ExecutionState | undefined>();
@@ -926,6 +927,7 @@ export function Workbench({
       }
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
+        setPendingVariableDelete(undefined);
         setPendingListDelete(undefined);
         setProgramHash(message.programHash);
         if (pendingScriptCreation.current) {
@@ -1213,7 +1215,49 @@ export function Workbench({
               {(workspace?.variables ?? []).length === 0 ? null : (
                 <ul>
                   {workspace?.variables?.map((variable) => (
-                    <li key={variable.id}>{variable.name}</li>
+                    <li key={variable.id}>
+                      <details className="variable-management">
+                        <summary>{variable.name}</summary>
+                        <div className="variable-management-actions">
+                          <label>
+                            <span>{copy.variableName}</span>
+                            <input
+                              id={`rename-variable-${variable.id}`}
+                              key={`${variable.id}:${variable.name}`}
+                              maxLength={40}
+                              defaultValue={variable.name}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const input = document.getElementById(
+                                `rename-variable-${variable.id}`,
+                              );
+                              if (!(input instanceof HTMLInputElement)) return;
+                              const name = input.value.trim();
+                              if (name && name !== variable.name)
+                                post({ type: "renameVariable", variableId: variable.id, name });
+                            }}
+                          >
+                            {copy.variableRename}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (pendingVariableDelete === variable.id) {
+                                post({ type: "deleteVariable", variableId: variable.id });
+                                setPendingVariableDelete(undefined);
+                              } else setPendingVariableDelete(variable.id);
+                            }}
+                          >
+                            {pendingVariableDelete === variable.id
+                              ? copy.variableConfirmDelete
+                              : copy.variableDelete}
+                          </button>
+                        </div>
+                      </details>
+                    </li>
                   ))}
                 </ul>
               )}

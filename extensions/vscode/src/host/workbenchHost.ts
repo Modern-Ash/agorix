@@ -229,6 +229,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setLogicalOperand" ||
     intent.intent.type === "setLogicalBoolean" ||
     intent.intent.type === "addVariable" ||
+    intent.intent.type === "renameVariable" ||
+    intent.intent.type === "deleteVariable" ||
     intent.intent.type === "addList" ||
     intent.intent.type === "renameList" ||
     intent.intent.type === "deleteList" ||
@@ -490,6 +492,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "setLogicalOperand" ||
               intent.type === "setLogicalBoolean" ||
               intent.type === "addVariable" ||
+              intent.type === "renameVariable" ||
+              intent.type === "deleteVariable" ||
               intent.type === "addList" ||
               intent.type === "renameList" ||
               intent.type === "deleteList" ||

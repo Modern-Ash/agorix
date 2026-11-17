@@ -1166,6 +1166,20 @@ function parseIntent(value: unknown): Intent | undefined {
         ? { type: "addVariable", name: name.trim() }
         : undefined;
     }
+    case "renameVariable": {
+      const variableId = value["variableId"];
+      const name = value["name"];
+      return isSafeId(variableId) &&
+        typeof name === "string" &&
+        name.trim().length > 0 &&
+        name.trim().length <= 40
+        ? { type: "renameVariable", variableId, name: name.trim() }
+        : undefined;
+    }
+    case "deleteVariable": {
+      const variableId = value["variableId"];
+      return isSafeId(variableId) ? { type: "deleteVariable", variableId } : undefined;
+    }
     case "addList": {
       const name = value["name"];
       return typeof name === "string" && name.trim().length > 0 && name.trim().length <= 40
