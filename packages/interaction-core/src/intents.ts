@@ -47,9 +47,11 @@ export const STUDIO_COMPARISON_OPERAND_SOURCES = [
   "number",
   "variable",
   "listLength",
+  "listItem",
   "xPosition",
   "yPosition",
   "distanceToActor",
+  "randomInteger",
 ] as const;
 
 function statementsAt(
@@ -149,6 +151,13 @@ export type Intent =
       readonly side: "left" | "right";
       readonly source: (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number];
       readonly referenceId?: string;
+    }
+  | {
+      readonly type: "setComparisonNestedNumber";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right";
+      readonly field: "index" | "min" | "max";
+      readonly value: number;
     }
   | {
       readonly type: "setConditionBoolean";
@@ -926,6 +935,17 @@ export function intentToChange(
           if (!workspace.lists?.some((entry) => entry.id === intent.referenceId)) return undefined;
           next = { id: current.id, type: "lists_length", fields: { listId: intent.referenceId } };
           break;
+        case "listItem":
+          if (!workspace.lists?.some((entry) => entry.id === intent.referenceId)) return undefined;
+          next = {
+            id: current.id,
+            type: "lists_item",
+            fields: { listId: intent.referenceId },
+            inputs: {
+              index: { id: `${current.id}:index`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
+          break;
         case "xPosition":
         case "yPosition":
           next = {
@@ -941,6 +961,16 @@ export function intentToChange(
             fields: { actorId: intent.referenceId },
           };
           break;
+        case "randomInteger":
+          next = {
+            id: current.id,
+            type: "operator_random_integer",
+            inputs: {
+              min: { id: `${current.id}:min`, type: "literal_number", fields: { value: 1 } },
+              max: { id: `${current.id}:max`, type: "literal_number", fields: { value: 10 } },
+            },
+          };
+          break;
       }
       return {
         type: "editBlock",
@@ -950,6 +980,57 @@ export function intentToChange(
           inputs: {
             ...block.inputs,
             condition: { ...condition, inputs: { ...condition.inputs, [intent.side]: next } },
+          },
+        },
+      };
+    }
+    case "setComparisonNestedNumber": {
+      if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const condition = block?.inputs?.condition;
+      if (
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
+        condition === undefined ||
+        Array.isArray(condition) ||
+        !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(condition.type)
+      )
+        return undefined;
+      const operand = condition.inputs?.[intent.side];
+      if (operand === undefined || Array.isArray(operand)) return undefined;
+      if (
+        operand.type === "lists_item"
+          ? intent.field !== "index"
+          : operand.type === "operator_random_integer"
+            ? intent.field !== "min" && intent.field !== "max"
+            : true
+      )
+        return undefined;
+      const current = operand.inputs?.[intent.field];
+      if (current === undefined || Array.isArray(current) || current.type !== "literal_number")
+        return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: {
+              ...condition,
+              inputs: {
+                ...condition.inputs,
+                [intent.side]: {
+                  ...operand,
+                  inputs: {
+                    ...operand.inputs,
+                    [intent.field]: {
+                      ...current,
+                      fields: { ...current.fields, value: intent.value },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       };
