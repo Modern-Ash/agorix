@@ -654,6 +654,31 @@ describe("interaction-core", () => {
     const declared = applyWorkspaceChange(empty, declaration!).workspace;
     const listId = declared.lists![0]!.id;
     expect(declared.lists![0]).toMatchObject({ name: "items", initialItems: [] });
+    const seeded = applyWorkspaceChange(
+      declared,
+      intentToChange({ type: "setListInitialItems", listId, items: [3, -2] }, newId, declared)!,
+    );
+    expect(seeded.program.lists?.[0]).toMatchObject({ id: listId, initialItems: [3, -2] });
+    expect(
+      intentToChange(
+        { type: "setListInitialItems", listId: "missing", items: [1] },
+        newId,
+        declared,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange({ type: "setListInitialItems", listId, items: [Infinity] }, newId, declared),
+    ).toBeUndefined();
+    expect(
+      intentToChange({ type: "setListInitialItems", listId, items: [1_000_001] }, newId, declared),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setListInitialItems", listId, items: Array(101).fill(0) },
+        newId,
+        declared,
+      ),
+    ).toBeUndefined();
     expect(intentToChange({ type: "addList", name: "ITEMS" }, newId, declared)).toBeUndefined();
     const inserted = intentToChange(
       { type: "insertBlock", blockType: "lists_insert_at", to: { container: script, index: 0 } },

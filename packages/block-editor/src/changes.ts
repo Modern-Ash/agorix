@@ -41,7 +41,12 @@ export type WorkspaceChange =
   | { readonly type: "editBlock"; readonly location: StatementLocation; readonly block: BlockNode }
   | { readonly type: "deleteBlock"; readonly location: StatementLocation }
   | { readonly type: "addVariable"; readonly variable: ProgramVariable }
-  | { readonly type: "addList"; readonly list: ProgramList };
+  | { readonly type: "addList"; readonly list: ProgramList }
+  | {
+      readonly type: "editListInitialItems";
+      readonly listId: string;
+      readonly items: readonly number[];
+    };
 
 export interface StatementLocation {
   readonly container: StatementContainerPath;
@@ -326,6 +331,20 @@ export function applyWorkspaceChange(
         ...(next.lists ?? []),
         change.list,
       ];
+      break;
+    }
+    case "editListInitialItems": {
+      const index = next.lists?.findIndex((list) => list.id === change.listId) ?? -1;
+      if (index < 0)
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "lists",
+          "expected a declared list",
+          change.listId,
+        );
+      const lists = [...(next.lists ?? [])];
+      lists[index] = { ...lists[index]!, initialItems: [...change.items] };
+      (next as unknown as { lists?: readonly ProgramList[] }).lists = lists;
       break;
     }
   }

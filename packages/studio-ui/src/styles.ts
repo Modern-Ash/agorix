@@ -58,6 +58,11 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .variable-creator label, .list-creator label { display: grid; gap: 3px; }
 .variable-creator input, .list-creator input { min-width: 0; }
 .variable-creator ul, .list-creator ul { margin: 0; padding-left: 18px; }
+.list-initial-items { display: grid; gap: 6px; }
+.list-initial-items summary { cursor: pointer; }
+.list-initial-items ol { display: grid; gap: 6px; padding-left: 18px; }
+.list-initial-items li { display: flex; align-items: end; gap: 4px; flex-wrap: wrap; }
+.list-initial-items li input { width: 72px; }
 .scene-create-actor { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .scene-create-actor input { flex: 1 1 120px; min-width: 0; }
 .block-asset-field { display: inline-flex; align-items: center; gap: 5px; }

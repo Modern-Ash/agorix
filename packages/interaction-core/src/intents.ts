@@ -7,6 +7,7 @@ import {
   type StatementLocation,
   type WorkspaceChange,
 } from "@agorix/block-editor";
+import { LIST_MAX_ITEMS, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX } from "@agorix/program-model";
 import { isSafeId, parseAnchorRef, type AgentAnchorRef } from "./anchors.js";
 
 export type AgentVerb = "explain" | "debug" | "challenge";
@@ -172,6 +173,11 @@ export type Intent =
   | { readonly type: "addVariable"; readonly name: string }
   | { readonly type: "addList"; readonly name: string }
   | {
+      readonly type: "setListInitialItems";
+      readonly listId: string;
+      readonly items: readonly number[];
+    }
+  | {
       readonly type: "setExpressionNumber";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
@@ -313,6 +319,21 @@ export function intentToChange(
       if (workspace.lists?.some((list) => list.name.toLowerCase() === name.toLowerCase()))
         return undefined;
       return { type: "addList", list: { id: newBlockId(), name, initialItems: [], visible: true } };
+    }
+    case "setListInitialItems": {
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.listId) ||
+        !workspace.lists?.some((list) => list.id === intent.listId) ||
+        !Array.isArray(intent.items) ||
+        intent.items.length > LIST_MAX_ITEMS ||
+        intent.items.some(
+          (item) =>
+            !Number.isFinite(item) || item < NUMERIC_LITERAL_MIN || item > NUMERIC_LITERAL_MAX,
+        )
+      )
+        return undefined;
+      return { type: "editListInitialItems", listId: intent.listId, items: intent.items };
     }
     case "setExpressionNumber": {
       if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;

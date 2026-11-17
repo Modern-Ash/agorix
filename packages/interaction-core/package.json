@@ -10,6 +10,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@agorix/block-editor": "workspace:*"
+    "@agorix/block-editor": "workspace:*",
+    "@agorix/program-model": "workspace:*"
   }
 }
