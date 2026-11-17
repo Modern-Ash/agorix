@@ -875,6 +875,7 @@ export function Workbench({
   const [dragging, setDragging] = useState(false);
   const layoutRef = useRef<WorkbenchDensity>(density);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
+  const [pendingListDelete, setPendingListDelete] = useState<string | undefined>();
   const [status, setStatus] = useState("");
   const [execution, setExecution] = useState<ExecutionState | undefined>();
   const [stageFrame, setStageFrame] = useState<StageFrameMessage["frame"] | undefined>();
@@ -925,6 +926,7 @@ export function Workbench({
       }
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
+        setPendingListDelete(undefined);
         setProgramHash(message.programHash);
         if (pendingScriptCreation.current) {
           const created = message.workspace.scripts.at(-1);
@@ -1240,6 +1242,42 @@ export function Workbench({
                         <summary>
                           {list.name} · {list.initialItems.length} {copy.listItemsInitial}
                         </summary>
+                        <div className="list-management-actions">
+                          <label>
+                            <span>{copy.listName}</span>
+                            <input
+                              id={`rename-${list.id}`}
+                              key={`${list.id}:${list.name}`}
+                              maxLength={40}
+                              defaultValue={list.name}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const input = document.getElementById(`rename-${list.id}`);
+                              if (!(input instanceof HTMLInputElement)) return;
+                              const name = input.value.trim();
+                              if (name && name !== list.name)
+                                post({ type: "renameList", listId: list.id, name });
+                            }}
+                          >
+                            {copy.listRename}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (pendingListDelete === list.id) {
+                                post({ type: "deleteList", listId: list.id });
+                                setPendingListDelete(undefined);
+                              } else setPendingListDelete(list.id);
+                            }}
+                          >
+                            {pendingListDelete === list.id
+                              ? copy.listConfirmDelete
+                              : copy.listDelete}
+                          </button>
+                        </div>
                         <ol>
                           {list.initialItems.map((item, index) => (
                             <li key={`${list.id}:${index}`}>
@@ -1295,6 +1333,7 @@ export function Workbench({
                         </ol>
                         <button
                           type="button"
+                          className="list-add-initial"
                           disabled={list.initialItems.length >= LIST_MAX_ITEMS}
                           onClick={() =>
                             post({

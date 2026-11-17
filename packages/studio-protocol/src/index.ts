@@ -1172,6 +1172,20 @@ function parseIntent(value: unknown): Intent | undefined {
         ? { type: "addList", name: name.trim() }
         : undefined;
     }
+    case "renameList": {
+      const listId = value["listId"];
+      const name = value["name"];
+      return isSafeId(listId) &&
+        typeof name === "string" &&
+        name.trim().length > 0 &&
+        name.trim().length <= 40
+        ? { type: "renameList", listId, name: name.trim() }
+        : undefined;
+    }
+    case "deleteList": {
+      const listId = value["listId"];
+      return isSafeId(listId) ? { type: "deleteList", listId } : undefined;
+    }
     case "setListInitialItems": {
       const listId = value["listId"];
       const items = value["items"];

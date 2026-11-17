@@ -230,6 +230,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setLogicalBoolean" ||
     intent.intent.type === "addVariable" ||
     intent.intent.type === "addList" ||
+    intent.intent.type === "renameList" ||
+    intent.intent.type === "deleteList" ||
     intent.intent.type === "setListInitialItems" ||
     intent.intent.type === "setExpressionNumber" ||
     intent.intent.type === "setNumericInput"
@@ -489,6 +491,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "setLogicalBoolean" ||
               intent.type === "addVariable" ||
               intent.type === "addList" ||
+              intent.type === "renameList" ||
+              intent.type === "deleteList" ||
               intent.type === "setListInitialItems" ||
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||
               intent.type === "setExpressionNumber" ||

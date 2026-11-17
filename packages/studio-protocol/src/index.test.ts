@@ -414,6 +414,26 @@ describe("studio-protocol", () => {
       parseUiMessage({
         schema,
         type: "intent",
+        intent: { type: "renameList", listId: "items", name: "inventory" },
+      }),
+    ).toMatchObject({ intent: { type: "renameList", listId: "items", name: "inventory" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "renameList", listId: "items", name: " " },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { type: "deleteList", listId: "items" } }),
+    ).toMatchObject({ intent: { type: "deleteList", listId: "items" } });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { type: "deleteList", listId: "../bad" } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
         intent: {
           type: "setExpressionNumber",
           location: { container: script, index: 0 },
