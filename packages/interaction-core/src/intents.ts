@@ -223,6 +223,15 @@ export type Intent =
       readonly side: "left" | "right" | "min" | "max";
       readonly value: number;
     }
+  | {
+      readonly type: "setArithmeticOperandSource";
+      readonly location: StatementLocation;
+      readonly input: "value" | "delta" | "index";
+      readonly side: "left" | "right" | "min" | "max";
+      readonly reporter:
+        "number" | "variable" | "listLength" | "xPosition" | "yPosition" | "distanceToActor";
+      readonly referenceId?: string;
+    }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
   | { readonly type: "highlightNodes"; readonly nodeIds: readonly string[] }
@@ -619,6 +628,96 @@ export function intentToChange(
                 ...expression.inputs,
                 [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
               },
+            },
+          },
+        },
+      };
+    }
+    case "setArithmeticOperandSource": {
+      if (workspace === undefined) return undefined;
+      const { container, index } = intent.location;
+      const block = statementsAt(workspace, container)?.[index];
+      const supported: Readonly<Record<string, readonly string[]>> = {
+        variables_set: ["value"],
+        variables_change: ["delta"],
+        lists_add: ["value"],
+        lists_remove_at: ["index"],
+        lists_insert_at: ["index", "value"],
+        lists_replace_at: ["index", "value"],
+      };
+      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
+      const expression = block.inputs?.[intent.input];
+      if (
+        expression === undefined ||
+        Array.isArray(expression) ||
+        ![
+          "operator_add",
+          "operator_subtract",
+          "operator_multiply",
+          "operator_divide",
+          "operator_modulo",
+          "operator_random",
+          "operator_random_integer",
+        ].includes(expression.type)
+      )
+        return undefined;
+      const range =
+        expression.type === "operator_random" || expression.type === "operator_random_integer";
+      if (
+        range
+          ? intent.side !== "min" && intent.side !== "max"
+          : intent.side !== "left" && intent.side !== "right"
+      )
+        return undefined;
+      const current = expression.inputs?.[intent.side];
+      if (current === undefined || Array.isArray(current)) return undefined;
+      let replacement: BlockNode;
+      switch (intent.reporter) {
+        case "number":
+          replacement = { id: current.id, type: "literal_number", fields: { value: 0 } };
+          break;
+        case "variable":
+          if (!workspace.variables?.some((item) => item.id === intent.referenceId))
+            return undefined;
+          replacement = {
+            id: current.id,
+            type: "variables_value",
+            fields: { variableId: intent.referenceId },
+          };
+          break;
+        case "listLength":
+          if (!workspace.lists?.some((item) => item.id === intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "lists_length",
+            fields: { listId: intent.referenceId },
+          };
+          break;
+        case "xPosition":
+          replacement = { id: current.id, type: "sensing_x_position" };
+          break;
+        case "yPosition":
+          replacement = { id: current.id, type: "sensing_y_position" };
+          break;
+        case "distanceToActor":
+          if (!isSafeId(intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "sensing_distance_to_actor",
+            fields: { actorId: intent.referenceId },
+          };
+          break;
+      }
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            [intent.input]: {
+              ...expression,
+              inputs: { ...expression.inputs, [intent.side]: replacement },
             },
           },
         },

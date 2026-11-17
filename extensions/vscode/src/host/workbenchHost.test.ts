@@ -970,6 +970,59 @@ describe("workbenchHost", () => {
       type: "setVariable",
       value: { type: "multiply", right: { type: "numericLiteral", value: 4 } },
     });
+    const variableId = get()!.variables![0]!.id;
+    const beforeSource = get()!;
+    const source = {
+      type: "setArithmeticOperandSource",
+      location,
+      input: "value",
+      side: "left",
+      reporter: "variable",
+      referenceId: variableId,
+    } as const;
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: source,
+          baseHash: programSemanticHash(beforeSource),
+        })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      value: { type: "multiply", left: { type: "variable", variableId }, right: { value: 4 } },
+    });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...source, referenceId: "unknown" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...source, reporter: "distanceToActor", referenceId: "actor:missing" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...source, reporter: "number", referenceId: undefined },
+          baseHash: programSemanticHash(beforeSource),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
     expect(
       (
         await host.handle({
