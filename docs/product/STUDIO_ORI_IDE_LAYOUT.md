@@ -62,6 +62,10 @@ choosing a sound; it does not execute the canonical program or prove a runtime
 result. Other sound sources remain listed without an unsafe preview path.
 
 Scene can create an actor with an owned green-flag script in one project write.
+Scene can also remove a selected actor and its owned scripts after a second
+explicit confirmation. The host refuses a stale revision, ambiguous ownership,
+references from surviving scripts, or removal of the final actor or script;
+program and creative metadata commit together.
 Selecting an actor scopes the visible canvas and palette insertion to that
 actor’s canonical scripts; legacy projects keep their existing unscoped view.
 

@@ -764,6 +764,22 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("requires an exact revision and owned-script list for actor deletion", () => {
+    const request = {
+      schema,
+      type: "deleteActor",
+      actorId: "actor:robot",
+      ownedScriptIds: ["script:robot"],
+      baseHash: "fnv1a32:abcdef01",
+    } as const;
+    expect(parseUiMessage(request)).toEqual(request);
+    expect(parseUiMessage({ ...request, actorId: "https://bad" })).toBeUndefined();
+    expect(
+      parseUiMessage({ ...request, ownedScriptIds: ["script:robot", "script:robot"] }),
+    ).toBeUndefined();
+    expect(parseUiMessage({ ...request, baseHash: "stale" })).toBeUndefined();
+  });
+
   it("validates actor script creation and message triggers", () => {
     const baseHash = "fnv1a32:abcdef01";
     expect(

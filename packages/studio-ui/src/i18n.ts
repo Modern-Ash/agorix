@@ -37,6 +37,9 @@ export const COPY = {
     sceneActors: "Actors",
     sceneActorName: "Actor name",
     sceneCreateActor: "Add actor",
+    sceneDeleteActor: "Delete selected actor",
+    sceneConfirmDeleteActor: (name: string, scripts: number) =>
+      `Confirm delete ${name} and ${scripts} ${scripts === 1 ? "script" : "scripts"}`,
     sceneNewScript: "New script",
     sceneOnMessage: "When message arrives",
     sceneOnKey: "When key pressed",
@@ -454,6 +457,9 @@ export const COPY = {
     sceneActors: "Personajes",
     sceneActorName: "Nombre del personaje",
     sceneCreateActor: "Crear personaje",
+    sceneDeleteActor: "Eliminar personaje seleccionado",
+    sceneConfirmDeleteActor: (name: string, scripts: number) =>
+      `Confirmar eliminación de ${name} y ${scripts} ${scripts === 1 ? "script" : "scripts"}`,
     sceneNewScript: "Nuevo script",
     sceneOnMessage: "Al recibir mensaje",
     sceneOnKey: "Al presionar una tecla",

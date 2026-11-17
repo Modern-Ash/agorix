@@ -255,6 +255,69 @@ it("keeps the selected actor controls beside the visual scene", () => {
   act(() => listener?.({ schema: STUDIO_PROTOCOL_VERSION, type: "actors", actors: [] }));
   expect(scene.querySelector(".actor-inspector")).toBeNull();
 });
+
+it("requires a second explicit action before removing an actor and its scripts", () => {
+  const onDeleteActor = vi.fn();
+  const actors = [
+    {
+      id: "actor:first",
+      name: "First",
+      x: 0,
+      y: 0,
+      direction: 0,
+      size: 100,
+      visible: true,
+      scriptIds: ["main"],
+    },
+    {
+      id: "actor:second",
+      name: "Second",
+      x: 0,
+      y: 0,
+      direction: 0,
+      size: 100,
+      visible: true,
+      scriptIds: ["helper"],
+    },
+  ];
+  act(() =>
+    root.render(
+      <SceneLibrary
+        copy={copyFor("en")}
+        actors={actors}
+        assets={[]}
+        selectedActorId="actor:second"
+        backdropId={undefined}
+        onSelectActor={() => undefined}
+        onCostume={() => undefined}
+        onBackdrop={() => undefined}
+        onDeleteActor={onDeleteActor}
+      />,
+    ),
+  );
+  const button = host.querySelector<HTMLButtonElement>(".scene-delete-actor")!;
+  act(() => button.click());
+  expect(onDeleteActor).not.toHaveBeenCalled();
+  expect(button.textContent).toContain("Second and 1 script");
+  act(() => button.click());
+  expect(onDeleteActor).toHaveBeenCalledWith("actor:second", ["helper"]);
+  act(() =>
+    root.render(
+      <SceneLibrary
+        copy={copyFor("en")}
+        actors={[actors[0]!]}
+        assets={[]}
+        selectedActorId="actor:first"
+        backdropId={undefined}
+        onSelectActor={() => undefined}
+        onCostume={() => undefined}
+        onBackdrop={() => undefined}
+        onDeleteActor={onDeleteActor}
+      />,
+    ),
+  );
+  expect(host.querySelector<HTMLButtonElement>(".scene-delete-actor")?.disabled).toBe(true);
+});
 afterEach(() => {
   act(() => root.unmount());
   host.remove();

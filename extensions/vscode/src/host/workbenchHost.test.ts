@@ -930,6 +930,64 @@ describe("workbenchHost", () => {
     expect(labels).toEqual(["Workbench: create actor and script"]);
   });
 
+  it("deletes an actor with its scripts atomically and refuses stale or referenced actors", async () => {
+    const { host, get, metadata, port, labels } = setup();
+    await host.handle({ schema, type: "createActor", name: "Robot" });
+    const robot = metadata().actors!.items.find((actor) => actor.name === "Robot")!;
+    const request = {
+      schema,
+      type: "deleteActor",
+      actorId: robot.id,
+      ownedScriptIds: robot.scripts!,
+      baseHash: programSemanticHash(get()!),
+    } as const;
+    const before = labels.length;
+    expect((await host.handle({ ...request, ownedScriptIds: [] }))[0]).toMatchObject({
+      type: "error",
+      code: "INVALID_CHANGE",
+    });
+    expect((await host.handle({ ...request, baseHash: "fnv1a32:00000000" }))[0]).toMatchObject({
+      type: "error",
+      code: "STALE_EDIT",
+    });
+    expect(labels).toHaveLength(before);
+    const withReference = {
+      ...get()!,
+      scripts: get()!.scripts.map((script) =>
+        script.id === "main"
+          ? { ...script, statements: [{ type: "pointTowards" as const, actorId: robot.id }] }
+          : script,
+      ),
+    };
+    await port.commit(withReference, "test reference");
+    const referencedRequest = { ...request, baseHash: programSemanticHash(get()!) };
+    expect((await host.handle(referencedRequest))[0]).toMatchObject({
+      type: "error",
+      code: "INVALID_CHANGE",
+    });
+    expect(metadata().actors!.items).toHaveLength(2);
+    await port.commit(
+      { ...get()!, scripts: base.scripts.concat(get()!.scripts.slice(1)) },
+      "test remove reference",
+    );
+    const accepted = await host.handle({ ...request, baseHash: programSemanticHash(get()!) });
+    expect(accepted.find((message) => message.type === "workspace")).toBeDefined();
+    expect(get()!.scripts.map((script) => script.id)).toEqual(["main"]);
+    expect(metadata().actors!.items.map((actor) => actor.id)).not.toContain(robot.id);
+    expect(metadata().stage?.actorOrder).not.toContain(robot.id);
+    expect((await host.handle(request))[0]).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          ...request,
+          actorId: metadata().actors!.items[0]!.id,
+          ownedScriptIds: ["main"],
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+  });
+
   it("creates a message script for one actor and refuses stale or unknown targets", async () => {
     const { host, get, metadata, labels } = setup();
     await host.handle({ schema, type: "createActor", name: "Robot" });

@@ -273,6 +273,7 @@ export function attachWorkbenchPanel(
           (message.type === "updateActor" ||
             message.type === "updateStage" ||
             message.type === "createActor" ||
+            message.type === "deleteActor" ||
             message.type === "createScript") &&
           !result.some((item) => item.type === "error")
         ) {

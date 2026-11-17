@@ -143,6 +143,13 @@ export type UiMessage =
   | { readonly schema: Schema; readonly type: "createActor"; readonly name: string }
   | {
       readonly schema: Schema;
+      readonly type: "deleteActor";
+      readonly actorId: string;
+      readonly ownedScriptIds: readonly string[];
+      readonly baseHash: string;
+    }
+  | {
+      readonly schema: Schema;
       readonly type: "createScript";
       readonly actorId: string;
       readonly trigger: "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked";
@@ -2193,6 +2200,22 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
         value["name"].trim().length > 0 &&
         value["name"].trim().length <= 80
         ? { schema, type: "createActor", name: value["name"].trim() }
+        : undefined;
+    case "deleteActor":
+      return isSafeId(value["actorId"]) &&
+        Array.isArray(value["ownedScriptIds"]) &&
+        value["ownedScriptIds"].length <= 32 &&
+        value["ownedScriptIds"].every(isSafeId) &&
+        new Set(value["ownedScriptIds"]).size === value["ownedScriptIds"].length &&
+        typeof value["baseHash"] === "string" &&
+        /^fnv1a32:[a-f0-9]+$/.test(value["baseHash"])
+        ? {
+            schema,
+            type: "deleteActor",
+            actorId: value["actorId"],
+            ownedScriptIds: value["ownedScriptIds"],
+            baseHash: value["baseHash"],
+          }
         : undefined;
     case "createScript":
       return isSafeId(value["actorId"]) &&

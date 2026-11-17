@@ -15,6 +15,7 @@ export function SceneLibrary({
   onCostume,
   onBackdrop,
   onCreateActor,
+  onDeleteActor,
   onCreateScript,
   onImportAsset,
   onUpdateAsset,
@@ -28,6 +29,7 @@ export function SceneLibrary({
   readonly onCostume: (actorId: string, costumeId: string) => void;
   readonly onBackdrop: (backdropId: string) => void;
   readonly onCreateActor?: (name: string) => void;
+  readonly onDeleteActor?: (actorId: string, ownedScriptIds: readonly string[]) => void;
   readonly onCreateScript?: (
     actorId: string,
     trigger: "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked",
@@ -44,6 +46,7 @@ export function SceneLibrary({
   >("actors");
   const [assetName, setAssetName] = useState("");
   const [assetError, setAssetError] = useState("");
+  const [pendingActorDelete, setPendingActorDelete] = useState<string>();
   const [soundPreviewError, setSoundPreviewError] = useState(false);
   const [editingAssetId, setEditingAssetId] = useState<string>();
   const [pendingAsset, setPendingAsset] = useState<
@@ -162,6 +165,7 @@ export function SceneLibrary({
     context.fill();
   };
   const selected = actors.find((actor) => actor.id === selectedActorId) ?? actors[0];
+  useEffect(() => setPendingActorDelete(undefined), [selectedActorId]);
   const costumes = assets.filter((asset) => asset.kind === "costume");
   const backdrops = assets.filter((asset) => asset.kind === "backdrop");
   const sounds = assets.filter((asset) => asset.kind === "sound");
@@ -234,6 +238,24 @@ export function SceneLibrary({
             </button>
           ))}
         </div>
+        {selected === undefined || onDeleteActor === undefined ? null : (
+          <button
+            type="button"
+            className="scene-delete-actor"
+            disabled={actors.length <= 1 || selected.scriptIds === undefined}
+            onClick={() => {
+              if (selected.scriptIds === undefined) return;
+              if (pendingActorDelete === selected.id) {
+                onDeleteActor(selected.id, selected.scriptIds);
+                setPendingActorDelete(undefined);
+              } else setPendingActorDelete(selected.id);
+            }}
+          >
+            {pendingActorDelete === selected.id
+              ? copy.sceneConfirmDeleteActor(selected.name, selected.scriptIds?.length ?? 0)
+              : copy.sceneDeleteActor}
+          </button>
+        )}
         {selected === undefined || onCreateScript === undefined ? null : (
           <form
             className="scene-create-script"
