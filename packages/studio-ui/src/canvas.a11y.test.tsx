@@ -927,6 +927,58 @@ describe("canvas keyboard and screen reader behaviour", () => {
       source: "yPosition",
     });
   });
+  it("offers distance to actor as a comparison source and lets the learner choose its target", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:distance",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: {
+            id: "compare:distance",
+            type: "operator_less_than",
+            inputs: {
+              left: { id: "distance:left", type: "literal_number", fields: { value: 0 } },
+              right: {
+                id: "distance:right",
+                type: "sensing_distance_to_actor",
+                fields: { actorId: "actor:main" },
+              },
+            },
+          },
+        },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, {
+      onIntent: (intent) => intents.push(intent),
+      actors: [
+        { id: "actor:main", name: "Main", x: 0, y: 0, direction: 90, size: 100, visible: true },
+        { id: "actor:robot", name: "Robot", x: 0, y: 0, direction: 90, size: 100, visible: true },
+      ],
+    });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.comparison-operand select[aria-label="Condition: Left value source"]',
+    )!;
+    expect(Array.from(source.options).map((option) => option.value)).toContain("distanceToActor");
+    const target = host.querySelector<HTMLSelectElement>(
+      '.comparison-operand select[aria-label="Condition: Right value Target actor"]',
+    )!;
+    expect(target).not.toBeNull();
+    act(() => {
+      target.value = "actor:robot";
+      target.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setComparisonOperand",
+      side: "right",
+      source: "distanceToActor",
+      referenceId: "actor:robot",
+    });
+  });
   it("replaces an if condition from a selected reporter and from a palette drop", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

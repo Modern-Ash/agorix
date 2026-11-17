@@ -461,6 +461,43 @@ describe("interaction-core", () => {
       expect(sensor.program.scripts[0]?.statements[0]).toMatchObject({
         condition: { type, right: { type: "xPosition" } },
       });
+      const distance = applyWorkspaceChange(
+        sensor.workspace,
+        intentToChange(
+          {
+            type: "setComparisonOperand",
+            location,
+            side: "right",
+            source: "distanceToActor",
+            referenceId: "actor:robot",
+          },
+          newId,
+          sensor.workspace,
+        )!,
+      );
+      expect(distance.program.scripts[0]?.statements[0]).toMatchObject({
+        condition: { type, right: { type: "distanceToActor", actorId: "actor:robot" } },
+      });
+      expect(
+        intentToChange(
+          {
+            type: "setComparisonOperand",
+            location,
+            side: "right",
+            source: "distanceToActor",
+            referenceId: "https://unsafe",
+          },
+          newId,
+          sensor.workspace,
+        ),
+      ).toBeUndefined();
+      expect(
+        intentToChange(
+          { type: "setComparisonOperand", location, side: "right", source: "distanceToActor" },
+          newId,
+          sensor.workspace,
+        ),
+      ).toBeUndefined();
       expect(
         intentToChange(
           {

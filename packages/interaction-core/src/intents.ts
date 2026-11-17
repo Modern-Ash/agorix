@@ -49,6 +49,7 @@ export const STUDIO_COMPARISON_OPERAND_SOURCES = [
   "listLength",
   "xPosition",
   "yPosition",
+  "distanceToActor",
 ] as const;
 
 function statementsAt(
@@ -930,6 +931,14 @@ export function intentToChange(
           next = {
             id: current.id,
             type: intent.source === "xPosition" ? "sensing_x_position" : "sensing_y_position",
+          };
+          break;
+        case "distanceToActor":
+          if (intent.referenceId === undefined || !isSafeId(intent.referenceId)) return undefined;
+          next = {
+            id: current.id,
+            type: "sensing_distance_to_actor",
+            fields: { actorId: intent.referenceId },
           };
           break;
       }
