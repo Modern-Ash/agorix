@@ -158,6 +158,22 @@ async function main() {
       await page.setViewportSize({ width: 900, height: 700 });
     }
     console.log("Loaded canonical program, stage and Ori");
+    const outerBlock = webview.locator(
+      '.studio-program .block[data-pos=\'{"kind":"script","scriptIndex":0}#4\']',
+    );
+    await outerBlock.press("Alt+ArrowRight");
+    await waitForProject(
+      (envelope) => envelope.project?.program?.scripts?.[0]?.statements?.[3]?.then?.length === 2,
+    );
+    await webview
+      .locator('.studio-program .block[data-pos*="ifThen"][data-pos$="#1"]')
+      .press("Alt+ArrowLeft");
+    await waitForProject(
+      (envelope) =>
+        envelope.project?.program?.scripts?.[0]?.statements?.[3]?.then?.length === 1 &&
+        envelope.project.program.scripts[0].statements.length === 6,
+    );
+    console.log("Nested and outdented a canonical block with the keyboard");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
     await webview
       .locator(".studio-scene-editor .scene-section-tabs button")

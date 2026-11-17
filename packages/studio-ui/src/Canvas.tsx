@@ -13,7 +13,7 @@ import {
   type Intent,
 } from "@agorix/interaction-core";
 import type { ActorView, AmbientHintView, AssetView, GhostChange } from "@agorix/studio-protocol";
-import { dropPointFor, locationKey, toRows } from "./blockView.js";
+import { dropPointFor, locationKey, nestedMoveIntent, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
 import { visualBlock, visualLabel } from "./visualBlocks.js";
@@ -349,6 +349,28 @@ export function Canvas({
           }
           onIntent(intent);
         };
+        const nest = (direction: "in" | "else" | "out") => {
+          const intent = nestedMoveIntent(workspace, block.location, direction);
+          if (intent === undefined) {
+            onAnnounce?.(
+              direction === "out"
+                ? copy.cannotOutdent
+                : direction === "else"
+                  ? copy.cannotMoveToElse
+                  : copy.cannotIndent,
+            );
+            return;
+          }
+          pendingFocus.current = locationKey(intent.to);
+          onAnnounce?.(
+            direction === "out"
+              ? copy.outdentedAnnouncement(label)
+              : direction === "else"
+                ? copy.movedToElseAnnouncement(label)
+                : copy.indentedAnnouncement(label),
+          );
+          onIntent(intent);
+        };
         const ambient = ambientHint?.blockId === block.id ? ambientHint.label : undefined;
         const hint = hints?.hints[block.id] ?? ambient;
         const isSkipped = hints?.skipped.includes(block.id) === true;
@@ -380,7 +402,7 @@ export function Canvas({
             title={copy.dragBlock}
             aria-label={copy.blockPosition(label, index + 1, block.siblingCount, row.depth + 1)}
             onFocus={() => setActiveKey(pos)}
-            aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
+            aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowRight Alt+Shift+ArrowRight Alt+ArrowLeft Delete"
             className={`block depth-${Math.min(row.depth, 4)}${
               ghostKind(ghosts, block.id) === "removed"
                 ? " ghost-removed"
@@ -408,6 +430,11 @@ export function Canvas({
               event.dataTransfer.effectAllowed = "move";
             }}
             onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
+              if (event.altKey && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+                event.preventDefault();
+                nest(event.key === "ArrowLeft" ? "out" : event.shiftKey ? "else" : "in");
+                return;
+              }
               const chord = chordFromEvent(event);
               if (chord !== undefined) {
                 event.preventDefault();

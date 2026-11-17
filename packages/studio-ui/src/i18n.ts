@@ -105,13 +105,19 @@ export const COPY = {
     blockPosition: (label: string, position: number, count: number, level: number) =>
       `${label}, ${position} of ${count}, level ${level}`,
     keyboardHelp:
-      "Arrow keys move between blocks. Alt+Up or Alt+Down moves a block. Delete removes it. Enter shows it in the code.",
+      "Arrow keys move between blocks. Alt+Up or Alt+Down reorders. Alt+Right moves into the preceding loop or if, Alt+Shift+Right into its else branch, and Alt+Left moves out. Delete removes a block. Enter shows it in the code.",
     movedAnnouncement: (label: string, position: number, count: number) =>
       `Moved ${label} to position ${position} of ${count}`,
     deletedAnnouncement: (label: string) => `Deleted ${label}`,
     addedAnnouncement: (label: string) => `Added ${label}`,
     alreadyFirst: "Already the first block here",
     alreadyLast: "Already the last block here",
+    cannotIndent: "Put a loop or if immediately before this block to move it inside.",
+    cannotMoveToElse: "Put an if immediately before this block to move it into Else.",
+    cannotOutdent: "This block is already at the outer level.",
+    indentedAnnouncement: (label: string) => `Moved ${label} into the preceding block`,
+    movedToElseAnnouncement: (label: string) => `Moved ${label} into Else`,
+    outdentedAnnouncement: (label: string) => `Moved ${label} out one level`,
     densityCompactNote:
       "The layout is now more compact. Nothing is hidden. You can change this in the Studio settings.",
     up: "Up",
@@ -525,13 +531,19 @@ export const COPY = {
     blockPosition: (label: string, position: number, count: number, level: number) =>
       `${label}, ${position} de ${count}, nivel ${level}`,
     keyboardHelp:
-      "Las flechas se mueven entre bloques. Alt+Arriba o Alt+Abajo mueve un bloque. Suprimir lo elimina. Enter lo muestra en el código.",
+      "Las flechas recorren los bloques. Alt+Arriba o Alt+Abajo reordena. Alt+Derecha entra al bucle o si anterior, Alt+Mayús+Derecha entra en Si no y Alt+Izquierda sale un nivel. Suprimir elimina. Enter muestra el código.",
     movedAnnouncement: (label: string, position: number, count: number) =>
       `Se movió ${label} a la posición ${position} de ${count}`,
     deletedAnnouncement: (label: string) => `Se eliminó ${label}`,
     addedAnnouncement: (label: string) => `Se agregó ${label}`,
     alreadyFirst: "Ya es el primer bloque de este lugar",
     alreadyLast: "Ya es el último bloque de este lugar",
+    cannotIndent: "Colocá un bucle o un si antes de este bloque para moverlo adentro.",
+    cannotMoveToElse: "Colocá un si antes de este bloque para moverlo a Si no.",
+    cannotOutdent: "Este bloque ya está en el nivel exterior.",
+    indentedAnnouncement: (label: string) => `Se movió ${label} dentro del bloque anterior`,
+    movedToElseAnnouncement: (label: string) => `Se movió ${label} a Si no`,
+    outdentedAnnouncement: (label: string) => `Se movió ${label} un nivel hacia afuera`,
     densityCompactNote:
       "El diseño ahora es más compacto. No se oculta nada. Podés cambiarlo en la configuración de Studio.",
     up: "Subir",
