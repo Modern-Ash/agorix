@@ -236,9 +236,17 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .scene-create-script { display: grid; gap: 5px; margin-top: 8px; }
 .scene-create-script label { display: grid; gap: 3px; }
 .scene-create-image { display: grid; gap: 7px; }
-.scene-create-image canvas { width: 100%; max-width: 240px; height: auto; border: 1px solid var(--vscode-panel-border); background: #fff; touch-action: none; cursor: crosshair; }
+.scene-create-image canvas { order: 1; width: 100%; max-width: 240px; height: auto; border: 1px solid var(--vscode-panel-border); border-radius: 5px; background: #fff; touch-action: none; cursor: crosshair; }
+.scene-create-image > select { order: 3; }
+.scene-create-image > input:not([type="color"]):not([type="file"]) { order: 4; }
+.scene-create-image > label { order: 6; }
+.scene-create-image > p[role="alert"] { order: 7; }
+.scene-draw-tools { order: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 4px; }
+.scene-draw-tools button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 80%); }
+.scene-draw-tools input[type="color"] { width: 100%; height: 32px; padding: 2px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; background: var(--vscode-button-secondaryBackground); }
+.scene-draw-tools select { width: 100% !important; min-width: 0; padding: 3px !important; }
 .scene-create-image input[type="file"] { display: block; max-width: 100%; }
-.scene-draw-actions { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.scene-draw-actions { order: 5; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .scene-library section { min-width: 0; }
 .scene-library h3 { margin: 0 0 6px; color: var(--vscode-descriptionForeground); font-size: 0.76em; letter-spacing: 0.06em; text-transform: uppercase; }
 .scene-library-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }

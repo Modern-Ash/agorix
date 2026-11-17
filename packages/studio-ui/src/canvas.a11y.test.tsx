@@ -1281,6 +1281,68 @@ describe("workbench live region and focus after inserting from the palette", () 
     expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(false);
     expect(host.querySelector<HTMLElement>(".studio-evidence")?.hidden).toBe(true);
   });
+  it("draws, erases, and restores the previous canvas stroke", () => {
+    const context = {
+      getImageData: vi.fn(() => ({
+        data: new Uint8ClampedArray(160 * 120 * 4),
+        width: 160,
+        height: 120,
+      })),
+      putImageData: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+      fillStyle: "",
+    };
+    act(() =>
+      root.render(
+        <SceneLibrary
+          copy={copyFor("es")}
+          actors={[]}
+          assets={[]}
+          selectedActorId={undefined}
+          backdropId={undefined}
+          onSelectActor={() => undefined}
+          onCostume={() => undefined}
+          onBackdrop={() => undefined}
+          onImportAsset={() => undefined}
+        />,
+      ),
+    );
+    act(() => host.querySelectorAll<HTMLButtonElement>(".scene-section-tabs button")[3]!.click());
+    const canvas = host.querySelector<HTMLCanvasElement>(".scene-create-image canvas")!;
+    vi.spyOn(canvas, "getContext").mockReturnValue(context as unknown as CanvasRenderingContext2D);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 160,
+      height: 120,
+    } as DOMRect);
+    canvas.setPointerCapture = vi.fn();
+    const undo = host.querySelector<HTMLButtonElement>(".scene-draw-actions button:first-child")!;
+    expect(undo.disabled).toBe(true);
+    const pointer = (type: string) => {
+      const event = new dom.window.Event(type, { bubbles: true });
+      Object.assign(event, { pointerId: 1, clientX: 20, clientY: 30 });
+      act(() => canvas.dispatchEvent(event));
+    };
+    pointer("pointerdown");
+    expect(context.arc).toHaveBeenCalledWith(20, 30, 5, 0, Math.PI * 2);
+    expect(context.getImageData).toHaveBeenCalledTimes(1);
+    expect(undo.disabled).toBe(false);
+    pointer("pointerup");
+    act(() =>
+      host
+        .querySelector<HTMLButtonElement>('.scene-draw-tools button[aria-pressed="false"]')!
+        .click(),
+    );
+    pointer("pointerdown");
+    expect(context.clearRect).toHaveBeenCalledWith(15, 25, 10, 10);
+    pointer("pointercancel");
+    act(() => undo.click());
+    expect(context.putImageData).toHaveBeenCalledTimes(1);
+  });
   it("opens the canonical code projection from the editor tabs", () => {
     const posted: unknown[] = [];
     const bridge: HostBridge = {
