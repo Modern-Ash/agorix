@@ -15,7 +15,7 @@ import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
 import { locationKey, toRows } from "./blockView.js";
 import { Palette } from "./Palette.js";
-import { SceneLibrary, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
+import { SceneLibrary, STAGE_BACKDROP_DRAG_TYPE, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { densityAnnouncement } from "./density.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
 import { AgentPanel } from "./AgentPanel.js";
@@ -367,6 +367,7 @@ export function StagePanel({
   onSelectActor,
   onPlaceActor,
   onCostume,
+  onBackdrop,
   onStageEvent,
 }: {
   readonly copy: StudioUiCopy;
@@ -377,6 +378,7 @@ export function StagePanel({
   readonly onSelectActor?: (actorId: string) => void;
   readonly onPlaceActor?: (actorId: string, position: { x: number; y: number }) => void;
   readonly onCostume?: (actorId: string, costumeId: string) => void;
+  readonly onBackdrop?: (backdropId: string) => void;
   readonly onStageEvent?: (
     event: { event: "keyPressed"; key: string } | { event: "actorClicked"; actorId: string },
   ) => void;
@@ -450,11 +452,24 @@ export function StagePanel({
           onStageEvent({ event: "keyPressed", key });
         }}
         onDragOver={(event) => {
-          if (!frame?.running && (onPlaceActor !== undefined || onCostume !== undefined))
+          if (
+            !frame?.running &&
+            (onPlaceActor !== undefined || onCostume !== undefined || onBackdrop !== undefined)
+          )
             event.preventDefault();
         }}
         onDrop={(event) => {
           if (state === undefined || frame?.running) return;
+          const backdropId = event.dataTransfer.getData(STAGE_BACKDROP_DRAG_TYPE);
+          if (
+            backdropId !== "" &&
+            onBackdrop !== undefined &&
+            assets.some((asset) => asset.kind === "backdrop" && asset.id === backdropId)
+          ) {
+            event.preventDefault();
+            onBackdrop(backdropId);
+            return;
+          }
           const costumeId = event.dataTransfer.getData(STAGE_COSTUME_DRAG_TYPE);
           if (
             costumeId !== "" &&
@@ -1605,6 +1620,7 @@ export function Workbench({
             onSelectActor={setSelectedActorId}
             onPlaceActor={(actorId, position) => updateActor(actorId, position)}
             onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
+            onBackdrop={updateBackdrop}
             onStageEvent={(event) =>
               bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "stageEvent", ...event })
             }

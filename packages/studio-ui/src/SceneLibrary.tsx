@@ -11,6 +11,7 @@ import { validEmbeddedImageSource } from "@agorix/program-model";
 import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
 
 export const STAGE_COSTUME_DRAG_TYPE = "application/x-agorix-stage-costume";
+export const STAGE_BACKDROP_DRAG_TYPE = "application/x-agorix-stage-backdrop";
 
 export function SceneLibrary({
   copy,
@@ -393,9 +394,18 @@ export function SceneLibrary({
       </section>
       <section aria-label={copy.sceneBackdrops} hidden={activeSection !== "backdrops"}>
         <h3>{copy.sceneBackdrops}</h3>
+        <p className="scene-backdrop-hint">{copy.sceneDragBackdrop}</p>
         <div className="scene-library-grid">
           {backdrops.map((asset) => (
-            <div key={asset.id} className="scene-asset-card">
+            <div
+              key={asset.id}
+              className="scene-asset-card"
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData(STAGE_BACKDROP_DRAG_TYPE, asset.id);
+                event.dataTransfer.effectAllowed = "copy";
+              }}
+            >
               <button
                 type="button"
                 aria-pressed={asset.id === backdropId}

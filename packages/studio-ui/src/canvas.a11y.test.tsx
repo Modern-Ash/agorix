@@ -11,7 +11,7 @@ import {
 import type { Intent } from "@agorix/interaction-core";
 import { Canvas, type FocusRequest } from "./Canvas.js";
 import { SceneLibrary } from "./SceneLibrary.js";
-import { STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
+import { STAGE_BACKDROP_DRAG_TYPE, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { StagePanel, Workbench } from "./Workbench.js";
 import type { HostBridge } from "./bridge.js";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
@@ -1046,8 +1046,9 @@ describe("canvas keyboard and screen reader behaviour", () => {
     act(() => viewport.dispatchEvent(drop));
     expect(placed).toHaveLength(1);
   });
-  it("drops a known costume onto the targeted stage actor", () => {
+  it("drops known costumes and backdrops onto their stage targets", () => {
     const applied: string[] = [];
+    const backdrops: string[] = [];
     const selected: string[] = [];
     act(() =>
       root.render(
@@ -1056,6 +1057,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
           selectedActorId="actor:a"
           onSelectActor={(id) => selected.push(id)}
           onCostume={(actorId, costumeId) => applied.push(`${actorId}:${costumeId}`)}
+          onBackdrop={(backdropId) => backdrops.push(backdropId)}
           assets={[
             { id: "costume:mika", name: "Mika", kind: "costume", tags: [] },
             { id: "backdrop:moon", name: "Moon", kind: "backdrop", tags: [] },
@@ -1099,6 +1101,16 @@ describe("canvas keyboard and screen reader behaviour", () => {
     transfer.set(STAGE_COSTUME_DRAG_TYPE, "costume:mika");
     act(() => host.querySelector<HTMLElement>(".stage-viewport")!.dispatchEvent(drop));
     expect(applied).toEqual(["actor:b:costume:mika", "actor:a:costume:mika"]);
+    transfer.delete(STAGE_COSTUME_DRAG_TYPE);
+    transfer.set(STAGE_BACKDROP_DRAG_TYPE, "backdrop:moon");
+    act(() => host.querySelector<HTMLElement>(".stage-viewport")!.dispatchEvent(drop));
+    expect(backdrops).toEqual(["backdrop:moon"]);
+    transfer.set(STAGE_BACKDROP_DRAG_TYPE, "backdrop:unknown");
+    act(() => host.querySelector<HTMLElement>(".stage-viewport")!.dispatchEvent(drop));
+    expect(backdrops).toHaveLength(1);
+    transfer.set(STAGE_BACKDROP_DRAG_TYPE, "costume:mika");
+    act(() => host.querySelector<HTMLElement>(".stage-viewport")!.dispatchEvent(drop));
+    expect(backdrops).toHaveLength(1);
   });
   it("shows only canonical visible variable and list watchers", () => {
     act(() =>
@@ -1207,6 +1219,13 @@ describe("canvas keyboard and screen reader behaviour", () => {
         ?.dispatchEvent(drag),
     );
     expect(transfer.get(STAGE_COSTUME_DRAG_TYPE)).toBe("costume:mika");
+    act(() =>
+      host
+        .querySelector<HTMLButtonElement>('[aria-label="Choose backdrop: Moon"]')
+        ?.closest(".scene-asset-card")
+        ?.dispatchEvent(drag),
+    );
+    expect(transfer.get(STAGE_BACKDROP_DRAG_TYPE)).toBe("backdrop:moon");
   });
   it("lets the learner edit a numeric block value in place", () => {
     const intents: Intent[] = [];
