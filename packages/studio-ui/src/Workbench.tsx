@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
+import { LIST_MAX_ITEMS, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX } from "@agorix/program-model";
 import {
   STUDIO_PROTOCOL_VERSION,
   type ExecutionCommand,
@@ -1144,7 +1145,79 @@ export function Workbench({
               {(workspace?.lists ?? []).length === 0 ? null : (
                 <ul>
                   {workspace?.lists?.map((list) => (
-                    <li key={list.id}>{list.name}</li>
+                    <li key={list.id}>
+                      <details className="list-initial-items">
+                        <summary>
+                          {list.name} · {list.initialItems.length} {copy.listItemsInitial}
+                        </summary>
+                        <ol>
+                          {list.initialItems.map((item, index) => (
+                            <li key={`${list.id}:${index}`}>
+                              <label>
+                                <span>
+                                  {copy.listItem} {index + 1}
+                                </span>
+                                <input
+                                  key={`${list.id}:${index}:${item}`}
+                                  type="number"
+                                  min={NUMERIC_LITERAL_MIN}
+                                  max={NUMERIC_LITERAL_MAX}
+                                  defaultValue={item}
+                                  aria-label={`${list.name}: ${copy.listItem} ${index + 1}`}
+                                  onBlur={(event) => {
+                                    const raw = event.currentTarget.value.trim();
+                                    const next = Number(raw);
+                                    if (
+                                      raw !== "" &&
+                                      Number.isFinite(next) &&
+                                      next >= NUMERIC_LITERAL_MIN &&
+                                      next <= NUMERIC_LITERAL_MAX &&
+                                      next !== item
+                                    )
+                                      post({
+                                        type: "setListInitialItems",
+                                        listId: list.id,
+                                        items: list.initialItems.map((value, position) =>
+                                          position === index ? next : value,
+                                        ),
+                                      });
+                                    event.currentTarget.value = String(item);
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                aria-label={`${copy.listRemoveInitial} ${index + 1} ${list.name}`}
+                                onClick={() =>
+                                  post({
+                                    type: "setListInitialItems",
+                                    listId: list.id,
+                                    items: list.initialItems.filter(
+                                      (_, position) => position !== index,
+                                    ),
+                                  })
+                                }
+                              >
+                                {copy.listRemoveInitial}
+                              </button>
+                            </li>
+                          ))}
+                        </ol>
+                        <button
+                          type="button"
+                          disabled={list.initialItems.length >= LIST_MAX_ITEMS}
+                          onClick={() =>
+                            post({
+                              type: "setListInitialItems",
+                              listId: list.id,
+                              items: [...list.initialItems, 0],
+                            })
+                          }
+                        >
+                          {copy.listAddInitial}
+                        </button>
+                      </details>
+                    </li>
                   ))}
                 </ul>
               )}

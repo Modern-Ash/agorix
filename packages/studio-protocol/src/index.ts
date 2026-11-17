@@ -32,6 +32,8 @@ import {
 } from "@agorix/interaction-core";
 import {
   LIST_MAX_ITEMS,
+  NUMERIC_LITERAL_MIN,
+  NUMERIC_LITERAL_MAX,
   validEmbeddedImageSource,
   type ProgramList,
   type ProgramVariable,
@@ -1115,6 +1117,19 @@ function parseIntent(value: unknown): Intent | undefined {
       const name = value["name"];
       return typeof name === "string" && name.trim().length > 0 && name.trim().length <= 40
         ? { type: "addList", name: name.trim() }
+        : undefined;
+    }
+    case "setListInitialItems": {
+      const listId = value["listId"];
+      const items = value["items"];
+      return isSafeId(listId) &&
+        Array.isArray(items) &&
+        items.length <= LIST_MAX_ITEMS &&
+        items.every(
+          (item) =>
+            isFiniteNumber(item) && item >= NUMERIC_LITERAL_MIN && item <= NUMERIC_LITERAL_MAX,
+        )
+        ? { type: "setListInitialItems", listId, items: items as number[] }
         : undefined;
     }
     case "setExpressionNumber": {

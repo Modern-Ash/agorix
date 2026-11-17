@@ -1264,6 +1264,58 @@ describe("workbench live region and focus after inserting from the palette", () 
     ).toBe("list:items");
     expect(host.querySelector('.palette button[aria-label="add item to list"]')).not.toBeNull();
   });
+  it("edits, adds and removes visible initial list items", () => {
+    let listener: ((message: HostMessage) => void) | undefined;
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: (next) => {
+        listener = next;
+        return () => undefined;
+      },
+    };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      lists: [{ id: "items", name: "Items", initialItems: [3], visible: true }],
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }],
+    }).workspace;
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace,
+        programHash: "fnv1a32:12345678",
+      }),
+    );
+    const details = host.querySelector<HTMLDetailsElement>(".list-initial-items")!;
+    act(() => {
+      details.open = true;
+    });
+    const item = details.querySelector<HTMLInputElement>('input[aria-label="Items: List item 1"]')!;
+    act(() => {
+      item.value = "7";
+      item.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(posted.at(-1)).toMatchObject({
+      type: "intent",
+      intent: { type: "setListInitialItems", listId: "items", items: [7] },
+    });
+    const count = posted.length;
+    act(() => {
+      item.value = "Infinity";
+      item.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(posted).toHaveLength(count);
+    act(() =>
+      details
+        .querySelector<HTMLButtonElement>('button[aria-label="Remove initial item 1 Items"]')!
+        .click(),
+    );
+    expect(posted.at(-1)).toMatchObject({ intent: { items: [] } });
+    act(() => details.querySelector<HTMLButtonElement>("button:not([aria-label])")!.click());
+    expect(posted.at(-1)).toMatchObject({ intent: { items: [3, 0] } });
+  });
   it("shows the toolbox and accepts a palette drag on an empty script", () => {
     let listener: ((message: HostMessage) => void) | undefined;
     const posted: unknown[] = [];

@@ -364,6 +364,9 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../block-editor
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/java-projection:
     dependencies:

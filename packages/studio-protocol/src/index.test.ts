@@ -332,6 +332,34 @@ describe("studio-protocol", () => {
 
   it("validates list declarations and bounded workspace projection", () => {
     expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setListInitialItems", listId: "items", items: [1, 2] },
+      }),
+    ).toMatchObject({ intent: { items: [1, 2] } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setListInitialItems", listId: "items", items: [Infinity] },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setListInitialItems", listId: "items", items: [1_000_001] },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setListInitialItems", listId: "items", items: Array(101).fill(0) },
+      }),
+    ).toBeUndefined();
+    expect(
       parseUiMessage({ schema, type: "intent", intent: { type: "addList", name: "items" } }),
     ).toMatchObject({ intent: { type: "addList", name: "items" } });
     expect(
