@@ -231,7 +231,7 @@
             "filenamePattern": "*.agorix"
           }
         ],
-        "priority": "option"
+        "priority": "default"
       }
     ],
     "commands": [

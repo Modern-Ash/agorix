@@ -1,0 +1,145 @@
+{
+  "format": "agorix-project",
+  "formatVersion": "1",
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "project": {
+    "schemaVersion": "agorix/program/v1",
+    "program": {
+      "schema": "agorix/program/v1",
+      "variables": [
+        {
+          "id": "score",
+          "name": "score",
+          "initialValue": 0,
+          "visible": true
+        }
+      ],
+      "scripts": [
+        {
+          "id": "main",
+          "trigger": {
+            "type": "onStart"
+          },
+          "statements": [
+            {
+              "type": "move",
+              "steps": 10
+            },
+            {
+              "type": "move",
+              "steps": 10
+            },
+            {
+              "type": "move",
+              "steps": 10
+            },
+            {
+              "type": "if",
+              "condition": {
+                "type": "booleanLiteral",
+                "value": true
+              },
+              "then": [
+                {
+                  "type": "repeat",
+                  "count": 2,
+                  "body": [
+                    {
+                      "type": "turn",
+                      "degrees": 45
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "setVariable",
+              "variableId": "score",
+              "value": {
+                "type": "numericLiteral",
+                "value": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "helper",
+          "trigger": {
+            "type": "onActorClicked"
+          },
+          "statements": [
+            {
+              "type": "say",
+              "text": "Hi"
+            }
+          ]
+        }
+      ]
+    },
+    "metadata": {
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "missionProgress": 0,
+      "hintLevel": 0,
+      "locale": "en",
+      "actors": {
+        "activeId": "actor:main",
+        "items": [
+          {
+            "id": "actor:main",
+            "name": "Explorer",
+            "x": 52,
+            "y": 128,
+            "direction": 0,
+            "size": 100,
+            "visible": true,
+            "costumeId": "asset:costume.default",
+            "scripts": [
+              "main"
+            ]
+          },
+          {
+            "id": "actor:helper",
+            "name": "Helper",
+            "x": 150,
+            "y": 96,
+            "direction": 0,
+            "size": 100,
+            "visible": true,
+            "costumeId": "asset:costume.spark",
+            "scripts": [
+              "helper"
+            ]
+          }
+        ]
+      },
+      "stage": {
+        "backdropId": "asset:space.trailhead",
+        "actorOrder": [
+          "actor:main",
+          "actor:helper"
+        ]
+      },
+      "assets": [
+        {
+          "id": "asset:costume.default",
+          "kind": "costume",
+          "name": "Explorer",
+          "source": "builtin:costume.default"
+        },
+        {
+          "id": "asset:costume.spark",
+          "kind": "costume",
+          "name": "Spark",
+          "source": "builtin:costume.spark"
+        },
+        {
+          "id": "asset:space.trailhead",
+          "kind": "backdrop",
+          "name": "Trailhead",
+          "source": "builtin:space.trailhead"
+        }
+      ]
+    }
+  }
+}

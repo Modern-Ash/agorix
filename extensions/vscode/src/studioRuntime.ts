@@ -384,6 +384,7 @@ export function activate(context: vscode.ExtensionContext): void {
     await surfaceCommands.openWorkbench();
     await vscode.commands.executeCommand("workbench.action.closeSidebar");
     await vscode.commands.executeCommand("workbench.action.closePanel");
+    await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
   };
   const projectCommands = createStudioProjectCommandHandlers({
     getCurrentProjectionId: () => session.currentProjectionId,
@@ -409,6 +410,7 @@ export function activate(context: vscode.ExtensionContext): void {
       await surfaceCommands.openWorkbenchInPanel(webviewPanel);
       await vscode.commands.executeCommand("workbench.action.closeSidebar");
       await vscode.commands.executeCommand("workbench.action.closePanel");
+      await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
     },
   };
   const developerCommands = createStudioDeveloperCommandHandlers({
