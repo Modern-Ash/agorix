@@ -24,6 +24,19 @@ const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;
 const port = 9300 + Math.floor(Math.random() * 300);
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function waitForProject(predicate) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      const raw = fs.readFileSync(project, "utf8");
+      const value = JSON.parse(raw);
+      if (predicate(value)) return { raw, value };
+    } catch {
+      /* VS Code may be writing the project */
+    }
+    await pause(100);
+  }
+  throw new Error("The saved project did not reach the expected state");
+}
 
 async function main() {
   if (!fs.existsSync(vsix)) throw new Error("Package the VSIX first");
@@ -108,12 +121,74 @@ async function main() {
       .getByRole("button", { name: "Choose costume: My painted star" })
       .click({ timeout: 5000 });
     console.log("Created and selected a painted costume");
+    const { raw: beforeEdit, value: originalEnvelope } = await waitForProject((envelope) => {
+      const asset = envelope.project?.metadata?.assets?.find(
+        (item) => item.name === "My painted star",
+      );
+      return (
+        asset !== undefined &&
+        envelope.project.metadata.actors?.items?.some(
+          (actor) => actor.id === "actor:helper" && actor.costumeId === asset.id,
+        )
+      );
+    });
+    const paintedAsset = originalEnvelope.project.metadata.assets.find(
+      (asset) => asset.name === "My painted star",
+    );
+    if (!paintedAsset) throw new Error("Painted asset missing before edit");
+    const editButton = webview
+      .locator(".studio-scene-editor .scene-asset-card")
+      .filter({ hasText: "My painted star" })
+      .getByRole("button", { name: "Edit image" });
+    await editButton.click();
+    await webview.getByRole("button", { name: "Cancel edit" }).click();
+    assert.equal(fs.readFileSync(project, "utf8"), beforeEdit);
+    await editButton.click();
+    await drawing.evaluate(async (canvas) => {
+      const context = canvas.getContext("2d");
+      for (let attempt = 0; attempt < 30; attempt++) {
+        if (context?.getImageData(20, 20, 1, 1).data[3]) return;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      throw new Error("Existing costume did not load into the drawing canvas");
+    });
+    if (process.env.AGORIX_CAPTURE_VISUAL === "1") {
+      for (const [width, height] of [
+        [900, 700],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: path.join(repoRoot, `docs/product/assets/studio-vsix-edit-costume-${width}.png`),
+        });
+      }
+      await page.setViewportSize({ width: 900, height: 700 });
+    }
+    const editBounds = await drawing.boundingBox();
+    if (!editBounds) throw new Error("Costume editor not visible");
+    await page.mouse.move(editBounds.x + 110, editBounds.y + 40);
+    await page.mouse.down();
+    await page.mouse.move(editBounds.x + 130, editBounds.y + 70, { steps: 5 });
+    await page.mouse.up();
+    await webview.getByRole("button", { name: "Save changes" }).click();
+    await page.getByText("I am an adult and approve").click();
+    await page.keyboard.press("Escape");
+    await webview.getByRole("button", { name: "Save changes" }).waitFor({ state: "hidden" });
+    const { value: editedEnvelope } = await waitForProject(
+      (envelope) => envelope.media?.[paintedAsset.id] !== originalEnvelope.media[paintedAsset.id],
+    );
+    assert.notEqual(editedEnvelope.media[paintedAsset.id], originalEnvelope.media[paintedAsset.id]);
+    assert.equal(
+      editedEnvelope.project.metadata.assets.filter((asset) => asset.id === paintedAsset.id).length,
+      1,
+    );
+    console.log("Edited the same costume without changing its ID");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
     const move = webview
       .locator(".palette button[draggable='true']")
       .filter({ hasText: "Move" })
       .first();
-    const slot = webview.locator(".studio-program .slot").first();
+    const slot = webview.locator(".studio-program .slot").last();
     const before = await webview.locator(".studio-program .block").count();
     await move.dragTo(slot);
     await page.waitForTimeout(500);

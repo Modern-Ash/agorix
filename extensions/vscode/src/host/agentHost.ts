@@ -363,6 +363,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
       case "createActor":
       case "createScript":
       case "importAsset":
+      case "updateAsset":
       case "updateStage":
       case "updateMissionSpec":
         return undefined;

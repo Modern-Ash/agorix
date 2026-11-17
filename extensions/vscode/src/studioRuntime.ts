@@ -280,7 +280,9 @@ export function activate(context: vscode.ExtensionContext): void {
     const addsEmbeddedMedia = metadata.assets?.some(
       (asset) =>
         asset.source.startsWith("data:image/") &&
-        !open.project.stored.metadata.assets?.some((existing) => existing.id === asset.id),
+        !open.project.stored.metadata.assets?.some(
+          (existing) => existing.id === asset.id && existing.source === asset.source,
+        ),
     );
     if (addsEmbeddedMedia && open.uri.fsPath.toLowerCase().endsWith(".agorix")) {
       const approved = await vscode.window.showWarningMessage(

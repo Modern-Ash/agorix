@@ -771,6 +771,33 @@ describe("studio-protocol", () => {
     expect(
       parseUiMessage({
         schema,
+        type: "updateAsset",
+        assetId: "asset:costume.default",
+        name: " Nova ",
+        source,
+      }),
+    ).toEqual({
+      schema,
+      type: "updateAsset",
+      assetId: "asset:costume.default",
+      name: "Nova",
+      source,
+    });
+    expect(
+      parseUiMessage({ schema, type: "updateAsset", assetId: "../bad", name: "Nova", source }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "updateAsset",
+        assetId: "asset:costume.default",
+        name: "Nova",
+        source: "https://example.com/image.png",
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
         type: "importAsset",
         kind: "costume",
         name: "Nova",

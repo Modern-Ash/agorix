@@ -16,6 +16,7 @@ export function SceneLibrary({
   onCreateActor,
   onCreateScript,
   onImportAsset,
+  onUpdateAsset,
 }: {
   readonly copy: StudioUiCopy;
   readonly actors: readonly ActorView[];
@@ -32,6 +33,7 @@ export function SceneLibrary({
     detail?: string,
   ) => void;
   readonly onImportAsset?: (kind: "costume" | "backdrop", name: string, source: string) => void;
+  readonly onUpdateAsset?: (assetId: string, name: string, source: string) => void;
 }) {
   const drawing = useRef<HTMLCanvasElement>(null);
   const drawingHistory = useRef<ImageData[]>([]);
@@ -41,10 +43,11 @@ export function SceneLibrary({
   >("actors");
   const [assetName, setAssetName] = useState("");
   const [assetError, setAssetError] = useState("");
-  const [pendingAsset, setPendingAsset] = useState<{
-    kind: "costume" | "backdrop";
-    knownIds: readonly string[];
-  }>();
+  const [editingAssetId, setEditingAssetId] = useState<string>();
+  const [pendingAsset, setPendingAsset] = useState<
+    | { mode: "create"; kind: "costume" | "backdrop"; knownIds: readonly string[] }
+    | { mode: "update"; id: string; name: string; source: string }
+  >();
   const [drawingActive, setDrawingActive] = useState(false);
   const [ink, setInk] = useState("#7855d8");
   const [drawTool, setDrawTool] = useState<"brush" | "eraser">("brush");
@@ -55,26 +58,84 @@ export function SceneLibrary({
   >("greenFlag");
   const [scriptMessage, setScriptMessage] = useState("");
   const [scriptKey, setScriptKey] = useState("Space");
+  const clearDrawing = () => {
+    const canvas = drawing.current;
+    canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    drawingHistory.current = [];
+    setUndoCount(0);
+  };
+  const startCreate = (kind: "costume" | "backdrop") => {
+    clearDrawing();
+    setEditingAssetId(undefined);
+    setAssetKind(kind);
+    setAssetName("");
+    setAssetError("");
+    setActiveSection("create");
+  };
+  const startEdit = (asset: AssetView) => {
+    if (asset.kind !== "costume" && asset.kind !== "backdrop") return;
+    const source = imageForAsset(asset);
+    if (source === undefined) return;
+    clearDrawing();
+    setEditingAssetId(asset.id);
+    setAssetKind(asset.kind);
+    setAssetName(asset.name);
+    setAssetError("");
+    setActiveSection("create");
+    const image = new Image();
+    image.onload = () => {
+      const canvas = drawing.current;
+      const context = canvas?.getContext("2d");
+      if (!canvas || !context) return;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      context.drawImage(
+        image,
+        (canvas.width - width) / 2,
+        (canvas.height - height) / 2,
+        width,
+        height,
+      );
+    };
+    image.src = source;
+  };
   const submitAsset = (name: string, source: string) => {
     if (!validEmbeddedImageSource(source)) {
       setAssetError(copy.sceneInvalidImage);
       return;
     }
-    setPendingAsset({ kind: assetKind, knownIds: assets.map((asset) => asset.id) });
-    onImportAsset?.(assetKind, (name.trim() || copy.sceneNewImage).slice(0, 80), source);
+    const safeName = (name.trim() || copy.sceneNewImage).slice(0, 80);
+    if (editingAssetId === undefined) {
+      setPendingAsset({
+        mode: "create",
+        kind: assetKind,
+        knownIds: assets.map((asset) => asset.id),
+      });
+      onImportAsset?.(assetKind, safeName, source);
+    } else {
+      setPendingAsset({ mode: "update", id: editingAssetId, name: safeName, source });
+      onUpdateAsset?.(editingAssetId, safeName, source);
+    }
     setAssetError("");
   };
   useEffect(() => {
     if (
       pendingAsset !== undefined &&
-      assets.some(
-        (asset) => asset.kind === pendingAsset.kind && !pendingAsset.knownIds.includes(asset.id),
+      assets.some((asset) =>
+        pendingAsset.mode === "create"
+          ? asset.kind === pendingAsset.kind && !pendingAsset.knownIds.includes(asset.id)
+          : asset.id === pendingAsset.id &&
+            asset.name === pendingAsset.name &&
+            asset.source === pendingAsset.source,
       )
     ) {
-      setActiveSection(pendingAsset.kind === "costume" ? "costumes" : "backdrops");
+      setActiveSection(assetKind === "costume" ? "costumes" : "backdrops");
+      setEditingAssetId(undefined);
       setPendingAsset(undefined);
     }
-  }, [assets, pendingAsset]);
+  }, [assets, assetKind, pendingAsset]);
   const rememberDrawing = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
     drawingHistory.current.push(context.getImageData(0, 0, canvas.width, canvas.height));
     if (drawingHistory.current.length > 12) drawingHistory.current.shift();
@@ -246,19 +307,25 @@ export function SceneLibrary({
         </h3>
         <div className="scene-library-grid">
           {costumes.map((asset) => (
-            <button
-              key={asset.id}
-              type="button"
-              disabled={selected === undefined}
-              aria-pressed={asset.id === selected?.costumeId}
-              aria-label={`${copy.sceneSelectCostume}: ${asset.name}`}
-              onClick={() => {
-                if (selected !== undefined) onCostume(selected.id, asset.id);
-              }}
-            >
-              {preview(asset)}
-              <span>{asset.name}</span>
-            </button>
+            <div key={asset.id} className="scene-asset-card">
+              <button
+                type="button"
+                disabled={selected === undefined}
+                aria-pressed={asset.id === selected?.costumeId}
+                aria-label={`${copy.sceneSelectCostume}: ${asset.name}`}
+                onClick={() => {
+                  if (selected !== undefined) onCostume(selected.id, asset.id);
+                }}
+              >
+                {preview(asset)}
+                <span>{asset.name}</span>
+              </button>
+              {onUpdateAsset === undefined ? null : (
+                <button type="button" className="scene-edit-asset" onClick={() => startEdit(asset)}>
+                  {copy.sceneEditImage}
+                </button>
+              )}
+            </div>
           ))}
         </div>
         {onImportAsset === undefined ? null : (
@@ -266,8 +333,7 @@ export function SceneLibrary({
             type="button"
             className="scene-create-shortcut"
             onClick={() => {
-              setAssetKind("costume");
-              setActiveSection("create");
+              startCreate("costume");
             }}
           >
             + {copy.sceneCreateImage}
@@ -278,16 +344,22 @@ export function SceneLibrary({
         <h3>{copy.sceneBackdrops}</h3>
         <div className="scene-library-grid">
           {backdrops.map((asset) => (
-            <button
-              key={asset.id}
-              type="button"
-              aria-pressed={asset.id === backdropId}
-              aria-label={`${copy.sceneSelectBackdrop}: ${asset.name}`}
-              onClick={() => onBackdrop(asset.id)}
-            >
-              {preview(asset)}
-              <span>{asset.name}</span>
-            </button>
+            <div key={asset.id} className="scene-asset-card">
+              <button
+                type="button"
+                aria-pressed={asset.id === backdropId}
+                aria-label={`${copy.sceneSelectBackdrop}: ${asset.name}`}
+                onClick={() => onBackdrop(asset.id)}
+              >
+                {preview(asset)}
+                <span>{asset.name}</span>
+              </button>
+              {onUpdateAsset === undefined ? null : (
+                <button type="button" className="scene-edit-asset" onClick={() => startEdit(asset)}>
+                  {copy.sceneEditImage}
+                </button>
+              )}
+            </div>
           ))}
         </div>
         {onImportAsset === undefined ? null : (
@@ -295,8 +367,7 @@ export function SceneLibrary({
             type="button"
             className="scene-create-shortcut"
             onClick={() => {
-              setAssetKind("backdrop");
-              setActiveSection("create");
+              startCreate("backdrop");
             }}
           >
             + {copy.sceneCreateImage}
@@ -307,12 +378,14 @@ export function SceneLibrary({
         <section
           aria-label={copy.sceneCreateImage}
           className="scene-create-image"
+          data-editing={editingAssetId !== undefined}
           hidden={activeSection !== "create"}
         >
-          <h3>{copy.sceneCreateImage}</h3>
+          <h3>{editingAssetId === undefined ? copy.sceneCreateImage : copy.sceneEditImage}</h3>
           <select
             aria-label={copy.sceneImageKind}
             value={assetKind}
+            disabled={editingAssetId !== undefined}
             onChange={(event) => setAssetKind(event.target.value as "costume" | "backdrop")}
           >
             <option value="costume">{copy.sceneCostumes}</option>
@@ -403,6 +476,27 @@ export function SceneLibrary({
           <div className="scene-draw-actions">
             <button
               type="button"
+              onClick={() => {
+                const canvas = drawing.current;
+                if (canvas) submitAsset(assetName, canvas.toDataURL("image/png"));
+              }}
+            >
+              {editingAssetId === undefined ? copy.sceneSaveDrawing : copy.sceneSaveChanges}
+            </button>
+            {editingAssetId === undefined ? null : (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingAssetId(undefined);
+                  setPendingAsset(undefined);
+                  setActiveSection(assetKind === "costume" ? "costumes" : "backdrops");
+                }}
+              >
+                {copy.sceneCancelEdit}
+              </button>
+            )}
+            <button
+              type="button"
               disabled={undoCount === 0}
               onClick={() => {
                 const canvas = drawing.current;
@@ -425,15 +519,6 @@ export function SceneLibrary({
               }}
             >
               {copy.sceneClearImage}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const canvas = drawing.current;
-                if (canvas) submitAsset(assetName, canvas.toDataURL("image/png"));
-              }}
-            >
-              {copy.sceneSaveDrawing}
             </button>
           </div>
           {assetError === "" ? null : <p role="alert">{assetError}</p>}

@@ -114,20 +114,23 @@ function knownCostumeIds(metadata: ProjectMetadata): ReadonlySet<string> {
 function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
   const catalog = studioAssetCatalog();
   const catalogIds = new Set(catalog.map((asset) => asset.id));
+  const overrides = new Map((metadata.assets ?? []).map((asset) => [asset.id, asset]));
+  const toView = (asset: NonNullable<ProjectMetadata["assets"]>[number]): AssetView => ({
+    id: asset.id,
+    name: asset.name,
+    kind: asset.kind,
+    tags: asset.tags ?? [],
+    ...(/^builtin:kids-gallery-(costume|backdrop):[a-z]+$/.test(asset.source) ||
+    validEmbeddedImageSource(asset.source)
+      ? { source: asset.source }
+      : {}),
+  });
   return [
-    ...catalog,
-    ...(metadata.assets ?? [])
-      .filter((asset) => !catalogIds.has(asset.id))
-      .map((asset): AssetView => ({
-        id: asset.id,
-        name: asset.name,
-        kind: asset.kind,
-        tags: asset.tags ?? [],
-        ...(/^builtin:kids-gallery-(costume|backdrop):[a-z]+$/.test(asset.source) ||
-        validEmbeddedImageSource(asset.source)
-          ? { source: asset.source }
-          : {}),
-      })),
+    ...catalog.map((asset) => {
+      const override = overrides.get(asset.id);
+      return override === undefined ? asset : toView(override);
+    }),
+    ...(metadata.assets ?? []).filter((asset) => !catalogIds.has(asset.id)).map(toView),
   ];
 }
 
@@ -649,6 +652,38 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
             ],
           },
           "Workbench: import image asset",
+        );
+        return snapshot();
+      }
+      case "updateAsset": {
+        const metadata = port.getMetadata();
+        if (metadata === undefined || !validEmbeddedImageSource(message.source)) return [];
+        const existing = metadata.assets?.find((asset) => asset.id === message.assetId);
+        const catalog = studioAssetCatalog().find((asset) => asset.id === message.assetId);
+        const target = existing ?? catalog;
+        if (target === undefined || (target.kind !== "costume" && target.kind !== "backdrop")) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const replacement = {
+          ...(existing ?? {
+            id: target.id,
+            kind: target.kind,
+            ...(target.tags === undefined ? {} : { tags: target.tags }),
+          }),
+          name: message.name,
+          source: message.source,
+        };
+        await port.commitMetadata(
+          {
+            ...metadata,
+            assets:
+              existing === undefined
+                ? [...(metadata.assets ?? []), replacement]
+                : metadata.assets!.map((asset) =>
+                    asset.id === message.assetId ? replacement : asset,
+                  ),
+          },
+          "Workbench: edit image asset",
         );
         return snapshot();
       }

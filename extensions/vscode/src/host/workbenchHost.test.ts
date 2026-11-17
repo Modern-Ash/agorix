@@ -870,6 +870,43 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(1);
   });
 
+  it("edits a known costume in place and refuses unknown assets", async () => {
+    const { host, metadata, labels } = setup();
+    const first = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\none")}`;
+    const second = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\ntwo")}`;
+    const edit = (source: string) =>
+      host.handle({
+        schema,
+        type: "updateAsset",
+        assetId: "asset:costume.default",
+        name: "Explorer edit",
+        source,
+      });
+    await edit(first);
+    expect(metadata().assets).toEqual([
+      expect.objectContaining({ id: "asset:costume.default", source: first }),
+    ]);
+    const accepted = await edit(second);
+    expect(metadata().assets).toHaveLength(1);
+    expect(accepted.find((message) => message.type === "assets")).toMatchObject({
+      assets: expect.arrayContaining([
+        expect.objectContaining({ id: "asset:costume.default", source: second }),
+      ]),
+    });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "updateAsset",
+          assetId: "asset:missing",
+          name: "Forged",
+          source: first,
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toEqual(["Workbench: edit image asset", "Workbench: edit image asset"]);
+  });
+
   it("selects only known costume and sound assets for visual blocks", async () => {
     const { host, get, labels } = setup();
     await host.handle({
