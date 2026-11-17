@@ -9,6 +9,7 @@ import { imageForAsset, imageForId } from "./visualArt.js";
 import { useEffect, useRef, useState } from "react";
 import { validEmbeddedImageSource } from "@agorix/program-model";
 import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
+import { transformImagePixels } from "./imageTransforms.js";
 
 export const STAGE_COSTUME_DRAG_TYPE = "application/x-agorix-stage-costume";
 export const STAGE_BACKDROP_DRAG_TYPE = "application/x-agorix-stage-backdrop";
@@ -85,14 +86,14 @@ export function SceneLibrary({
     setAssetError("");
     setActiveSection("create");
   };
-  const startEdit = (asset: AssetView) => {
+  const loadAssetDrawing = (asset: AssetView, duplicate = false) => {
     if (asset.kind !== "costume" && asset.kind !== "backdrop") return;
     const source = imageForAsset(asset);
     if (source === undefined) return;
     clearDrawing();
-    setEditingAssetId(asset.id);
+    setEditingAssetId(duplicate ? undefined : asset.id);
     setAssetKind(asset.kind);
-    setAssetName(asset.name);
+    setAssetName(duplicate ? `${asset.name} ${copy.sceneCopySuffix}` : asset.name);
     setAssetError("");
     setActiveSection("create");
     const image = new Image();
@@ -113,6 +114,20 @@ export function SceneLibrary({
       );
     };
     image.src = source;
+  };
+  const transformDrawing = (kind: "flipHorizontal" | "rotateHalfTurn") => {
+    const canvas = drawing.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+    try {
+      const current = context.getImageData(0, 0, canvas.width, canvas.height);
+      const transformed = transformImagePixels(current.data, canvas.width, canvas.height, kind);
+      rememberDrawing(canvas, context);
+      current.data.set(transformed);
+      context.putImageData(current, 0, 0);
+    } catch {
+      setAssetError(copy.sceneInvalidImage);
+    }
   };
   const submitAsset = (name: string, source: string) => {
     if (!validEmbeddedImageSource(source)) {
@@ -373,8 +388,21 @@ export function SceneLibrary({
                 <span>{asset.name}</span>
               </button>
               {onUpdateAsset === undefined ? null : (
-                <button type="button" className="scene-edit-asset" onClick={() => startEdit(asset)}>
+                <button
+                  type="button"
+                  className="scene-edit-asset"
+                  onClick={() => loadAssetDrawing(asset)}
+                >
                   {copy.sceneEditImage}
+                </button>
+              )}
+              {onImportAsset === undefined ? null : (
+                <button
+                  type="button"
+                  className="scene-duplicate-asset"
+                  onClick={() => loadAssetDrawing(asset, true)}
+                >
+                  {copy.sceneDuplicateImage}
                 </button>
               )}
             </div>
@@ -416,8 +444,21 @@ export function SceneLibrary({
                 <span>{asset.name}</span>
               </button>
               {onUpdateAsset === undefined ? null : (
-                <button type="button" className="scene-edit-asset" onClick={() => startEdit(asset)}>
+                <button
+                  type="button"
+                  className="scene-edit-asset"
+                  onClick={() => loadAssetDrawing(asset)}
+                >
                   {copy.sceneEditImage}
+                </button>
+              )}
+              {onImportAsset === undefined ? null : (
+                <button
+                  type="button"
+                  className="scene-duplicate-asset"
+                  onClick={() => loadAssetDrawing(asset, true)}
+                >
+                  {copy.sceneDuplicateImage}
                 </button>
               )}
             </div>
@@ -594,6 +635,12 @@ export function SceneLibrary({
               }}
             >
               {copy.sceneUndoDrawing}
+            </button>
+            <button type="button" onClick={() => transformDrawing("flipHorizontal")}>
+              {copy.sceneFlipImage}
+            </button>
+            <button type="button" onClick={() => transformDrawing("rotateHalfTurn")}>
+              {copy.sceneRotateImage}
             </button>
             <button
               type="button"

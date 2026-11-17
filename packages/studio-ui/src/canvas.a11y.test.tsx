@@ -2523,6 +2523,89 @@ describe("workbench live region and focus after inserting from the palette", () 
     act(() => undo.click());
     expect(context.putImageData).toHaveBeenCalledTimes(1);
   });
+  it("duplicates a costume into a new editable draft and saves it explicitly", () => {
+    const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
+    const imported: { kind: string; name: string; source: string }[] = [];
+    act(() =>
+      root.render(
+        <SceneLibrary
+          copy={copyFor("en")}
+          actors={[]}
+          assets={[{ id: "costume:original", name: "Original", kind: "costume", tags: [], source }]}
+          selectedActorId={undefined}
+          backdropId={undefined}
+          onSelectActor={() => undefined}
+          onCostume={() => undefined}
+          onBackdrop={() => undefined}
+          onImportAsset={(kind, name, imageSource) =>
+            imported.push({ kind, name, source: imageSource })
+          }
+        />,
+      ),
+    );
+    const canvas = host.querySelector<HTMLCanvasElement>(".scene-create-image canvas")!;
+    vi.spyOn(canvas, "getContext").mockReturnValue({
+      clearRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(canvas, "toDataURL").mockReturnValue(source);
+    act(() => host.querySelectorAll<HTMLButtonElement>(".scene-section-tabs button")[1]!.click());
+    act(() => host.querySelector<HTMLButtonElement>(".scene-duplicate-asset")!.click());
+    expect(host.querySelector<HTMLInputElement>('[aria-label="Image name"]')?.value).toBe(
+      "Original copy",
+    );
+    expect(host.querySelector<HTMLElement>(".scene-create-image")?.dataset["editing"]).toBe(
+      "false",
+    );
+    const save = Array.from(
+      host.querySelectorAll<HTMLButtonElement>(".scene-draw-actions button"),
+    ).find((button) => button.textContent === copyFor("en").sceneSaveDrawing)!;
+    act(() => save.click());
+    expect(imported).toEqual([{ kind: "costume", name: "Original copy", source }]);
+  });
+  it("applies image transforms to the draft and keeps undo available", () => {
+    const image = {
+      data: new Uint8ClampedArray(160 * 120 * 4),
+      width: 160,
+      height: 120,
+    };
+    const context = {
+      getImageData: vi.fn(() => ({ ...image, data: new Uint8ClampedArray(image.data) })),
+      putImageData: vi.fn(),
+      clearRect: vi.fn(),
+    };
+    act(() =>
+      root.render(
+        <SceneLibrary
+          copy={copyFor("en")}
+          actors={[]}
+          assets={[]}
+          selectedActorId={undefined}
+          backdropId={undefined}
+          onSelectActor={() => undefined}
+          onCostume={() => undefined}
+          onBackdrop={() => undefined}
+          onImportAsset={() => undefined}
+        />,
+      ),
+    );
+    act(() => host.querySelectorAll<HTMLButtonElement>(".scene-section-tabs button")[4]!.click());
+    const canvas = host.querySelector<HTMLCanvasElement>(".scene-create-image canvas")!;
+    vi.spyOn(canvas, "getContext").mockReturnValue(context as unknown as CanvasRenderingContext2D);
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>(".scene-draw-actions button"),
+    );
+    act(() =>
+      buttons.find((button) => button.textContent === copyFor("en").sceneFlipImage)!.click(),
+    );
+    act(() =>
+      buttons.find((button) => button.textContent === copyFor("en").sceneRotateImage)!.click(),
+    );
+    expect(context.putImageData).toHaveBeenCalledTimes(2);
+    const undo = buttons.find((button) => button.textContent === copyFor("en").sceneUndoDrawing)!;
+    expect(undo.disabled).toBe(false);
+    act(() => undo.click());
+    expect(context.putImageData).toHaveBeenCalledTimes(3);
+  });
   it("opens the canonical code projection from the editor tabs", () => {
     const posted: unknown[] = [];
     const bridge: HostBridge = {
