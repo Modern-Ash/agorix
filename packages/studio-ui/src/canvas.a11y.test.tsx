@@ -1463,6 +1463,41 @@ describe("workbench live region and focus after inserting from the palette", () 
     expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(false);
     expect(host.querySelector<HTMLElement>(".studio-evidence")?.hidden).toBe(true);
   });
+  it("resizes Ori by keyboard within editor-safe bounds and restores the default", () => {
+    const bridge: HostBridge = { post: () => undefined, subscribe: () => () => undefined };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    const shell = host.querySelector<HTMLElement>(".workbench")!;
+    const dock = host.querySelector<HTMLElement>(".studio-ori-dock")!;
+    let shellWidth = 800;
+    shell.getBoundingClientRect = () => ({ width: shellWidth }) as DOMRect;
+    dock.getBoundingClientRect = () =>
+      ({
+        width: Number.parseInt(shell.style.getPropertyValue("--ori-width"), 10) || 210,
+      }) as DOMRect;
+    const handle = host.querySelector<HTMLElement>(".studio-ori-resize")!;
+    expect(handle.getAttribute("role")).toBe("separator");
+    act(() =>
+      handle.dispatchEvent(
+        new dom.window.KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+      ),
+    );
+    expect(shell.style.getPropertyValue("--ori-width")).toBe("230px");
+    act(() =>
+      handle.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "End", bubbles: true })),
+    );
+    expect(shell.style.getPropertyValue("--ori-width")).toBe("260px");
+    act(() => {
+      shellWidth = 760;
+      dom.window.dispatchEvent(new dom.window.Event("resize"));
+    });
+    expect(shell.style.getPropertyValue("--ori-width")).toBe("220px");
+    act(() =>
+      handle.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Home", bubbles: true })),
+    );
+    expect(shell.style.getPropertyValue("--ori-width")).toBe("190px");
+    act(() => handle.dispatchEvent(new dom.window.MouseEvent("dblclick", { bubbles: true })));
+    expect(shell.style.getPropertyValue("--ori-width")).toBe("");
+  });
   it("draws, erases, and restores the previous canvas stroke", () => {
     const context = {
       getImageData: vi.fn(() => ({

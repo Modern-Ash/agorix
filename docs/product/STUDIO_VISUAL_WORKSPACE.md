@@ -24,6 +24,10 @@ These are the existing work items for this goal. Implementation slices link back
 
 Tools and Ori can each be hidden from the header without discarding the current workbench state. Build also exposes a Blocks button beside the program title. At 900 × 700 the tool palette starts collapsed; Build puts the program and stage side by side with Ori visible. The palette opens over the stage while the program stays available as a drop target, then the stage returns when the palette closes. At 1440 × 900 the editor has room for the persistent tool rail when it is open. The center tabs switch views without creating a second program model. Below 700 px the Scene tools stack under the stage. All colors use VS Code theme tokens.
 
+Ori's dock has a vertical resize handle on its left edge. Dragging it or using Left/Right, Home/End while it has focus adjusts the panel within bounds that reserve room for the central editor. Shrinking the window clamps a previously wider dock to those bounds. Double-clicking the handle restores the default width. Hiding and reopening Ori retains the chosen width for the current Workbench session; narrow stacked layouts do not show the handle.
+
+![Ori dock resized in an installed VSIX at 900 × 700](./assets/studio-vsix-ori-resized-900.png)
+
 Each actor-owned script has a visible header in Build. Its Delete script action requires a second explicit confirmation and removes the script from the canonical program and actor ownership in one project commit. The final project script cannot be removed, so the editor always retains a runnable entry point.
 
 Visible lists appear as compact stage watchers beside variables. Each watcher shows the canonical list name, runtime item count and current runtime values. Hidden lists stay hidden; long lists scroll within a bounded stage area. The displayed values come from deterministic execution frames, including Step and Reset, and never from a separate editor copy.
