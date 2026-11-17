@@ -197,15 +197,29 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .sync-badge { margin-left: 8px; font-weight: 600; }
 .fail-badge { color: var(--vscode-errorForeground); }
 .block.ghost-removed .label { text-decoration: line-through; }
-/* Advanced Studio: the program is the desk, Ori is a companion, evidence is the bench below. */
-.workbench { grid-template-columns: minmax(178px, 198px) minmax(0, 1fr) minmax(240px, 260px); gap: 10px; align-items: start; min-height: 100vh; box-sizing: border-box; background: var(--vscode-editor-background); }
-.workbench[data-density="compact"] { grid-template-columns: minmax(150px, 175px) minmax(0, 1fr) minmax(240px, 270px); gap: 8px; }
+/* Editor-first Studio shell: navigation, central editor, contextual Ori dock. */
+.workbench { --tools-width: clamp(178px, 19vw, 224px); --ori-width: clamp(250px, 24vw, 320px); grid-template-columns: var(--tools-width) minmax(0, 1fr) var(--ori-width); gap: 0; align-items: start; min-height: 100vh; padding: 0; box-sizing: border-box; background: var(--vscode-editor-background); }
+.workbench[data-density="compact"] { grid-template-columns: var(--tools-width) minmax(0, 1fr) var(--ori-width); gap: 0; padding: 0; }
+.workbench[data-tools-open="false"] { grid-template-columns: minmax(0, 1fr) var(--ori-width); }
+.workbench[data-ori-open="false"] { grid-template-columns: var(--tools-width) minmax(0, 1fr); }
+.workbench[data-tools-open="false"][data-ori-open="false"] { grid-template-columns: minmax(0, 1fr); }
+.workbench[data-tools-open="false"] .studio-main { grid-column: 1; }
+.workbench[data-ori-open="false"] .studio-ori-dock, .workbench[data-tools-open="false"] .studio-tools { display: none; }
+.workbench[data-tools-open="false"] .studio-ori-dock { grid-column: 2; }
+.workbench[data-tools-open="false"][data-ori-open="false"] .studio-main { grid-column: 1; }
+.workbench [hidden] { display: none !important; }
 .studio-banner { grid-column: 1 / -1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 10px 14px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
 .studio-banner span { color: var(--vscode-descriptionForeground); font: 600 0.72em var(--vscode-editor-font-family); letter-spacing: 0.12em; }
 .studio-banner h1 { margin: 0; font-size: 1.15em; line-height: 1.2; letter-spacing: -0.02em; }
 .studio-banner p { margin: 0; max-width: 70ch; color: var(--vscode-descriptionForeground); }
+.studio-brand { display: flex; align-items: baseline; gap: 10px; }
+.studio-shell-actions { display: flex; gap: 5px; margin-left: auto; }
+.studio-shell-actions button, .studio-editor-tabs button { min-height: 32px; padding: 4px 10px; border: 1px solid transparent; background: transparent; color: var(--vscode-foreground); cursor: pointer; }
+.studio-shell-actions button:hover, .studio-editor-tabs button:hover { background: var(--vscode-list-hoverBackground); }
+.studio-shell-actions button:focus-visible, .studio-editor-tabs button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: -2px; }
+.studio-shell-actions button[aria-pressed="true"] { color: var(--vscode-focusBorder); }
 .studio-tools, .studio-program, .studio-evidence, .studio-details, .agent { min-width: 0; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
-.studio-tools { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; border-top: 3px solid var(--vscode-charts-green, var(--vscode-focusBorder)); }
+.studio-tools { grid-column: 1; position: sticky; top: 0; max-height: calc(100vh - 58px); overflow: auto; padding: 12px; border-top: 0; border-left: 0; }
 .studio-tools h2 { margin: 0 0 5px; font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; }
 .library-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 12px; }
 .library-tabs button { min-height: 32px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
@@ -259,12 +273,28 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .palette-grip::before { content: "⋮⋮"; }
 .studio-tools .palette-search { margin-bottom: 4px; }
 .studio-program h2, .studio-evidence h2 { margin: 0 0 12px; color: var(--vscode-foreground); font-size: 0.8em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.studio-main { display: grid; gap: 14px; min-width: 0; }
-.studio-play { display: grid; gap: 8px; min-width: 0; padding: 10px; border: 1px solid var(--vscode-panel-border); border-top: 3px solid var(--vscode-charts-blue, var(--vscode-focusBorder)); background: var(--vscode-editorWidget-background); }
+.studio-main { grid-column: 2; display: grid; align-content: start; gap: 0; min-width: 0; min-height: calc(100vh - 58px); border-right: 1px solid var(--vscode-panel-border); }
+.workbench[data-workspace-view="scene"] .studio-main { grid-template-columns: minmax(0, 1fr) clamp(232px, 24vw, 340px); }
+.workbench[data-workspace-view="scene"] .studio-editor-tabs, .workbench[data-workspace-view="scene"] .studio-details, .workbench[data-workspace-view="scene"] .status { grid-column: 1 / -1; }
+.workbench[data-workspace-view="scene"] .studio-play { grid-column: 1; }
+.studio-scene-editor { grid-column: 2; min-width: 0; max-height: calc(100vh - 100px); overflow: auto; padding: 10px; border-left: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
+.studio-scene-editor h2 { margin: 0 0 14px; font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; }
+.studio-scene-editor .scene-create-image canvas { max-width: 100%; box-sizing: border-box; }
+.studio-scene-editor .scene-create-image input, .studio-scene-editor .scene-create-image select { box-sizing: border-box; max-width: 100%; min-width: 0; }
+.studio-scene-editor input:not([type="color"]):not([type="file"]), .studio-scene-editor select { width: 100%; min-height: 30px; padding: 5px 8px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 4px; }
+.studio-scene-editor input[type="file"] { width: 100%; color: var(--vscode-descriptionForeground); font-size: 0.85em; }
+.studio-scene-editor button { min-height: 30px; padding: 5px 9px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); border-radius: 4px; }
+.studio-scene-editor button:hover { background: var(--vscode-list-hoverBackground); }
+.studio-editor-tabs { display: flex; gap: 2px; align-items: end; min-height: 40px; padding: 0 10px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
+.studio-editor-tabs button { min-height: 40px; border-bottom: 2px solid transparent; border-radius: 0; }
+.studio-editor-tabs button[aria-pressed="true"] { border-bottom-color: var(--vscode-focusBorder); color: var(--vscode-foreground); font-weight: 700; }
+.studio-editor-tabs .studio-code-tab { margin-left: auto; color: var(--vscode-textLink-foreground, var(--vscode-focusBorder)); }
+.studio-play { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 0; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editorBackground, var(--vscode-editor-background)); }
 .studio-play .execution-toolbar, .studio-play .stage-panel { margin: 0; }
-.studio-play .stage-viewport { min-height: 180px; max-height: 260px; }
-.studio-play .stage-panel[data-empty="true"] .stage-viewport { min-height: 54px; }
-.studio-program { min-height: 340px; padding: 16px; border-top: 3px solid var(--vscode-focusBorder); box-sizing: border-box; }
+.studio-play .stage-viewport { min-height: clamp(260px, 36vh, 420px); max-height: none; }
+.studio-play .stage-panel[data-empty="true"] .stage-viewport { min-height: 260px; }
+.workbench[data-workspace-view="scene"] .studio-play .stage-viewport { min-height: clamp(380px, 60vh, 680px); }
+.studio-program { min-height: 340px; padding: 16px; border: 0; box-sizing: border-box; }
 .studio-program .canvas { min-height: 220px; }
 .studio-program .block { min-height: 38px; box-sizing: border-box; cursor: grab; }
 .studio-program .block:active { cursor: grabbing; }
@@ -305,14 +335,15 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-details summary { cursor: pointer; font-weight: 600; }
 .studio-details summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
 .studio-details[open] summary { margin-bottom: 14px; }
-.agent { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; padding: 0 14px 16px; border-top: 3px solid var(--vscode-charts-purple, var(--vscode-focusBorder)); }
+.studio-ori-dock { grid-column: 3; position: sticky; top: 0; height: calc(100vh - 58px); min-width: 0; overflow: auto; border-left: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
+.studio-ori-dock .agent { position: static; max-height: none; overflow: visible; padding: 0 14px 16px; border: 0; }
 .ori-header { display: flex; align-items: center; gap: 10px; margin: 0 -14px 4px; padding: 16px 14px; border-bottom: 1px solid var(--vscode-panel-border); background: color-mix(in srgb, var(--vscode-charts-purple, var(--vscode-focusBorder)), transparent 91%); }
 .ori-header h2 { margin: 0; font-size: 1.2em; line-height: 1.1; }
 .ori-header p { margin: 4px 0 0; color: var(--vscode-descriptionForeground); font-size: 0.84em; }
 .ori-mark { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border: 1px solid var(--vscode-charts-purple, var(--vscode-focusBorder)); border-radius: 10px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 1.25em; }
 .workbench[data-density="compact"] .studio-banner { padding: 8px 12px; }
 .workbench[data-density="compact"] .studio-program, .workbench[data-density="compact"] .studio-evidence { padding: 10px; }
-@media (max-width: 850px) { .workbench, .workbench[data-density="compact"] { grid-template-columns: minmax(0, 1fr) minmax(240px, 270px); } .studio-tools { grid-column: 1 / -1; position: static; max-height: 175px; } .studio-tools .palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; } .studio-tools .palette-search { grid-column: 1 / -1; } }
-@media (max-width: 700px) { .workbench, .workbench[data-density="compact"] { grid-template-columns: minmax(0, 1fr); } .studio-banner, .studio-tools, .studio-main, .agent { grid-column: 1; } .agent { position: static; max-height: none; } }
+@media (max-width: 850px) { .workbench, .workbench[data-density="compact"], .workbench[data-tools-open="false"], .workbench[data-ori-open="false"] { grid-template-columns: minmax(0, 1fr); } .studio-tools, .studio-main, .studio-ori-dock, .workbench[data-tools-open="false"] .studio-main, .workbench[data-tools-open="false"] .studio-ori-dock { grid-column: 1; } .studio-tools { position: static; max-height: 230px; } .studio-tools .palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; } .studio-tools .palette-search { grid-column: 1 / -1; } .studio-ori-dock { position: static; height: auto; max-height: 420px; } }
+@media (max-width: 700px) { .studio-banner { align-items: center; } .studio-banner p { display: none; } .studio-shell-actions { width: 100%; margin-left: 0; } .studio-shell-actions button { flex: 1; } .workbench[data-workspace-view="scene"] .studio-main { grid-template-columns: minmax(0, 1fr); } .workbench[data-workspace-view="scene"] .studio-play, .studio-scene-editor { grid-column: 1; } .studio-scene-editor { max-height: none; border-left: 0; border-top: 1px solid var(--vscode-panel-border); } }
 @media (prefers-reduced-motion: reduce) { .slot, .stage-goal, .stage-sprite { transition: none; } }
 `;

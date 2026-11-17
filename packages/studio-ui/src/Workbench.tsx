@@ -867,6 +867,9 @@ export function Workbench({
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
   const [backdropId, setBackdropId] = useState<string | undefined>();
   const [libraryTab, setLibraryTab] = useState<"blocks" | "scene">("blocks");
+  const [workspaceView, setWorkspaceView] = useState<"build" | "scene" | "review">("build");
+  const [toolsOpen, setToolsOpen] = useState(true);
+  const [oriOpen, setOriOpen] = useState(true);
   const [selectedExpression, setSelectedExpression] = useState<BlockType | undefined>();
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
   const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
@@ -1067,21 +1070,80 @@ export function Workbench({
       ? selectedScriptId
       : activeScriptIds?.[0];
 
+  const sceneLibrary = () => (
+    <SceneLibrary
+      copy={copy}
+      actors={actors?.actors ?? []}
+      assets={assets}
+      selectedActorId={selectedActorId}
+      backdropId={backdropId}
+      onSelectActor={(id) => {
+        setSelectedActorId(id);
+        setSelectedScriptId(undefined);
+      }}
+      onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
+      onBackdrop={updateBackdrop}
+      onCreateActor={(name) => {
+        pendingActorCreation.current = true;
+        bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
+      }}
+      onCreateScript={(actorId, trigger, detail) => {
+        if (programHash === undefined) return;
+        pendingScriptCreation.current = true;
+        bridge.post({
+          schema: STUDIO_PROTOCOL_VERSION,
+          type: "createScript",
+          actorId,
+          trigger,
+          ...(trigger === "onMessage" && detail !== undefined ? { message: detail } : {}),
+          ...(trigger === "onKeyPressed" && detail !== undefined ? { key: detail } : {}),
+          baseHash: programHash,
+        });
+      }}
+      onImportAsset={(kind, name, source) => {
+        bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "importAsset", kind, name, source });
+      }}
+    />
+  );
+
   return (
     <div
       className="workbench"
       data-density={layout}
       data-dragging={dragging}
+      data-workspace-view={workspaceView}
+      data-tools-open={toolsOpen}
+      data-ori-open={oriOpen}
       onDragStart={() => setDragging(true)}
       onDragEnd={() => setDragging(false)}
       onDrop={() => setDragging(false)}
     >
       <header className="studio-banner">
-        <span>{copy.ideEyebrow}</span>
-        <h1>{copy.ideTitle}</h1>
+        <div className="studio-brand">
+          <span>{copy.ideEyebrow}</span>
+          <h1>{copy.ideTitle}</h1>
+        </div>
         <p>{copy.ideSubtitle}</p>
+        <div className="studio-shell-actions">
+          <button
+            type="button"
+            aria-pressed={toolsOpen}
+            aria-controls="studio-tools"
+            onClick={() => setToolsOpen((open) => !open)}
+          >
+            {toolsOpen ? copy.hideTools : copy.showTools}
+          </button>
+          <button
+            type="button"
+            aria-pressed={oriOpen}
+            aria-controls="studio-ori"
+            onClick={() => setOriOpen((open) => !open)}
+          >
+            {oriOpen ? copy.hideOri : copy.showOri}
+          </button>
+        </div>
       </header>
-      <aside className="studio-tools" aria-label={copy.toolsTitle}>
+      <aside id="studio-tools" className="studio-tools" aria-label={copy.toolsTitle}>
         <div className="library-tabs" role="group" aria-label={copy.libraryScene}>
           <button
             type="button"
@@ -1231,50 +1293,42 @@ export function Workbench({
             />
           </div>
         ) : (
-          <div aria-label={copy.libraryScene}>
-            <SceneLibrary
-              copy={copy}
-              actors={actors?.actors ?? []}
-              assets={assets}
-              selectedActorId={selectedActorId}
-              backdropId={backdropId}
-              onSelectActor={(id) => {
-                setSelectedActorId(id);
-                setSelectedScriptId(undefined);
-              }}
-              onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
-              onBackdrop={updateBackdrop}
-              onCreateActor={(name) => {
-                pendingActorCreation.current = true;
-                bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
-              }}
-              onCreateScript={(actorId, trigger, detail) => {
-                if (programHash === undefined) return;
-                pendingScriptCreation.current = true;
-                bridge.post({
-                  schema: STUDIO_PROTOCOL_VERSION,
-                  type: "createScript",
-                  actorId,
-                  trigger,
-                  ...(trigger === "onMessage" && detail !== undefined ? { message: detail } : {}),
-                  ...(trigger === "onKeyPressed" && detail !== undefined ? { key: detail } : {}),
-                  baseHash: programHash,
-                });
-              }}
-              onImportAsset={(kind, name, source) => {
-                bridge.post({
-                  schema: STUDIO_PROTOCOL_VERSION,
-                  type: "importAsset",
-                  kind,
-                  name,
-                  source,
-                });
-              }}
-            />
-          </div>
+          <div aria-label={copy.libraryScene}>{sceneLibrary()}</div>
         )}
       </aside>
       <main className="studio-main">
+        <nav className="studio-editor-tabs" aria-label={copy.workspaceViews}>
+          {(["build", "scene", "review"] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              aria-pressed={workspaceView === view}
+              onClick={() => {
+                setWorkspaceView(view);
+                if (view === "scene") {
+                  setLibraryTab("blocks");
+                  setToolsOpen(false);
+                } else if (view === "build") {
+                  setLibraryTab("blocks");
+                  setToolsOpen(true);
+                }
+              }}
+            >
+              {view === "build"
+                ? copy.workspaceBuild
+                : view === "scene"
+                  ? copy.workspaceScene
+                  : copy.workspaceReview}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="studio-code-tab"
+            onClick={() => bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "openCode" })}
+          >
+            {copy.workspaceCode}
+          </button>
+        </nav>
         <section className="studio-play" aria-label={copy.evidenceTitle}>
           <ExecutionToolbar
             copy={copy}
@@ -1295,7 +1349,19 @@ export function Workbench({
             }
           />
         </section>
-        <section className="studio-program" aria-label={copy.canvasLabel}>
+        <section
+          className="studio-scene-editor"
+          aria-label={copy.libraryScene}
+          hidden={workspaceView !== "scene"}
+        >
+          <h2>{copy.libraryScene}</h2>
+          {workspaceView === "scene" ? sceneLibrary() : null}
+        </section>
+        <section
+          className="studio-program"
+          aria-label={copy.canvasLabel}
+          hidden={workspaceView !== "build"}
+        >
           <h2>{copy.canvasLabel}</h2>
           {workspace === undefined ? (
             <p>{copy.openProjectToStart}</p>
@@ -1338,12 +1404,16 @@ export function Workbench({
             <AgentZone verb="challenge" label={copy.zoneChallenge} onIntent={post} />
           </div>
         </section>
-        <section className="studio-evidence" aria-label={copy.evidenceTitle}>
+        <section
+          className="studio-evidence"
+          aria-label={copy.evidenceTitle}
+          hidden={workspaceView !== "review"}
+        >
           <h2>{copy.evidenceTitle}</h2>
           <EventTracePanel copy={copy} state={execution} selectedActorId={selectedActorId} />
           <ValidationPanel copy={copy} issues={validationIssues} />
         </section>
-        <details className="studio-details">
+        <details className="studio-details" hidden={workspaceView !== "scene"}>
           <summary>{copy.detailsTitle}</summary>
           <MissionSpecPanel copy={copy} spec={missionSpec} onSave={updateMissionSpec} />
           <ActorTree
@@ -1365,13 +1435,15 @@ export function Workbench({
           {status}
         </div>
       </main>
-      <AgentPanel
-        state={agentUi}
-        send={(message) => bridge.post(message)}
-        selection={selection}
-        onSelectionChange={setSelection}
-        locale={copyLocale}
-      />
+      <div id="studio-ori" className="studio-ori-dock">
+        <AgentPanel
+          state={agentUi}
+          send={(message) => bridge.post(message)}
+          selection={selection}
+          onSelectionChange={setSelection}
+          locale={copyLocale}
+        />
+      </div>
     </div>
   );
 }

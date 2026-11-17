@@ -229,6 +229,10 @@ export function attachWorkbenchPanel(
         await send(executionMessages(view));
         return;
       }
+      if (message.type === "openCode") {
+        await vscode.commands.executeCommand("agorixStudio.openProjection");
+        return;
+      }
       if (message.type === "stageEvent") {
         const view = port.runStageEvent?.(
           message.event === "keyPressed"
