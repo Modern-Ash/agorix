@@ -74,6 +74,7 @@ describe("agentHost", () => {
     for (const message of [
       { type: "createActor", name: "Helper" },
       { type: "createScript", actorId: "actor:main", trigger: "greenFlag", baseHash: "h0" },
+      { type: "deleteScript", actorId: "actor:main", scriptId: "main", baseHash: "h0" },
       {
         type: "importAsset",
         kind: "costume",

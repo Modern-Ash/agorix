@@ -986,6 +986,28 @@ describe("canvas keyboard and screen reader behaviour", () => {
 });
 
 describe("workbench live region and focus after inserting from the palette", () => {
+  it("requires two deliberate clicks before deleting a script", () => {
+    const onDeleteScript = vi.fn();
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        { id: "main", trigger: { type: "onStart" }, statements: [] },
+        { id: "helper", trigger: { type: "greenFlag" }, statements: [] },
+      ],
+    }).workspace;
+    act(() =>
+      root.render(
+        <Canvas workspace={workspace} onIntent={() => undefined} onDeleteScript={onDeleteScript} />,
+      ),
+    );
+    const first = host.querySelector<HTMLButtonElement>(".script-delete")!;
+    act(() => first.click());
+    expect(onDeleteScript).not.toHaveBeenCalled();
+    expect(first.textContent).toBe(copyFor("en").sceneConfirmDeleteScript);
+    act(() => first.click());
+    expect(onDeleteScript).toHaveBeenCalledWith("main");
+  });
+
   it("routes palette edits to the selected actor's canonical script", () => {
     let listener: ((message: HostMessage) => void) | undefined;
     const posted: unknown[] = [];
@@ -1044,6 +1066,16 @@ describe("workbench live region and focus after inserting from the palette", () 
       }),
     );
     expect(host.querySelectorAll(".script-title")).toHaveLength(1);
+    const deleteButton = host.querySelector<HTMLButtonElement>(".script-delete")!;
+    act(() => deleteButton.click());
+    expect(posted.at(-1)).not.toMatchObject({ type: "deleteScript" });
+    act(() => deleteButton.click());
+    expect(posted.at(-1)).toMatchObject({
+      type: "deleteScript",
+      actorId: "actor:helper",
+      scriptId: "helper",
+      baseHash: "fnv1a32:12345678",
+    });
     const move = Array.from(host.querySelectorAll<HTMLButtonElement>(".palette button")).find(
       (button) => button.textContent?.includes("Move"),
     )!;

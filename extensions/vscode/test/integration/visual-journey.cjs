@@ -98,6 +98,26 @@ async function main() {
       .locator(".studio-scene-editor .scene-actors button")
       .filter({ hasText: "Helper" })
       .click();
+    await webview.locator(".scene-create-script button[type='submit']").click();
+    const { value: withNewScript } = await waitForProject(
+      (envelope) => envelope.project?.program?.scripts?.length === 3,
+    );
+    const addedScriptId = withNewScript.project.program.scripts.at(-1).id;
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    const newScriptHeading = webview.locator(".script-heading").last();
+    const deleteScript = newScriptHeading.getByRole("button", { name: "Delete script" });
+    await deleteScript.click();
+    assert.equal(JSON.parse(fs.readFileSync(project, "utf8")).project.program.scripts.length, 3);
+    await newScriptHeading.getByRole("button", { name: "Confirm delete" }).click();
+    await waitForProject(
+      (envelope) =>
+        envelope.project?.program?.scripts?.length === 2 &&
+        !envelope.project.metadata.actors.items
+          .find((actor) => actor.id === "actor:helper")
+          ?.scripts?.includes(addedScriptId),
+    );
+    console.log("Created and explicitly removed an actor-owned script");
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
     await webview
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Costumes" })
@@ -188,11 +208,15 @@ async function main() {
       .locator(".palette button[draggable='true']")
       .filter({ hasText: "Move" })
       .first();
-    const slot = webview.locator(".studio-program .slot").last();
     const before = await webview.locator(".studio-program .block").count();
-    await move.dragTo(slot);
-    await page.waitForTimeout(500);
-    const after = await webview.locator(".studio-program .block").count();
+    let after = before;
+    for (const position of ["last", "first", "last"]) {
+      const slot = webview.locator(".studio-program .slot")[position]();
+      await move.dragTo(slot);
+      await page.waitForTimeout(350);
+      after = await webview.locator(".studio-program .block").count();
+      if (after > before) break;
+    }
     if (after <= before) throw new Error(`Block drag did not insert: ${before} → ${after}`);
     console.log("Dragged a block into the canonical program");
     await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();

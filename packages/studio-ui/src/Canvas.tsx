@@ -134,6 +134,7 @@ export function Canvas({
   visibleScriptIds,
   selectedScriptId,
   onSelectScript,
+  onDeleteScript,
   assets = [],
   actors = [],
 }: {
@@ -151,6 +152,7 @@ export function Canvas({
   readonly visibleScriptIds?: readonly string[] | undefined;
   readonly selectedScriptId?: string | undefined;
   readonly onSelectScript?: ((id: string) => void) | undefined;
+  readonly onDeleteScript?: ((id: string) => void) | undefined;
   readonly assets?: readonly AssetView[];
   readonly actors?: readonly ActorView[];
 }) {
@@ -159,6 +161,7 @@ export function Canvas({
   const pendingFocus = useRef<string | undefined>(undefined);
   const lastNonce = useRef<number | undefined>(undefined);
   const [activeKey, setActiveKey] = useState<string | undefined>();
+  const [deleteCandidate, setDeleteCandidate] = useState<string | undefined>();
   const rows = toRows(workspace).filter((row) => {
     if (visibleScriptIds === undefined) return true;
     const scriptIndex =
@@ -252,18 +255,45 @@ export function Canvas({
                   ? (getBlockDefinition(trigger.type)?.label ?? trigger.type)
                   : copy.canvasWhenRun;
           return (
-            <button
-              key={key}
-              type="button"
-              className="script-title"
-              aria-pressed={scriptId === selectedScriptId}
-              aria-label={`${copy.sceneSelectedScript}: ${copy.canvasScript} ${row.scriptIndex + 1}, ${eventLabel}`}
-              onClick={() => {
-                if (scriptId !== undefined) onSelectScript?.(scriptId);
-              }}
-            >
-              {copy.canvasScript} {row.scriptIndex + 1}: {eventLabel}
-            </button>
+            <div key={key} className="script-heading">
+              <button
+                type="button"
+                className="script-title"
+                aria-pressed={scriptId === selectedScriptId}
+                aria-label={`${copy.sceneSelectedScript}: ${copy.canvasScript} ${row.scriptIndex + 1}, ${eventLabel}`}
+                onClick={() => {
+                  if (scriptId !== undefined) onSelectScript?.(scriptId);
+                  setDeleteCandidate(undefined);
+                }}
+              >
+                {copy.canvasScript} {row.scriptIndex + 1}: {eventLabel}
+              </button>
+              {scriptId === undefined ||
+              onDeleteScript === undefined ||
+              workspace.scripts.length <= 1 ? null : (
+                <button
+                  type="button"
+                  className="script-delete"
+                  aria-label={
+                    deleteCandidate === scriptId
+                      ? copy.sceneConfirmDeleteScript
+                      : copy.sceneDeleteScript
+                  }
+                  onClick={() => {
+                    if (deleteCandidate === scriptId) {
+                      onDeleteScript(scriptId);
+                      setDeleteCandidate(undefined);
+                    } else {
+                      setDeleteCandidate(scriptId);
+                    }
+                  }}
+                >
+                  {deleteCandidate === scriptId
+                    ? copy.sceneConfirmDeleteScript
+                    : copy.sceneDeleteScript}
+                </button>
+              )}
+            </div>
           );
         }
         if (row.kind === "slot") {
