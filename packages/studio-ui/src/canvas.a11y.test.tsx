@@ -1226,6 +1226,30 @@ describe("workbench live region and focus after inserting from the palette", () 
     expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(true);
     expect(host.querySelector<HTMLElement>(".studio-details")?.hidden).toBe(false);
     expect(host.querySelector<HTMLElement>(".studio-scene-editor")?.hidden).toBe(false);
+    const sceneTabs = host.querySelector<HTMLElement>(".studio-scene-editor .scene-section-tabs")!;
+    expect(sceneTabs.querySelectorAll("button")).toHaveLength(4);
+    expect(
+      host.querySelector<HTMLElement>(".studio-scene-editor .scene-create-actor")?.hidden,
+    ).not.toBe(true);
+    act(() => sceneTabs.querySelectorAll<HTMLButtonElement>("button")[1]!.click());
+    expect(
+      host.querySelector<HTMLElement>('.studio-scene-editor section[aria-label="Disfraces"]')
+        ?.hidden,
+    ).toBe(false);
+    expect(
+      host.querySelector<HTMLElement>('.studio-scene-editor section[aria-label="Personajes"]')
+        ?.hidden,
+    ).toBe(true);
+    act(() =>
+      host.querySelector<HTMLButtonElement>(".studio-scene-editor .scene-create-shortcut")!.click(),
+    );
+    expect(
+      host.querySelector<HTMLElement>(".studio-scene-editor .scene-create-image")?.hidden,
+    ).toBe(false);
+    expect(
+      host.querySelector<HTMLSelectElement>(".studio-scene-editor .scene-create-image select")
+        ?.value,
+    ).toBe("costume");
     expect(shell.dataset.toolsOpen).toBe("false");
     expect(
       host

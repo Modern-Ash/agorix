@@ -35,6 +35,9 @@ export function SceneLibrary({
 }) {
   const drawing = useRef<HTMLCanvasElement>(null);
   const [assetKind, setAssetKind] = useState<"costume" | "backdrop">("costume");
+  const [activeSection, setActiveSection] = useState<
+    "actors" | "costumes" | "backdrops" | "create"
+  >("actors");
   const [assetName, setAssetName] = useState("");
   const [assetError, setAssetError] = useState("");
   const [drawingActive, setDrawingActive] = useState(false);
@@ -51,6 +54,7 @@ export function SceneLibrary({
     }
     onImportAsset?.(assetKind, (name.trim() || copy.sceneNewImage).slice(0, 80), source);
     setAssetError("");
+    setActiveSection(assetKind === "costume" ? "costumes" : "backdrops");
   };
   const paint = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawingActive) return;
@@ -82,7 +86,29 @@ export function SceneLibrary({
   };
   return (
     <div className="scene-library" aria-label={copy.libraryScene}>
-      <section aria-label={copy.sceneActors}>
+      <nav className="scene-section-tabs" aria-label={copy.libraryScene}>
+        {(
+          [
+            ["actors", copy.sceneActors, actors.length],
+            ["costumes", copy.sceneCostumes, costumes.length],
+            ["backdrops", copy.sceneBackdrops, backdrops.length],
+            ...(onImportAsset === undefined
+              ? []
+              : [["create", copy.sceneCreateImage, undefined] as const]),
+          ] as const
+        ).map(([section, label, count]) => (
+          <button
+            key={section}
+            type="button"
+            aria-pressed={activeSection === section}
+            onClick={() => setActiveSection(section)}
+          >
+            <span>{label}</span>
+            {count === undefined ? null : <small>{count}</small>}
+          </button>
+        ))}
+      </nav>
+      <section aria-label={copy.sceneActors} hidden={activeSection !== "actors"}>
         <h3>{copy.sceneActors}</h3>
         {onCreateActor === undefined ? null : (
           <form
@@ -188,7 +214,7 @@ export function SceneLibrary({
           </form>
         )}
       </section>
-      <section aria-label={copy.sceneCostumes}>
+      <section aria-label={copy.sceneCostumes} hidden={activeSection !== "costumes"}>
         <h3>
           {copy.sceneCostumes}
           {selected === undefined ? "" : ` · ${selected.name}`}
@@ -210,8 +236,20 @@ export function SceneLibrary({
             </button>
           ))}
         </div>
+        {onImportAsset === undefined ? null : (
+          <button
+            type="button"
+            className="scene-create-shortcut"
+            onClick={() => {
+              setAssetKind("costume");
+              setActiveSection("create");
+            }}
+          >
+            + {copy.sceneCreateImage}
+          </button>
+        )}
       </section>
-      <section aria-label={copy.sceneBackdrops}>
+      <section aria-label={copy.sceneBackdrops} hidden={activeSection !== "backdrops"}>
         <h3>{copy.sceneBackdrops}</h3>
         <div className="scene-library-grid">
           {backdrops.map((asset) => (
@@ -227,9 +265,25 @@ export function SceneLibrary({
             </button>
           ))}
         </div>
+        {onImportAsset === undefined ? null : (
+          <button
+            type="button"
+            className="scene-create-shortcut"
+            onClick={() => {
+              setAssetKind("backdrop");
+              setActiveSection("create");
+            }}
+          >
+            + {copy.sceneCreateImage}
+          </button>
+        )}
       </section>
       {onImportAsset === undefined ? null : (
-        <section aria-label={copy.sceneCreateImage} className="scene-create-image">
+        <section
+          aria-label={copy.sceneCreateImage}
+          className="scene-create-image"
+          hidden={activeSection !== "create"}
+        >
           <h3>{copy.sceneCreateImage}</h3>
           <select
             aria-label={copy.sceneImageKind}

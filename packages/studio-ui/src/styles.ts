@@ -226,6 +226,13 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .library-tabs button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 78%); color: var(--vscode-foreground); font-weight: 700; }
 .library-tabs button:focus-visible, .scene-library button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .scene-library { display: grid; gap: 14px; }
+.scene-library > section[hidden] { display: none; }
+.scene-section-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.scene-section-tabs button { display: flex; justify-content: space-between; align-items: center; gap: 4px; min-width: 0; min-height: 34px; padding: 5px 8px; text-align: left; font-size: 0.8em; }
+.scene-section-tabs button[aria-pressed="true"] { color: var(--vscode-foreground); border-color: var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 84%); }
+.scene-section-tabs small { color: var(--vscode-descriptionForeground); font-size: 0.85em; }
+.scene-section-tabs button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.scene-create-shortcut { width: 100%; margin-top: 8px; border-style: dashed !important; }
 .scene-create-script { display: grid; gap: 5px; margin-top: 8px; }
 .scene-create-script label { display: grid; gap: 3px; }
 .scene-create-image { display: grid; gap: 7px; }
