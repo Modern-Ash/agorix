@@ -12,7 +12,10 @@ const output: string[] = [];
 const treeViews: string[] = [];
 const agentConfig: Record<string, unknown> = {};
 const selectionListeners: Array<(event: unknown) => void> = [];
-const treeProviders = new Map<string, { getChildren(): unknown[] }>();
+const treeProviders = new Map<
+  string,
+  { getChildren(): unknown[]; getParent?: (item: unknown) => unknown }
+>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
 const customEditors = new Map<
   string,
@@ -235,7 +238,12 @@ vi.mock("vscode", () => {
       createTreeView: (id: string, options: { treeDataProvider: { getChildren(): unknown[] } }) => {
         treeViews.push(id);
         treeProviders.set(id, options.treeDataProvider);
-        return { dispose() {}, reveal: async () => undefined };
+        return {
+          visible: false,
+          dispose() {},
+          reveal: async () => undefined,
+          onDidChangeVisibility: () => ({ dispose() {} }),
+        };
       },
       createTextEditorDecorationType: () => ({ dispose() {} }),
       onDidChangeTextEditorSelection: (listener: (event: unknown) => void) => {
@@ -739,6 +747,9 @@ describe("Studio extension wiring", () => {
     const inspectorRows = treeProviders.get("agorixStudio.inspector")?.getChildren() ?? [];
     expect(inspectorRows.length).toBeGreaterThan(0);
     expect(JSON.stringify(inspectorRows[0])).toContain("runtime fact");
+    const inspectorProvider = treeProviders.get("agorixStudio.inspector")!;
+    expect(inspectorProvider.getChildren()[0]).toBe(inspectorRows[0]);
+    expect(inspectorProvider.getParent?.(inspectorRows[0])).toBeUndefined();
 
     const selected = await handlers.get("agorixStudio.selectExecutionStep")!(1);
     expect(selected).toMatchObject({ selectedFrameIndex: 1 });
