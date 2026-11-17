@@ -231,9 +231,12 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "addVariable" ||
     intent.intent.type === "renameVariable" ||
     intent.intent.type === "deleteVariable" ||
+    intent.intent.type === "setVariableInitialValue" ||
+    intent.intent.type === "setVariableVisible" ||
     intent.intent.type === "addList" ||
     intent.intent.type === "renameList" ||
     intent.intent.type === "deleteList" ||
+    intent.intent.type === "setListVisible" ||
     intent.intent.type === "setListInitialItems" ||
     intent.intent.type === "setExpressionNumber" ||
     intent.intent.type === "setNumericInput"
@@ -494,9 +497,12 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "addVariable" ||
               intent.type === "renameVariable" ||
               intent.type === "deleteVariable" ||
+              intent.type === "setVariableInitialValue" ||
+              intent.type === "setVariableVisible" ||
               intent.type === "addList" ||
               intent.type === "renameList" ||
               intent.type === "deleteList" ||
+              intent.type === "setListVisible" ||
               intent.type === "setListInitialItems" ||
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||
               intent.type === "setExpressionNumber" ||

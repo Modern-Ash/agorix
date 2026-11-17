@@ -1220,6 +1220,48 @@ export function Workbench({
                         <summary>{variable.name}</summary>
                         <div className="variable-management-actions">
                           <label>
+                            <span>{copy.variableInitialValue}</span>
+                            <input
+                              type="number"
+                              min={NUMERIC_LITERAL_MIN}
+                              max={NUMERIC_LITERAL_MAX}
+                              key={`${variable.id}:${variable.initialValue}`}
+                              defaultValue={variable.initialValue}
+                              aria-label={`${variable.name}: ${copy.variableInitialValue}`}
+                              onBlur={(event) => {
+                                const raw = event.currentTarget.value.trim();
+                                const value = Number(raw);
+                                if (
+                                  raw !== "" &&
+                                  Number.isFinite(value) &&
+                                  value >= NUMERIC_LITERAL_MIN &&
+                                  value <= NUMERIC_LITERAL_MAX &&
+                                  value !== variable.initialValue
+                                )
+                                  post({
+                                    type: "setVariableInitialValue",
+                                    variableId: variable.id,
+                                    value,
+                                  });
+                                event.currentTarget.value = String(variable.initialValue);
+                              }}
+                            />
+                          </label>
+                          <label className="watcher-toggle">
+                            <input
+                              type="checkbox"
+                              checked={variable.visible}
+                              onChange={(event) =>
+                                post({
+                                  type: "setVariableVisible",
+                                  variableId: variable.id,
+                                  visible: event.currentTarget.checked,
+                                })
+                              }
+                            />
+                            <span>{copy.watcherVisible}</span>
+                          </label>
+                          <label>
                             <span>{copy.variableName}</span>
                             <input
                               id={`rename-variable-${variable.id}`}
@@ -1287,6 +1329,20 @@ export function Workbench({
                           {list.name} · {list.initialItems.length} {copy.listItemsInitial}
                         </summary>
                         <div className="list-management-actions">
+                          <label className="watcher-toggle">
+                            <input
+                              type="checkbox"
+                              checked={list.visible}
+                              onChange={(event) =>
+                                post({
+                                  type: "setListVisible",
+                                  listId: list.id,
+                                  visible: event.currentTarget.checked,
+                                })
+                              }
+                            />
+                            <span>{copy.watcherVisible}</span>
+                          </label>
                           <label>
                             <span>{copy.listName}</span>
                             <input

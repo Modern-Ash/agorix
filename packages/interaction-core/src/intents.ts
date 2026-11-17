@@ -173,9 +173,16 @@ export type Intent =
   | { readonly type: "addVariable"; readonly name: string }
   | { readonly type: "renameVariable"; readonly variableId: string; readonly name: string }
   | { readonly type: "deleteVariable"; readonly variableId: string }
+  | {
+      readonly type: "setVariableInitialValue";
+      readonly variableId: string;
+      readonly value: number;
+    }
+  | { readonly type: "setVariableVisible"; readonly variableId: string; readonly visible: boolean }
   | { readonly type: "addList"; readonly name: string }
   | { readonly type: "renameList"; readonly listId: string; readonly name: string }
   | { readonly type: "deleteList"; readonly listId: string }
+  | { readonly type: "setListVisible"; readonly listId: string; readonly visible: boolean }
   | {
       readonly type: "setListInitialItems";
       readonly listId: string;
@@ -342,6 +349,36 @@ export function intentToChange(
         return undefined;
       return { type: "deleteVariable", variableId: intent.variableId };
     }
+    case "setVariableInitialValue": {
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.variableId) ||
+        !workspace.variables?.some((variable) => variable.id === intent.variableId) ||
+        !Number.isFinite(intent.value) ||
+        intent.value < NUMERIC_LITERAL_MIN ||
+        intent.value > NUMERIC_LITERAL_MAX
+      )
+        return undefined;
+      return {
+        type: "editVariableInitialValue",
+        variableId: intent.variableId,
+        value: intent.value,
+      };
+    }
+    case "setVariableVisible": {
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.variableId) ||
+        !workspace.variables?.some((variable) => variable.id === intent.variableId) ||
+        typeof intent.visible !== "boolean"
+      )
+        return undefined;
+      return {
+        type: "editVariableVisibility",
+        variableId: intent.variableId,
+        visible: intent.visible,
+      };
+    }
     case "addList": {
       const name = intent.name.trim();
       if (workspace === undefined || name.length < 1 || name.length > 40) return undefined;
@@ -372,6 +409,16 @@ export function intentToChange(
       )
         return undefined;
       return { type: "deleteList", listId: intent.listId };
+    }
+    case "setListVisible": {
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.listId) ||
+        !workspace.lists?.some((list) => list.id === intent.listId) ||
+        typeof intent.visible !== "boolean"
+      )
+        return undefined;
+      return { type: "editListVisibility", listId: intent.listId, visible: intent.visible };
     }
     case "setListInitialItems": {
       if (

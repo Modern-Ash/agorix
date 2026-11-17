@@ -43,9 +43,20 @@ export type WorkspaceChange =
   | { readonly type: "addVariable"; readonly variable: ProgramVariable }
   | { readonly type: "renameVariable"; readonly variableId: string; readonly name: string }
   | { readonly type: "deleteVariable"; readonly variableId: string }
+  | {
+      readonly type: "editVariableInitialValue";
+      readonly variableId: string;
+      readonly value: number;
+    }
+  | {
+      readonly type: "editVariableVisibility";
+      readonly variableId: string;
+      readonly visible: boolean;
+    }
   | { readonly type: "addList"; readonly list: ProgramList }
   | { readonly type: "renameList"; readonly listId: string; readonly name: string }
   | { readonly type: "deleteList"; readonly listId: string }
+  | { readonly type: "editListVisibility"; readonly listId: string; readonly visible: boolean }
   | {
       readonly type: "editListInitialItems";
       readonly listId: string;
@@ -373,6 +384,24 @@ export function applyWorkspaceChange(
         next.variables!.filter((variable) => variable.id !== change.variableId);
       break;
     }
+    case "editVariableInitialValue":
+    case "editVariableVisibility": {
+      const variables = [...(next.variables ?? [])];
+      const index = variables.findIndex((variable) => variable.id === change.variableId);
+      if (index < 0)
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "variables",
+          "expected a declared variable",
+          change.variableId,
+        );
+      variables[index] =
+        change.type === "editVariableInitialValue"
+          ? { ...variables[index]!, initialValue: change.value }
+          : { ...variables[index]!, visible: change.visible };
+      (next as unknown as { variables?: readonly ProgramVariable[] }).variables = variables;
+      break;
+    }
     case "addList": {
       if (
         next.lists?.some((list) => list.id === change.list.id) ||
@@ -460,6 +489,20 @@ export function applyWorkspaceChange(
       (next as unknown as { lists?: readonly ProgramList[] }).lists = next.lists!.filter(
         (list) => list.id !== change.listId,
       );
+      break;
+    }
+    case "editListVisibility": {
+      const lists = [...(next.lists ?? [])];
+      const index = lists.findIndex((list) => list.id === change.listId);
+      if (index < 0)
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "lists",
+          "expected a declared list",
+          change.listId,
+        );
+      lists[index] = { ...lists[index]!, visible: change.visible };
+      (next as unknown as { lists?: readonly ProgramList[] }).lists = lists;
       break;
     }
   }

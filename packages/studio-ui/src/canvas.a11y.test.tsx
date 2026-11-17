@@ -714,6 +714,40 @@ describe("canvas keyboard and screen reader behaviour", () => {
     act(() => viewport.dispatchEvent(drop));
     expect(placed).toHaveLength(1);
   });
+  it("shows only canonical visible variable and list watchers", () => {
+    act(() =>
+      root.render(
+        <StagePanel
+          copy={copyFor("en")}
+          selectedActorId={undefined}
+          frame={{
+            state: {
+              sprite: { x: 0, y: 0, heading: 0, radius: 10 },
+              goal: { x: 10, y: 10, radius: 10 },
+              viewport: { width: 240, height: 180 },
+              variables: [
+                { id: "score", label: "Score", value: 7, visible: true },
+                { id: "hidden", label: "Hidden", value: 1, visible: false },
+              ],
+              lists: [
+                { id: "items", label: "Items", items: [1, 2], visible: true },
+                { id: "secret", label: "Secret", items: [3], visible: false },
+              ],
+            },
+            frameIndex: 0,
+            frameCount: 1,
+            step: 0,
+            running: false,
+            reachedGoal: false,
+          }}
+        />,
+      ),
+    );
+    expect(host.querySelector('[data-variable-id="score"]')).not.toBeNull();
+    expect(host.querySelector('[data-variable-id="hidden"]')).toBeNull();
+    expect(host.querySelector('[data-list-id="items"]')).not.toBeNull();
+    expect(host.querySelector('[data-list-id="secret"]')).toBeNull();
+  });
   it("selects a costume and backdrop explicitly from the scene library", () => {
     const costumes: string[] = [];
     const backdrops: string[] = [];
@@ -1275,7 +1309,7 @@ describe("workbench live region and focus after inserting from the palette", () 
     act(() => {
       details.open = true;
     });
-    const input = details.querySelector<HTMLInputElement>(".variable-management-actions input")!;
+    const input = details.querySelector<HTMLInputElement>("#rename-variable-energy")!;
     act(() => {
       input.value = "Power";
     });
@@ -1294,6 +1328,62 @@ describe("workbench live region and focus after inserting from the palette", () 
     act(() => deleteButton.click());
     expect(posted.at(-1)).toMatchObject({
       intent: { type: "deleteVariable", variableId: "energy" },
+    });
+  });
+  it("edits variable defaults and toggles both stage watchers", () => {
+    let listener: ((message: HostMessage) => void) | undefined;
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: (next) => {
+        listener = next;
+        return () => undefined;
+      },
+    };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 1, visible: true }],
+      lists: [{ id: "items", name: "Items", initialItems: [], visible: true }],
+      scripts: [],
+    }).workspace;
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace,
+        programHash: "fnv1a32:12345678",
+      }),
+    );
+    const initial = host.querySelector<HTMLInputElement>(
+      '.variable-management input[aria-label="Score: Initial value"]',
+    )!;
+    act(() => {
+      initial.value = "7";
+      initial.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(posted.at(-1)).toMatchObject({
+      intent: { type: "setVariableInitialValue", variableId: "score", value: 7 },
+    });
+    const count = posted.length;
+    act(() => {
+      initial.value = "Infinity";
+      initial.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(posted).toHaveLength(count);
+    const variableToggle = host.querySelector<HTMLInputElement>(
+      ".variable-management .watcher-toggle input",
+    )!;
+    act(() => variableToggle.click());
+    expect(posted.at(-1)).toMatchObject({
+      intent: { type: "setVariableVisible", variableId: "score", visible: false },
+    });
+    const listToggle = host.querySelector<HTMLInputElement>(
+      ".list-initial-items .watcher-toggle input",
+    )!;
+    act(() => listToggle.click());
+    expect(posted.at(-1)).toMatchObject({
+      intent: { type: "setListVisible", listId: "items", visible: false },
     });
   });
   it("navigates editor views and folds tools and Ori without losing their state", () => {
@@ -1565,7 +1655,7 @@ describe("workbench live region and focus after inserting from the palette", () 
     act(() => {
       details.open = true;
     });
-    const input = details.querySelector<HTMLInputElement>(".list-management-actions input")!;
+    const input = details.querySelector<HTMLInputElement>("#rename-items")!;
     act(() => {
       input.value = "Inventory";
     });
