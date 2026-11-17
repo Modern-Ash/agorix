@@ -102,6 +102,13 @@ describe("studio-protocol", () => {
       parseHostMessage({
         schema,
         type: "assets",
+        assets: [{ ...asset, id: "asset:costume.spark", source: "builtin:costume.spark" }],
+      }),
+    ).toBeDefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "assets",
         assets: [{ ...asset, source: "https://example.com/x.png" }],
       }),
     ).toBeUndefined();

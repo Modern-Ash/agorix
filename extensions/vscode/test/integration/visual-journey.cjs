@@ -248,15 +248,88 @@ async function main() {
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Costumes" })
       .click();
+    const costumeGallery = webview
+      .locator(".studio-scene-editor section:not([hidden])")
+      .filter({ has: webview.locator(".scene-library-grid") });
+    const galleryCount = await costumeGallery.locator(".scene-asset-card").count();
+    if (galleryCount < 12) {
+      const sectionState = await webview
+        .locator(".studio-scene-editor section")
+        .evaluateAll((sections) =>
+          sections
+            .map((section) => ({
+              label: section.getAttribute("aria-label"),
+              hidden: section.hidden,
+              cards: section.querySelectorAll(".scene-asset-card").length,
+            }))
+            .filter((section) => section.cards > 0),
+        );
+      throw new Error(
+        `Studio must expose the bundled visual character gallery (found ${galleryCount}; sections ${JSON.stringify(sectionState)})`,
+      );
+    }
+    await costumeGallery.getByLabel("Asset category").selectOption("animals");
+    assert.equal(await costumeGallery.locator(".scene-asset-card").count(), 3);
+    await costumeGallery.getByLabel("Asset category").selectOption("all");
+    await costumeGallery.getByLabel("Search costumes and backdrops").fill("Mika");
+    const mikaCard = costumeGallery.locator(".scene-asset-card").filter({ hasText: "Mika" });
+    assert.equal(await costumeGallery.locator(".scene-asset-card").count(), 1);
+    await mikaCard.getByRole("button", { name: "+ Character: Mika" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.metadata?.actors?.items?.some(
+        (actor) =>
+          actor.name === "Mika" &&
+          actor.costumeId === "costume:mika" &&
+          actor.scripts?.length === 1,
+      ),
+    );
+    await webview.locator('.stage-sprite[data-costume-id="costume:mika"]').waitFor();
+    if (process.env.AGORIX_CAPTURE_GALLERY === "1") {
+      for (const [width, height] of [
+        [900, 700],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: path.join(repoRoot, `docs/product/assets/studio-vsix-gallery-${width}.png`),
+        });
+      }
+      await page.setViewportSize({ width: 900, height: 700 });
+    }
+    await costumeGallery.getByLabel("Search costumes and backdrops").fill("");
+    await webview
+      .locator(".studio-scene-editor .scene-section-tabs button")
+      .filter({ hasText: "Actors" })
+      .click();
+    await webview
+      .locator(".studio-scene-editor .scene-actors button")
+      .filter({ hasText: "Helper" })
+      .click();
+    await webview
+      .locator(".studio-scene-editor .scene-section-tabs button")
+      .filter({ hasText: "Costumes" })
+      .click();
+    console.log("Filtered bundled gallery and created a visible actor with its chosen costume");
     await webview.locator(".studio-scene-editor .scene-create-shortcut:visible").click();
     await webview.getByLabel("Image name").fill("My painted star");
     const drawing = webview.locator(".studio-scene-editor canvas[aria-label='Draw image']");
+    await drawing.scrollIntoViewIfNeeded();
     const bounds = await drawing.boundingBox();
     if (!bounds) throw new Error("Drawing canvas not visible");
     await page.mouse.move(bounds.x + 20, bounds.y + 20);
     await page.mouse.down();
     await page.mouse.move(bounds.x + 80, bounds.y + 60, { steps: 5 });
     await page.mouse.up();
+    assert.equal(
+      await drawing.evaluate((canvas) =>
+        canvas
+          .getContext("2d")
+          .getImageData(0, 0, canvas.width, canvas.height)
+          .data.some((value, index) => index % 4 === 3 && value > 0),
+      ),
+      true,
+      "The pointer stroke must reach the drawing canvas",
+    );
     await webview.getByRole("button", { name: "Save drawing" }).click();
     await page.getByText("I am an adult and approve").click();
     await page.keyboard.press("Escape");
@@ -421,7 +494,8 @@ async function main() {
     assert.deepEqual(reopened.metadata.assets, expectedAssets);
     const painted = expectedAssets.find((asset) => asset.name === "My painted star");
     if (!painted) throw new Error("Painted costume missing after Web import");
-    assert.equal(await webPage.getByTestId("stage-sprite").count(), 2);
+    assert.equal(await webPage.getByTestId("stage-sprite").count(), 3);
+    await webPage.locator('[data-testid="stage-sprite"][data-costume-id="costume:mika"]').waitFor();
     await webPage
       .locator(`[data-testid="stage-sprite"][data-costume-id="${painted.id}"]`)
       .first()

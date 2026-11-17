@@ -57,6 +57,12 @@ The packaged VSIX was also opened in an isolated VS Code profile with a portable
 | ------------------------------------------------------------ | -------------------------------------------------------------- |
 | ![Installed VSIX at 900](./assets/studio-vsix-build-900.png) | ![Installed VSIX at 1440](./assets/studio-vsix-build-1440.png) |
 
+The bundled gallery is also exercised in the installed VSIX: filter the character cards, create Mika from her costume, confirm her image on stage, and reopen the saved project in Web.
+
+| 900 × 700                                                     | 1440 × 900                                                      |
+| ------------------------------------------------------------- | --------------------------------------------------------------- |
+| ![Gallery actor at 900](./assets/studio-vsix-gallery-900.png) | ![Gallery actor at 1440](./assets/studio-vsix-gallery-1440.png) |
+
 The same installed-VSIX journey captures editing a saved costume at both target sizes:
 
 | 900 × 700                                                         | 1440 × 900                                                          |

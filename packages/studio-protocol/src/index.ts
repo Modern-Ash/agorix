@@ -974,7 +974,14 @@ function parseAsset(value: unknown): AssetView | undefined {
     source !== undefined &&
     !(
       (typeof source === "string" &&
-        /^builtin:kids-gallery-(costume|backdrop):[a-z]+$/.test(source)) ||
+        (/^builtin:kids-gallery-(costume|backdrop):[a-z]+$/.test(source) ||
+          [
+            "builtin:costume.default",
+            "builtin:costume.spark",
+            "builtin:space.trailhead",
+            "builtin:space.nebula",
+            "builtin:sound.beacon",
+          ].includes(source))) ||
       validEmbeddedImageSource(source)
     )
   )
