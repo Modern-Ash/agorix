@@ -60,6 +60,81 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("commits a two-level arithmetic edit and refuses a stale nested value", async () => {
+    const { host, get } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "addVariable", name: "score" },
+      baseHash: programSemanticHash(get()!),
+    });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "variables_set",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    const location = { container: script, index: 0 };
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "setNumericInput", location, input: "value", reporter: "add" },
+      baseHash: programSemanticHash(get()!),
+    });
+    const beforeNested = get()!;
+    const source = {
+      type: "setArithmeticOperandSource",
+      location,
+      input: "value",
+      side: "left",
+      reporter: "multiply",
+    } as const;
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: source,
+          baseHash: programSemanticHash(beforeNested),
+        })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    const edit = {
+      type: "setArithmeticOperand",
+      location,
+      input: "value",
+      path: ["left"],
+      side: "right",
+      value: 6,
+    } as const;
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: edit,
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      value: { type: "add", left: { type: "multiply", right: { value: 6 } } },
+    });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: edit,
+          baseHash: programSemanticHash(beforeNested),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+  });
   it("edits a visual layer block through canonical state and refuses invalid layers", async () => {
     const { host, get, labels } = setup();
     const inserted = await host.handle({
@@ -970,6 +1045,65 @@ describe("workbenchHost", () => {
       type: "setVariable",
       value: { type: "multiply", right: { type: "numericLiteral", value: 4 } },
     });
+    const variableId = get()!.variables![0]!.id;
+    const beforeSource = get()!;
+    const source = {
+      type: "setArithmeticOperandSource",
+      location,
+      input: "value",
+      side: "left",
+      reporter: "variable",
+      referenceId: variableId,
+    } as const;
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: source,
+          baseHash: programSemanticHash(beforeSource),
+        })
+      )[0],
+    ).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      value: { type: "multiply", left: { type: "variable", variableId }, right: { value: 4 } },
+    });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...source, referenceId: "unknown" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: { ...source, reporter: "distanceToActor", referenceId: "actor:missing" },
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "intent",
+          intent: {
+            type: "setArithmeticOperandSource",
+            location,
+            input: "value",
+            side: "left",
+            reporter: "number",
+          },
+          baseHash: programSemanticHash(beforeSource),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
     expect(
       (
         await host.handle({

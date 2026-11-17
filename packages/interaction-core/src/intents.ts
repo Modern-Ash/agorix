@@ -222,6 +222,25 @@ export type Intent =
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max";
       readonly value: number;
+      readonly path?: readonly ("left" | "right" | "min" | "max")[];
+    }
+  | {
+      readonly type: "setArithmeticOperandSource";
+      readonly location: StatementLocation;
+      readonly input: "value" | "delta" | "index";
+      readonly side: "left" | "right" | "min" | "max";
+      readonly reporter:
+        | "number"
+        | "variable"
+        | "listLength"
+        | "xPosition"
+        | "yPosition"
+        | "distanceToActor"
+        | "add"
+        | "subtract"
+        | "multiply"
+        | "divide";
+      readonly referenceId?: string;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
@@ -580,7 +599,34 @@ export function intentToChange(
         lists_replace_at: ["index", "value"],
       };
       if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
-      const expression = block.inputs?.[intent.input];
+      const rootExpression = block.inputs?.[intent.input];
+      if (
+        intent.path !== undefined &&
+        (intent.path.length !== 1 || rootExpression === undefined || Array.isArray(rootExpression))
+      )
+        return undefined;
+      const parentSide = intent.path?.[0];
+      if (
+        parentSide !== undefined &&
+        rootExpression !== undefined &&
+        !Array.isArray(rootExpression)
+      ) {
+        const rootRange =
+          rootExpression.type === "operator_random" ||
+          rootExpression.type === "operator_random_integer";
+        if (
+          rootRange
+            ? parentSide !== "min" && parentSide !== "max"
+            : parentSide !== "left" && parentSide !== "right"
+        )
+          return undefined;
+      }
+      const expression =
+        parentSide === undefined
+          ? rootExpression
+          : rootExpression !== undefined && !Array.isArray(rootExpression)
+            ? rootExpression.inputs?.[parentSide]
+            : undefined;
       if (
         expression === undefined ||
         Array.isArray(expression) ||
@@ -606,6 +652,120 @@ export function intentToChange(
       const operand = expression.inputs?.[intent.side];
       if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
         return undefined;
+      const nextExpression = {
+        ...expression,
+        inputs: {
+          ...expression.inputs,
+          [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
+        },
+      };
+      const nextRoot =
+        parentSide === undefined
+          ? nextExpression
+          : {
+              ...rootExpression,
+              inputs: { ...rootExpression?.inputs, [parentSide]: nextExpression },
+            };
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            [intent.input]: nextRoot,
+          },
+        },
+      };
+    }
+    case "setArithmeticOperandSource": {
+      if (workspace === undefined) return undefined;
+      const { container, index } = intent.location;
+      const block = statementsAt(workspace, container)?.[index];
+      const supported: Readonly<Record<string, readonly string[]>> = {
+        variables_set: ["value"],
+        variables_change: ["delta"],
+        lists_add: ["value"],
+        lists_remove_at: ["index"],
+        lists_insert_at: ["index", "value"],
+        lists_replace_at: ["index", "value"],
+      };
+      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
+      const expression = block.inputs?.[intent.input];
+      if (
+        expression === undefined ||
+        Array.isArray(expression) ||
+        ![
+          "operator_add",
+          "operator_subtract",
+          "operator_multiply",
+          "operator_divide",
+          "operator_modulo",
+          "operator_random",
+          "operator_random_integer",
+        ].includes(expression.type)
+      )
+        return undefined;
+      const range =
+        expression.type === "operator_random" || expression.type === "operator_random_integer";
+      if (
+        range
+          ? intent.side !== "min" && intent.side !== "max"
+          : intent.side !== "left" && intent.side !== "right"
+      )
+        return undefined;
+      const current = expression.inputs?.[intent.side];
+      if (current === undefined || Array.isArray(current)) return undefined;
+      let replacement: BlockNode;
+      switch (intent.reporter) {
+        case "number":
+          replacement = { id: current.id, type: "literal_number", fields: { value: 0 } };
+          break;
+        case "variable":
+          if (!workspace.variables?.some((item) => item.id === intent.referenceId))
+            return undefined;
+          replacement = {
+            id: current.id,
+            type: "variables_value",
+            fields: { variableId: intent.referenceId },
+          };
+          break;
+        case "listLength":
+          if (!workspace.lists?.some((item) => item.id === intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "lists_length",
+            fields: { listId: intent.referenceId },
+          };
+          break;
+        case "xPosition":
+          replacement = { id: current.id, type: "sensing_x_position" };
+          break;
+        case "yPosition":
+          replacement = { id: current.id, type: "sensing_y_position" };
+          break;
+        case "distanceToActor":
+          if (!isSafeId(intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "sensing_distance_to_actor",
+            fields: { actorId: intent.referenceId },
+          };
+          break;
+        case "add":
+        case "subtract":
+        case "multiply":
+        case "divide":
+          replacement = {
+            id: current.id,
+            type: `operator_${intent.reporter}`,
+            inputs: {
+              left: { id: `${current.id}:left`, type: "literal_number", fields: { value: 0 } },
+              right: { id: `${current.id}:right`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
+          break;
+      }
       return {
         type: "editBlock",
         location: intent.location,
@@ -615,10 +775,7 @@ export function intentToChange(
             ...block.inputs,
             [intent.input]: {
               ...expression,
-              inputs: {
-                ...expression.inputs,
-                [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
-              },
+              inputs: { ...expression.inputs, [intent.side]: replacement },
             },
           },
         },

@@ -621,6 +621,58 @@ describe("studio-protocol", () => {
         intent: { type: "setArithmeticOperand", location, input: "value", side: "left", value: 4 },
       }),
     ).toMatchObject({ intent: { type: "setArithmeticOperand", value: 4 } });
+    const nested = {
+      type: "setArithmeticOperandSource",
+      location,
+      input: "value",
+      side: "left",
+      reporter: "variable",
+      referenceId: "score",
+    };
+    expect(parseUiMessage({ schema, type: "intent", intent: nested })).toMatchObject({
+      intent: nested,
+    });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { ...nested, reporter: "multiply", referenceId: undefined },
+      }),
+    ).toMatchObject({ intent: { reporter: "multiply" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "right",
+          value: 6,
+        },
+      }),
+    ).toMatchObject({ intent: { path: ["left"], value: 6 } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left", "right"],
+          side: "left",
+          value: 6,
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...nested, referenceId: "../bad" } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...nested, side: "middle" } }),
+    ).toBeUndefined();
     expect(
       parseUiMessage({
         schema,

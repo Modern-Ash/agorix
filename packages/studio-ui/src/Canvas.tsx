@@ -761,23 +761,201 @@ export function Canvas({
                               : side === "min"
                                 ? copy.rangeMin
                                 : copy.rangeMax;
+                        const source =
+                          part?.type === "literal_number"
+                            ? "number"
+                            : part?.type === "variables_value"
+                              ? "variable"
+                              : part?.type === "lists_length"
+                                ? "listLength"
+                                : part?.type === "sensing_x_position"
+                                  ? "xPosition"
+                                  : part?.type === "sensing_y_position"
+                                    ? "yPosition"
+                                    : part?.type === "sensing_distance_to_actor"
+                                      ? "distanceToActor"
+                                      : part?.type === "operator_add"
+                                        ? "add"
+                                        : part?.type === "operator_subtract"
+                                          ? "subtract"
+                                          : part?.type === "operator_multiply"
+                                            ? "multiply"
+                                            : part?.type === "operator_divide"
+                                              ? "divide"
+                                              : "other";
+                        const selectSource = (
+                          next:
+                            | "number"
+                            | "variable"
+                            | "listLength"
+                            | "xPosition"
+                            | "yPosition"
+                            | "distanceToActor"
+                            | "add"
+                            | "subtract"
+                            | "multiply"
+                            | "divide",
+                          referenceId?: string,
+                        ) =>
+                          onIntent({
+                            type: "setArithmeticOperandSource",
+                            location: block.location,
+                            input,
+                            side,
+                            reporter: next,
+                            ...(referenceId === undefined ? {} : { referenceId }),
+                          });
+                        const sourcePicker = (
+                          <select
+                            aria-label={`${label}: ${operandLabel} ${sideLabel} ${copy.numericSource}`}
+                            value={source}
+                            onChange={(event) => {
+                              const next = event.currentTarget.value as
+                                | "number"
+                                | "variable"
+                                | "listLength"
+                                | "xPosition"
+                                | "yPosition"
+                                | "distanceToActor"
+                                | "add"
+                                | "subtract"
+                                | "multiply"
+                                | "divide";
+                              selectSource(
+                                next,
+                                next === "variable"
+                                  ? workspace.variables?.[0]?.id
+                                  : next === "listLength"
+                                    ? workspace.lists?.[0]?.id
+                                    : next === "distanceToActor"
+                                      ? actors[0]?.id
+                                      : undefined,
+                              );
+                            }}
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            <option value="number">{copy.numericLiteral}</option>
+                            <option value="add">{copy.operatorAdd}</option>
+                            <option value="subtract">{copy.operatorSubtract}</option>
+                            <option value="multiply">{copy.operatorMultiply}</option>
+                            <option value="divide">{copy.operatorDivide}</option>
+                            {(workspace.variables?.length ?? 0) > 0 ? (
+                              <option value="variable">{copy.variableValue}</option>
+                            ) : null}
+                            {(workspace.lists?.length ?? 0) > 0 ? (
+                              <option value="listLength">{copy.listLength}</option>
+                            ) : null}
+                            <option value="xPosition">{copy.positionX}</option>
+                            <option value="yPosition">{copy.positionY}</option>
+                            {actors.length > 0 ? (
+                              <option value="distanceToActor">{copy.distanceToActor}</option>
+                            ) : null}
+                            {source === "other" ? (
+                              <option value="other">{part?.type}</option>
+                            ) : null}
+                          </select>
+                        );
                         if (
                           part?.type !== "literal_number" ||
                           typeof part.fields?.value !== "number"
                         ) {
+                          const choices =
+                            source === "variable"
+                              ? workspace.variables
+                              : source === "listLength"
+                                ? workspace.lists
+                                : source === "distanceToActor"
+                                  ? actors
+                                  : undefined;
+                          const selected =
+                            source === "variable"
+                              ? part?.fields?.variableId
+                              : source === "listLength"
+                                ? part?.fields?.listId
+                                : part?.fields?.actorId;
                           return (
-                            <span key={side}>
-                              {sideLabel}:{" "}
-                              {part === undefined
-                                ? "?"
-                                : (getBlockDefinition(part.type)?.label ?? part.type)}
+                            <span key={side} className="block-field">
+                              <span>{sideLabel}</span>
+                              {sourcePicker}
+                              {choices === undefined ? null : (
+                                <select
+                                  aria-label={`${label}: ${operandLabel} ${sideLabel} ${copy.numericReference}`}
+                                  value={String(selected ?? "")}
+                                  onChange={(event) =>
+                                    selectSource(
+                                      source as "variable" | "listLength" | "distanceToActor",
+                                      event.currentTarget.value,
+                                    )
+                                  }
+                                  onKeyDown={(event) => event.stopPropagation()}
+                                >
+                                  {choices.map((choice) => (
+                                    <option key={choice.id} value={choice.id}>
+                                      {choice.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                              {(["add", "subtract", "multiply", "divide"] as const).includes(
+                                source as "add" | "subtract" | "multiply" | "divide",
+                              )
+                                ? (["left", "right"] as const).map((nestedSide) => {
+                                    const nested = part?.inputs?.[nestedSide];
+                                    if (
+                                      nested?.type !== "literal_number" ||
+                                      typeof nested.fields?.value !== "number"
+                                    )
+                                      return null;
+                                    const value = nested.fields.value;
+                                    return (
+                                      <label key={nestedSide} className="block-field">
+                                        <span>
+                                          {nestedSide === "left"
+                                            ? copy.conditionLeft
+                                            : copy.conditionRight}
+                                        </span>
+                                        <input
+                                          key={`${pos}:${input}:${side}:${nestedSide}:${value}`}
+                                          type="number"
+                                          aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide}`}
+                                          defaultValue={value}
+                                          draggable={false}
+                                          onDragStart={(event) => event.stopPropagation()}
+                                          onKeyDown={(event) => {
+                                            event.stopPropagation();
+                                            if (event.key === "Enter") event.currentTarget.blur();
+                                          }}
+                                          onBlur={(event) => {
+                                            const raw = event.currentTarget.value.trim();
+                                            const next = Number(raw);
+                                            if (
+                                              raw !== "" &&
+                                              Number.isFinite(next) &&
+                                              next !== value
+                                            )
+                                              onIntent({
+                                                type: "setArithmeticOperand",
+                                                location: block.location,
+                                                input,
+                                                path: [side],
+                                                side: nestedSide,
+                                                value: next,
+                                              });
+                                            event.currentTarget.value = String(value);
+                                          }}
+                                        />
+                                      </label>
+                                    );
+                                  })
+                                : null}
                             </span>
                           );
                         }
                         const value = part.fields.value;
                         return (
-                          <label key={side} className="block-field">
+                          <span key={side} className="block-field">
                             <span>{sideLabel}</span>
+                            {sourcePicker}
                             <input
                               key={`${pos}:${input}:${side}:${value}`}
                               type="number"
@@ -804,7 +982,7 @@ export function Canvas({
                                 event.currentTarget.value = String(value);
                               }}
                             />
-                          </label>
+                          </span>
                         );
                       })}
                     </span>

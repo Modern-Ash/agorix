@@ -46,9 +46,9 @@ List journey: create `inventory` in Blocks → insert Add to list or Insert at i
 
 Initial list journey: create `inventory` in Blocks → expand its declaration → add, edit or remove numeric initial items → Run/Step → inspect canonical code and runtime behavior. A list can hold up to 100 items, each between −1,000,000 and 1,000,000. Unknown list ids, malformed values and stale edits are refused before canonical mutation.
 
-Numeric reporter journey: declare `energy` and `inventory` → add a list or variable operation → choose Number, Variable, List length, List item, X position, Y position, Distance to actor or arithmetic (+, −, ×, ÷) in a numeric socket → select the declaration, item index or actor when needed → Run/Step. Unknown references, unsupported sockets, invalid indices and stale edits are refused before canonical mutation. Arithmetic expressions expose literal left/right operands; deeper nested reporters remain visible by name until recursive editing lands.
+Numeric reporter journey: declare `energy` and `inventory` → add a list or variable operation → choose Number, Variable, List length, List item, X position, Y position, Distance to actor or arithmetic (+, −, ×, ÷) in a numeric socket → select the declaration, item index or actor when needed → Run/Step. Unknown references, unsupported sockets, invalid indices and stale edits are refused before canonical mutation. Arithmetic and random operands accept a literal, declared variable, list length, position sensor or distance to a known actor; a second arithmetic level is editable; deeper operations remain visible until recursive editing lands.
 
-Random and remainder journey: add Set variable or Add to list → choose Remainder, Random number or Random integer as the numeric source → edit left/right or minimum/maximum literal values → Run/Step → inspect code and runtime evidence. Non-finite edits and unsupported operand paths are refused before canonical mutation; nested operands remain visible by name until recursive editing lands.
+Random and remainder journey: add Set variable or Add to list → choose Remainder, Random number or Random integer as the numeric source → edit left/right or minimum/maximum literal values → Run/Step → inspect code and runtime evidence. Non-finite edits and unsupported operand paths are refused before canonical mutation; a second arithmetic level can be composed and edited; deeper operations remain visible by name.
 
 Condition-detail journey: insert `if` → choose Boolean literal or Touching character → set False or select a project actor → Run/Step → inspect deterministic evidence. The host rejects unknown actor ids and stale edits before canonical mutation; replacing a contact condition uses a known actor from the scene.
 
@@ -65,6 +65,10 @@ Actor removal journey: select an actor in Scene → choose Delete selected actor
 Keyboard nesting journey: place a Move block after Repeat or If → focus Move → press Alt+Right to put it inside the preceding body/Then branch, or Alt+Shift+Right for Else → press Alt+Left to move it out. Focus follows the block after the canonical workspace update. At a list edge or without a preceding compatible control, Studio announces why no move happened and leaves the program unchanged.
 
 Layer journey: create two overlapping actors → add Go to front or back layer to an actor script → choose Front or Back on the block → Run/Step → inspect the deterministic stage order. Unknown layer values and stale edits are refused without changing the canonical program.
+
+Arithmetic operand journey: create `score` and `inventory` → set a variable to Add or Random integer → choose Variable, List length, X/Y position or Distance to actor for either operand → choose a declared reference when needed → Run/Step and inspect the result. Unknown declarations, actors, sides and stale edits are refused before accepted state changes.
+
+Two-level arithmetic journey: set `score` to Add → choose Multiply for the left operand → edit its two numeric values inside the block → Run/Step and inspect the canonical code and runtime result. Invalid paths, nonliteral values and stale edits are refused before accepted state changes.
 
 Costume drop journey: open Scene → drag a known costume thumbnail onto a visible stage actor → inspect its updated costume immediately and after Run/Step. Dropping an unknown costume or a backdrop on an actor is ignored; the host also rejects an unknown costume id before metadata persistence. Clicking a costume for the selected actor remains the keyboard-accessible path.
 

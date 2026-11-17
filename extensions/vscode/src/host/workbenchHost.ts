@@ -249,7 +249,9 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "setListVisible" ||
     intent.intent.type === "setListInitialItems" ||
     intent.intent.type === "setExpressionNumber" ||
-    intent.intent.type === "setNumericInput"
+    intent.intent.type === "setNumericInput" ||
+    intent.intent.type === "setArithmeticOperand" ||
+    intent.intent.type === "setArithmeticOperandSource"
   );
 }
 
@@ -491,7 +493,10 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
             ];
           }
         }
-        if (intent.type === "setNumericInput" && intent.reporter === "distanceToActor") {
+        if (
+          (intent.type === "setNumericInput" || intent.type === "setArithmeticOperandSource") &&
+          intent.reporter === "distanceToActor"
+        ) {
           const metadata = port.getMetadata();
           if (
             metadata === undefined ||
@@ -528,6 +533,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||
               intent.type === "setExpressionNumber" ||
               intent.type === "setNumericInput" ||
+              intent.type === "setArithmeticOperandSource" ||
               intent.type === "setArithmeticOperand"
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];

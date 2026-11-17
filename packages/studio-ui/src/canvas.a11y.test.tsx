@@ -582,11 +582,113 @@ describe("canvas keyboard and screen reader behaviour", () => {
       side: "left",
       value: 7,
     });
+    const nestedSource = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="Left value source"]',
+    )!;
+    expect(nestedSource).not.toBeNull();
+    expect(Array.from(nestedSource.options).map((option) => option.value)).toContain("multiply");
+    act(() => {
+      nestedSource.value = "listLength";
+      nestedSource.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      input: "value",
+      side: "left",
+      reporter: "listLength",
+      referenceId: "l",
+    });
     act(() => {
       source.value = "divide";
       source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
     });
     expect(intents.at(-1)).toMatchObject({ type: "setNumericInput", reporter: "divide" });
+  });
+  it("edits numbers in a second arithmetic level from the visual canvas", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: { type: "numericLiteral", value: 2 },
+                  right: { type: "numericLiteral", value: 3 },
+                },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const nested = host.querySelector<HTMLInputElement>(
+      '.numeric-socket input[aria-label*="Left value right"]',
+    )!;
+    expect(nested).not.toBeNull();
+    act(() => {
+      nested.value = "6";
+      nested.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperand",
+      input: "value",
+      path: ["left"],
+      side: "right",
+      value: 6,
+    });
+  });
+  it("changes a nested variable reporter through its visible reference picker", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [
+        { id: "a", name: "Score", initialValue: 0, visible: true },
+        { id: "b", name: "Energy", initialValue: 0, visible: true },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "a",
+              value: {
+                type: "add",
+                left: { type: "variable", variableId: "a" },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const reference = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="Left value declaration"]',
+    )!;
+    expect(reference).not.toBeNull();
+    act(() => {
+      reference.value = "b";
+      reference.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      side: "left",
+      reporter: "variable",
+      referenceId: "b",
+    });
   });
   it("edits random range bounds from the numeric socket", () => {
     const workspace = programToWorkspace({

@@ -1345,18 +1345,58 @@ function parseIntent(value: unknown): Intent | undefined {
     }
     case "setArithmeticOperand": {
       const location = parseLocation(value["location"]);
+      const path = value["path"];
       return location !== undefined &&
         (value["input"] === "value" || value["input"] === "delta" || value["input"] === "index") &&
         (["left", "right", "min", "max"] as unknown[]).includes(value["side"]) &&
-        isFiniteNumber(value["value"])
+        isFiniteNumber(value["value"]) &&
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length === 1 &&
+            ["left", "right", "min", "max"].includes(path[0])))
         ? {
             type: "setArithmeticOperand",
             location,
             input: value["input"],
             side: value["side"] as "left" | "right" | "min" | "max",
             value: value["value"],
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "min" | "max")[] }),
           }
         : undefined;
+    }
+    case "setArithmeticOperandSource": {
+      const location = parseLocation(value["location"]);
+      const input = value["input"];
+      const side = value["side"];
+      const reporter = value["reporter"];
+      const referenceId = value["referenceId"];
+      if (
+        location === undefined ||
+        (input !== "value" && input !== "delta" && input !== "index") ||
+        (side !== "left" && side !== "right" && side !== "min" && side !== "max") ||
+        (reporter !== "number" &&
+          reporter !== "variable" &&
+          reporter !== "listLength" &&
+          reporter !== "xPosition" &&
+          reporter !== "yPosition" &&
+          reporter !== "distanceToActor" &&
+          reporter !== "add" &&
+          reporter !== "subtract" &&
+          reporter !== "multiply" &&
+          reporter !== "divide")
+      )
+        return undefined;
+      if (reporter === "variable" || reporter === "listLength" || reporter === "distanceToActor") {
+        if (!isSafeId(referenceId)) return undefined;
+      } else if (referenceId !== undefined) return undefined;
+      return {
+        type: "setArithmeticOperandSource",
+        location,
+        input,
+        side,
+        reporter,
+        ...(typeof referenceId === "string" ? { referenceId } : {}),
+      };
     }
     case "setNumericField": {
       const location = parseLocation(value["location"]);
