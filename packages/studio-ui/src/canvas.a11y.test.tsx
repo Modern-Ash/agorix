@@ -818,6 +818,35 @@ describe("canvas keyboard and screen reader behaviour", () => {
       blockType: "sensing_touching_stage_edge",
     });
   });
+  it("chooses front or back on a visual layer block", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: { id: "layer:one", type: "looks_go_to_layer", fields: { layer: "front" } },
+    }).workspace;
+    const intents: Intent[] = [];
+    act(() =>
+      root.render(<Canvas workspace={workspace} onIntent={(intent) => intents.push(intent)} />),
+    );
+    const layer = host.querySelector<HTMLSelectElement>(
+      'select[aria-label="Go to front or back layer: Layer"]',
+    )!;
+    expect(Array.from(layer.options).map((option) => option.textContent)).toEqual([
+      "Front",
+      "Back",
+    ]);
+    act(() => {
+      layer.value = "back";
+      layer.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setTextField",
+      field: "layer",
+      value: "back",
+      location: { index: 0 },
+    });
+  });
   it("chooses a visible actor for the point-towards block", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

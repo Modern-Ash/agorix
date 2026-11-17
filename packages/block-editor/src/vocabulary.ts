@@ -182,6 +182,15 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "looks_say", fields: { text: "Hello" } }),
   },
   {
+    type: "looks_go_to_layer",
+    label: "Go to front or back layer",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "change actor layer",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({ id, type: "looks_go_to_layer", fields: { layer: "front" } }),
+  },
+  {
     type: "looks_think",
     label: "Think [text]",
     section: "Looks",
