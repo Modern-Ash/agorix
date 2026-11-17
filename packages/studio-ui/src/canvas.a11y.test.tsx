@@ -1320,7 +1320,9 @@ describe("workbench live region and focus after inserting from the palette", () 
       height: 120,
     } as DOMRect);
     canvas.setPointerCapture = vi.fn();
-    const undo = host.querySelector<HTMLButtonElement>(".scene-draw-actions button:first-child")!;
+    const undo = Array.from(
+      host.querySelectorAll<HTMLButtonElement>(".scene-draw-actions button"),
+    ).find((button) => button.textContent === copyFor("es").sceneUndoDrawing)!;
     expect(undo.disabled).toBe(true);
     const pointer = (type: string) => {
       const event = new dom.window.Event(type, { bubbles: true });
