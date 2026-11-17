@@ -814,6 +814,46 @@ describe("workbenchHost", () => {
     expect(labels).toHaveLength(before);
   });
 
+  it("deletes an owned script atomically and rejects stale, foreign and final scripts", async () => {
+    const { host, get, metadata, labels } = setup();
+    await host.handle({ schema, type: "createActor", name: "Robot" });
+    const robot = metadata().actors!.items.find((actor) => actor.name === "Robot")!;
+    const robotScriptId = robot.scripts![0]!;
+    const request = {
+      schema,
+      type: "deleteScript" as const,
+      actorId: robot.id,
+      scriptId: robotScriptId,
+      baseHash: programSemanticHash(get()!),
+    };
+    const before = labels.length;
+    expect((await host.handle({ ...request, scriptId: "main" }))[0]).toMatchObject({
+      type: "error",
+      code: "INVALID_CHANGE",
+    });
+    expect((await host.handle({ ...request, actorId: "actor:missing" }))[0]).toMatchObject({
+      type: "error",
+      code: "INVALID_CHANGE",
+    });
+    expect(labels).toHaveLength(before);
+    const accepted = await host.handle(request);
+    expect(get()!.scripts.map((script) => script.id)).toEqual(["main"]);
+    expect(metadata().actors!.items.find((actor) => actor.id === robot.id)?.scripts).toEqual([]);
+    expect(accepted.find((item) => item.type === "workspace")).toBeDefined();
+    expect((await host.handle(request))[0]).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    expect(
+      (
+        await host.handle({
+          ...request,
+          actorId: metadata().actors!.items[0]!.id,
+          scriptId: "main",
+          baseHash: programSemanticHash(get()!),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(labels).toHaveLength(before + 1);
+  });
+
   it("creates actor-owned key and click scripts with canonical triggers", async () => {
     const { host, get, metadata } = setup();
     await host.handle({ schema, type: "createActor", name: "Robot" });

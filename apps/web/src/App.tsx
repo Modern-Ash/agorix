@@ -16,6 +16,7 @@ import {
   type ProjectActors,
   type ProjectMetadata,
 } from "@agorix/persistence";
+import { selectProjectActor } from "./actorSelection.js";
 import type {
   ProgramVariable,
   ProjectActor,
@@ -314,8 +315,9 @@ function createProjectMetadata(
   programBlockCount: number,
   locale: Locale,
   creative: ProjectCreativeState,
+  selectedActorId?: string,
 ): ProjectMetadata {
-  const actors = projectActorsFromCreativeState(creative);
+  const actors = projectActorsFromCreativeState(creative, selectedActorId);
   return {
     createdAt,
     updatedAt: new Date().toISOString(),
@@ -328,13 +330,20 @@ function createProjectMetadata(
   };
 }
 
-function projectActorsFromCreativeState(creative: ProjectCreativeState): ProjectActors | undefined {
+function projectActorsFromCreativeState(
+  creative: ProjectCreativeState,
+  selectedActorId?: string,
+): ProjectActors | undefined {
   if (creative.actors === undefined || creative.actors.length === 0) {
     return undefined;
   }
   const actorIds = new Set(creative.actors.map((actor) => actor.id));
   const activeId =
-    creative.stage?.actorOrder?.find((actorId) => actorIds.has(actorId)) ?? creative.actors[0]!.id;
+    (selectedActorId !== undefined && actorIds.has(selectedActorId)
+      ? selectedActorId
+      : undefined) ??
+    creative.stage?.actorOrder?.find((actorId) => actorIds.has(actorId)) ??
+    creative.actors[0]!.id;
   return { activeId, items: creative.actors };
 }
 
@@ -2814,10 +2823,11 @@ export function App({
   const [creativeState, setCreativeState] = useState<ProjectCreativeState>(() =>
     creativeStateFromMetadata(initialProjectRef.current!.metadata, locale),
   );
-  const [selectedActorId, setSelectedActorId] = useState(
-    () =>
-      creativeStateFromMetadata(initialProjectRef.current!.metadata, locale).actors?.[0]?.id ??
-      "actor:main",
+  const [selectedActorId, setSelectedActorId] = useState(() =>
+    selectProjectActor(
+      creativeStateFromMetadata(initialProjectRef.current!.metadata, locale).actors,
+      initialProjectRef.current!.metadata?.actors?.activeId,
+    ),
   );
   const [status, setStatus] = useState<RunStatus>("idle");
   const [message, setMessage] = useState(
@@ -3100,9 +3110,10 @@ export function App({
       countProgramBlocks(model),
       locale,
       creativeState,
+      selectedActorId,
     );
     setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
-  }, [createdAt, creativeState, locale, model.program]);
+  }, [createdAt, creativeState, locale, model.program, selectedActorId]);
 
   useEffect(() => {
     void workspace.init();
@@ -3287,7 +3298,7 @@ export function App({
     setCreatedAt(metadata.createdAt);
     const nextCreative = creativeStateFromMetadata(metadata, locale);
     setCreativeState(nextCreative);
-    setSelectedActorId(nextCreative.actors?.[0]?.id ?? "actor:main");
+    setSelectedActorId(selectProjectActor(nextCreative.actors, metadata.actors?.activeId));
     if (metadata.locale === "en" || metadata.locale === "es") {
       setLocale(metadata.locale);
     }
@@ -3340,6 +3351,7 @@ export function App({
         countProgramBlocks(model),
         locale,
         creativeState,
+        selectedActorId,
       );
       const json = serializeAgorixProject(
         { schemaVersion: model.program.schema, program: model.program, metadata },

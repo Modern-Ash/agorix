@@ -152,6 +152,13 @@ export type UiMessage =
     }
   | {
       readonly schema: Schema;
+      readonly type: "deleteScript";
+      readonly actorId: string;
+      readonly scriptId: string;
+      readonly baseHash: string;
+    }
+  | {
+      readonly schema: Schema;
       readonly type: "importAsset";
       readonly kind: "costume" | "backdrop";
       readonly name: string;
@@ -2129,6 +2136,19 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
             ...(value["trigger"] === "onKeyPressed"
               ? { key: (value["key"] as string).trim() }
               : {}),
+            baseHash: value["baseHash"],
+          }
+        : undefined;
+    case "deleteScript":
+      return isSafeId(value["actorId"]) &&
+        isSafeId(value["scriptId"]) &&
+        typeof value["baseHash"] === "string" &&
+        /^fnv1a32:[a-f0-9]+$/.test(value["baseHash"])
+        ? {
+            schema,
+            type: "deleteScript",
+            actorId: value["actorId"],
+            scriptId: value["scriptId"],
             baseHash: value["baseHash"],
           }
         : undefined;

@@ -632,6 +632,41 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         );
         return snapshot();
       }
+      case "deleteScript": {
+        const program = port.getProgram();
+        const metadata = port.getMetadata();
+        if (program === undefined || metadata === undefined) return [];
+        if (message.baseHash !== programSemanticHash(program)) {
+          return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
+        }
+        const current = actorsForMetadata(metadata);
+        const owner = current.items.find((actor) => actor.id === message.actorId);
+        const scriptIds = owner?.scripts ?? program.scripts.map((script) => script.id);
+        if (
+          program.scripts.length <= 1 ||
+          owner === undefined ||
+          !scriptIds.includes(message.scriptId) ||
+          !program.scripts.some((script) => script.id === message.scriptId)
+        ) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const nextProgram = validateProgram({
+          ...program,
+          scripts: program.scripts.filter((script) => script.id !== message.scriptId),
+        });
+        const nextActors = current.items.map((actor) => ({
+          ...actor,
+          scripts: (actor.scripts ?? program.scripts.map((script) => script.id)).filter(
+            (id) => id !== message.scriptId,
+          ),
+        }));
+        await port.commitProject(
+          nextProgram,
+          { ...metadata, actors: { activeId: current.activeId, items: nextActors } },
+          "Workbench: delete actor script",
+        );
+        return snapshot();
+      }
       case "importAsset": {
         const metadata = port.getMetadata();
         if (metadata === undefined) return [];

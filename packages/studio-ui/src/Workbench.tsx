@@ -1383,6 +1383,17 @@ export function Workbench({
               visibleScriptIds={activeScriptIds}
               selectedScriptId={activeScriptId}
               onSelectScript={setSelectedScriptId}
+              onDeleteScript={(scriptId) => {
+                if (programHash === undefined || selectedActorId === undefined) return;
+                bridge.post({
+                  schema: STUDIO_PROTOCOL_VERSION,
+                  type: "deleteScript",
+                  actorId: selectedActorId,
+                  scriptId,
+                  baseHash: programHash,
+                });
+                if (selectedScriptId === scriptId) setSelectedScriptId(undefined);
+              }}
               selectedExpression={selectedExpression}
               onIntent={post}
               onAnnounce={announce}

@@ -154,7 +154,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .validation-panel p { margin: 0; color: var(--vscode-foreground); }
 .validation-panel code { overflow: hidden; color: var(--vscode-descriptionForeground); font-family: var(--vscode-editor-font-family); font-size: 0.82em; text-overflow: ellipsis; white-space: nowrap; }
 .workbench[data-density="compact"] .validation-panel { margin-bottom: 6px; padding: 6px; }
-.script-title { display: block; width: 100%; margin: 12px 0 4px; padding: 5px 8px; text-align: left; font-weight: 600; border: 1px solid var(--vscode-panel-border); border-radius: 5px; color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
+.script-heading { display: flex; gap: 5px; align-items: center; margin: 12px 0 4px; }
+.script-title { display: block; flex: 1; min-width: 0; margin: 0; padding: 5px 8px; text-align: left; font-weight: 600; border: 1px solid var(--vscode-panel-border); border-radius: 5px; color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
+.script-delete { flex: 0 0 auto; min-height: 30px; padding: 3px 7px; font-size: 0.78em; color: var(--vscode-errorForeground); border: 1px solid var(--vscode-panel-border); border-radius: 5px; background: var(--vscode-editorWidget-background); cursor: pointer; }
+.script-delete:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .script-title[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 85%); }
 .script-title:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .workbench[data-density="compact"] .script-title { margin: 8px 0 2px; }

@@ -760,6 +760,20 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
   });
 
+  it("validates script deletion targets and stale-edit hashes", () => {
+    const request = {
+      schema,
+      type: "deleteScript",
+      actorId: "actor:robot",
+      scriptId: "script:helper",
+      baseHash: "fnv1a32:abcdef01",
+    };
+    expect(parseUiMessage(request)).toEqual(request);
+    expect(parseUiMessage({ ...request, actorId: "bad id" })).toBeUndefined();
+    expect(parseUiMessage({ ...request, scriptId: "" })).toBeUndefined();
+    expect(parseUiMessage({ ...request, baseHash: "stale" })).toBeUndefined();
+  });
+
   it("accepts only bounded embedded art imports", () => {
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
     expect(

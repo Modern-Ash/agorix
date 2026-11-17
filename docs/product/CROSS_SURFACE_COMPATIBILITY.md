@@ -77,6 +77,7 @@ Compatibility tests must cover:
 
 - Web-created project opens in Studio;
 - Studio-created or modified canonical project reopens through Web persistence;
+- Web import preserves `metadata.actors.activeId` when it refers to an imported actor, including after Studio script edits;
 - Web to Studio to Web round trip preserves the semantic hash;
 - opening a legacy `onStart` script in Web preserves its canonical trigger; `onStart` and `greenFlag` execute the same event, but automatic rewriting would change the stored program and hash;
 - unsupported future schema fails explicitly;
