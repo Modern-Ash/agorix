@@ -9,7 +9,7 @@ import { imageForAsset, imageForId } from "./visualArt.js";
 import { useEffect, useRef, useState } from "react";
 import { validEmbeddedImageSource } from "@agorix/program-model";
 import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
-import { transformImagePixels } from "./imageTransforms.js";
+import { fillImageRegion, transformImagePixels } from "./imageTransforms.js";
 
 export const STAGE_COSTUME_DRAG_TYPE = "application/x-agorix-stage-costume";
 export const STAGE_BACKDROP_DRAG_TYPE = "application/x-agorix-stage-backdrop";
@@ -49,12 +49,15 @@ export function SceneLibrary({
 }) {
   const drawing = useRef<HTMLCanvasElement>(null);
   const drawingHistory = useRef<ImageData[]>([]);
+  const imageLoadVersion = useRef(0);
   const [assetKind, setAssetKind] = useState<"costume" | "backdrop">("costume");
   const [activeSection, setActiveSection] = useState<
     "actors" | "costumes" | "backdrops" | "sounds" | "create"
   >("actors");
   const [assetName, setAssetName] = useState("");
   const [assetError, setAssetError] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [pendingActorDelete, setPendingActorDelete] = useState<string>();
   const [soundPreviewError, setSoundPreviewError] = useState(false);
   const [editingAssetId, setEditingAssetId] = useState<string>();
@@ -64,7 +67,7 @@ export function SceneLibrary({
   >();
   const [drawingActive, setDrawingActive] = useState(false);
   const [ink, setInk] = useState("#7855d8");
-  const [drawTool, setDrawTool] = useState<"brush" | "eraser">("brush");
+  const [drawTool, setDrawTool] = useState<"brush" | "eraser" | "fill">("brush");
   const [brushSize, setBrushSize] = useState(5);
   const [undoCount, setUndoCount] = useState(0);
   const [scriptTrigger, setScriptTrigger] = useState<
@@ -79,6 +82,9 @@ export function SceneLibrary({
     setUndoCount(0);
   };
   const startCreate = (kind: "costume" | "backdrop") => {
+    imageLoadVersion.current += 1;
+    setImageLoading(false);
+    setImageLoadFailed(false);
     clearDrawing();
     setEditingAssetId(undefined);
     setAssetKind(kind);
@@ -90,6 +96,9 @@ export function SceneLibrary({
     if (asset.kind !== "costume" && asset.kind !== "backdrop") return;
     const source = imageForAsset(asset);
     if (source === undefined) return;
+    const loadVersion = ++imageLoadVersion.current;
+    setImageLoading(true);
+    setImageLoadFailed(false);
     clearDrawing();
     setEditingAssetId(duplicate ? undefined : asset.id);
     setAssetKind(asset.kind);
@@ -98,24 +107,45 @@ export function SceneLibrary({
     setActiveSection("create");
     const image = new Image();
     image.onload = () => {
+      if (loadVersion !== imageLoadVersion.current) return;
       const canvas = drawing.current;
       const context = canvas?.getContext("2d");
-      if (!canvas || !context) return;
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
-      const width = image.width * scale;
-      const height = image.height * scale;
-      context.drawImage(
-        image,
-        (canvas.width - width) / 2,
-        (canvas.height - height) / 2,
-        width,
-        height,
-      );
+      if (!canvas || !context) {
+        setImageLoading(false);
+        setImageLoadFailed(true);
+        setAssetError(copy.sceneImageLoadFailed);
+        return;
+      }
+      try {
+        if (image.width <= 0 || image.height <= 0) throw new RangeError("Invalid image size");
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        context.drawImage(
+          image,
+          (canvas.width - width) / 2,
+          (canvas.height - height) / 2,
+          width,
+          height,
+        );
+      } catch {
+        setImageLoadFailed(true);
+        setAssetError(copy.sceneImageLoadFailed);
+      } finally {
+        setImageLoading(false);
+      }
+    };
+    image.onerror = () => {
+      if (loadVersion !== imageLoadVersion.current) return;
+      setImageLoading(false);
+      setImageLoadFailed(true);
+      setAssetError(copy.sceneImageLoadFailed);
     };
     image.src = source;
   };
   const transformDrawing = (kind: "flipHorizontal" | "rotateHalfTurn") => {
+    if (imageLoading || imageLoadFailed) return;
     const canvas = drawing.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
@@ -170,6 +200,7 @@ export function SceneLibrary({
     setUndoCount(drawingHistory.current.length);
   };
   const paint = (event: React.PointerEvent<HTMLCanvasElement>, starting = false) => {
+    if (imageLoading || imageLoadFailed) return;
     if (!drawingActive && !starting) return;
     const canvas = drawing.current;
     const context = canvas?.getContext("2d");
@@ -178,6 +209,16 @@ export function SceneLibrary({
     if (bounds.width === 0 || bounds.height === 0) return;
     const x = ((event.clientX - bounds.left) * canvas.width) / bounds.width;
     const y = ((event.clientY - bounds.top) * canvas.height) / bounds.height;
+    if (drawTool === "fill") {
+      if (!starting) return;
+      const current = context.getImageData(0, 0, canvas.width, canvas.height);
+      const result = fillImageRegion(current.data, canvas.width, canvas.height, x, y, ink);
+      if (result !== undefined) {
+        current.data.set(result);
+        context.putImageData(current, 0, 0);
+      }
+      return;
+    }
     if (drawTool === "eraser") {
       context.clearRect(x - brushSize, y - brushSize, brushSize * 2, brushSize * 2);
       return;
@@ -533,6 +574,9 @@ export function SceneLibrary({
               type="file"
               accept="image/png,image/webp"
               onChange={(event) => {
+                imageLoadVersion.current += 1;
+                setImageLoading(false);
+                setImageLoadFailed(false);
                 const file = event.currentTarget.files?.[0];
                 if (
                   !file ||
@@ -559,9 +603,14 @@ export function SceneLibrary({
             height={120}
             aria-label={copy.sceneDrawImage}
             onPointerDown={(event) => {
+              if (imageLoading || imageLoadFailed) return;
               const context = event.currentTarget.getContext("2d");
               if (context) {
                 rememberDrawing(event.currentTarget, context);
+                if (drawTool === "fill") {
+                  paint(event, true);
+                  return;
+                }
                 event.currentTarget.setPointerCapture(event.pointerId);
                 setDrawingActive(true);
                 paint(event, true);
@@ -586,6 +635,13 @@ export function SceneLibrary({
             >
               {copy.sceneEraser}
             </button>
+            <button
+              type="button"
+              aria-pressed={drawTool === "fill"}
+              onClick={() => setDrawTool("fill")}
+            >
+              {copy.sceneFill}
+            </button>
             <input
               aria-label={copy.sceneInkColor}
               type="color"
@@ -605,6 +661,7 @@ export function SceneLibrary({
           <div className="scene-draw-actions">
             <button
               type="button"
+              disabled={imageLoading || imageLoadFailed}
               onClick={() => {
                 const canvas = drawing.current;
                 if (canvas) submitAsset(assetName, canvas.toDataURL("image/png"));
@@ -616,6 +673,9 @@ export function SceneLibrary({
               <button
                 type="button"
                 onClick={() => {
+                  imageLoadVersion.current += 1;
+                  setImageLoading(false);
+                  setImageLoadFailed(false);
                   setEditingAssetId(undefined);
                   setPendingAsset(undefined);
                   setActiveSection(assetKind === "costume" ? "costumes" : "backdrops");
@@ -636,10 +696,18 @@ export function SceneLibrary({
             >
               {copy.sceneUndoDrawing}
             </button>
-            <button type="button" onClick={() => transformDrawing("flipHorizontal")}>
+            <button
+              type="button"
+              disabled={imageLoading || imageLoadFailed}
+              onClick={() => transformDrawing("flipHorizontal")}
+            >
               {copy.sceneFlipImage}
             </button>
-            <button type="button" onClick={() => transformDrawing("rotateHalfTurn")}>
+            <button
+              type="button"
+              disabled={imageLoading || imageLoadFailed}
+              onClick={() => transformDrawing("rotateHalfTurn")}
+            >
               {copy.sceneRotateImage}
             </button>
             <button
@@ -657,6 +725,7 @@ export function SceneLibrary({
             </button>
           </div>
           {assetError === "" ? null : <p role="alert">{assetError}</p>}
+          {imageLoading ? <p role="status">{copy.sceneLoadingImage}</p> : null}
         </section>
       )}
     </div>

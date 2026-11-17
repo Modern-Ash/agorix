@@ -322,6 +322,7 @@ it("requires a second explicit action before removing an actor and its scripts",
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  vi.unstubAllGlobals();
 });
 
 function render(
@@ -2522,10 +2523,33 @@ describe("workbench live region and focus after inserting from the palette", () 
     pointer("pointercancel");
     act(() => undo.click());
     expect(context.putImageData).toHaveBeenCalledTimes(1);
+    act(() =>
+      Array.from(host.querySelectorAll<HTMLButtonElement>(".scene-draw-tools button"))
+        .find((button) => button.textContent === copyFor("es").sceneFill)!
+        .click(),
+    );
+    pointer("pointerdown");
+    expect(context.putImageData).toHaveBeenCalledTimes(2);
+    expect((context.putImageData.mock.calls[1] as unknown[])[0]).toMatchObject({
+      data: expect.any(Uint8ClampedArray),
+    });
   });
   it("duplicates a costume into a new editable draft and saves it explicitly", () => {
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
     const imported: { kind: string; name: string; source: string }[] = [];
+    let finishLoading: (() => void) | undefined;
+    let failLoading: (() => void) | undefined;
+    class FakeImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      width = 1;
+      height = 1;
+      set src(_value: string) {
+        finishLoading = () => this.onload?.();
+        failLoading = () => this.onerror?.();
+      }
+    }
+    vi.stubGlobal("Image", FakeImage);
     act(() =>
       root.render(
         <SceneLibrary
@@ -2544,9 +2568,11 @@ describe("workbench live region and focus after inserting from the palette", () 
       ),
     );
     const canvas = host.querySelector<HTMLCanvasElement>(".scene-create-image canvas")!;
-    vi.spyOn(canvas, "getContext").mockReturnValue({
+    const context = {
       clearRect: vi.fn(),
-    } as unknown as CanvasRenderingContext2D);
+      drawImage: vi.fn(),
+    };
+    vi.spyOn(canvas, "getContext").mockReturnValue(context as unknown as CanvasRenderingContext2D);
     vi.spyOn(canvas, "toDataURL").mockReturnValue(source);
     act(() => host.querySelectorAll<HTMLButtonElement>(".scene-section-tabs button")[1]!.click());
     act(() => host.querySelector<HTMLButtonElement>(".scene-duplicate-asset")!.click());
@@ -2559,8 +2585,22 @@ describe("workbench live region and focus after inserting from the palette", () 
     const save = Array.from(
       host.querySelectorAll<HTMLButtonElement>(".scene-draw-actions button"),
     ).find((button) => button.textContent === copyFor("en").sceneSaveDrawing)!;
+    expect(save.disabled).toBe(true);
+    act(() => save.click());
+    expect(imported).toEqual([]);
+    act(() => finishLoading?.());
+    expect(context.drawImage).toHaveBeenCalledOnce();
+    expect(save.disabled).toBe(false);
     act(() => save.click());
     expect(imported).toEqual([{ kind: "costume", name: "Original copy", source }]);
+    act(() => host.querySelector<HTMLButtonElement>(".scene-duplicate-asset")!.click());
+    act(() => failLoading?.());
+    expect(save.disabled).toBe(true);
+    expect(host.querySelector('[role="alert"]')?.textContent).toBe(
+      copyFor("en").sceneImageLoadFailed,
+    );
+    act(() => save.click());
+    expect(imported).toHaveLength(1);
   });
   it("applies image transforms to the draft and keeps undo available", () => {
     const image = {

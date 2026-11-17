@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { transformImagePixels } from "./imageTransforms.js";
+import { fillImageRegion, transformImagePixels } from "./imageTransforms.js";
 
 const pixels = new Uint8ClampedArray([1, 0, 0, 255, 2, 0, 0, 255, 3, 0, 0, 255, 4, 0, 0, 255]);
 
@@ -15,5 +15,20 @@ describe("Studio image transforms", () => {
     expect(redChannels(transformImagePixels(pixels, 2, 2, "rotateHalfTurn"))).toEqual([4, 3, 2, 1]);
     expect(() => transformImagePixels(pixels, 0, 2, "flipHorizontal")).toThrow(RangeError);
     expect(() => transformImagePixels(pixels, 3, 2, "flipHorizontal")).toThrow(RangeError);
+  });
+
+  it("fills only the connected region and leaves the original draft untouched", () => {
+    const image = new Uint8ClampedArray([
+      0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0,
+      255,
+    ]);
+    const result = fillImageRegion(image, 3, 2, 0, 0, "#ff0000")!;
+    expect(Array.from(result.filter((_, index) => index % 4 === 0))).toEqual([
+      255, 255, 255, 255, 255, 0,
+    ]);
+    expect(image[0]).toBe(0);
+    expect(fillImageRegion(result, 3, 2, 0, 0, "#ff0000")).toBeUndefined();
+    expect(fillImageRegion(image, 3, 2, -1, 0, "#ff0000")).toBeUndefined();
+    expect(fillImageRegion(image, 3, 2, 0, 0, "red")).toBeUndefined();
   });
 });
