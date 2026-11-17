@@ -362,6 +362,31 @@ describe("Agorix Studio first slice", () => {
     expect(view.inspectorSteps[1]?.summary).toContain("before:");
   });
 
+  it("carries canonical list values into Studio runtime frames", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      program: {
+        ...webCreatedProject.program,
+        lists: [{ id: "inventory", name: "Inventory", initialItems: [2], visible: true }],
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              { type: "listAdd", listId: "inventory", value: { type: "numericLiteral", value: 5 } },
+            ],
+          },
+        ],
+      },
+    });
+    expect(evidence.previewFrames[0]?.state.lists?.[0]?.items).toEqual([2]);
+    expect(
+      evidence.previewFrames.some(
+        (frame) => JSON.stringify(frame.state.lists?.[0]?.items) === JSON.stringify([2, 5]),
+      ),
+    ).toBe(true);
+  });
+
   it("carries sound playback evidence into Studio preview frames", () => {
     const evidence = createExecutionEvidence({
       ...webCreatedProject,

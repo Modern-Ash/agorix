@@ -306,6 +306,13 @@ export interface StageVariableWatcherView {
   readonly visible: boolean;
 }
 
+export interface StageListWatcherView {
+  readonly id: string;
+  readonly label: string;
+  readonly items: readonly number[];
+  readonly visible: boolean;
+}
+
 export interface StageSoundStateView {
   readonly activeSoundIds: readonly string[];
   readonly volume?: number;
@@ -318,6 +325,7 @@ export interface StageFrameView {
     readonly viewport: StageViewportView;
     readonly actors?: readonly ActorView[];
     readonly variables?: readonly StageVariableWatcherView[];
+    readonly lists?: readonly StageListWatcherView[];
     readonly sounds?: StageSoundStateView;
     readonly backdropId?: string;
   };
@@ -687,6 +695,27 @@ function parseStageVariableWatcher(value: unknown): StageVariableWatcherView | u
   };
 }
 
+function parseStageListWatcher(value: unknown): StageListWatcherView | undefined {
+  if (
+    !isObject(value) ||
+    !isSafeId(value["id"]) ||
+    typeof value["label"] !== "string" ||
+    value["label"].length === 0 ||
+    value["label"].length > 40 ||
+    !Array.isArray(value["items"]) ||
+    value["items"].length > 100 ||
+    !value["items"].every(isFiniteNumber) ||
+    typeof value["visible"] !== "boolean"
+  )
+    return undefined;
+  return {
+    id: value["id"],
+    label: value["label"],
+    items: value["items"],
+    visible: value["visible"],
+  };
+}
+
 function parseStageSoundState(value: unknown): StageSoundStateView | undefined {
   if (!isObject(value) || !Array.isArray(value["activeSoundIds"])) {
     return undefined;
@@ -713,6 +742,7 @@ function parseStageFrame(value: unknown): StageFrameView | undefined {
   const viewport = parseStageViewport(state["viewport"]);
   const rawActors = state["actors"];
   const rawVariables = state["variables"];
+  const rawLists = state["lists"];
   const rawSounds = state["sounds"];
   const backdropId = state["backdropId"];
   const actors =
@@ -731,6 +761,12 @@ function parseStageFrame(value: unknown): StageFrameView | undefined {
       : Array.isArray(rawVariables) && rawVariables.length <= 64
         ? rawVariables.map(parseStageVariableWatcher)
         : undefined;
+  const lists =
+    rawLists === undefined
+      ? undefined
+      : Array.isArray(rawLists) && rawLists.length <= 64
+        ? rawLists.map(parseStageListWatcher)
+        : undefined;
   const sounds = rawSounds === undefined ? undefined : parseStageSoundState(rawSounds);
   if (
     sprite === undefined ||
@@ -740,6 +776,7 @@ function parseStageFrame(value: unknown): StageFrameView | undefined {
       (actors === undefined || actors.some((actor) => actor === undefined))) ||
     (rawVariables !== undefined &&
       (variables === undefined || variables.some((variable) => variable === undefined))) ||
+    (rawLists !== undefined && (lists === undefined || lists.some((list) => list === undefined))) ||
     (rawSounds !== undefined && sounds === undefined) ||
     (backdropId !== undefined && !isSafeId(backdropId)) ||
     !isIndex(value["frameIndex"]) ||
@@ -767,6 +804,7 @@ function parseStageFrame(value: unknown): StageFrameView | undefined {
       ...(state["variables"] === undefined
         ? {}
         : { variables: variables as StageVariableWatcherView[] }),
+      ...(state["lists"] === undefined ? {} : { lists: lists as StageListWatcherView[] }),
       ...(sounds === undefined ? {} : { sounds }),
       ...(backdropId === undefined ? {} : { backdropId }),
     },

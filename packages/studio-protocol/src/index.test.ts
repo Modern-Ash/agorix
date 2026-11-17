@@ -930,6 +930,7 @@ describe("studio-protocol", () => {
             goal: { x: 100, y: 0, radius: 12 },
             viewport: { width: 264, height: 192 },
             variables: [{ id: "score", label: "score", value: 4, visible: true }],
+            lists: [{ id: "inventory", label: "inventory", items: [1, 7], visible: true }],
             sounds: { activeSoundIds: ["asset:sound.beacon"] },
             actors: [
               {
@@ -980,6 +981,7 @@ describe("studio-protocol", () => {
             { id: "actor:helper", costumeId: "asset:costume.default" },
           ],
           variables: [{ id: "score", label: "score", value: 4, visible: true }],
+          lists: [{ id: "inventory", label: "inventory", items: [1, 7], visible: true }],
           sounds: { activeSoundIds: ["asset:sound.beacon"] },
         },
       },
@@ -1281,6 +1283,39 @@ describe("studio-protocol", () => {
         },
       }),
     ).toBeUndefined();
+  });
+
+  it("rejects malformed or oversized runtime list watchers", () => {
+    const frame = (lists: unknown) => ({
+      schema,
+      type: "stageFrame",
+      frame: {
+        state: {
+          sprite: { x: 0, y: 0, heading: 0, radius: 10 },
+          goal: { x: 100, y: 0, radius: 10 },
+          viewport: { width: 264, height: 192 },
+          lists,
+        },
+        frameIndex: 0,
+        frameCount: 1,
+        step: 0,
+        running: false,
+        reachedGoal: false,
+      },
+    });
+    expect(
+      parseHostMessage(frame([{ id: "inventory", label: "Inventory", items: [1], visible: true }])),
+    ).toMatchObject({
+      frame: { state: { lists: [{ items: [1] }] } },
+    });
+    for (const lists of [
+      [{ id: "bad id", label: "Inventory", items: [1], visible: true }],
+      [{ id: "inventory", label: "Inventory", items: [Number.NaN], visible: true }],
+      [{ id: "inventory", label: "Inventory", items: Array(101).fill(0), visible: true }],
+      Array(65).fill({ id: "inventory", label: "Inventory", items: [], visible: true }),
+    ]) {
+      expect(parseHostMessage(frame(lists))).toBeUndefined();
+    }
   });
 
   it("round-trips and bounds the agent loop messages", () => {

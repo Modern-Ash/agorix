@@ -11,6 +11,7 @@ export type {
   StageState,
   StageStateInput,
   StageVariableWatcher,
+  StageListWatcher,
   StageViewport,
 } from "./model.js";
 export {

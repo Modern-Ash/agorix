@@ -86,6 +86,11 @@ function freezeStageState(state: StageState): StageState {
   if (cloned.variables !== undefined) {
     Object.freeze(cloned.variables);
   }
+  cloned.lists?.forEach((list) => {
+    Object.freeze(list.items);
+    Object.freeze(list);
+  });
+  if (cloned.lists !== undefined) Object.freeze(cloned.lists);
   if (cloned.sounds !== undefined) {
     Object.freeze(cloned.sounds.activeSoundIds);
     Object.freeze(cloned.sounds);
@@ -156,6 +161,16 @@ export function framesFromRuntimeObservations(
                 label: id,
                 value: variable.value,
                 visible: variable.visible,
+              })),
+            }),
+        ...(observation.world.lists === undefined
+          ? {}
+          : {
+              lists: Object.entries(observation.world.lists).map(([id, list]) => ({
+                id,
+                label: id,
+                items: list.items,
+                visible: list.visible,
               })),
             }),
         ...(observation.world.sounds === undefined

@@ -33,6 +33,13 @@ export interface StageVariableWatcher {
   readonly visible: boolean;
 }
 
+export interface StageListWatcher {
+  readonly id: string;
+  readonly label: string;
+  readonly items: readonly number[];
+  readonly visible: boolean;
+}
+
 export interface StageSoundState {
   readonly activeSoundIds: readonly string[];
   readonly volume?: number;
@@ -44,6 +51,7 @@ export interface StageState {
   readonly viewport: StageViewport;
   readonly backdropId?: string;
   readonly variables?: readonly StageVariableWatcher[];
+  readonly lists?: readonly StageListWatcher[];
   readonly sounds?: StageSoundState;
 }
 
@@ -53,6 +61,7 @@ export interface StageStateInput {
   readonly viewport?: Partial<StageViewport>;
   readonly backdropId?: string;
   readonly variables?: readonly Partial<StageVariableWatcher>[];
+  readonly lists?: readonly Partial<StageListWatcher>[];
   readonly sounds?: Partial<StageSoundState>;
 }
 
@@ -116,6 +125,20 @@ function normalizeVariableWatchers(
     });
 }
 
+function normalizeListWatchers(
+  lists: readonly Partial<StageListWatcher>[] | undefined,
+): readonly StageListWatcher[] | undefined {
+  if (lists === undefined) return undefined;
+  return lists
+    .filter((list) => list.id !== undefined)
+    .map((list) => ({
+      id: list.id!,
+      label: list.label ?? list.id!,
+      items: (list.items ?? []).map((item) => normalizeStageCoordinate(item)),
+      visible: list.visible ?? false,
+    }));
+}
+
 function normalizeSoundState(
   sounds: Partial<StageSoundState> | undefined,
 ): StageSoundState | undefined {
@@ -130,6 +153,7 @@ function normalizeSoundState(
 
 export function createStageState(input: StageStateInput = {}): StageState {
   const variables = normalizeVariableWatchers(input.variables);
+  const lists = normalizeListWatchers(input.lists);
   const sounds = normalizeSoundState(input.sounds);
   return {
     sprite: {
@@ -160,6 +184,7 @@ export function createStageState(input: StageStateInput = {}): StageState {
     },
     ...(input.backdropId === undefined ? {} : { backdropId: input.backdropId }),
     ...(variables === undefined ? {} : { variables }),
+    ...(lists === undefined ? {} : { lists }),
     ...(sounds === undefined ? {} : { sounds }),
   };
 }

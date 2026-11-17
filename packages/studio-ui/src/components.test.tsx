@@ -275,6 +275,7 @@ describe("studio-ui", () => {
       <StagePanel
         copy={copyFor("en")}
         selectedActorId="actor:helper"
+        listNames={{ inventory: "Inventory" }}
         assets={[
           {
             id: "asset:costume.spark",
@@ -302,6 +303,10 @@ describe("studio-ui", () => {
             viewport: { width: 264, height: 192 },
             backdropId: "asset:space.nebula",
             variables: [{ id: "score", label: "score", value: 5, visible: true }],
+            lists: [
+              { id: "inventory", label: "inventory", items: [3, 7], visible: true },
+              { id: "hidden", label: "hidden", items: [9], visible: false },
+            ],
             sounds: { activeSoundIds: ["asset:sound.beacon"], volume: 40 },
             actors: [
               {
@@ -351,6 +356,10 @@ describe("studio-ui", () => {
     expect(markup).toContain('class="stage-watchers"');
     expect(markup).toContain('data-variable-id="score"');
     expect(markup).toContain("<strong>5</strong>");
+    expect(markup).toContain('data-list-id="inventory"');
+    expect(markup).toContain("Inventory · 2");
+    expect(markup).toContain("<li>3</li>");
+    expect(markup).not.toContain('data-list-id="hidden"');
     expect(markup).toContain('class="stage-sounds"');
     expect(markup).toContain("Active sounds");
     expect(markup).toContain("Beacon ping");
