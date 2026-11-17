@@ -878,6 +878,84 @@ describe("canvas keyboard and screen reader behaviour", () => {
       value: 7,
     });
   });
+  it("offers variables, lists, sensors and random ranges inside a logical comparison", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      lists: [{ id: "items", name: "Items", initialItems: [4], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: { type: "booleanLiteral", value: true },
+                right: {
+                  type: "lessThan",
+                  left: { type: "numericLiteral", value: 0 },
+                  right: {
+                    type: "randomInteger",
+                    min: { type: "numericLiteral", value: 1 },
+                    max: { type: "numericLiteral", value: 10 },
+                  },
+                },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, {
+      onIntent: (intent) => intents.push(intent),
+      actors: [
+        { id: "actor:main", name: "Main", x: 0, y: 0, direction: 90, size: 100, visible: true },
+      ],
+    });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.logical-comparison-fields select[aria-label="Condition: right Left value source"]',
+    )!;
+    expect(Array.from(source.options).map((option) => option.value)).toEqual(
+      expect.arrayContaining([
+        "variable",
+        "listLength",
+        "listItem",
+        "xPosition",
+        "distanceToActor",
+        "randomInteger",
+      ]),
+    );
+    act(() => {
+      source.value = "variable";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalComparisonSource",
+      side: "right",
+      operand: "left",
+      source: "variable",
+      referenceId: "score",
+    });
+    const max = host.querySelector<HTMLInputElement>(
+      '.logical-comparison-fields input[aria-label="Condition: right Maximum"]',
+    )!;
+    expect(max.value).toBe("10");
+    act(() => {
+      max.value = "20";
+      max.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalComparisonNestedNumber",
+      side: "right",
+      operand: "right",
+      field: "max",
+      value: 20,
+    });
+  });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

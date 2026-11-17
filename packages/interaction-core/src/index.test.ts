@@ -888,6 +888,207 @@ describe("interaction-core", () => {
       ).toBeUndefined();
     }
   });
+  it("selects declared and nested numeric sources inside logical comparisons", () => {
+    const location = { container: script, index: 0 };
+    const empty = createStarterWorkspace();
+    const withVariable = applyWorkspaceChange(
+      empty,
+      intentToChange({ type: "addVariable", name: "score" }, newId, empty)!,
+    ).workspace;
+    const declared = applyWorkspaceChange(
+      withVariable,
+      intentToChange({ type: "addList", name: "items" }, newId, withVariable)!,
+    ).workspace;
+    const initial = applyWorkspaceChange(declared, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:sources-nested",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: {
+            id: "bool:sources-nested",
+            type: "literal_boolean",
+            fields: { value: true },
+          },
+        },
+      },
+    }).workspace;
+    const logical = applyWorkspaceChange(
+      initial,
+      intentToChange(
+        { type: "replaceCondition", location, blockType: "operator_and" },
+        newId,
+        initial,
+      )!,
+    ).workspace;
+    const comparison = applyWorkspaceChange(
+      logical,
+      intentToChange(
+        { type: "setLogicalOperand", location, side: "right", blockType: "operator_less_than" },
+        newId,
+        logical,
+      )!,
+    ).workspace;
+    const variableId = declared.variables![0]!.id;
+    const variable = applyWorkspaceChange(
+      comparison,
+      intentToChange(
+        {
+          type: "setLogicalComparisonSource",
+          location,
+          side: "right",
+          operand: "left",
+          source: "variable",
+          referenceId: variableId,
+        },
+        newId,
+        comparison,
+      )!,
+    ).workspace;
+    const listId = declared.lists![0]!.id;
+    const listItem = applyWorkspaceChange(
+      variable,
+      intentToChange(
+        {
+          type: "setLogicalComparisonSource",
+          location,
+          side: "right",
+          operand: "right",
+          source: "listItem",
+          referenceId: listId,
+        },
+        newId,
+        variable,
+      )!,
+    ).workspace;
+    const indexed = applyWorkspaceChange(
+      listItem,
+      intentToChange(
+        {
+          type: "setLogicalComparisonNestedNumber",
+          location,
+          side: "right",
+          operand: "right",
+          field: "index",
+          value: 2,
+        },
+        newId,
+        listItem,
+      )!,
+    );
+    expect(indexed.program.scripts[0]?.statements[0]).toMatchObject({
+      condition: {
+        right: {
+          left: { type: "variable", variableId },
+          right: { type: "listItem", listId, index: { value: 2 } },
+        },
+      },
+    });
+    const random = applyWorkspaceChange(
+      indexed.workspace,
+      intentToChange(
+        {
+          type: "setLogicalComparisonSource",
+          location,
+          side: "right",
+          operand: "right",
+          source: "randomInteger",
+        },
+        newId,
+        indexed.workspace,
+      )!,
+    ).workspace;
+    const ranged = applyWorkspaceChange(
+      random,
+      intentToChange(
+        {
+          type: "setLogicalComparisonNestedNumber",
+          location,
+          side: "right",
+          operand: "right",
+          field: "max",
+          value: 20,
+        },
+        newId,
+        random,
+      )!,
+    );
+    expect(ranged.program.scripts[0]?.statements[0]).toMatchObject({
+      condition: { right: { right: { type: "randomInteger", max: { value: 20 } } } },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setLogicalComparisonSource",
+          location,
+          side: "right",
+          operand: "left",
+          source: "variable",
+          referenceId: "missing",
+        },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setLogicalComparisonSource",
+          location,
+          side: "right",
+          operand: "left",
+          source: "distanceToActor",
+          referenceId: "https://unsafe",
+        },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setLogicalComparisonNestedNumber",
+          location,
+          side: "right",
+          operand: "left",
+          field: "max",
+          value: 3,
+        },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setLogicalComparisonNestedNumber",
+          location,
+          side: "right",
+          operand: "right",
+          field: "min",
+          value: Infinity,
+        },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setLogicalComparisonSource",
+          location,
+          side: "value",
+          operand: "left",
+          source: "number",
+        },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("creates named variables and edits only valid numeric variable inputs", () => {
     const empty = createStarterWorkspace();
     const added = intentToChange({ type: "addVariable", name: "energy" }, newId, empty);
