@@ -49,6 +49,7 @@ export function SceneLibrary({
 }) {
   const drawing = useRef<HTMLCanvasElement>(null);
   const drawingHistory = useRef<ImageData[]>([]);
+  const shapeDraft = useRef<{ x: number; y: number; image: ImageData }>();
   const imageLoadVersion = useRef(0);
   const [assetKind, setAssetKind] = useState<"costume" | "backdrop">("costume");
   const [activeSection, setActiveSection] = useState<
@@ -67,7 +68,9 @@ export function SceneLibrary({
   >();
   const [drawingActive, setDrawingActive] = useState(false);
   const [ink, setInk] = useState("#7855d8");
-  const [drawTool, setDrawTool] = useState<"brush" | "eraser" | "fill">("brush");
+  const [drawTool, setDrawTool] = useState<
+    "brush" | "eraser" | "fill" | "line" | "rectangle" | "ellipse"
+  >("brush");
   const [brushSize, setBrushSize] = useState(5);
   const [undoCount, setUndoCount] = useState(0);
   const [scriptTrigger, setScriptTrigger] = useState<
@@ -76,6 +79,7 @@ export function SceneLibrary({
   const [scriptMessage, setScriptMessage] = useState("");
   const [scriptKey, setScriptKey] = useState("Space");
   const clearDrawing = () => {
+    shapeDraft.current = undefined;
     const canvas = drawing.current;
     canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
     drawingHistory.current = [];
@@ -201,7 +205,7 @@ export function SceneLibrary({
   };
   const paint = (event: React.PointerEvent<HTMLCanvasElement>, starting = false) => {
     if (imageLoading || imageLoadFailed) return;
-    if (!drawingActive && !starting) return;
+    if (!drawingActive && !starting && shapeDraft.current === undefined) return;
     const canvas = drawing.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
@@ -209,6 +213,43 @@ export function SceneLibrary({
     if (bounds.width === 0 || bounds.height === 0) return;
     const x = ((event.clientX - bounds.left) * canvas.width) / bounds.width;
     const y = ((event.clientY - bounds.top) * canvas.height) / bounds.height;
+    if (drawTool === "line" || drawTool === "rectangle" || drawTool === "ellipse") {
+      if (starting)
+        shapeDraft.current = {
+          x,
+          y,
+          image: context.getImageData(0, 0, canvas.width, canvas.height),
+        };
+      const draft = shapeDraft.current;
+      if (!draft) return;
+      context.putImageData(draft.image, 0, 0);
+      context.strokeStyle = ink;
+      context.lineWidth = brushSize * 2;
+      context.beginPath();
+      if (drawTool === "line") {
+        context.moveTo(draft.x, draft.y);
+        context.lineTo(x, y);
+      } else if (drawTool === "rectangle") {
+        context.rect(
+          Math.min(draft.x, x),
+          Math.min(draft.y, y),
+          Math.abs(x - draft.x),
+          Math.abs(y - draft.y),
+        );
+      } else {
+        context.ellipse(
+          (draft.x + x) / 2,
+          (draft.y + y) / 2,
+          Math.max(0.5, Math.abs(x - draft.x) / 2),
+          Math.max(0.5, Math.abs(y - draft.y) / 2),
+          0,
+          0,
+          Math.PI * 2,
+        );
+      }
+      context.stroke();
+      return;
+    }
     if (drawTool === "fill") {
       if (!starting) return;
       const current = context.getImageData(0, 0, canvas.width, canvas.height);
@@ -617,8 +658,21 @@ export function SceneLibrary({
               }
             }}
             onPointerMove={paint}
-            onPointerUp={() => setDrawingActive(false)}
-            onPointerCancel={() => setDrawingActive(false)}
+            onPointerUp={(event) => {
+              if (shapeDraft.current) paint(event);
+              shapeDraft.current = undefined;
+              setDrawingActive(false);
+            }}
+            onPointerCancel={(event) => {
+              const draft = shapeDraft.current;
+              if (draft) {
+                event.currentTarget.getContext("2d")?.putImageData(draft.image, 0, 0);
+                drawingHistory.current.pop();
+                setUndoCount(drawingHistory.current.length);
+              }
+              shapeDraft.current = undefined;
+              setDrawingActive(false);
+            }}
           />
           <div className="scene-draw-tools" role="group" aria-label={copy.sceneDrawImage}>
             <button
@@ -642,6 +696,20 @@ export function SceneLibrary({
             >
               {copy.sceneFill}
             </button>
+            {(["line", "rectangle", "ellipse"] as const).map((tool) => (
+              <button
+                key={tool}
+                type="button"
+                aria-pressed={drawTool === tool}
+                onClick={() => setDrawTool(tool)}
+              >
+                {tool === "line"
+                  ? copy.sceneLine
+                  : tool === "rectangle"
+                    ? copy.sceneRectangle
+                    : copy.sceneEllipse}
+              </button>
+            ))}
             <input
               aria-label={copy.sceneInkColor}
               type="color"
