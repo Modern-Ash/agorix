@@ -583,6 +583,9 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         const program = port.getProgram();
         const metadata = port.getMetadata();
         if (program === undefined || metadata === undefined) return [];
+        if (message.costumeId !== undefined && !knownCostumeIds(metadata).has(message.costumeId)) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
         const current = actorsForMetadata(metadata);
         if (current.items.length >= 32 || program.scripts.length >= 64) {
           return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
@@ -614,7 +617,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           direction: 0,
           size: 100,
           visible: true,
-          costumeId: "asset:costume.default",
+          costumeId: message.costumeId ?? "asset:costume.default",
           scripts: [scriptId],
         };
         const stage = metadata.stage ?? defaultProjectStage();

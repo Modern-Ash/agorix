@@ -277,6 +277,7 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .scene-asset-filters input, .scene-asset-filters select { min-width: 0; width: 100%; }
 .scene-library-grid > button, .scene-asset-card > button:first-child { display: grid; justify-items: center; align-content: center; gap: 3px; min-width: 0; min-height: 80px; width: 100%; padding: 4px; border: 1px solid var(--vscode-panel-border); border-radius: 7px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
 .scene-asset-card { display: grid; gap: 3px; min-width: 0; }
+.scene-actor-from-costume { border-color: var(--vscode-focusBorder) !important; color: var(--vscode-foreground) !important; font-weight: 600; }
 .scene-edit-asset, .scene-duplicate-asset { min-height: 28px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; background: var(--vscode-editorWidget-background); color: var(--vscode-foreground); cursor: pointer; }
 .scene-edit-asset:hover, .scene-duplicate-asset:hover { background: var(--vscode-list-hoverBackground); }
 .scene-library-grid button[aria-pressed="true"] { border: 2px solid var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 85%); }

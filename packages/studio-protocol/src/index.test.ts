@@ -792,6 +792,12 @@ describe("studio-protocol", () => {
     });
     expect(parseUiMessage({ schema, type: "createActor", name: " " })).toBeUndefined();
     expect(parseUiMessage({ schema, type: "createActor", name: "x".repeat(81) })).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "createActor", name: "Mika", costumeId: "costume:mika" }),
+    ).toEqual({ schema, type: "createActor", name: "Mika", costumeId: "costume:mika" });
+    expect(
+      parseUiMessage({ schema, type: "createActor", name: "Mika", costumeId: "https://bad" }),
+    ).toBeUndefined();
     const actor = {
       id: "actor:robot",
       name: "Robot",

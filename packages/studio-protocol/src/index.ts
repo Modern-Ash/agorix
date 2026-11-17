@@ -165,7 +165,12 @@ export type UiMessage =
       readonly actorId: string;
       readonly patch: ActorPatch;
     }
-  | { readonly schema: Schema; readonly type: "createActor"; readonly name: string }
+  | {
+      readonly schema: Schema;
+      readonly type: "createActor";
+      readonly name: string;
+      readonly costumeId?: string;
+    }
   | {
       readonly schema: Schema;
       readonly type: "deleteActor";
@@ -2265,8 +2270,16 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
     case "createActor":
       return typeof value["name"] === "string" &&
         value["name"].trim().length > 0 &&
-        value["name"].trim().length <= 80
-        ? { schema, type: "createActor", name: value["name"].trim() }
+        value["name"].trim().length <= 80 &&
+        (value["costumeId"] === undefined || isSafeId(value["costumeId"]))
+        ? {
+            schema,
+            type: "createActor",
+            name: value["name"].trim(),
+            ...(value["costumeId"] === undefined
+              ? {}
+              : { costumeId: value["costumeId"] as string }),
+          }
         : undefined;
     case "deleteActor":
       return isSafeId(value["actorId"]) &&
