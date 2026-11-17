@@ -2560,6 +2560,65 @@ describe("workbench live region and focus after inserting from the palette", () 
     pointer("pointerup", 60, 70);
     expect(context.ellipse).toHaveBeenCalledWith(40, 50, 20, 20, 0, 0, Math.PI * 2);
   });
+  it("filters the visual asset gallery by category and restores all assets", () => {
+    act(() =>
+      root.render(
+        <SceneLibrary
+          copy={copyFor("en")}
+          actors={[]}
+          assets={[
+            {
+              id: "costume:mika",
+              name: "Mika",
+              kind: "costume",
+              tags: ["gallery", "animals"],
+              source: "builtin:kids-gallery-costume:mika",
+            },
+            {
+              id: "costume:comet",
+              name: "Comet",
+              kind: "costume",
+              tags: ["gallery", "space"],
+              source: "builtin:kids-gallery-costume:comet",
+            },
+            {
+              id: "backdrop:forest",
+              name: "Forest",
+              kind: "backdrop",
+              tags: ["gallery", "nature"],
+              source: "builtin:kids-gallery-backdrop:forest",
+            },
+          ]}
+          selectedActorId={undefined}
+          backdropId={undefined}
+          onSelectActor={() => undefined}
+          onCostume={() => undefined}
+          onBackdrop={() => undefined}
+        />,
+      ),
+    );
+    act(() => host.querySelectorAll<HTMLButtonElement>(".scene-section-tabs button")[1]!.click());
+    const category = host.querySelector<HTMLSelectElement>(".scene-asset-filters select")!;
+    const costumeSection = host.querySelector<HTMLElement>('section[aria-label="Costumes"]')!;
+    expect(costumeSection.querySelectorAll(".scene-asset-card")).toHaveLength(2);
+    act(() => {
+      category.value = "animals";
+      category.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(costumeSection.querySelectorAll(".scene-asset-card")).toHaveLength(1);
+    expect(costumeSection.querySelector(".scene-asset-card")?.textContent).toContain("Mika");
+    act(() => {
+      category.value = "fantasy";
+      category.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(costumeSection.querySelectorAll(".scene-asset-card")).toHaveLength(0);
+    expect(costumeSection.textContent).toContain(copyFor("en").sceneNoMatchingAssets);
+    act(() => {
+      category.value = "all";
+      category.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(costumeSection.querySelectorAll(".scene-asset-card")).toHaveLength(2);
+  });
   it("duplicates a costume into a new editable draft and saves it explicitly", () => {
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
     const imported: { kind: string; name: string; source: string }[] = [];

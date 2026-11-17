@@ -279,6 +279,25 @@ describe("workbenchHost", () => {
         }),
       ]),
     });
+    const catalog = assets?.type === "assets" ? assets.assets : [];
+    expect(
+      catalog.filter((asset) => asset.kind === "costume" && asset.tags.includes("gallery")),
+    ).toHaveLength(12);
+    expect(
+      catalog.filter((asset) => asset.kind === "backdrop" && asset.tags.includes("gallery")),
+    ).toHaveLength(9);
+    expect(catalog).toContainEqual(
+      expect.objectContaining({
+        id: "costume:mika",
+        source: "builtin:kids-gallery-costume:mika",
+      }),
+    );
+    expect(catalog).toContainEqual(
+      expect.objectContaining({
+        id: "backdrop:forest",
+        source: "builtin:kids-gallery-backdrop:forest",
+      }),
+    );
   });
   it("answers ready with the workspace and hash, or nothing without a project", async () => {
     const { host } = setup();
