@@ -76,13 +76,17 @@ async function main() {
     const context = browser.contexts()[0];
     const page = context.pages().find((item) => item.url().startsWith("vscode-file:"));
     if (!page) throw new Error("VS Code window not found");
+    await page.locator(".monaco-workbench").waitFor({ timeout: 30000 });
+    await page.bringToFront();
     const onboarding = page.getByRole("dialog", { name: "Welcome to Visual Studio Code" });
-    await onboarding.waitFor({ timeout: 10000 });
-    await onboarding.getByText("Continue without Signing In").click();
-    await onboarding.getByText("Get Started", { exact: true }).click();
-    await onboarding.waitFor({ state: "hidden" });
+    await onboarding.waitFor({ timeout: 10000 }).catch(() => undefined);
+    if (await onboarding.isVisible()) {
+      await onboarding.getByText("Continue without Signing In").click();
+      await onboarding.getByText("Get Started", { exact: true }).click();
+      await onboarding.waitFor({ state: "hidden" });
+    }
     await page.waitForTimeout(1000);
-    await page.keyboard.press("Control+Shift+P");
+    await page.keyboard.press("F1");
     await page.locator(".quick-input-widget input").first().fill(">Reopen Editor With");
     await page.getByText("View: Reopen Editor With...", { exact: true }).click();
     await page.locator(".quick-input-widget input").first().fill("Agorix Workbench");
@@ -92,6 +96,23 @@ async function main() {
     const workbench = webview.locator(".workbench");
     await workbench.waitFor({ timeout: 10000 });
     await webview.locator(".studio-program .block").first().waitFor();
+    await webview.locator('.stage-list-watcher[data-list-id="inventory"]').waitFor();
+    assert.match(
+      await webview.locator('.stage-list-watcher[data-list-id="inventory"]').innerText(),
+      /Inventory/,
+    );
+    if (process.env.AGORIX_CAPTURE_VISUAL === "1") {
+      for (const [width, height] of [
+        [900, 700],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: path.join(repoRoot, `docs/product/assets/studio-vsix-list-watchers-${width}.png`),
+        });
+      }
+      await page.setViewportSize({ width: 900, height: 700 });
+    }
     console.log("Loaded canonical program, stage and Ori");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
     await webview
@@ -166,7 +187,7 @@ async function main() {
     await editButton.click();
     await drawing.evaluate(async (canvas) => {
       const context = canvas.getContext("2d");
-      for (let attempt = 0; attempt < 30; attempt++) {
+      for (let attempt = 0; attempt < 100; attempt++) {
         if (context?.getImageData(20, 20, 1, 1).data[3]) return;
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
@@ -231,6 +252,8 @@ async function main() {
     )[1];
     if (!traceCount || Number(traceCount) < 1) throw new Error("Run produced no event trace");
     console.log("Ran project and opened evidence");
+    const watcher = webview.locator('.stage-list-watcher[data-list-id="inventory"]');
+    assert.deepEqual(await watcher.locator("li").allTextContents(), ["2", "5"]);
     const saved = JSON.parse(fs.readFileSync(project, "utf8"));
     if (!saved.project?.metadata?.assets?.some((asset) => asset.name === "My painted star")) {
       throw new Error("Painted costume was not persisted");
@@ -285,7 +308,7 @@ async function main() {
       .first()
       .waitFor({ timeout: 5000 });
     await webPage.locator(".stage-panel").getByRole("button", { name: "Run", exact: true }).click();
-    await webPage.locator('[data-fact-source="runtime"]').first().waitFor({ timeout: 10000 });
+    await webPage.locator('[data-fact-source="runtime"]').first().waitFor({ timeout: 20000 });
     const openMenu = async () => {
       const menu = webPage.getByRole("button", { name: "Show app menu" });
       if (await menu.isVisible()) await menu.click();

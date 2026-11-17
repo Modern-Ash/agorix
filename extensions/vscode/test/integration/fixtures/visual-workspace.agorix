@@ -14,6 +14,14 @@
           "visible": true
         }
       ],
+      "lists": [
+        {
+          "id": "inventory",
+          "name": "Inventory",
+          "initialItems": [2],
+          "visible": true
+        }
+      ],
       "scripts": [
         {
           "id": "main",
@@ -58,6 +66,14 @@
               "value": {
                 "type": "numericLiteral",
                 "value": 1
+              }
+            },
+            {
+              "type": "listAdd",
+              "listId": "inventory",
+              "value": {
+                "type": "numericLiteral",
+                "value": 5
               }
             }
           ]

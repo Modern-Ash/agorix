@@ -134,6 +134,7 @@ describe("stage", () => {
           sprite: { x: 10, y: 0, heading: 0 },
           goal: { x: 10, y: 0 },
           variables: { score: { value: 3, visible: true } },
+          lists: { inventory: { items: [1, 7, 8], visible: true } },
           sounds: { activeSoundIds: ["asset:sound.beacon"] },
         },
       },
@@ -158,6 +159,10 @@ describe("stage", () => {
     expect(frames[1]?.state.variables).toEqual([
       { id: "score", label: "score", value: 3, visible: true },
     ]);
+    expect(frames[1]?.state.lists).toEqual([
+      { id: "inventory", label: "inventory", items: [1, 7, 8], visible: true },
+    ]);
+    expect(Object.isFrozen(frames[1]?.state.lists?.[0]?.items)).toBe(true);
     expect(frames[1]?.state.sounds?.activeSoundIds).toEqual(["asset:sound.beacon"]);
   });
 

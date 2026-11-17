@@ -361,6 +361,7 @@ export function StagePanel({
   copy,
   frame,
   assets = [],
+  listNames = {},
   selectedActorId,
   onSelectActor,
   onPlaceActor,
@@ -369,6 +370,7 @@ export function StagePanel({
   readonly copy: StudioUiCopy;
   readonly frame: StageFrameMessage["frame"] | undefined;
   readonly assets?: readonly AssetsMessage["assets"][number][];
+  readonly listNames?: Readonly<Record<string, string>>;
   readonly selectedActorId: string | undefined;
   readonly onSelectActor?: (actorId: string) => void;
   readonly onPlaceActor?: (actorId: string, position: { x: number; y: number }) => void;
@@ -380,6 +382,7 @@ export function StagePanel({
   const assetNames = new Map(assets.map((asset) => [asset.id, asset.name]));
   const backdropImage = imageForId(state?.backdropId, assets);
   const visibleVariables = (state?.variables ?? []).filter((variable) => variable.visible);
+  const visibleLists = (state?.lists ?? []).filter((list) => list.visible);
   const activeSoundIds = state?.sounds?.activeSoundIds ?? [];
   const stageActors =
     state === undefined
@@ -538,12 +541,28 @@ export function StagePanel({
                   </button>
                 );
               })}
-            {visibleVariables.length === 0 ? null : (
-              <div className="stage-watchers" aria-label={copy.variables}>
+            {visibleVariables.length === 0 && visibleLists.length === 0 ? null : (
+              <div className="stage-watchers" aria-label={copy.stageWatchers}>
                 {visibleVariables.map((variable) => (
                   <div key={variable.id} className="stage-watcher" data-variable-id={variable.id}>
                     <span>{variable.label}</span>
                     <strong>{variable.value}</strong>
+                  </div>
+                ))}
+                {visibleLists.map((list) => (
+                  <div key={list.id} className="stage-list-watcher" data-list-id={list.id}>
+                    <strong>
+                      {listNames[list.id] ?? list.label} · {list.items.length}
+                    </strong>
+                    {list.items.length === 0 ? (
+                      <span>{copy.stageEmptyList}</span>
+                    ) : (
+                      <ol>
+                        {list.items.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ol>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1350,6 +1369,9 @@ export function Workbench({
             copy={copy}
             frame={stageFrame}
             assets={assets}
+            listNames={Object.fromEntries(
+              (workspace?.lists ?? []).map((list) => [list.id, list.name]),
+            )}
             selectedActorId={selectedActorId}
             onSelectActor={setSelectedActorId}
             onPlaceActor={(actorId, position) => updateActor(actorId, position)}
