@@ -578,6 +578,8 @@ const BLOCK_TYPES = [
   "motion_glide_to",
   "motion_bounce_on_edge",
   "motion_turn",
+  "motion_point_in_direction",
+  "motion_point_towards",
   "looks_say",
   "looks_think",
   "looks_show",

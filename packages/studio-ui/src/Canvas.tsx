@@ -1248,6 +1248,35 @@ export function Canvas({
                   />
                 </label>
               ))}
+            {block.type === "motion_point_towards" ? (
+              <label className="block-field">
+                <span>{copy.conditionActor}</span>
+                <select
+                  aria-label={`${label}: ${copy.conditionActor}`}
+                  value={String(block.fields?.actorId ?? "")}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setTextField",
+                      location: block.location,
+                      field: "actorId",
+                      value: event.currentTarget.value,
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  {actors.some((actor) => actor.id === block.fields?.actorId) ? null : (
+                    <option value={String(block.fields?.actorId ?? "")}>
+                      {String(block.fields?.actorId ?? "")}
+                    </option>
+                  )}
+                  {actors.map((actor) => (
+                    <option key={actor.id} value={actor.id}>
+                      {actor.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             {hint === undefined ? null : (
               <span className={ambient === undefined ? "hint-badge" : "hint-badge ambient"}>
                 {ambient === undefined

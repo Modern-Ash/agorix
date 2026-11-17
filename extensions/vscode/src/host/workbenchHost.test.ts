@@ -60,6 +60,47 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("inserts visual pointing blocks and accepts only a known target actor", async () => {
+    const { host, get, metadata, labels } = setup();
+    await host.handle({ schema, type: "createActor", name: "Robot" });
+    const robotId = metadata().actors!.items.find((actor) => actor.name === "Robot")!.id;
+    for (const blockType of ["motion_point_in_direction", "motion_point_towards"] as const) {
+      const result = await host.handle({
+        schema,
+        type: "intent",
+        intent: { type: "insertBlock", blockType, to: { container: script, index: 0 } },
+        baseHash: programSemanticHash(get()!),
+      });
+      expect(result[0]).toMatchObject({ type: "workspace" });
+    }
+    const location = { container: script, index: 0 };
+    const accepted = await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "setTextField", location, field: "actorId", value: robotId },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(accepted[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      type: "pointTowards",
+      actorId: robotId,
+    });
+    expect(get()?.scripts[0]?.statements[1]).toMatchObject({
+      type: "pointInDirection",
+      degrees: 90,
+    });
+    const before = get();
+    const count = labels.length;
+    const rejected = await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "setTextField", location, field: "actorId", value: "actor:missing" },
+      baseHash: programSemanticHash(before!),
+    });
+    expect(rejected[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(get()).toBe(before);
+    expect(labels).toHaveLength(count);
+  });
   it("persists a known backdrop and refuses unknown assets", async () => {
     const { host, port, metadata, labels } = setup();
     await port.commitMetadata(
