@@ -818,6 +818,44 @@ describe("canvas keyboard and screen reader behaviour", () => {
       blockType: "sensing_touching_stage_edge",
     });
   });
+  it("chooses a visible actor for the point-towards block", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: { id: "point:robot", type: "motion_point_towards", fields: { actorId: "actor:main" } },
+    }).workspace;
+    const intents: Intent[] = [];
+    act(() =>
+      root.render(
+        <Canvas
+          workspace={workspace}
+          actors={
+            [
+              { id: "actor:main", name: "Main" },
+              { id: "actor:robot", name: "Robot" },
+            ] as never
+          }
+          onIntent={(intent) => intents.push(intent)}
+        />,
+      ),
+    );
+    const target = host.querySelector<HTMLSelectElement>(
+      'select[aria-label="Point towards actor: Target actor"]',
+    )!;
+    expect(target).not.toBeNull();
+    expect(Array.from(target.options).map((option) => option.textContent)).toContain("Robot");
+    act(() => {
+      target.value = "actor:robot";
+      target.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setTextField",
+      field: "actorId",
+      value: "actor:robot",
+      location: { index: 0 },
+    });
+  });
   it("shows editable Boolean and actor targets inside conditions", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

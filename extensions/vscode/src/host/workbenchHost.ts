@@ -439,6 +439,17 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
         }
         if (intent.type === "setTextField") {
+          if (intent.field === "actorId") {
+            const metadata = port.getMetadata();
+            if (
+              metadata === undefined ||
+              !actorsForMetadata(metadata).items.some((actor) => actor.id === intent.value)
+            ) {
+              return [
+                { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+              ];
+            }
+          }
           if (
             intent.field === "listId" &&
             !program.lists?.some((list) => list.id === intent.value)

@@ -148,6 +148,32 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "motion_turn", fields: { degrees: 90 } }),
   },
   {
+    type: "motion_point_in_direction",
+    label: "Point in [N] direction",
+    section: "Move",
+    placement: "statement",
+    accessibleName: "point in direction",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({
+      id,
+      type: "motion_point_in_direction",
+      fields: { degrees: 90 },
+    }),
+  },
+  {
+    type: "motion_point_towards",
+    label: "Point towards actor",
+    section: "Move",
+    placement: "statement",
+    accessibleName: "point towards actor",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({
+      id,
+      type: "motion_point_towards",
+      fields: { actorId: "actor:main" },
+    }),
+  },
+  {
     type: "looks_say",
     label: "Say [text]",
     section: "Looks",
