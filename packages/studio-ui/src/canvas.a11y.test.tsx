@@ -1215,6 +1215,58 @@ describe("workbench live region and focus after inserting from the palette", () 
       intent: { type: "addVariable", name: "energy" },
     });
   });
+  it("navigates editor views and folds tools and Ori without losing their state", () => {
+    const bridge: HostBridge = { post: () => undefined, subscribe: () => () => undefined };
+    act(() => root.render(<Workbench bridge={bridge} locale="es" />));
+    const shell = host.querySelector<HTMLElement>(".workbench")!;
+    const scene = host.querySelector<HTMLButtonElement>(".studio-editor-tabs button:nth-child(2)")!;
+    act(() => scene.click());
+    expect(shell.dataset.workspaceView).toBe("scene");
+    expect(scene.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(true);
+    expect(host.querySelector<HTMLElement>(".studio-details")?.hidden).toBe(false);
+    expect(host.querySelector<HTMLElement>(".studio-scene-editor")?.hidden).toBe(false);
+    expect(shell.dataset.toolsOpen).toBe("false");
+    expect(
+      host
+        .querySelector<HTMLButtonElement>(".library-tabs button:nth-child(2)")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("false");
+    const review = host.querySelector<HTMLButtonElement>(
+      ".studio-editor-tabs button:nth-child(3)",
+    )!;
+    act(() => review.click());
+    expect(host.querySelector<HTMLElement>(".studio-evidence")?.hidden).toBe(false);
+    const tools = host.querySelector<HTMLButtonElement>(
+      '.studio-shell-actions button[aria-controls="studio-tools"]',
+    )!;
+    const ori = host.querySelector<HTMLButtonElement>(
+      '.studio-shell-actions button[aria-controls="studio-ori"]',
+    )!;
+    act(() => {
+      tools.click();
+      ori.click();
+    });
+    expect(shell.dataset.toolsOpen).toBe("true");
+    act(() => tools.click());
+    expect(shell.dataset.toolsOpen).toBe("false");
+    expect(shell.dataset.oriOpen).toBe("false");
+    expect(host.querySelector("#studio-ori .agent")).not.toBeNull();
+    const build = host.querySelector<HTMLButtonElement>(".studio-editor-tabs button:first-child")!;
+    act(() => build.click());
+    expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(false);
+    expect(host.querySelector<HTMLElement>(".studio-evidence")?.hidden).toBe(true);
+  });
+  it("opens the canonical code projection from the editor tabs", () => {
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => posted.push(message),
+      subscribe: () => () => undefined,
+    };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    act(() => host.querySelector<HTMLButtonElement>(".studio-code-tab")!.click());
+    expect(posted.at(-1)).toEqual({ schema: STUDIO_PROTOCOL_VERSION, type: "openCode" });
+  });
   it("creates lists and exposes list operations only after declaration", () => {
     let listener: ((message: HostMessage) => void) | undefined;
     const posted: unknown[] = [];

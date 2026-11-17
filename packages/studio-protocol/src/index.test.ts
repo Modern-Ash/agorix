@@ -6,6 +6,10 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("opens the code projection through an explicit workspace message", () => {
+    expect(parseUiMessage({ schema, type: "openCode" })).toEqual({ schema, type: "openCode" });
+    expect(parseUiMessage({ schema: "other", type: "openCode" })).toBeUndefined();
+  });
   it("accepts advanced motion and timing blocks only through typed insert intents", () => {
     for (const blockType of [
       "motion_go_to",

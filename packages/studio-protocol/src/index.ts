@@ -104,6 +104,7 @@ const MAX_ACTOR_SIZE = 400;
 
 export type UiMessage =
   | { readonly schema: Schema; readonly type: "ready" }
+  | { readonly schema: Schema; readonly type: "openCode" }
   | {
       readonly schema: Schema;
       readonly type: "intent";
@@ -2043,6 +2044,8 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
   switch (value["type"]) {
     case "ready":
       return { schema, type: "ready" };
+    case "openCode":
+      return { schema, type: "openCode" };
     case "intent": {
       const intent = parseIntent(value["intent"]);
       if (intent === undefined) return undefined;
