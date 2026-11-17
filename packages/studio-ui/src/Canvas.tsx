@@ -1147,6 +1147,10 @@ export function Canvas({
                               side,
                               blockType: event.currentTarget
                                 .value as (typeof STUDIO_LOGICAL_OPERAND_TYPES)[number],
+                              ...(event.currentTarget.value === "sensing_touching_actor" &&
+                              actors[0] !== undefined
+                                ? { actorId: actors[0].id }
+                                : {}),
                             })
                           }
                           onKeyDown={(event) => event.stopPropagation()}
@@ -1183,6 +1187,35 @@ export function Canvas({
                           >
                             <option value="true">{copy.trueLabel}</option>
                             <option value="false">{copy.falseLabel}</option>
+                          </select>
+                        </label>
+                      ) : null}
+                      {operand.type === "sensing_touching_actor" ? (
+                        <label>
+                          <span>{copy.conditionActor}</span>
+                          <select
+                            aria-label={`${copy.condition}: ${side} ${copy.conditionActor}`}
+                            value={String(operand.fields?.actorId ?? "")}
+                            onChange={(event) =>
+                              onIntent({
+                                type: "setLogicalActor",
+                                location: block.location,
+                                side,
+                                actorId: event.currentTarget.value,
+                              })
+                            }
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            {actors.some((actor) => actor.id === operand.fields?.actorId) ? null : (
+                              <option value={String(operand.fields?.actorId ?? "")}>
+                                {String(operand.fields?.actorId ?? "")}
+                              </option>
+                            )}
+                            {actors.map((actor) => (
+                              <option key={actor.id} value={actor.id}>
+                                {actor.name}
+                              </option>
+                            ))}
                           </select>
                         </label>
                       ) : null}
