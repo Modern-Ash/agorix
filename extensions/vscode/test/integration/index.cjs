@@ -145,6 +145,7 @@ const tests = [
       assert.equal(envelope.project.schemaVersion, "agorix/program/v1");
       assert.equal(envelope.project.metadata.locale, "en");
 
+      await vscode.commands.executeCommand("agorixStudio.openProjection", "typescript");
       const editor = await waitFor(
         "created project projection",
         () => vscode.window.activeTextEditor,
@@ -165,6 +166,7 @@ const tests = [
         "agorixStudio.openProject",
         fixture("repeat.agorix.json"),
       );
+      await vscode.commands.executeCommand("agorixStudio.openProjection", "typescript");
       const editor = await waitFor("projection editor", () => vscode.window.activeTextEditor);
       const text = editor.document.getText();
       assert.equal(editor.document.uri.scheme, "agorix-studio");
@@ -249,11 +251,10 @@ const tests = [
         vscode.window.tabGroups.all
           .flatMap((group) => group.tabs)
           .filter(
-            (t) => t.input instanceof vscode.TabInputWebview && t.label === "Agorix Workbench",
+            (t) => t.input instanceof vscode.TabInputWebview && t.label === "Agorix Studio · Ori",
           );
-      const before = workbenchTabs().length;
       await vscode.commands.executeCommand("agorixStudio.openWorkbench");
-      await waitFor("the Workbench tab", () => workbenchTabs().length > before);
+      await waitFor("the Workbench tab", () => workbenchTabs().length === 1);
       const opened = workbenchTabs().length;
       // Reopening reveals the same panel instead of creating another one.
       await vscode.commands.executeCommand("agorixStudio.openWorkbench");
@@ -478,6 +479,155 @@ const tests = [
       // and the previously opened project must stay usable.
       const report = await vscode.commands.executeCommand("agorixStudio.showEvidence");
       assert.match(report, /Outcome:/);
+    },
+  ],
+  [
+    "two-actor visual project runs and Ori proposal stays visible until an explicit decision",
+    async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agorix-studio-visual-"));
+      const file = path.join(dir, "visual-journey.agorix.json");
+      const project = {
+        schemaVersion: "agorix/program/v1",
+        program: {
+          schema: "agorix/program/v1",
+          variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+          scripts: [
+            {
+              id: "main",
+              trigger: { type: "onStart" },
+              statements: [
+                { type: "move", steps: 10 },
+                { type: "move", steps: 10 },
+                { type: "move", steps: 10 },
+                {
+                  type: "if",
+                  condition: { type: "booleanLiteral", value: true },
+                  then: [{ type: "repeat", count: 2, body: [{ type: "turn", degrees: 45 }] }],
+                },
+                {
+                  type: "setVariable",
+                  variableId: "score",
+                  value: { type: "numericLiteral", value: 1 },
+                },
+              ],
+            },
+            {
+              id: "helper",
+              trigger: { type: "onActorClicked", actorId: "actor:helper" },
+              statements: [{ type: "say", text: "Hi" }],
+            },
+          ],
+        },
+        metadata: {
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          missionProgress: 0,
+          hintLevel: 0,
+          locale: "en",
+          actors: {
+            activeId: "actor:main",
+            items: [
+              {
+                id: "actor:main",
+                name: "Explorer",
+                x: 52,
+                y: 128,
+                direction: 0,
+                size: 100,
+                visible: true,
+                costumeId: "asset:costume.default",
+                scripts: ["main"],
+              },
+              {
+                id: "actor:helper",
+                name: "Helper",
+                x: 150,
+                y: 96,
+                direction: 0,
+                size: 100,
+                visible: true,
+                costumeId: "asset:costume.spark",
+                scripts: ["helper"],
+              },
+            ],
+          },
+          stage: {
+            backdropId: "asset:space.trailhead",
+            actorOrder: ["actor:main", "actor:helper"],
+          },
+          assets: [
+            {
+              id: "asset:costume.default",
+              kind: "costume",
+              name: "Explorer",
+              source: "builtin:costume.default",
+            },
+            {
+              id: "asset:costume.spark",
+              kind: "costume",
+              name: "Spark",
+              source: "builtin:costume.spark",
+            },
+            {
+              id: "asset:space.trailhead",
+              kind: "backdrop",
+              name: "Trailhead",
+              source: "builtin:space.trailhead",
+            },
+          ],
+        },
+      };
+      fs.writeFileSync(file, JSON.stringify(project));
+      await vscode.commands.executeCommand("agorixStudio.openProject", vscode.Uri.file(file));
+      await vscode.commands.executeCommand("agorixStudio.openProjection", "typescript");
+      const editor = await waitFor(
+        "visual project code projection",
+        () => vscode.window.activeTextEditor,
+      );
+      assert.match(editor.document.getText(), /score/);
+      assert.match(editor.document.getText(), /repeat/);
+      const before = fs.readFileSync(file, "utf8");
+      const run = await vscode.commands.executeCommand("agorixStudio.run");
+      assert.equal(run.status, "completed");
+      assert.ok(run.previewFrames.some((frame) => frame.state.actors?.length === 2));
+      assert.ok(
+        run.previewFrames.some((frame) =>
+          frame.state.variables?.some((v) => v.id === "score" && v.value === 1),
+        ),
+      );
+      const evidence = await vscode.commands.executeCommand("agorixStudio.showEvidence");
+      assert.match(evidence, /Outcome:/);
+      const ori = await vscode.commands.executeCommand("agorixStudio.companionExplain");
+      assert.equal(ori.action, "explain");
+      assert.equal(fs.readFileSync(file, "utf8"), before, "Ori explanation is read-only");
+
+      void vscode.commands.executeCommand("agorixStudio.suggestRepeat");
+      await waitFor("visual proposal diff", () =>
+        vscode.window.tabGroups.all
+          .flatMap((group) => group.tabs)
+          .find((tab) => tab.input instanceof vscode.TabInputTextDiff),
+      );
+      assert.equal(fs.readFileSync(file, "utf8"), before, "proposal is only a preview");
+      await vscode.commands.executeCommand("agorixStudio.rejectProposal");
+      assert.equal(fs.readFileSync(file, "utf8"), before, "rejection leaves the project unchanged");
+      await vscode.commands.executeCommand("notifications.clearAll");
+
+      void vscode.commands.executeCommand("agorixStudio.suggestRepeat");
+      await waitFor("second visual proposal diff", () =>
+        vscode.window.tabGroups.all
+          .flatMap((group) => group.tabs)
+          .find((tab) => tab.input instanceof vscode.TabInputTextDiff),
+      );
+      void vscode.commands.executeCommand("agorixStudio.applyProposal");
+      await waitFor("accepted canonical program", () => {
+        const saved = JSON.parse(fs.readFileSync(file, "utf8"));
+        return saved.program.scripts[0].statements[0].type === "repeat" && saved;
+      });
+      await vscode.commands.executeCommand("notifications.clearAll");
+      const accepted = JSON.parse(fs.readFileSync(file, "utf8"));
+      assert.equal(accepted.program.scripts[0].statements[0].count, 3);
+      assert.equal(accepted.metadata.actors.items.length, 2);
+      assert.equal(accepted.program.variables[0].id, "score");
     },
   ],
 ];

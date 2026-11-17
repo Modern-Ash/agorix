@@ -100,12 +100,14 @@ export class ExecutionInspectorItem extends vscode.TreeItem {
 export class ExecutionInspectorProvider implements vscode.TreeDataProvider<ExecutionInspectorItem> {
   readonly #changed = new vscode.EventEmitter<ExecutionInspectorItem | undefined | null | void>();
   readonly onDidChangeTreeData = this.#changed.event;
+  #items: ExecutionInspectorItem[] | undefined;
 
   constructor(
     private readonly getCurrentExecutionView: () => StudioExecutionViewState | undefined,
   ) {}
 
   refresh(): void {
+    this.#items = undefined;
     this.#changed.fire();
   }
 
@@ -113,10 +115,20 @@ export class ExecutionInspectorProvider implements vscode.TreeDataProvider<Execu
     return element;
   }
 
+  // The inspector is a flat tree. VS Code requires getParent for TreeView.reveal.
+  getParent(): undefined {
+    return undefined;
+  }
+
   getChildren(): ExecutionInspectorItem[] {
-    return (this.getCurrentExecutionView()?.inspectorSteps ?? []).map(
+    this.#items ??= (this.getCurrentExecutionView()?.inspectorSteps ?? []).map(
       (step) => new ExecutionInspectorItem(step),
     );
+    return this.#items;
+  }
+
+  itemForNode(nodeId: string): ExecutionInspectorItem | undefined {
+    return this.getChildren().find((item) => item.step.nodeId === nodeId);
   }
 }
 

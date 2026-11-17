@@ -1,6 +1,8 @@
 // Installs the packaged VSIX into a clean profile of a real VS Code, then runs the same
 // integration suite against the INSTALLED extension (not the development folder).
-// Usage: pnpm package && pnpm test:vsix   (env VSCODE_VERSION, default "stable")
+// Usage: pnpm package && pnpm test:vsix
+// Set VSCODE_EXECUTABLE to the Electron executable (for example /usr/share/code/code)
+// to exercise an already installed VS Code instead of downloading one.
 const path = require("node:path");
 const os = require("node:os");
 const fs = require("node:fs");
@@ -15,7 +17,9 @@ async function main() {
   delete process.env.ELECTRON_RUN_AS_NODE;
   const vsix = path.resolve(__dirname, "../../dist/agorix-studio.vsix");
   if (!fs.existsSync(vsix)) throw new Error(`Missing ${vsix}; run "pnpm package" first.`);
-  const executable = await downloadAndUnzipVSCode(process.env.VSCODE_VERSION || "stable");
+  const executable =
+    process.env.VSCODE_EXECUTABLE ||
+    (await downloadAndUnzipVSCode(process.env.VSCODE_VERSION || "stable"));
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "agorix-studio-vsix-"));
   const profile = [
     "--user-data-dir",
@@ -34,7 +38,8 @@ async function main() {
         shell: false,
       });
     const install = run(["--install-extension", vsix]);
-    process.stdout.write(install.stdout + install.stderr);
+    if (install.error) throw install.error;
+    process.stdout.write((install.stdout || "") + (install.stderr || ""));
     if (install.status !== 0) throw new Error("VSIX install failed");
     const listed = run(["--list-extensions", "--show-versions"]).stdout;
     console.log(`Installed extensions: ${listed.trim()}`);

@@ -9,7 +9,6 @@ import { PROJECTION_SCHEME } from "../store/session.js";
 import { refreshWorldPreview } from "../host/worldPreviewPanel.js";
 import {
   CompanionHistoryProvider,
-  ExecutionInspectorItem,
   ExecutionInspectorProvider,
   ProjectionDocumentProvider,
   StudioTreeProvider,
@@ -58,6 +57,15 @@ export function registerStudioViews(
   const inspectorView = vscode.window.createTreeView("agorixStudio.inspector", {
     treeDataProvider: inspectorProvider,
   });
+  let selectedInspectorNodeId: string | undefined;
+  const revealSelectedInspectorNode = (): void => {
+    if (!inspectorView.visible || selectedInspectorNodeId === undefined) return;
+    const item = inspectorProvider.itemForNode(selectedInspectorNodeId);
+    if (item === undefined) return;
+    void inspectorView.reveal(item, { select: true, focus: false }).then(undefined, () => {
+      console.warn("Agorix Inspector could not reveal the selected runtime step.");
+    });
+  };
   const refreshStudioViews = (): void => {
     for (const provider of treeProviders) {
       provider.refresh();
@@ -81,6 +89,9 @@ export function registerStudioViews(
         }),
       ),
       inspectorView,
+      inspectorView.onDidChangeVisibility((event) => {
+        if (event.visible) revealSelectedInspectorNode();
+      }),
       vscode.window.createTreeView("agorixStudio.companionHistory", {
         treeDataProvider: companionProvider,
       }),
@@ -89,10 +100,8 @@ export function registerStudioViews(
     refreshExecutionViews,
     refreshCompanionViews,
     revealInspectorNode: (nodeId) => {
-      const step = options.currentExecutionView()?.inspectorSteps.find((s) => s.nodeId === nodeId);
-      if (step !== undefined) {
-        void inspectorView.reveal(new ExecutionInspectorItem(step), { select: true, focus: false });
-      }
+      selectedInspectorNodeId = nodeId;
+      revealSelectedInspectorNode();
     },
   };
 }
