@@ -199,6 +199,62 @@ it("switches actor before focusing an Ori hint in another script", () => {
     locationKey({ container: { kind: "script", scriptIndex: 0 }, index: 0 }),
   );
 });
+
+it("keeps the selected actor controls beside the visual scene", () => {
+  let listener: ((message: HostMessage) => void) | undefined;
+  const posted: unknown[] = [];
+  const bridge: HostBridge = {
+    post: (message) => void posted.push(message),
+    subscribe: (next) => {
+      listener = next;
+      return () => undefined;
+    },
+  };
+  act(() => root.render(<Workbench bridge={bridge} />));
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "actors",
+      selectedActorId: "actor:first",
+      actors: [
+        {
+          id: "actor:first",
+          name: "First",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scriptCount: 1,
+        },
+        {
+          id: "actor:second",
+          name: "Second",
+          x: 10,
+          y: 20,
+          direction: 90,
+          size: 80,
+          visible: true,
+          scriptCount: 1,
+        },
+      ],
+    }),
+  );
+  act(() => host.querySelectorAll<HTMLButtonElement>(".studio-editor-tabs button")[1]?.click());
+  const scene = host.querySelector<HTMLElement>(".studio-scene-editor")!;
+  expect(scene.querySelector(".actor-inspector header strong")?.textContent).toBe("First");
+  expect(host.querySelector(".studio-details .actor-inspector")).toBeNull();
+  act(() => scene.querySelectorAll<HTMLButtonElement>(".scene-actors button")[1]?.click());
+  expect(scene.querySelector(".actor-inspector header strong")?.textContent).toBe("Second");
+  act(() => scene.querySelector<HTMLInputElement>(".actor-visible input")?.click());
+  expect(posted.at(-1)).toMatchObject({
+    type: "updateActor",
+    actorId: "actor:second",
+    patch: { visible: false },
+  });
+  act(() => listener?.({ schema: STUDIO_PROTOCOL_VERSION, type: "actors", actors: [] }));
+  expect(scene.querySelector(".actor-inspector")).toBeNull();
+});
 afterEach(() => {
   act(() => root.unmount());
   host.remove();

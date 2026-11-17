@@ -319,6 +319,9 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .workbench[data-workspace-view="scene"] .studio-play { grid-column: 1; }
 .studio-scene-editor { grid-column: 2; min-width: 0; max-height: calc(100vh - 100px); overflow: auto; padding: 10px; border-left: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
 .studio-scene-editor h2 { margin: 0 0 14px; font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; }
+.studio-scene-editor .actor-inspector { border-radius: 8px; border-color: color-mix(in srgb, var(--vscode-focusBorder), var(--vscode-panel-border) 65%); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 95%); }
+.studio-scene-editor .actor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.studio-scene-editor .actor-inspector label { min-width: 0; }
 .studio-scene-editor .scene-create-image canvas { max-width: 100%; box-sizing: border-box; }
 .studio-scene-editor .scene-create-image input, .studio-scene-editor .scene-create-image select { box-sizing: border-box; max-width: 100%; min-width: 0; }
 .studio-scene-editor input:not([type="color"]):not([type="file"]), .studio-scene-editor select { width: 100%; min-height: 30px; padding: 5px 8px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 4px; }
