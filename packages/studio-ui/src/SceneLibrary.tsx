@@ -34,6 +34,7 @@ export function SceneLibrary({
   readonly onImportAsset?: (kind: "costume" | "backdrop", name: string, source: string) => void;
 }) {
   const drawing = useRef<HTMLCanvasElement>(null);
+  const drawingHistory = useRef<ImageData[]>([]);
   const [assetKind, setAssetKind] = useState<"costume" | "backdrop">("costume");
   const [activeSection, setActiveSection] = useState<
     "actors" | "costumes" | "backdrops" | "create"
@@ -42,6 +43,9 @@ export function SceneLibrary({
   const [assetError, setAssetError] = useState("");
   const [drawingActive, setDrawingActive] = useState(false);
   const [ink, setInk] = useState("#7855d8");
+  const [drawTool, setDrawTool] = useState<"brush" | "eraser">("brush");
+  const [brushSize, setBrushSize] = useState(5);
+  const [undoCount, setUndoCount] = useState(0);
   const [scriptTrigger, setScriptTrigger] = useState<
     "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked"
   >("greenFlag");
@@ -56,21 +60,27 @@ export function SceneLibrary({
     setAssetError("");
     setActiveSection(assetKind === "costume" ? "costumes" : "backdrops");
   };
-  const paint = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawingActive) return;
+  const rememberDrawing = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
+    drawingHistory.current.push(context.getImageData(0, 0, canvas.width, canvas.height));
+    if (drawingHistory.current.length > 12) drawingHistory.current.shift();
+    setUndoCount(drawingHistory.current.length);
+  };
+  const paint = (event: React.PointerEvent<HTMLCanvasElement>, starting = false) => {
+    if (!drawingActive && !starting) return;
     const canvas = drawing.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
     const bounds = canvas.getBoundingClientRect();
+    if (bounds.width === 0 || bounds.height === 0) return;
+    const x = ((event.clientX - bounds.left) * canvas.width) / bounds.width;
+    const y = ((event.clientY - bounds.top) * canvas.height) / bounds.height;
+    if (drawTool === "eraser") {
+      context.clearRect(x - brushSize, y - brushSize, brushSize * 2, brushSize * 2);
+      return;
+    }
     context.fillStyle = ink;
     context.beginPath();
-    context.arc(
-      ((event.clientX - bounds.left) * canvas.width) / bounds.width,
-      ((event.clientY - bounds.top) * canvas.height) / bounds.height,
-      5,
-      0,
-      Math.PI * 2,
-    );
+    context.arc(x, y, brushSize, 0, Math.PI * 2);
     context.fill();
   };
   const selected = actors.find((actor) => actor.id === selectedActorId) ?? actors[0];
@@ -332,33 +342,72 @@ export function SceneLibrary({
             height={120}
             aria-label={copy.sceneDrawImage}
             onPointerDown={(event) => {
-              setDrawingActive(true);
-              event.currentTarget.setPointerCapture(event.pointerId);
               const context = event.currentTarget.getContext("2d");
               if (context) {
-                const bounds = event.currentTarget.getBoundingClientRect();
-                context.fillStyle = ink;
-                context.fillRect(
-                  ((event.clientX - bounds.left) * 160) / bounds.width,
-                  ((event.clientY - bounds.top) * 120) / bounds.height,
-                  8,
-                  8,
-                );
+                rememberDrawing(event.currentTarget, context);
+                event.currentTarget.setPointerCapture(event.pointerId);
+                setDrawingActive(true);
+                paint(event, true);
               }
             }}
             onPointerMove={paint}
             onPointerUp={() => setDrawingActive(false)}
+            onPointerCancel={() => setDrawingActive(false)}
           />
-          <div className="scene-draw-actions">
+          <div className="scene-draw-tools" role="group" aria-label={copy.sceneDrawImage}>
+            <button
+              type="button"
+              aria-pressed={drawTool === "brush"}
+              onClick={() => setDrawTool("brush")}
+            >
+              {copy.sceneBrush}
+            </button>
+            <button
+              type="button"
+              aria-pressed={drawTool === "eraser"}
+              onClick={() => setDrawTool("eraser")}
+            >
+              {copy.sceneEraser}
+            </button>
             <input
               aria-label={copy.sceneInkColor}
               type="color"
               value={ink}
               onChange={(event) => setInk(event.target.value)}
             />
+            <select
+              aria-label={copy.sceneBrushSize}
+              value={brushSize}
+              onChange={(event) => setBrushSize(Number(event.target.value))}
+            >
+              <option value={3}>3 px</option>
+              <option value={5}>5 px</option>
+              <option value={9}>9 px</option>
+            </select>
+          </div>
+          <div className="scene-draw-actions">
             <button
               type="button"
-              onClick={() => drawing.current?.getContext("2d")?.clearRect(0, 0, 160, 120)}
+              disabled={undoCount === 0}
+              onClick={() => {
+                const canvas = drawing.current;
+                const previous = drawingHistory.current.pop();
+                if (canvas && previous) canvas.getContext("2d")?.putImageData(previous, 0, 0);
+                setUndoCount(drawingHistory.current.length);
+              }}
+            >
+              {copy.sceneUndoDrawing}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const canvas = drawing.current;
+                const context = canvas?.getContext("2d");
+                if (canvas && context) {
+                  rememberDrawing(canvas, context);
+                  context.clearRect(0, 0, canvas.width, canvas.height);
+                }
+              }}
             >
               {copy.sceneClearImage}
             </button>
