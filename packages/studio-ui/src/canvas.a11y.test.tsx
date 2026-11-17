@@ -1202,6 +1202,38 @@ describe("canvas keyboard and screen reader behaviour", () => {
     );
   });
 
+  it("indents and outdents with the keyboard and restores focus after each canonical update", () => {
+    const onAnnounce = vi.fn();
+    let current = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "repeat", count: 2, body: [] },
+            { type: "move", steps: 3 },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const onIntent = vi.fn((intent: Intent) => {
+      if (intent.type === "moveBlock") current = applyWorkspaceChange(current, intent).workspace;
+    });
+    render(current, { onIntent, onAnnounce });
+    const move = blocks()[1] as HTMLElement;
+    act(() => move.focus());
+    key(move, { key: "ArrowRight", altKey: true });
+    expect(onAnnounce).toHaveBeenCalledWith("Moved Move [N] steps into the preceding block");
+    render(current, { onIntent, onAnnounce });
+    expect((document.activeElement as HTMLElement).dataset["pos"]).toContain("repeatBody");
+    key(document.activeElement as HTMLElement, { key: "ArrowLeft", altKey: true });
+    render(current, { onIntent, onAnnounce });
+    expect((document.activeElement as HTMLElement).dataset["pos"]).toBe(
+      locationKey({ container: script, index: 1 }),
+    );
+  });
+
   it("explains an impossible move instead of failing silently", () => {
     const onAnnounce = vi.fn();
     render(initial, { onAnnounce });

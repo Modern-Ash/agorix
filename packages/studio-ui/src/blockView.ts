@@ -6,7 +6,7 @@ import {
   type StatementContainerPath,
   type StatementLocation,
 } from "@agorix/block-editor";
-import type { DragSource, InsertionPoint } from "@agorix/interaction-core";
+import type { DragSource, InsertionPoint, Intent } from "@agorix/interaction-core";
 
 export interface RenderBlock {
   readonly id: string;
@@ -150,4 +150,79 @@ export function dropPointFor(source: DragSource, slot: InsertionPoint): Insertio
   const from = source.location.index;
   const index = slot.index > from ? slot.index - 1 : slot.index;
   return index === from ? undefined : { container: slot.container, index };
+}
+
+/** Derive keyboard nesting from the same canonical slots used by drag and drop. */
+export function nestedMoveIntent(
+  workspace: BlockWorkspaceSnapshot,
+  location: StatementLocation,
+  direction: "in" | "else" | "out",
+): Extract<Intent, { type: "moveBlock" }> | undefined {
+  const rows = toRows(workspace);
+  const current = rows.find(
+    (row) =>
+      row.kind === "block" &&
+      row.block.location.index === location.index &&
+      sameContainer(row.block.location.container, location.container),
+  );
+  if (current?.kind !== "block") return undefined;
+  if (direction === "out") {
+    if (location.container.kind === "script") return undefined;
+    const firstSlot = rows.findIndex(
+      (row) =>
+        row.kind === "slot" &&
+        row.slot.index === 0 &&
+        sameContainer(row.slot.container, location.container),
+    );
+    if (firstSlot < 0) return undefined;
+    const parent = rows
+      .slice(0, firstSlot)
+      .reverse()
+      .find((row) => row.kind === "block" && row.depth === current.depth - 1);
+    if (parent?.kind !== "block") return undefined;
+    return {
+      type: "moveBlock",
+      from: location,
+      to: { container: parent.block.location.container, index: parent.block.location.index + 1 },
+    };
+  }
+  if (location.index === 0) return undefined;
+  const previous = rows.find(
+    (row) =>
+      row.kind === "block" &&
+      row.block.location.index === location.index - 1 &&
+      sameContainer(row.block.location.container, location.container),
+  );
+  if (previous?.kind !== "block") return undefined;
+  const kind =
+    direction === "else"
+      ? previous.block.type === "control_if"
+        ? "ifElse"
+        : undefined
+      : previous.block.type === "control_if"
+        ? "ifThen"
+        : previous.block.type === "control_repeat"
+          ? "repeatBody"
+          : previous.block.type === "control_repeat_until"
+            ? "repeatUntilBody"
+            : undefined;
+  if (kind === undefined) return undefined;
+  const container: StatementContainerPath = {
+    kind,
+    scriptIndex: location.container.scriptIndex,
+    statementPath: [
+      ...(location.container.kind === "script" ? [] : location.container.statementPath),
+      location.index - 1,
+    ],
+    branchPath: [
+      ...(location.container.kind === "script" ? [] : (location.container.branchPath ?? [])),
+      kind === "ifThen" ? "then" : kind === "ifElse" ? "else" : "body",
+    ],
+  };
+  const slots = rows.filter(
+    (row) => row.kind === "slot" && sameContainer(row.slot.container, container),
+  );
+  const last = slots.at(-1);
+  if (last?.kind !== "slot") return undefined;
+  return { type: "moveBlock", from: location, to: { container, index: last.slot.index } };
 }

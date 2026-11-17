@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { programToWorkspace } from "@agorix/block-editor";
+import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
 import { Palette } from "./Palette.js";
 import { SceneLibrary } from "./SceneLibrary.js";
@@ -16,7 +16,7 @@ import {
   statusFor,
 } from "./Workbench.js";
 import { densityAnnouncement } from "./density.js";
-import { dropPointFor, toRows } from "./blockView.js";
+import { dropPointFor, nestedMoveIntent, toRows } from "./blockView.js";
 import { chordFromEvent, parseDragPayload } from "./drag.js";
 import { copyFor } from "./i18n.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
@@ -38,6 +38,59 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("moves blocks into and out of a preceding loop through canonical slots", () => {
+    const source = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "repeat", count: 2, body: [{ type: "turn", degrees: 45 }] },
+            { type: "move", steps: 3 },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const from = { container: script, index: 1 };
+    const indent = nestedMoveIntent(source, from, "in")!;
+    expect(indent.to).toMatchObject({
+      container: { kind: "repeatBody", statementPath: [0] },
+      index: 1,
+    });
+    const nested = applyWorkspaceChange(source, indent).workspace;
+    expect(nested.scripts[0]?.statements[0]?.inputs?.body).toHaveLength(2);
+    const outdent = nestedMoveIntent(nested, { container: indent.to.container, index: 1 }, "out")!;
+    expect(outdent.to).toEqual({ container: script, index: 1 });
+    const restored = applyWorkspaceChange(nested, outdent).workspace;
+    expect(restored.scripts[0]?.statements).toHaveLength(2);
+    expect(nestedMoveIntent(source, { container: script, index: 0 }, "in")).toBeUndefined();
+    expect(nestedMoveIntent(source, { container: script, index: 0 }, "out")).toBeUndefined();
+    expect(nestedMoveIntent(workspace, { container: script, index: 1 }, "in")).toBeUndefined();
+  });
+
+  it("moves a block into the else branch only when an if precedes it", () => {
+    const source = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "if", condition: { type: "touchingGoal" }, then: [], else: [] },
+            { type: "move", steps: 3 },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const move = nestedMoveIntent(source, { container: script, index: 1 }, "else")!;
+    expect(move.to.container.kind).toBe("ifElse");
+    const next = applyWorkspaceChange(source, move).workspace;
+    expect(next.scripts[0]?.statements[0]?.inputs?.else).toHaveLength(1);
+    const out = nestedMoveIntent(next, { container: move.to.container, index: 0 }, "out")!;
+    expect(out.to).toEqual({ container: script, index: 1 });
+    expect(nestedMoveIntent(source, { container: script, index: 0 }, "else")).toBeUndefined();
+  });
   it("shows actor, costume and backdrop previews in the scene library", () => {
     const markup = renderToStaticMarkup(
       <SceneLibrary

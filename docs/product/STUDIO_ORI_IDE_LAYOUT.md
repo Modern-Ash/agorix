@@ -31,6 +31,10 @@ block vocabulary. Accepted blocks show typed values directly in their face,
 including text fields; nested control bodies have a visible rail. Drag,
 keyboard insertion and canonical workspace transactions remain the editing
 authority. The visual block projection owns no separate program state.
+Keyboard editing also nests a block under the preceding Repeat or If with
+Alt+Right, moves it into an If's Else branch with Alt+Shift+Right, and moves it
+out one level with Alt+Left. These shortcuts use the same canonical move
+transaction as drag and drop and return focus to the moved block.
 
 The first expression socket appears on `if`: a learner can select a Boolean
 reporter in the palette and click the socket, or drag the reporter onto it.
