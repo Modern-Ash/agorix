@@ -347,6 +347,11 @@ export const COPY = {
     stage: "Stage",
     stageKeyboardHint:
       "Focus the stage and press a key, or click an actor to run its event script.",
+    stageActorKeyboardHint: "Alt+Arrow moves 1 step; Alt+Shift+Arrow moves 10 steps.",
+    stageRotateLeft: "Rotate left",
+    stageRotateRight: "Rotate right",
+    stageSizeSmaller: "Make smaller",
+    stageSizeLarger: "Make larger",
     heading: "Heading",
     activeSounds: "Active sounds",
     stageNoFrame: "Run or step the program to inspect the stage.",
@@ -786,6 +791,11 @@ export const COPY = {
     stage: "Escenario",
     stageKeyboardHint:
       "Enfocá el escenario y presioná una tecla, o hacé clic en un personaje para ejecutar su script de evento.",
+    stageActorKeyboardHint: "Alt+Flecha mueve 1 paso; Alt+Mayús+Flecha mueve 10 pasos.",
+    stageRotateLeft: "Girar a la izquierda",
+    stageRotateRight: "Girar a la derecha",
+    stageSizeSmaller: "Achicar",
+    stageSizeLarger: "Agrandar",
     heading: "Direccion",
     activeSounds: "Sonidos activos",
     stageNoFrame: "Ejecuta o avanza el programa para inspeccionar el stage.",

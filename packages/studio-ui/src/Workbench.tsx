@@ -202,6 +202,36 @@ export function stageDropPosition(
   };
 }
 
+export function stageNudgePosition(
+  actor: { readonly x: number; readonly y: number },
+  viewport: { readonly width: number; readonly height: number },
+  key: string,
+  step: number,
+): { x: number; y: number } | undefined {
+  if (
+    ![actor.x, actor.y, viewport.width, viewport.height, step].every(Number.isFinite) ||
+    viewport.width <= 0 ||
+    viewport.height <= 0 ||
+    step <= 0
+  )
+    return undefined;
+  const delta =
+    key === "ArrowLeft"
+      ? { x: -step, y: 0 }
+      : key === "ArrowRight"
+        ? { x: step, y: 0 }
+        : key === "ArrowUp"
+          ? { x: 0, y: step }
+          : key === "ArrowDown"
+            ? { x: 0, y: -step }
+            : undefined;
+  if (delta === undefined) return undefined;
+  return {
+    x: Math.max(0, Math.min(viewport.width, actor.x + delta.x)),
+    y: Math.max(0, Math.min(viewport.height, actor.y + delta.y)),
+  };
+}
+
 function ExecutionToolbar({
   copy,
   disabled,
@@ -366,6 +396,7 @@ export function StagePanel({
   selectedActorId,
   onSelectActor,
   onPlaceActor,
+  onTransformActor,
   onCostume,
   onBackdrop,
   onStageEvent,
@@ -377,6 +408,10 @@ export function StagePanel({
   readonly selectedActorId: string | undefined;
   readonly onSelectActor?: (actorId: string) => void;
   readonly onPlaceActor?: (actorId: string, position: { x: number; y: number }) => void;
+  readonly onTransformActor?: (
+    actorId: string,
+    patch: { direction?: number; size?: number },
+  ) => void;
   readonly onCostume?: (actorId: string, costumeId: string) => void;
   readonly onBackdrop?: (backdropId: string) => void;
   readonly onStageEvent?: (
@@ -538,6 +573,30 @@ export function StagePanel({
                       event.dataTransfer.setData("application/x-agorix-stage-actor", actor.id);
                       event.dataTransfer.effectAllowed = "move";
                     }}
+                    aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight Alt+ArrowUp Alt+ArrowDown"
+                    title={copy.stageActorKeyboardHint}
+                    onKeyDown={(event) => {
+                      if (
+                        !event.altKey ||
+                        event.ctrlKey ||
+                        event.metaKey ||
+                        frame?.running ||
+                        onPlaceActor === undefined
+                      )
+                        return;
+                      const position = stageNudgePosition(
+                        actor,
+                        state.viewport,
+                        event.key,
+                        event.shiftKey ? 10 : 1,
+                      );
+                      if (position === undefined) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onSelectActor?.(actor.id);
+                      if (position.x !== actor.x || position.y !== actor.y)
+                        onPlaceActor(actor.id, position);
+                    }}
                     onDragOver={(event) => {
                       if (!frame?.running && onCostume !== undefined) event.preventDefault();
                     }}
@@ -579,6 +638,61 @@ export function StagePanel({
                   </button>
                 );
               })}
+            {(() => {
+              const actor = stageActors.find(
+                (candidate) => candidate.id === selectedActorId && candidate.visible,
+              );
+              if (actor === undefined || frame?.running || onTransformActor === undefined)
+                return null;
+              const rotate = (delta: number) =>
+                onTransformActor(actor.id, {
+                  direction: (((actor.direction + delta) % 360) + 360) % 360,
+                });
+              const resize = (delta: number) =>
+                onTransformActor(actor.id, {
+                  size: Math.max(1, Math.min(400, actor.size + delta)),
+                });
+              return (
+                <div
+                  className="stage-actor-tools"
+                  style={{
+                    left: `clamp(64px, ${stagePercent(actor.x, state.viewport.width)}, calc(100% - 64px))`,
+                    bottom: `clamp(8px, ${stagePercent(actor.y, state.viewport.height)}, calc(100% - 55px))`,
+                  }}
+                  role="group"
+                  aria-label={`${actor.name}: ${copy.actorDirection}, ${copy.actorSize}`}
+                >
+                  <button
+                    type="button"
+                    aria-label={`${copy.stageRotateLeft}: ${actor.name}`}
+                    onClick={() => rotate(-15)}
+                  >
+                    ↶
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${copy.stageRotateRight}: ${actor.name}`}
+                    onClick={() => rotate(15)}
+                  >
+                    ↷
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${copy.stageSizeSmaller}: ${actor.name}`}
+                    onClick={() => resize(-10)}
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${copy.stageSizeLarger}: ${actor.name}`}
+                    onClick={() => resize(10)}
+                  >
+                    +
+                  </button>
+                </div>
+              );
+            })()}
             {visibleVariables.length === 0 && visibleLists.length === 0 ? null : (
               <div className="stage-watchers" aria-label={copy.stageWatchers}>
                 {visibleVariables.map((variable) => (
@@ -1619,6 +1733,7 @@ export function Workbench({
             selectedActorId={selectedActorId}
             onSelectActor={setSelectedActorId}
             onPlaceActor={(actorId, position) => updateActor(actorId, position)}
+            onTransformActor={(actorId, patch) => updateActor(actorId, patch)}
             onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
             onBackdrop={updateBackdrop}
             onStageEvent={(event) =>
