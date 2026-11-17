@@ -81,7 +81,7 @@ describe("studio-ui", () => {
     expect(markup).toContain("Disfraces");
     expect(markup).toContain("Fondos");
     expect(markup.match(/<img/g)).toHaveLength(3);
-    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(3);
+    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(4);
   });
   it("renders shared gallery art and rejects remote or unknown image sources", () => {
     const costume = {
