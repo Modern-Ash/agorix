@@ -1288,13 +1288,17 @@ export function Canvas({
                         ? "variable"
                         : operand.type === "lists_length"
                           ? "listLength"
-                          : operand.type === "sensing_x_position"
-                            ? "xPosition"
-                            : operand.type === "sensing_y_position"
-                              ? "yPosition"
-                              : operand.type === "sensing_distance_to_actor"
-                                ? "distanceToActor"
-                                : "other";
+                          : operand.type === "lists_item"
+                            ? "listItem"
+                            : operand.type === "operator_random_integer"
+                              ? "randomInteger"
+                              : operand.type === "sensing_x_position"
+                                ? "xPosition"
+                                : operand.type === "sensing_y_position"
+                                  ? "yPosition"
+                                  : operand.type === "sensing_distance_to_actor"
+                                    ? "distanceToActor"
+                                    : "other";
                   const sideLabel = side === "left" ? copy.conditionLeft : copy.conditionRight;
                   const referenceId =
                     source === "variable"
@@ -1327,7 +1331,7 @@ export function Canvas({
                               next,
                               next === "variable"
                                 ? workspace.variables?.[0]?.id
-                                : next === "listLength"
+                                : next === "listLength" || next === "listItem"
                                   ? workspace.lists?.[0]?.id
                                   : next === "distanceToActor"
                                     ? actors[0]?.id
@@ -1343,6 +1347,10 @@ export function Canvas({
                           {workspace.lists?.length ? (
                             <option value="listLength">{copy.listLength}</option>
                           ) : null}
+                          {workspace.lists?.length ? (
+                            <option value="listItem">{copy.listItem}</option>
+                          ) : null}
+                          <option value="randomInteger">{copy.operatorRandomInteger}</option>
                           <option value="xPosition">{copy.positionX}</option>
                           <option value="yPosition">{copy.positionY}</option>
                           {actors.length > 0 ? (
@@ -1357,6 +1365,7 @@ export function Canvas({
                       </label>
                       {source === "variable" ||
                       source === "listLength" ||
+                      source === "listItem" ||
                       source === "distanceToActor" ? (
                         <label>
                           <span>
@@ -1383,6 +1392,61 @@ export function Canvas({
                           </select>
                         </label>
                       ) : null}
+                      {(source === "listItem" || source === "randomInteger") &&
+                        (source === "listItem"
+                          ? (["index"] as const)
+                          : (["min", "max"] as const)
+                        ).map((field) => {
+                          const nested = operand.inputs?.[field];
+                          if (
+                            nested === undefined ||
+                            Array.isArray(nested) ||
+                            nested.type !== "literal_number" ||
+                            typeof nested.fields?.value !== "number"
+                          )
+                            return null;
+                          const label =
+                            field === "index"
+                              ? copy.listIndex
+                              : field === "min"
+                                ? copy.rangeMin
+                                : copy.rangeMax;
+                          return (
+                            <label key={field}>
+                              <span>{label}</span>
+                              <input
+                                key={`${pos}:${side}:${field}:${nested.fields.value}`}
+                                type="number"
+                                tabIndex={isTabbable ? 0 : -1}
+                                aria-label={`${copy.condition}: ${sideLabel} ${label}`}
+                                defaultValue={nested.fields.value}
+                                draggable={false}
+                                onDragStart={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => {
+                                  event.stopPropagation();
+                                  if (event.key === "Enter") event.currentTarget.blur();
+                                }}
+                                onBlur={(event) => {
+                                  const raw = event.currentTarget.value.trim();
+                                  const next = Number(raw);
+                                  if (
+                                    raw !== "" &&
+                                    Number.isFinite(next) &&
+                                    next !== nested.fields?.value
+                                  )
+                                    onIntent({
+                                      type: "setComparisonNestedNumber",
+                                      location: block.location,
+                                      side,
+                                      field,
+                                      value: next,
+                                    });
+                                  event.currentTarget.value = String(nested.fields?.value);
+                                }}
+                              />
+                            </label>
+                          );
+                        })}
                       {source === "number" && typeof operand.fields?.value === "number" ? (
                         <label>
                           <span>{sideLabel}</span>

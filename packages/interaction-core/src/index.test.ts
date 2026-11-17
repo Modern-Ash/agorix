@@ -520,6 +520,119 @@ describe("interaction-core", () => {
       ).toBeUndefined();
     }
   });
+  it("edits list items and random bounds inside comparisons without accepting invalid paths", () => {
+    const location = { container: script, index: 0 };
+    const empty = createStarterWorkspace();
+    const withList = applyWorkspaceChange(
+      empty,
+      intentToChange({ type: "addList", name: "items" }, newId, empty)!,
+    ).workspace;
+    const withIf = applyWorkspaceChange(withList, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:reporters",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: {
+            id: "condition:reporters",
+            type: "literal_boolean",
+            fields: { value: true },
+          },
+        },
+      },
+    }).workspace;
+    const comparison = applyWorkspaceChange(
+      withIf,
+      intentToChange(
+        { type: "replaceCondition", location, blockType: "operator_less_than" },
+        newId,
+        withIf,
+      )!,
+    ).workspace;
+    const listId = withList.lists![0]!.id;
+    const listItem = applyWorkspaceChange(
+      comparison,
+      intentToChange(
+        {
+          type: "setComparisonOperand",
+          location,
+          side: "left",
+          source: "listItem",
+          referenceId: listId,
+        },
+        newId,
+        comparison,
+      )!,
+    ).workspace;
+    const indexed = applyWorkspaceChange(
+      listItem,
+      intentToChange(
+        { type: "setComparisonNestedNumber", location, side: "left", field: "index", value: 2 },
+        newId,
+        listItem,
+      )!,
+    );
+    expect(indexed.program.scripts[0]?.statements[0]).toMatchObject({
+      condition: {
+        left: { type: "listItem", listId, index: { type: "numericLiteral", value: 2 } },
+      },
+    });
+    const random = applyWorkspaceChange(
+      indexed.workspace,
+      intentToChange(
+        { type: "setComparisonOperand", location, side: "right", source: "randomInteger" },
+        newId,
+        indexed.workspace,
+      )!,
+    ).workspace;
+    const ranged = applyWorkspaceChange(
+      random,
+      intentToChange(
+        { type: "setComparisonNestedNumber", location, side: "right", field: "max", value: 20 },
+        newId,
+        random,
+      )!,
+    );
+    expect(ranged.program.scripts[0]?.statements[0]).toMatchObject({
+      condition: { right: { type: "randomInteger", min: { value: 1 }, max: { value: 20 } } },
+    });
+    expect(
+      intentToChange(
+        { type: "setComparisonNestedNumber", location, side: "left", field: "max", value: 3 },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setComparisonNestedNumber",
+          location,
+          side: "right",
+          field: "min",
+          value: Infinity,
+        },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setComparisonOperand",
+          location,
+          side: "left",
+          source: "listItem",
+          referenceId: "missing",
+        },
+        newId,
+        ranged.workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("edits only Boolean literals and actor contact conditions", () => {
     const location = { container: script, index: 0 };
     const initial = applyWorkspaceChange(createStarterWorkspace(), {

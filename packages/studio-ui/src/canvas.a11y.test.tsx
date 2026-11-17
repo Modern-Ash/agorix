@@ -979,6 +979,66 @@ describe("canvas keyboard and screen reader behaviour", () => {
       referenceId: "actor:robot",
     });
   });
+  it("shows list item index and random integer bounds inside a comparison", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      lists: [{ id: "items", name: "Items", initialItems: [3], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "lessThan",
+                left: {
+                  type: "listItem",
+                  listId: "items",
+                  index: { type: "numericLiteral", value: 1 },
+                },
+                right: {
+                  type: "randomInteger",
+                  min: { type: "numericLiteral", value: 1 },
+                  max: { type: "numericLiteral", value: 10 },
+                },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const listSource = host.querySelector<HTMLSelectElement>(
+      '.comparison-operand select[aria-label="Condition: Left value source"]',
+    )!;
+    expect(listSource.value).toBe("listItem");
+    const randomSource = host.querySelector<HTMLSelectElement>(
+      '.comparison-operand select[aria-label="Condition: Right value source"]',
+    )!;
+    expect(randomSource.value).toBe("randomInteger");
+    for (const [label, value, field, side] of [
+      ["Condition: Left value Item number", "2", "index", "left"],
+      ["Condition: Right value Maximum", "20", "max", "right"],
+    ] as const) {
+      const input = host.querySelector<HTMLInputElement>(
+        `.comparison-operand input[aria-label="${label}"]`,
+      )!;
+      expect(input).not.toBeNull();
+      act(() => {
+        input.value = value;
+        input.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+      });
+      expect(intents.at(-1)).toMatchObject({
+        type: "setComparisonNestedNumber",
+        side,
+        field,
+        value: Number(value),
+      });
+    }
+  });
   it("replaces an if condition from a selected reporter and from a palette drop", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",
