@@ -30,10 +30,18 @@ These captures use a local synthetic host with a sample canonical program, two a
 
 ## Packaged VSIX verification
 
+The packaged VSIX was also opened in an isolated VS Code profile with a portable `.agorix` fixture containing two actors, costumes, a backdrop, a variable, nested control flow, and an actor-click event. These are captures of the actual extension webview, rather than the synthetic host above:
+
+| 900 × 700                                                    | 1440 × 900                                                     |
+| ------------------------------------------------------------ | -------------------------------------------------------------- |
+| ![Installed VSIX at 900](./assets/studio-vsix-build-900.png) | ![Installed VSIX at 1440](./assets/studio-vsix-build-1440.png) |
+
+The real-window check exposed three issues now fixed: the custom editor had scripts disabled, the webview CSP blocked catalog images, and the host message parser rejected advanced canonical blocks so Program appeared empty. The 900 px layout also keeps the palette, stage, and Ori side by side with a wider central stage. On initial command-line file opening, VS Code still selects its text editor; **Reopen Editor With → Agorix Workbench** opens the visual editor. The extension declares Agorix Workbench as the default custom editor in its manifest, but automatic selection on command-line opening remains unverified.
+
 The installed-extension suite in `extensions/vscode/test/integration/index.cjs` now opens a project with two actors, two costumes, a backdrop, a visible variable and a condition containing a repeat. Against a packaged VSIX in a clean VS Code profile, it checks the code projection, deterministic execution frames and evidence, a read-only Ori explanation, a proposal diff, explicit rejection with unchanged project bytes, and explicit acceptance with the canonical project saved. The Inspector's flat tree now supports VS Code's reveal contract, which this run exposed.
 
-The local run used VS Code 1.146 via `VSCODE_EXECUTABLE=/usr/share/code/code pnpm --filter agorix-studio test:vsix` and passed all 18 integration cases. This is host-level verification of the installed extension. It does not exercise pointer drag, canvas drawing in the actual VS Code window, or Web reopening, and it does not replace the synthetic viewport captures above with real-window captures.
+The local run used VS Code 1.146 via `VSCODE_EXECUTABLE=/usr/share/code/code pnpm --filter agorix-studio test:vsix` and passed all 18 integration cases. This is host-level verification of the installed extension. The real-window captures verify rendering, but pointer drag, canvas drawing, and Web reopening still need end-to-end interaction checks.
 
 ## Follow-up within #1694
 
-The next slice should automate the remaining visible VSIX interactions: choose a character, create a costume, drag a block, run the stage, inspect evidence, and reopen the saved project in Web. Capture the real VS Code window at 900 × 700 and 1440 × 900, then fix observed dead ends. Editing an existing image remains a separate asset workflow gap. Ori's proposals must continue through learner preview and explicit acceptance before canonical mutation.
+The next slice should automate the remaining visible VSIX interactions: choose a character, create a costume, drag a block, run the stage, inspect evidence, and reopen the saved project in Web. Editing an existing image remains a separate asset workflow gap. Ori's proposals must continue through learner preview and explicit acceptance before canonical mutation.

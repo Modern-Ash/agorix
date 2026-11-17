@@ -59,6 +59,7 @@ function createMockWebviewPanel() {
   webviewPanels.push(panel);
   return {
     webview: {
+      options: undefined as unknown,
       cspSource: "vscode-webview:",
       asWebviewUri: (target: { fsPath: string }) => ({
         fsPath: `vscode-webview:${target.fsPath}`,
@@ -473,7 +474,7 @@ describe("Studio extension wiring", () => {
     ]);
   });
 
-  it("opens .agorix files through the optional Workbench custom editor", async () => {
+  it("opens .agorix files through the visual Workbench custom editor with scripts enabled", async () => {
     const portable = serializeAgorixProject(parseStored(stored([{ type: "move", steps: 8 }])), {
       exportedAt: "2026-01-02T00:00:00.000Z",
     });
@@ -486,9 +487,11 @@ describe("Studio extension wiring", () => {
       .resolveCustomTextEditor({ uri: Uri.file("/p/custom.agorix") }, panel);
 
     expect(panel.webview.html).toContain("Agorix Workbench");
+    expect(panel.webview.options).toMatchObject({ enableScripts: true });
     expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", true]);
     expect(commandCalls).toContainEqual(["workbench.action.closeSidebar"]);
     expect(commandCalls).toContainEqual(["workbench.action.closePanel"]);
+    expect(commandCalls).toContainEqual(["workbench.action.closeAuxiliaryBar"]);
     expect(webviewPanels.some((item) => item.html.includes("Mundo Agorix"))).toBe(false);
   });
 
@@ -594,6 +597,7 @@ describe("Studio extension wiring", () => {
     expect(webviewPanels.some((panel) => panel.html.includes("Mundo Agorix"))).toBe(false);
     expect(commandCalls).toContainEqual(["workbench.action.closeSidebar"]);
     expect(commandCalls).toContainEqual(["workbench.action.closePanel"]);
+    expect(commandCalls).toContainEqual(["workbench.action.closeAuxiliaryBar"]);
   });
 
   it("shows clean-install project actions before a project is open", () => {

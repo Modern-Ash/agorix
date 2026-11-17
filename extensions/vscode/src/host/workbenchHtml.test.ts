@@ -15,6 +15,7 @@ describe("workbenchHtml", () => {
     expect(html).toContain("default-src 'none'");
     expect(html).toContain("style-src 'nonce-nonce123'");
     expect(html).toContain("script-src 'nonce-nonce123' vscode-webview:");
+    expect(html).toContain("img-src vscode-webview: data:");
     expect(html).toContain('data-density="compact"');
     expect(html).toContain('data-locale="es"');
     expect(html).toContain('<style nonce="nonce123">');

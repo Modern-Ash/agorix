@@ -194,6 +194,10 @@ export function attachWorkbenchPanel(
   }
   const distRoot = vscode.Uri.file(context.asAbsolutePath("dist"));
   panel = targetPanel;
+  panel.webview.options = {
+    enableScripts: true,
+    localResourceRoots: [distRoot],
+  };
   host = createWorkbenchHost(port, () => `block:wb_${(blockCounter += 1)}`);
   agent = createAgentHost(agentPort);
   currentHub = hub;

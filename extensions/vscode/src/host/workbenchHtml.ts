@@ -13,7 +13,7 @@ export function workbenchHtml(
 ): string {
   return `<!doctype html>
 <html lang="${locale}"><head><meta charset="utf-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${token}'; script-src 'nonce-${token}' ${cspSource};" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${token}'; script-src 'nonce-${token}' ${cspSource}; img-src ${cspSource} data:;" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Agorix Workbench</title><style nonce="${token}">${WORKBENCH_CSS}</style></head>
 <body><div id="root" data-density="${density}" data-locale="${locale}"></div><script nonce="${token}" src="${scriptUri}"></script></body></html>`;

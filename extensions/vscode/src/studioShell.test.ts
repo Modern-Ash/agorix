@@ -7,6 +7,11 @@ import { createNavigationSections } from "./studioCore.js";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
   contributes: {
+    customEditors: Array<{
+      viewType: string;
+      priority: string;
+      selector: Array<{ filenamePattern: string }>;
+    }>;
     commands: Array<{ command: string; icon?: string }>;
     views: { agorixStudio: Array<{ id: string; name: string; icon?: string }> };
     menus: Record<string, Array<{ command: string; when?: string; group?: string }>>;
@@ -21,6 +26,15 @@ const resolveNls = (value: string | undefined) =>
 const commandIds = new Set(manifest.contributes.commands.map((c) => c.command));
 
 describe("Studio shell manifest", () => {
+  it("opens .agorix projects in the visual editor by default", () => {
+    expect(manifest.contributes.customEditors).toContainEqual(
+      expect.objectContaining({
+        viewType: "agorixStudio.projectEditor",
+        priority: "default",
+        selector: [{ filenamePattern: "*.agorix" }],
+      }),
+    );
+  });
   it("gives every command a codicon so toolbars are icon-first", () => {
     for (const command of manifest.contributes.commands) {
       expect(command.icon, command.command).toMatch(/^\$\([a-z0-9-]+\)$/);

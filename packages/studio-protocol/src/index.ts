@@ -1360,7 +1360,7 @@ function parseBlock(
   if (typeof id !== "string" || id.length === 0 || id.length > 128) {
     return undefined;
   }
-  if (!(BLOCK_TYPES as readonly unknown[]).includes(type)) {
+  if (typeof type !== "string" || getBlockDefinition(type as BlockType) === undefined) {
     return undefined;
   }
   const out: {

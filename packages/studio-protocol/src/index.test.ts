@@ -296,6 +296,47 @@ describe("studio-protocol", () => {
     expect(parseHostMessage(message)).toMatchObject({ workspace });
   });
 
+  it("preserves known advanced event blocks in workspace snapshots", () => {
+    const workspace = {
+      scripts: [
+        {
+          id: "actor-script",
+          trigger: { id: "click", type: "event_on_actor_clicked" },
+          statements: [
+            {
+              id: "if",
+              type: "control_if",
+              inputs: {
+                condition: {
+                  id: "and",
+                  type: "operator_and",
+                  inputs: {
+                    left: { id: "yes", type: "literal_boolean", fields: { value: true } },
+                    right: { id: "no", type: "literal_boolean", fields: { value: false } },
+                  },
+                },
+                then: [{ id: "move", type: "motion_move", fields: { steps: 10 } }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    expect(
+      parseHostMessage({ schema, type: "workspace", workspace, programHash: "fnv1a32:advanced" }),
+    ).toMatchObject({ workspace });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "workspace",
+        programHash: "fnv1a32:advanced",
+        workspace: {
+          scripts: [{ ...workspace.scripts[0], trigger: { id: "bad", type: "unknown_event" } }],
+        },
+      }),
+    ).toBeUndefined();
+  });
+
   it("validates variable intents and preserves declarations and value inputs", () => {
     const location = { container: script, index: 0 };
     expect(
