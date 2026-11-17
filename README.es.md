@@ -98,6 +98,15 @@ eventos, monitores y vistas de código, queda disponible en `/advanced` mientras
 experiencia avanzada. Ambas rutas usan el mismo despliegue Web; los proyectos Kids se guardan
 en el navegador.
 
+**Qué puede hacer Kids hoy** (todo corre de forma determinista, sin IA ni credenciales):
+
+- construir con bloques, con el texto a un toque en la pestaña Código;
+- **editar también el texto**: Agorix Code se lee de vuelta al mismo programa canónico, así que bloques y texto son dos formas de cambiar un solo programa ([cómo funciona](docs/product/AGORIX_CODE_TWO_WAY.md));
+- variables, listas, bloques propios, mensajes, clones, sonidos, dibujo y metas de escena;
+- Ejecutar, Paso a paso y Detener con historial visible de la ejecución; si no se cumple una meta, el proyecto dice en qué paso falló, y un error evidente (por ejemplo, un guion que nadie inicia) se señala _antes_ del primer Play;
+- **Ori** como compañero contextual, no como chat: ofrece una propuesta compacta, el niño ve el diff y la acepta, la cambia o la rechaza;
+- inglés y español.
+
 La superficie principal de aprendizaje y creación es **touch-first**.
 
 La relación visual dominante debería ser:
@@ -407,7 +416,7 @@ flowchart LR
 
 ## Agorix Code
 
-**Agorix Code** es la proyección textual amigable para niños que está prevista como primer puente desde los bloques.
+**Agorix Code** es la forma textual del programa pensada para niños. Ya está construida y es **de doble vía**: los bloques se vuelven texto, y el texto que escribe el aprendiz se lee de vuelta al programa canónico con un parser determinista (sin IA, nada sale del dispositivo). El texto nunca se ejecuta, y un programa solo se ofrece para edición de texto cuando leer su texto devuelve exactamente el mismo programa; si no, se sigue editando con bloques.
 
 Su objetivo es reducir la carga sintáctica inicial sin esconder estructura real de programación:
 
@@ -422,17 +431,17 @@ Toma inspiración de enfoques de programación gradual como [Hedy](https://www.h
 
 ## Python primero
 
-Python es el primer lenguaje textual convencional previsto porque ofrece un puente relativamente directo desde código educativo estructurado hacia programación de propósito general.
+Python es el primer lenguaje textual convencional. Hoy es una proyección de solo lectura, porque ofrece un puente relativamente directo desde código educativo estructurado hacia programación de propósito general.
 
 ## TypeScript después
 
-TypeScript es la segunda proyección principal y además coincide naturalmente con el stack de implementación de Agorix.
+TypeScript es la segunda proyección (también de solo lectura) y además coincide naturalmente con el stack de implementación de Agorix.
 
 ## Language packs
 
 Otros lenguajes deben poder agregarse sin modificar la semántica del programa canónico.
 
-El primer spike de extensibilidad está previsto con Lua.
+La primera extensión es Lua (`packages/language-pack-lua`); Java también tiene proyección (`packages/java-projection`). Python, Java y TypeScript son solo de visualización: únicamente Agorix Code se lee de vuelta.
 
 Roadmap: [Epic #65 — Progressive multi-language code learning](https://github.com/Modern-Ash/agorix/issues/65)
 
@@ -951,7 +960,9 @@ pnpm run verify
 ```text
 apps/
   web/                UI de referencia con React + Vite
-  tutor-api/          Límite actual de IA; evoluciona a Learning Companion API
+  tutor-api/          Servidor del Learning Companion / Ori (con autenticación, resolución de evidencia)
+  project-api/        API HTTP del repositorio de proyectos
+  server/             Servidor compuesto: auth, link service, persistencia
   mobile/             Límite de packaging con Capacitor
 
 extensions/
@@ -962,11 +973,33 @@ packages/
   block-editor/       Adapter Blockly
   runtime/            Intérprete determinístico
   stage/              Estado de escena neutral de plataforma
-  code-generator/     Evoluciona hacia LanguageProjection
+  code-generator/     Generación de texto detrás de las proyecciones
+  agorix-code/        Agorix Code: proyección y parser de doble vía
+  language-projection/ Contrato LanguageProjection y conformidad
+  python-projection/  Proyección a Python (solo lectura)
+  java-projection/    Proyección a Java (solo lectura)
+  language-pack-lua/  Language pack de Lua
   curriculum/         Misiones y contenido educativo
   tutor-contract/     Evoluciona hacia contrato LearningCompanion
   persistence/        Persistencia versionada
   platform-contract/  Límite de capabilities de plataforma
+  learning-evidence/  Evidencia que preserva la privacidad y modelo de evaluación de misiones
+  run-evidence/       Hallazgos de una ejecución (y estáticos, antes de ella)
+  ori-agent/          Ori: propuestas a partir de la intención del aprendiz
+  proposals/          Validación y diff de propuestas
+  learning-decision-plane/ Decisiones gobernadas del Learning Companion
+  provider-runtime/   Contrato de runtime de proveedores
+  project-repository/ API de almacenamiento de proyectos
+  auth-service/       Cuentas y sesiones
+  link-service/       Enlaces para compartir
+  group-lockstep/     Juego en grupo, lockstep
+  group-service/      Servicio de sesiones de grupo
+  team-project/       Proyectos de equipo
+  art-document/       Modelo de documento de dibujo, saneado y render
+  interaction-core/   Modelo de interacción compartido
+  studio-protocol/    Protocolo host/webview de Studio
+  studio-ui/          UI de Studio
+  agent-workflow/     Contrato del flujo de agentes
 ```
 
 Los paquetes de dominio deben permanecer independientes de frameworks de UI y SDKs de proveedores, salvo que sean explícitamente adapters.

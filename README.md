@@ -97,6 +97,15 @@ links. The previous editor and its actors, looks, sounds, variables, events, wat
 views remain available at `/advanced` while the advanced experience is redesigned. Both routes
 use the same Web deployment; Kids projects stay in browser storage.
 
+**What Kids can do today** (everything runs deterministically with no AI and no credentials):
+
+- build with blocks, with the text one tap away in the Code tab;
+- **edit the text too**: Agorix Code is read back into the same canonical program, so blocks and text are two ways to change one program ([how it works](docs/product/AGORIX_CODE_TWO_WAY.md));
+- variables, lists, custom blocks, messages, clones, sounds, drawing and scene goals;
+- Run, Step and Stop with a visible run history; when a goal is missed the project says which step went wrong, and an obvious mistake (for example a script nothing starts) is pointed out _before_ the first Play;
+- **Ori** as a contextual companion, not a chat: it offers a compact proposal, the child sees the diff and accepts, changes or rejects it;
+- English and Spanish.
+
 The primary learning and creation surface is **touch-first**.
 
 The dominant visual relationship should be:
@@ -410,9 +419,9 @@ flowchart LR
 
 ## Agorix Code
 
-**Agorix Code** is the planned child-friendly textual projection.
+**Agorix Code** is the child-friendly textual form of the program. It is built and **two-way**: blocks become text, and text typed by the learner is read back into the canonical program by a deterministic parser (no AI, nothing leaves the device). The text is never executed, and a program is only offered for text editing when reading its text gives back exactly the same program; otherwise it stays editable with blocks.
 
-It should reduce early syntax load while preserving real programming structure:
+It reduces early syntax load while preserving real programming structure:
 
 - sequence;
 - nesting;
@@ -425,17 +434,17 @@ It takes inspiration from gradual-programming approaches such as [Hedy](https://
 
 ## Python first
 
-Python is the planned first conventional textual language because it provides a relatively direct bridge from structured educational code to general-purpose programming.
+Python is the first conventional textual language. It is a read-only projection today, because it provides a relatively direct bridge from structured educational code to general-purpose programming.
 
 ## TypeScript second
 
-TypeScript is the second primary projection and also aligns naturally with the Agorix implementation stack.
+TypeScript is the second projection (read-only as well) and also aligns naturally with the Agorix implementation stack.
 
 ## Language packs
 
 Additional languages should be pluggable without changing canonical program semantics.
 
-The first extension spike is planned around Lua.
+The first extension is Lua (`packages/language-pack-lua`); Java has a projection too (`packages/java-projection`). Python, Java and TypeScript are display-only: only Agorix Code is read back.
 
 Roadmap: [Epic #65 — Progressive multi-language code learning](https://github.com/Modern-Ash/agorix/issues/65)
 
@@ -947,7 +956,9 @@ pnpm run verify
 ```text
 apps/
   web/                React + Vite reference UI
-  tutor-api/          Current AI server boundary; evolving to Learning Companion API
+  tutor-api/          Learning Companion / Ori review server (auth-gated, evidence resolution)
+  project-api/        Project repository HTTP API
+  server/             Composed server: auth, link service, persistence
   mobile/             Capacitor packaging boundary
 
 extensions/
@@ -958,13 +969,33 @@ packages/
   block-editor/       Blockly adapter
   runtime/            Deterministic interpreter
   stage/              Platform-neutral stage state
-  code-generator/     Evolving into LanguageProjection
+  code-generator/     Text generation behind the projections
+  agorix-code/        Agorix Code: projection and two-way parser
+  language-projection/ LanguageProjection contract and conformance
+  python-projection/  Python projection (display-only)
+  java-projection/    Java projection (display-only)
+  language-pack-lua/  Lua language pack
   curriculum/         Missions and learning content
   tutor-contract/     Evolving into LearningCompanion contract
   provider-runtime/   Provider-neutral runtime contract and protocol adapters
   persistence/        Versioned project storage
   platform-contract/  Platform capability boundary
   learning-evidence/  Privacy-preserving evidence and mission assessment model
+  run-evidence/       Findings from a run (and static ones before it)
+  ori-agent/          Ori: proposals from learner intent
+  proposals/          Proposal validation and diff
+  learning-decision-plane/ Governed decisions for the Learning Companion
+  project-repository/ Project storage API
+  auth-service/       Accounts and sessions
+  link-service/       Sharing links
+  group-lockstep/     Group play, lockstep
+  group-service/      Group sessions service
+  art-document/       Drawing document model, sanitising and rendering
+  team-project/       Team projects
+  interaction-core/   Shared interaction model
+  studio-protocol/    Studio host/webview protocol
+  studio-ui/          Studio UI
+  agent-workflow/     Agent workflow contract
 ```
 
 Domain packages must remain independent from UI frameworks and provider SDKs unless they are explicitly adapter packages.
