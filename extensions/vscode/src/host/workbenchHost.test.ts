@@ -588,6 +588,43 @@ describe("workbenchHost", () => {
     ).toMatchObject({ type: "error", code: "STALE_EDIT" });
     expect(labels).toHaveLength(3);
   });
+  it("renames lists and refuses to delete referenced lists", async () => {
+    const { host, get } = setup();
+    const post = async (intent: Parameters<typeof host.handle>[0] & { type: "intent" }) =>
+      host.handle(intent);
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "addList", name: "items" },
+      baseHash: programSemanticHash(base),
+    });
+    const listId = get()!.lists![0]!.id;
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "renameList", listId, name: "inventory" },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(get()?.lists?.[0]).toMatchObject({ id: listId, name: "inventory" });
+    await post({
+      schema,
+      type: "intent",
+      intent: { type: "insertBlock", blockType: "lists_add", to: { container: script, index: 0 } },
+      baseHash: programSemanticHash(get()!),
+    });
+    const before = get()!;
+    expect(
+      (
+        await post({
+          schema,
+          type: "intent",
+          intent: { type: "deleteList", listId },
+          baseHash: programSemanticHash(before),
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(get()).toEqual(before);
+  });
   it("commits a numeric list reporter and refuses missing references or stale edits", async () => {
     const { host, get, labels } = setup();
     await host.handle({

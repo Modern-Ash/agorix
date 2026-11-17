@@ -1485,8 +1485,53 @@ describe("workbench live region and focus after inserting from the palette", () 
         .click(),
     );
     expect(posted.at(-1)).toMatchObject({ intent: { items: [] } });
-    act(() => details.querySelector<HTMLButtonElement>("button:not([aria-label])")!.click());
+    act(() => details.querySelector<HTMLButtonElement>(".list-add-initial")!.click());
     expect(posted.at(-1)).toMatchObject({ intent: { items: [3, 0] } });
+  });
+  it("offers explicit list rename and two-step deletion", () => {
+    let listener: ((message: HostMessage) => void) | undefined;
+    const posted: unknown[] = [];
+    const bridge: HostBridge = {
+      post: (message) => void posted.push(message),
+      subscribe: (next) => {
+        listener = next;
+        return () => undefined;
+      },
+    };
+    act(() => root.render(<Workbench bridge={bridge} />));
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      lists: [{ id: "items", name: "Items", initialItems: [], visible: true }],
+      scripts: [],
+    }).workspace;
+    act(() =>
+      listener?.({
+        schema: STUDIO_PROTOCOL_VERSION,
+        type: "workspace",
+        workspace,
+        programHash: "fnv1a32:12345678",
+      }),
+    );
+    const details = host.querySelector<HTMLDetailsElement>(".list-initial-items")!;
+    act(() => {
+      details.open = true;
+    });
+    const input = details.querySelector<HTMLInputElement>(".list-management-actions input")!;
+    act(() => {
+      input.value = "Inventory";
+    });
+    act(() => details.querySelector<HTMLButtonElement>(".list-management-actions button")!.click());
+    expect(posted.at(-1)).toMatchObject({
+      intent: { type: "renameList", listId: "items", name: "Inventory" },
+    });
+    const deleteButton = details.querySelectorAll<HTMLButtonElement>(
+      ".list-management-actions button",
+    )[1]!;
+    const count = posted.length;
+    act(() => deleteButton.click());
+    expect(posted).toHaveLength(count);
+    act(() => deleteButton.click());
+    expect(posted.at(-1)).toMatchObject({ intent: { type: "deleteList", listId: "items" } });
   });
   it("shows the toolbox and accepts a palette drag on an empty script", () => {
     let listener: ((message: HostMessage) => void) | undefined;

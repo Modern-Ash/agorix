@@ -172,6 +172,8 @@ export type Intent =
     }
   | { readonly type: "addVariable"; readonly name: string }
   | { readonly type: "addList"; readonly name: string }
+  | { readonly type: "renameList"; readonly listId: string; readonly name: string }
+  | { readonly type: "deleteList"; readonly listId: string }
   | {
       readonly type: "setListInitialItems";
       readonly listId: string;
@@ -319,6 +321,30 @@ export function intentToChange(
       if (workspace.lists?.some((list) => list.name.toLowerCase() === name.toLowerCase()))
         return undefined;
       return { type: "addList", list: { id: newBlockId(), name, initialItems: [], visible: true } };
+    }
+    case "renameList": {
+      const name = intent.name.trim();
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.listId) ||
+        name.length < 1 ||
+        name.length > 40 ||
+        !workspace.lists?.some((list) => list.id === intent.listId) ||
+        workspace.lists.some(
+          (list) => list.id !== intent.listId && list.name.toLowerCase() === name.toLowerCase(),
+        )
+      )
+        return undefined;
+      return { type: "renameList", listId: intent.listId, name };
+    }
+    case "deleteList": {
+      if (
+        workspace === undefined ||
+        !isSafeId(intent.listId) ||
+        !workspace.lists?.some((list) => list.id === intent.listId)
+      )
+        return undefined;
+      return { type: "deleteList", listId: intent.listId };
     }
     case "setListInitialItems": {
       if (

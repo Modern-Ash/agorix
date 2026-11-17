@@ -42,6 +42,8 @@ export type WorkspaceChange =
   | { readonly type: "deleteBlock"; readonly location: StatementLocation }
   | { readonly type: "addVariable"; readonly variable: ProgramVariable }
   | { readonly type: "addList"; readonly list: ProgramList }
+  | { readonly type: "renameList"; readonly listId: string; readonly name: string }
+  | { readonly type: "deleteList"; readonly listId: string }
   | {
       readonly type: "editListInitialItems";
       readonly listId: string;
@@ -345,6 +347,62 @@ export function applyWorkspaceChange(
       const lists = [...(next.lists ?? [])];
       lists[index] = { ...lists[index]!, initialItems: [...change.items] };
       (next as unknown as { lists?: readonly ProgramList[] }).lists = lists;
+      break;
+    }
+    case "renameList": {
+      const lists = [...(next.lists ?? [])];
+      const index = lists.findIndex((list) => list.id === change.listId);
+      if (
+        index < 0 ||
+        !change.name.trim() ||
+        change.name.trim().length > 40 ||
+        lists.some(
+          (list) =>
+            list.id !== change.listId &&
+            list.name.toLowerCase() === change.name.trim().toLowerCase(),
+        )
+      )
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "lists",
+          "expected a declared list and distinct valid name",
+          change.listId,
+        );
+      lists[index] = { ...lists[index]!, name: change.name.trim() };
+      (next as unknown as { lists?: readonly ProgramList[] }).lists = lists;
+      break;
+    }
+    case "deleteList": {
+      if (!next.lists?.some((list) => list.id === change.listId))
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "lists",
+          "expected a declared list",
+          change.listId,
+        );
+      const referencesList = (node: BlockNode): boolean =>
+        node.fields?.listId === change.listId ||
+        Object.values(node.inputs ?? {}).some((input) =>
+          Array.isArray(input)
+            ? input.some(referencesList)
+            : "type" in input && referencesList(input),
+        );
+      if (
+        next.scripts.some(
+          (script) =>
+            script.statements.some(referencesList) ||
+            script.procedures?.some((procedure) => procedure.body.some(referencesList)),
+        )
+      )
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "lists",
+          "list is referenced by a block",
+          change.listId,
+        );
+      (next as unknown as { lists?: readonly ProgramList[] }).lists = next.lists!.filter(
+        (list) => list.id !== change.listId,
+      );
       break;
     }
   }

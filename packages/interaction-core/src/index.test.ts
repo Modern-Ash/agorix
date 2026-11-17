@@ -653,6 +653,23 @@ describe("interaction-core", () => {
     const declaration = intentToChange({ type: "addList", name: "items" }, newId, empty);
     const declared = applyWorkspaceChange(empty, declaration!).workspace;
     const listId = declared.lists![0]!.id;
+    const renamed = applyWorkspaceChange(
+      declared,
+      intentToChange({ type: "renameList", listId, name: "inventory" }, newId, declared)!,
+    );
+    expect(renamed.program.lists?.[0]).toMatchObject({ id: listId, name: "inventory" });
+    expect(
+      intentToChange({ type: "renameList", listId: "missing", name: "x" }, newId, declared),
+    ).toBeUndefined();
+    expect(
+      intentToChange({ type: "renameList", listId, name: " " }, newId, declared),
+    ).toBeUndefined();
+    expect(
+      applyWorkspaceChange(
+        declared,
+        intentToChange({ type: "deleteList", listId }, newId, declared)!,
+      ).program.lists,
+    ).toEqual([]);
     expect(declared.lists![0]).toMatchObject({ name: "items", initialItems: [] });
     const seeded = applyWorkspaceChange(
       declared,
