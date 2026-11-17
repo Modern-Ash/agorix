@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { validEmbeddedImageSource } from "@agorix/program-model";
 import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
 import { fillImageRegion, transformImagePixels } from "./imageTransforms.js";
+import { KIDS_GALLERY_CATEGORIES, type KidsGalleryCategory } from "@agorix/stage";
 
 export const STAGE_COSTUME_DRAG_TYPE = "application/x-agorix-stage-costume";
 export const STAGE_BACKDROP_DRAG_TYPE = "application/x-agorix-stage-backdrop";
@@ -56,6 +57,8 @@ export function SceneLibrary({
     "actors" | "costumes" | "backdrops" | "sounds" | "create"
   >("actors");
   const [assetName, setAssetName] = useState("");
+  const [assetSearch, setAssetSearch] = useState("");
+  const [assetCategory, setAssetCategory] = useState<KidsGalleryCategory>("all");
   const [assetError, setAssetError] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
@@ -274,6 +277,39 @@ export function SceneLibrary({
   const costumes = assets.filter((asset) => asset.kind === "costume");
   const backdrops = assets.filter((asset) => asset.kind === "backdrop");
   const sounds = assets.filter((asset) => asset.kind === "sound");
+  const visibleAssets = (items: readonly AssetView[]) =>
+    items.filter(
+      (asset) =>
+        (assetCategory === "all" || asset.tags.includes(assetCategory)) &&
+        (assetSearch.trim() === "" ||
+          `${asset.name} ${asset.tags.join(" ")}`
+            .toLocaleLowerCase()
+            .includes(assetSearch.trim().toLocaleLowerCase())),
+    );
+  const visibleCostumes = visibleAssets(costumes);
+  const visibleBackdrops = visibleAssets(backdrops);
+  const assetFilters = (
+    <div className="scene-asset-filters">
+      <input
+        type="search"
+        aria-label={copy.sceneSearchAssets}
+        placeholder={copy.sceneSearchAssets}
+        value={assetSearch}
+        onChange={(event) => setAssetSearch(event.currentTarget.value)}
+      />
+      <select
+        aria-label={copy.sceneAssetCategory}
+        value={assetCategory}
+        onChange={(event) => setAssetCategory(event.currentTarget.value as KidsGalleryCategory)}
+      >
+        {KIDS_GALLERY_CATEGORIES.map((category) => (
+          <option key={category} value={category}>
+            {copy.sceneAssetCategories[category]}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
   const preview = (asset: AssetView) => {
     const image = imageForAsset(asset);
     return image === undefined ? (
@@ -446,8 +482,10 @@ export function SceneLibrary({
           {selected === undefined ? "" : ` · ${selected.name}`}
         </h3>
         <p className="scene-costume-hint">{copy.sceneDragCostume}</p>
+        {assetFilters}
+        {visibleCostumes.length === 0 ? <p>{copy.sceneNoMatchingAssets}</p> : null}
         <div className="scene-library-grid">
-          {costumes.map((asset) => (
+          {visibleCostumes.map((asset) => (
             <div
               key={asset.id}
               className="scene-asset-card"
@@ -505,8 +543,10 @@ export function SceneLibrary({
       <section aria-label={copy.sceneBackdrops} hidden={activeSection !== "backdrops"}>
         <h3>{copy.sceneBackdrops}</h3>
         <p className="scene-backdrop-hint">{copy.sceneDragBackdrop}</p>
+        {assetFilters}
+        {visibleBackdrops.length === 0 ? <p>{copy.sceneNoMatchingAssets}</p> : null}
         <div className="scene-library-grid">
-          {backdrops.map((asset) => (
+          {visibleBackdrops.map((asset) => (
             <div
               key={asset.id}
               className="scene-asset-card"

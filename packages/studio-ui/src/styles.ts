@@ -273,6 +273,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .scene-library section { min-width: 0; }
 .scene-library h3 { margin: 0 0 6px; color: var(--vscode-descriptionForeground); font-size: 0.76em; letter-spacing: 0.06em; text-transform: uppercase; }
 .scene-library-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.scene-asset-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(95px, 0.7fr); gap: 5px; margin: 7px 0; }
+.scene-asset-filters input, .scene-asset-filters select { min-width: 0; width: 100%; }
 .scene-library-grid > button, .scene-asset-card > button:first-child { display: grid; justify-items: center; align-content: center; gap: 3px; min-width: 0; min-height: 80px; width: 100%; padding: 4px; border: 1px solid var(--vscode-panel-border); border-radius: 7px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
 .scene-asset-card { display: grid; gap: 3px; min-width: 0; }
 .scene-edit-asset, .scene-duplicate-asset { min-height: 28px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; background: var(--vscode-editorWidget-background); color: var(--vscode-foreground); cursor: pointer; }

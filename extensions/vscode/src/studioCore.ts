@@ -71,6 +71,8 @@ import {
   type RunResult,
 } from "@agorix/runtime";
 import {
+  KIDS_GALLERY_BACKDROPS,
+  KIDS_GALLERY_CHARACTERS,
   executionStepsFromRuntimeObservations,
   framesFromRuntimeObservations,
   learnerTraceFromExecutionSteps,
@@ -1429,7 +1431,7 @@ export function defaultProjectAssets(): NonNullable<ProjectMetadata["assets"]> {
       kind: "backdrop",
       name: "Space Trailhead",
       source: "builtin:space.trailhead",
-      tags: ["space", "mission"],
+      tags: ["gallery", "space", "mission"],
     },
     {
       id: "asset:sound.beacon",
@@ -1443,6 +1445,28 @@ export function defaultProjectAssets(): NonNullable<ProjectMetadata["assets"]> {
 
 export function studioAssetCatalog(): readonly AssetView[] {
   return [
+    ...KIDS_GALLERY_CHARACTERS.filter((item) => item.id !== "nova" && item.id !== "luma").map(
+      (item): AssetView => ({
+        id: `costume:${item.id}`,
+        name: item.en,
+        kind: "costume",
+        tags: ["gallery", item.category],
+        source: `builtin:kids-gallery-costume:${item.id}`,
+        width: 64,
+        height: 64,
+      }),
+    ),
+    ...KIDS_GALLERY_BACKDROPS.filter((item) => item.id !== "moon" && item.id !== "galaxy").map(
+      (item): AssetView => ({
+        id: `backdrop:${item.id}`,
+        name: item.en,
+        kind: "backdrop",
+        tags: ["gallery", item.category],
+        source: `builtin:kids-gallery-backdrop:${item.id}`,
+        width: 264,
+        height: 192,
+      }),
+    ),
     {
       id: "asset:space.explorer",
       name: "Explorer",
@@ -1465,7 +1489,7 @@ export function studioAssetCatalog(): readonly AssetView[] {
       id: "asset:space.trailhead",
       name: "Space Trailhead",
       kind: "backdrop",
-      tags: ["space", "mission"],
+      tags: ["gallery", "space", "mission"],
       width: 264,
       height: 192,
       preview: "grid",
@@ -1474,7 +1498,7 @@ export function studioAssetCatalog(): readonly AssetView[] {
       id: "asset:costume.default",
       name: "Default Costume",
       kind: "costume",
-      tags: ["starter"],
+      tags: ["gallery", "starter", "space"],
       width: 64,
       height: 64,
       preview: "outline",
@@ -1483,7 +1507,7 @@ export function studioAssetCatalog(): readonly AssetView[] {
       id: "asset:costume.spark",
       name: "Spark Costume",
       kind: "costume",
-      tags: ["starter"],
+      tags: ["gallery", "starter", "space"],
       width: 64,
       height: 64,
       preview: "spark",
@@ -1492,7 +1516,7 @@ export function studioAssetCatalog(): readonly AssetView[] {
       id: "asset:space.nebula",
       name: "Space Nebula",
       kind: "backdrop",
-      tags: ["space"],
+      tags: ["gallery", "space"],
       width: 264,
       height: 192,
       preview: "nebula",
