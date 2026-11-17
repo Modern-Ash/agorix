@@ -77,7 +77,10 @@ what the program did.
    Evidence view.
 3. Ori occupies a stable companion area. Its intent/plan input is a structured
    learning workflow, not a free-form chat. Explanations and proposals still
-   use the existing validated Companion and proposal paths.
+   use the existing validated Companion and proposal paths. A pointer hint in
+   Ori offers a direct keyboard-accessible return to the referenced canonical
+   block, selecting its actor and script first. A workspace update clears old
+   pointer hints so they cannot lead to a stale block.
 4. A proposal remains provisional until an explicit learner decision. A run
    proves behavior; Ori's language never counts as proof.
 5. With the provider unavailable, manual editing and deterministic execution

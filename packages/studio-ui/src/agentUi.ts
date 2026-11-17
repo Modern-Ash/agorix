@@ -131,6 +131,8 @@ function without<K extends keyof AgentUiState>(state: AgentUiState, ...keys: K[]
 
 export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentUiState {
   switch (message.type) {
+    case "workspace":
+      return without(state, "help");
     case "workflow": {
       let next: AgentUiState = { ...state, workflow: message.state };
       const stage = message.state.stage;

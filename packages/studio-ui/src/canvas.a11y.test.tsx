@@ -56,6 +56,149 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
 });
+
+it("returns from an Ori pointer to its canonical block", () => {
+  let listener: ((message: HostMessage) => void) | undefined;
+  const bridge: HostBridge = {
+    post: () => undefined,
+    subscribe: (next) => {
+      listener = next;
+      return () => undefined;
+    },
+  };
+  act(() => root.render(<Workbench bridge={bridge} />));
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "workspace",
+      workspace: initial,
+      programHash: "sha:test",
+    }),
+  );
+  const target = host.querySelectorAll<HTMLElement>("[data-pos]")[0];
+  expect(target).toBeDefined();
+  const blockId = initial.scripts[0]?.statements[0]?.id;
+  expect(blockId).toBeDefined();
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "help",
+      kind: "pointer",
+      ceiling: 3,
+      taskId: "first-step",
+      blockIds: [blockId!],
+    }),
+  );
+  const returnButton = Array.from(host.querySelectorAll<HTMLButtonElement>(".help button")).find(
+    (button) => button.textContent?.includes("Look here 1"),
+  );
+  expect(returnButton).toBeDefined();
+  act(() => returnButton?.click());
+  expect(document.activeElement).toBe(target);
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "help",
+      kind: "pointer",
+      ceiling: 3,
+      taskId: "first-step",
+      blockIds: ["missing:block"],
+    }),
+  );
+  expect(host.querySelector(".help button")).toBeNull();
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "help",
+      kind: "pointer",
+      ceiling: 3,
+      taskId: "first-step",
+      blockIds: [blockId!],
+    }),
+  );
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "workspace",
+      workspace: initial,
+      programHash: "sha:new",
+    }),
+  );
+  expect(host.querySelector(".help button")).toBeNull();
+});
+
+it("switches actor before focusing an Ori hint in another script", () => {
+  let listener: ((message: HostMessage) => void) | undefined;
+  const bridge: HostBridge = {
+    post: () => undefined,
+    subscribe: (next) => {
+      listener = next;
+      return () => undefined;
+    },
+  };
+  const workspace = programToWorkspace({
+    schema: "agorix/program/v1",
+    scripts: [
+      { id: "first", trigger: { type: "onStart" }, statements: [{ type: "move", steps: 1 }] },
+      { id: "second", trigger: { type: "onStart" }, statements: [{ type: "turn", degrees: 30 }] },
+    ],
+  }).workspace;
+  act(() => root.render(<Workbench bridge={bridge} />));
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "workspace",
+      workspace,
+      programHash: "sha:test",
+    }),
+  );
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "actors",
+      selectedActorId: "actor:second",
+      actors: [
+        {
+          id: "actor:first",
+          name: "First",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scriptCount: 1,
+          scriptIds: ["first"],
+        },
+        {
+          id: "actor:second",
+          name: "Second",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scriptCount: 1,
+          scriptIds: ["second"],
+        },
+      ],
+    }),
+  );
+  expect(host.querySelectorAll(".script-title")).toHaveLength(1);
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "help",
+      kind: "pointer",
+      ceiling: 3,
+      taskId: "first-step",
+      blockIds: [workspace.scripts[0]!.statements[0]!.id],
+    }),
+  );
+  act(() => host.querySelector<HTMLButtonElement>(".help button")?.click());
+  expect((document.activeElement as HTMLElement).dataset["pos"]).toBe(
+    locationKey({ container: { kind: "script", scriptIndex: 0 }, index: 0 }),
+  );
+});
 afterEach(() => {
   act(() => root.unmount());
   host.remove();

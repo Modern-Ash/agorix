@@ -529,6 +529,23 @@ describe("help below the proposal level", () => {
     const state = withHelp({ kind: "question", ceiling: 1, taskId: "repeat-pattern" });
     expect(html(state, "es")).toContain("¿Ves pasos que se repiten?");
     expect(html(state, "es")).toContain("Tu nivel de ayuda es 1.");
+    const pointer = withHelp({
+      kind: "pointer",
+      ceiling: 3,
+      taskId: "first-step",
+      blockIds: ["b1", "missing"],
+    });
+    const linked = renderToStaticMarkup(
+      <AgentPanel
+        state={pointer}
+        send={() => undefined}
+        locale="es"
+        onRevealBlock={() => undefined}
+        revealableBlockIds={["b1"]}
+      />,
+    );
+    expect(linked).toContain("Mirá acá 1");
+    expect(linked).not.toContain("Mirá acá 2");
     const proposed = reduceAgentUi(state, {
       schema,
       type: "proposal",
