@@ -1007,8 +1007,10 @@ describe("canvas keyboard and screen reader behaviour", () => {
     expect(events.at(-1)).toEqual({ event: "keyPressed", key: "A" });
     key(viewport, { key: "ArrowRight" });
     expect(events.at(-1)).toEqual({ event: "keyPressed", key: "ArrowRight" });
+    key(viewport, { key: "7" });
+    expect(events.at(-1)).toEqual({ event: "keyPressed", key: "7" });
     key(viewport, { key: "Escape" });
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(4);
     const transfer = new Map<string, string>();
     const dataTransfer = {
       setData: (key: string, value: string) => transfer.set(key, value),
@@ -1566,6 +1568,29 @@ describe("workbench live region and focus after inserting from the palette", () 
       trigger: "onKeyPressed",
       key: "Space",
     });
+    const capture = host.querySelector<HTMLButtonElement>(".scene-key-picker button")!;
+    act(() =>
+      capture.dispatchEvent(
+        new dom.window.KeyboardEvent("keydown", { key: "7", bubbles: true, cancelable: true }),
+      ),
+    );
+    expect(host.querySelector<HTMLSelectElement>(".scene-key-picker select")?.value).toBe("7");
+    act(() =>
+      host
+        .querySelector<HTMLFormElement>(".scene-create-script")!
+        .dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(posted.at(-1)).toMatchObject({
+      type: "createScript",
+      trigger: "onKeyPressed",
+      key: "7",
+    });
+    act(() =>
+      capture.dispatchEvent(
+        new dom.window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }),
+      ),
+    );
+    expect(host.querySelector<HTMLSelectElement>(".scene-key-picker select")?.value).toBe("7");
     act(() => {
       triggerSelect.value = "onActorClicked";
       triggerSelect.dispatchEvent(new dom.window.Event("change", { bubbles: true }));

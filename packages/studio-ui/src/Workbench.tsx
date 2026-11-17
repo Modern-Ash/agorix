@@ -4,6 +4,7 @@ import type { Intent } from "@agorix/interaction-core";
 import { LIST_MAX_ITEMS, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX } from "@agorix/program-model";
 import {
   STUDIO_PROTOCOL_VERSION,
+  studioStageKey,
   type ExecutionCommand,
   type ChangeRefusalReason,
   type HostMessage,
@@ -441,17 +442,8 @@ export function StagePanel({
             state === undefined
           )
             return;
-          const key =
-            event.key === " "
-              ? "Space"
-              : /^[a-z]$/i.test(event.key)
-                ? event.key.toUpperCase()
-                : event.key;
-          if (
-            !["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key) &&
-            !/^[A-Z]$/.test(key)
-          )
-            return;
+          const key = studioStageKey(event.key);
+          if (key === undefined) return;
           event.preventDefault();
           onStageEvent({ event: "keyPressed", key });
         }}
