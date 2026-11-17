@@ -3330,27 +3330,34 @@ export function App({
   }
 
   function exportProject() {
-    const metadata = createProjectMetadata(
-      createdAt,
-      countProgramBlocks(model),
-      locale,
-      creativeState,
+    const hasEmbeddedMedia = creativeState.assets?.some((asset) =>
+      asset.source.startsWith("data:image/"),
     );
-    const json = serializeAgorixProject({
-      schemaVersion: model.program.schema,
-      program: model.program,
-      metadata,
-    });
-    const blob = new Blob([json], { type: "application/vnd.agorix.project+json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url; // agora-allowlist: local Blob download generated from validated .agorix serializer, not outbound navigation
-    anchor.download = sanitizeAgorixFilename("agorix-first-mission");
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    setMessage(t(locale, "projectExported"));
+    if (hasEmbeddedMedia && !window.confirm(t(locale, "projectMediaExportConfirm"))) return;
+    try {
+      const metadata = createProjectMetadata(
+        createdAt,
+        countProgramBlocks(model),
+        locale,
+        creativeState,
+      );
+      const json = serializeAgorixProject(
+        { schemaVersion: model.program.schema, program: model.program, metadata },
+        { includeMedia: hasEmbeddedMedia === true },
+      );
+      const blob = new Blob([json], { type: "application/vnd.agorix.project+json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; // agora-allowlist: local Blob download generated from validated .agorix serializer, not outbound navigation
+      anchor.download = sanitizeAgorixFilename("agorix-first-mission");
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setMessage(t(locale, "projectExported"));
+    } catch {
+      setMessage(t(locale, "projectExportFailed"));
+    }
   }
 
   async function importProjectFile(file: File) {

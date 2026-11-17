@@ -10,11 +10,7 @@ import {
   type StatementContainerPath,
 } from "@agorix/block-editor";
 import { FIRST_MISSION } from "@agorix/curriculum";
-import {
-  migrateLegacyTriggers,
-  type ProgramVariable,
-  type ProjectProgram,
-} from "@agorix/program-model";
+import { type ProgramVariable, type ProjectProgram } from "@agorix/program-model";
 import { createStageSession, type StageSession } from "@agorix/stage";
 
 export interface EditorProjection {
@@ -84,9 +80,8 @@ export function createEditorModel(): EditorModel {
 }
 
 export function createEditorModelFromProgram(program: ProjectProgram): EditorModel {
-  // Projects saved before green-flag scripts open with the green-flag hat; they run the same.
   return {
-    ...project(programToWorkspace(migrateLegacyTriggers(program)).workspace),
+    ...project(programToWorkspace(program).workspace),
     stage: INITIAL_STAGE,
   };
 }

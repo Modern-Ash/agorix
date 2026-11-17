@@ -3,7 +3,7 @@ import { getWorld } from "@agorix/curriculum";
 import { ProjectStore } from "@agorix/persistence";
 import { createStageState } from "@agorix/stage";
 import type { ProjectProgram, Script } from "@agorix/program-model";
-import { SCHEMA_VERSION, migrateLegacyTriggers } from "@agorix/program-model";
+import { SCHEMA_VERSION } from "@agorix/program-model";
 import { describe, expect, it } from "vitest";
 import { App, ProgramBlockCard, StageView, updateActor } from "./App.js";
 import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
@@ -832,8 +832,8 @@ describe("editor persistence", () => {
     expect(JSON.stringify(parsed.program)).not.toContain("locale");
     expect(raw).not.toContain("sprite.move");
     expect(raw).not.toContain('"code"');
-    // A project saved with the legacy "When you press Run" hat opens with the green flag.
-    expect(loaded.model?.program).toEqual(migrateLegacyTriggers(program));
+    // Opening a project must preserve its canonical trigger until the learner edits it.
+    expect(loaded.model?.program).toEqual(program);
     expect(loaded.metadata?.locale).toBe("es");
     expect(loaded.model?.code).toContain("sprite.move(24);");
   });
