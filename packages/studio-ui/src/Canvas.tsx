@@ -1292,10 +1292,16 @@ export function Canvas({
                             ? "xPosition"
                             : operand.type === "sensing_y_position"
                               ? "yPosition"
-                              : "other";
+                              : operand.type === "sensing_distance_to_actor"
+                                ? "distanceToActor"
+                                : "other";
                   const sideLabel = side === "left" ? copy.conditionLeft : copy.conditionRight;
                   const referenceId =
-                    source === "variable" ? operand.fields?.variableId : operand.fields?.listId;
+                    source === "variable"
+                      ? operand.fields?.variableId
+                      : source === "distanceToActor"
+                        ? operand.fields?.actorId
+                        : operand.fields?.listId;
                   const choose = (
                     next: (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number],
                     id?: string,
@@ -1323,7 +1329,9 @@ export function Canvas({
                                 ? workspace.variables?.[0]?.id
                                 : next === "listLength"
                                   ? workspace.lists?.[0]?.id
-                                  : undefined,
+                                  : next === "distanceToActor"
+                                    ? actors[0]?.id
+                                    : undefined,
                             );
                           }}
                           onKeyDown={(event) => event.stopPropagation()}
@@ -1337,6 +1345,9 @@ export function Canvas({
                           ) : null}
                           <option value="xPosition">{copy.positionX}</option>
                           <option value="yPosition">{copy.positionY}</option>
+                          {actors.length > 0 ? (
+                            <option value="distanceToActor">{copy.distanceToActor}</option>
+                          ) : null}
                           {source === "other" ? (
                             <option value="other">
                               {getBlockDefinition(operand.type)?.label ?? operand.type}
@@ -1344,18 +1355,26 @@ export function Canvas({
                           ) : null}
                         </select>
                       </label>
-                      {source === "variable" || source === "listLength" ? (
+                      {source === "variable" ||
+                      source === "listLength" ||
+                      source === "distanceToActor" ? (
                         <label>
-                          <span>{copy.numericReference}</span>
+                          <span>
+                            {source === "distanceToActor"
+                              ? copy.conditionActor
+                              : copy.numericReference}
+                          </span>
                           <select
-                            aria-label={`${copy.condition}: ${sideLabel} ${copy.numericReference}`}
+                            aria-label={`${copy.condition}: ${sideLabel} ${source === "distanceToActor" ? copy.conditionActor : copy.numericReference}`}
                             value={String(referenceId ?? "")}
                             onChange={(event) => choose(source, event.currentTarget.value)}
                             onKeyDown={(event) => event.stopPropagation()}
                           >
                             {(source === "variable"
                               ? (workspace.variables ?? [])
-                              : (workspace.lists ?? [])
+                              : source === "distanceToActor"
+                                ? actors
+                                : (workspace.lists ?? [])
                             ).map((entry) => (
                               <option key={entry.id} value={entry.id}>
                                 {entry.name}
