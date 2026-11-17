@@ -38,7 +38,7 @@ export function SceneLibrary({
   readonly onSelectActor: (id: string) => void;
   readonly onCostume: (actorId: string, costumeId: string) => void;
   readonly onBackdrop: (backdropId: string) => void;
-  readonly onCreateActor?: (name: string) => void;
+  readonly onCreateActor?: (name: string, costumeId?: string) => void;
   readonly onDeleteActor?: (actorId: string, ownedScriptIds: readonly string[]) => void;
   readonly onCreateScript?: (
     actorId: string,
@@ -507,6 +507,16 @@ export function SceneLibrary({
                 {preview(asset)}
                 <span>{asset.name}</span>
               </button>
+              {onCreateActor === undefined ? null : (
+                <button
+                  type="button"
+                  className="scene-actor-from-costume"
+                  aria-label={`${copy.sceneCreateActorFromCostume}: ${asset.name}`}
+                  onClick={() => onCreateActor(asset.name, asset.id)}
+                >
+                  {copy.sceneCreateActorFromCostume}
+                </button>
+              )}
               {onUpdateAsset === undefined ? null : (
                 <button
                   type="button"

@@ -2561,6 +2561,7 @@ describe("workbench live region and focus after inserting from the palette", () 
     expect(context.ellipse).toHaveBeenCalledWith(40, 50, 20, 20, 0, 0, Math.PI * 2);
   });
   it("filters the visual asset gallery by category and restores all assets", () => {
+    const createActor = vi.fn();
     act(() =>
       root.render(
         <SceneLibrary
@@ -2594,6 +2595,7 @@ describe("workbench live region and focus after inserting from the palette", () 
           onSelectActor={() => undefined}
           onCostume={() => undefined}
           onBackdrop={() => undefined}
+          onCreateActor={createActor}
         />,
       ),
     );
@@ -2607,6 +2609,10 @@ describe("workbench live region and focus after inserting from the palette", () 
     });
     expect(costumeSection.querySelectorAll(".scene-asset-card")).toHaveLength(1);
     expect(costumeSection.querySelector(".scene-asset-card")?.textContent).toContain("Mika");
+    act(() =>
+      costumeSection.querySelector<HTMLButtonElement>(".scene-actor-from-costume")!.click(),
+    );
+    expect(createActor).toHaveBeenCalledWith("Mika", "costume:mika");
     act(() => {
       category.value = "fantasy";
       category.dispatchEvent(new dom.window.Event("change", { bubbles: true }));

@@ -1159,6 +1159,43 @@ describe("workbenchHost", () => {
     expect(labels).toEqual(["Workbench: create actor and script"]);
   });
 
+  it("creates a gallery character with its chosen costume and refuses unknown costumes atomically", async () => {
+    const { host, get, metadata, labels } = setup();
+    const before = get()!.scripts.length;
+    expect(
+      (
+        await host.handle({
+          schema,
+          type: "createActor",
+          name: "Unknown",
+          costumeId: "costume:missing",
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(get()!.scripts).toHaveLength(before);
+    expect(labels).toEqual([]);
+    const result = await host.handle({
+      schema,
+      type: "createActor",
+      name: "Mika",
+      costumeId: "costume:mika",
+    });
+    const actor = metadata().actors!.items.find((item) => item.name === "Mika")!;
+    expect(actor.costumeId).toBe("costume:mika");
+    expect(actor.scripts).toHaveLength(1);
+    expect(get()!.scripts).toHaveLength(before + 1);
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "actors",
+        selectedActorId: actor.id,
+        actors: expect.arrayContaining([
+          expect.objectContaining({ id: actor.id, costumeId: "costume:mika" }),
+        ]),
+      }),
+    );
+    expect(labels).toEqual(["Workbench: create actor and script"]);
+  });
+
   it("deletes an actor with its scripts atomically and refuses stale or referenced actors", async () => {
     const { host, get, metadata, port, labels } = setup();
     await host.handle({ schema, type: "createActor", name: "Robot" });

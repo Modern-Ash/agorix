@@ -1311,9 +1311,14 @@ export function Workbench({
       }}
       onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
       onBackdrop={updateBackdrop}
-      onCreateActor={(name) => {
+      onCreateActor={(name, costumeId) => {
         pendingActorCreation.current = true;
-        bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
+        bridge.post({
+          schema: STUDIO_PROTOCOL_VERSION,
+          type: "createActor",
+          name,
+          ...(costumeId === undefined ? {} : { costumeId }),
+        });
       }}
       onDeleteActor={(actorId, ownedScriptIds) => {
         if (programHash === undefined) return;
