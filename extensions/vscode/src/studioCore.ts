@@ -431,7 +431,7 @@ export function parseProjectFile(raw: string | Uint8Array, filename = ""): Studi
 export function serializeProjectFile(
   stored: StoredProject,
   filename = "",
-  options: { readonly exportedAt?: string } = {},
+  options: { readonly exportedAt?: string; readonly includeMedia?: boolean } = {},
 ): string {
   if (filename.toLowerCase().endsWith(".agorix")) {
     return serializeAgorixProject(stored, options);

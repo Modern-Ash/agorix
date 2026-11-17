@@ -277,8 +277,20 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     const previousRaw = serializeStoredProject(open.project.stored);
+    const addsEmbeddedMedia = metadata.assets?.some(
+      (asset) =>
+        asset.source.startsWith("data:image/") &&
+        !open.project.stored.metadata.assets?.some((existing) => existing.id === asset.id),
+    );
+    if (addsEmbeddedMedia && open.uri.fsPath.toLowerCase().endsWith(".agorix")) {
+      const approved = await vscode.window.showWarningMessage(
+        "A new image will be embedded in this portable project. An adult must approve before this file can be shared.",
+        "I am an adult and approve",
+      );
+      if (approved !== "I am an adult and approve") return;
+    }
     const stored = createStoredProjectWithMetadata(open.project.stored, metadata);
-    const raw = serializeProjectFile(stored, open.uri.fsPath);
+    const raw = serializeProjectFile(stored, open.uri.fsPath, { includeMedia: true });
     if (open.uri.scheme !== REMOTE_SCHEME) {
       await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
     }
@@ -290,7 +302,6 @@ export function activate(context: vscode.ExtensionContext): void {
     session.undoStack.push({ uri: open.uri, raw: previousRaw });
     session.redoStack.length = 0;
     afterCanonicalProgramChange();
-    await projectionCommands.openProjection(session.currentProjectionId);
   };
   const commitProject = async (
     program: ProjectProgram,
@@ -303,7 +314,7 @@ export function activate(context: vscode.ExtensionContext): void {
       createStoredProjectWithProgram(open.project.stored, program),
       metadata,
     );
-    const raw = serializeProjectFile(stored, open.uri.fsPath);
+    const raw = serializeProjectFile(stored, open.uri.fsPath, { includeMedia: true });
     if (open.uri.scheme !== REMOTE_SCHEME) {
       await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
     }
@@ -315,7 +326,6 @@ export function activate(context: vscode.ExtensionContext): void {
     session.undoStack.push({ uri: open.uri, raw: previousRaw });
     session.redoStack.length = 0;
     afterCanonicalProgramChange();
-    await projectionCommands.openProjection(session.currentProjectionId);
   };
   const surfaceCommands = createStudioSurfaceCommandHandlers({
     context,

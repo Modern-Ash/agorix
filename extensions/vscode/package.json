@@ -723,6 +723,7 @@
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "node test/integration/run.cjs",
     "test:vsix": "node test/integration/vsix.cjs",
+    "test:visual": "node test/integration/visual-journey.cjs",
     "package": "pnpm build && vsce package --no-dependencies --out dist/agorix-studio.vsix",
     "publish:open-vsx": "pnpm package && npx --yes ovsx publish dist/agorix-studio.vsix"
   },

@@ -67,7 +67,7 @@ export function createStudioProposalCommandHandlers(
     if (open === undefined) {
       return;
     }
-    const raw = serializeProjectFile(stored, open.uri.fsPath);
+    const raw = serializeProjectFile(stored, open.uri.fsPath, { includeMedia: true });
     if (open.uri.scheme !== REMOTE_SCHEME) {
       await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
     }
@@ -77,7 +77,6 @@ export function createStudioProposalCommandHandlers(
       ...(open.remote === undefined ? {} : { remote: open.remote }),
     });
     port.afterCanonicalProgramChange();
-    await port.openProjection(port.getCurrentProjectionId());
   };
 
   const restoreSnapshot = async (snapshot: StoredSnapshot): Promise<void> => {
@@ -91,7 +90,6 @@ export function createStudioProposalCommandHandlers(
       ...(remote === undefined ? {} : { remote }),
     });
     port.afterCanonicalProgramChange();
-    await port.openProjection(port.getCurrentProjectionId());
   };
 
   const reviewProposalSession = async (proposalSession: StudioProposalSession): Promise<void> => {

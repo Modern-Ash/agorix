@@ -65,6 +65,29 @@ const types = (messages: Array<{ type: string }> | undefined) =>
   (messages ?? []).map((m) => m.type);
 
 describe("agentHost", () => {
+  it("leaves learner-owned scene edits to the workbench when AI is unavailable", async () => {
+    const { send } = setup();
+    await send({
+      type: "agreementsChanged",
+      agreements: { ...DEFAULT_AGREEMENTS, aiEnabled: false },
+    });
+    for (const message of [
+      { type: "createActor", name: "Helper" },
+      { type: "createScript", actorId: "actor:main", trigger: "greenFlag", baseHash: "h0" },
+      {
+        type: "importAsset",
+        kind: "costume",
+        name: "Painted",
+        source: "data:image/png;base64,iVBORw0KGgo=",
+      },
+      { type: "updateStage", backdropId: "backdrop:moon" },
+    ]) {
+      expect(await send(message)).toBeUndefined();
+    }
+    expect(await send({ type: "stateIntent", text: "Help me" })).toEqual([
+      { schema, type: "agentUnavailable" },
+    ]);
+  });
   it("runs the whole supervised loop with learner decisions", async () => {
     const { state, send } = setup({ reached: true });
     await send({ type: "stateIntent", text: "make it move" });
