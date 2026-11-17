@@ -1113,7 +1113,10 @@ describe("workbench live region and focus after inserting from the palette", () 
     const move = Array.from(host.querySelectorAll<HTMLButtonElement>(".palette button")).find(
       (button) => button.textContent?.includes("Move"),
     )!;
+    act(() => host.querySelector<HTMLButtonElement>(".studio-program-heading button")!.click());
+    expect(host.querySelector<HTMLElement>(".workbench")?.dataset.toolsOpen).toBe("true");
     act(() => move.click());
+    expect(host.querySelector<HTMLElement>(".workbench")?.dataset.toolsOpen).toBe("false");
     expect(posted.at(-1)).toMatchObject({
       type: "intent",
       intent: { type: "insertBlock", to: { container: { kind: "script", scriptIndex: 1 } } },
@@ -1390,6 +1393,14 @@ describe("workbench live region and focus after inserting from the palette", () 
     const bridge: HostBridge = { post: () => undefined, subscribe: () => () => undefined };
     act(() => root.render(<Workbench bridge={bridge} locale="es" />));
     const shell = host.querySelector<HTMLElement>(".workbench")!;
+    expect(shell.dataset.toolsOpen).toBe("false");
+    const blocksButton = host.querySelector<HTMLButtonElement>(".studio-program-heading button")!;
+    expect(blocksButton.getAttribute("aria-expanded")).toBe("false");
+    act(() => blocksButton.click());
+    expect(shell.dataset.toolsOpen).toBe("true");
+    expect(blocksButton.getAttribute("aria-expanded")).toBe("true");
+    act(() => blocksButton.click());
+    expect(shell.dataset.toolsOpen).toBe("false");
     const scene = host.querySelector<HTMLButtonElement>(".studio-editor-tabs button:nth-child(2)")!;
     act(() => scene.click());
     expect(shell.dataset.workspaceView).toBe("scene");

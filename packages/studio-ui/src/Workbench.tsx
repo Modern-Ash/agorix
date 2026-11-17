@@ -889,7 +889,9 @@ export function Workbench({
   const [backdropId, setBackdropId] = useState<string | undefined>();
   const [libraryTab, setLibraryTab] = useState<"blocks" | "scene">("blocks");
   const [workspaceView, setWorkspaceView] = useState<"build" | "scene" | "review">("build");
-  const [toolsOpen, setToolsOpen] = useState(true);
+  const [toolsOpen, setToolsOpen] = useState(() =>
+    typeof window === "undefined" ? true : window.innerWidth > 1100,
+  );
   const [oriOpen, setOriOpen] = useState(true);
   const [selectedExpression, setSelectedExpression] = useState<BlockType | undefined>();
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
@@ -1004,13 +1006,15 @@ export function Workbench({
   }, [proposalId]);
   const anchored = canvasHints(agentUi.proposal, selection);
 
-  const post = (intent: Intent) =>
+  const post = (intent: Intent) => {
+    if (intent.type === "insertBlock" && window.innerWidth <= 1100) setToolsOpen(false);
     bridge.post({
       schema: STUDIO_PROTOCOL_VERSION,
       type: "intent",
       intent,
       ...(programHash === undefined ? {} : { baseHash: programHash }),
     });
+  };
 
   const announce = (text: string) => {
     pendingAnnouncement.current = text;
@@ -1532,7 +1536,20 @@ export function Workbench({
           aria-label={copy.canvasLabel}
           hidden={workspaceView !== "build"}
         >
-          <h2>{copy.canvasLabel}</h2>
+          <div className="studio-program-heading">
+            <h2>{copy.canvasLabel}</h2>
+            <button
+              type="button"
+              aria-controls="studio-tools"
+              aria-expanded={toolsOpen}
+              onClick={() => {
+                setLibraryTab("blocks");
+                setToolsOpen((open) => !open);
+              }}
+            >
+              {toolsOpen ? copy.hideTools : copy.showTools}
+            </button>
+          </div>
           {workspace === undefined ? (
             <p>{copy.openProjectToStart}</p>
           ) : (

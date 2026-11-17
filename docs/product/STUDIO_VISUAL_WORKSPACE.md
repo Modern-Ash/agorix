@@ -2,16 +2,27 @@
 
 Studio is an IDE for advanced learners. Its layout follows the editor-centered structure of Kiro: a compact tool area, a dominant working editor, and a persistent assistant dock. The content remains Agorix-specific: canonical blocks, deterministic stage and evidence, and Ori as a learning companion.
 
+## Existing backlog aligned to IDE usability
+
+| Existing issue      | What still has to be proven                                                                                                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #1694, #1640, #1645 | At a real 900 × 700 VSIX viewport, a learner can see and use the program, stage, Run and Ori without scrolling; the palette remains discoverable and does not obstruct navigation.       |
+| #1650, #1652        | Visual blocks and typed inputs let an advanced learner build nested logic through mouse and keyboard, with canonical edits and a complete insertion path for every visible palette item. |
+| #1651, #1649        | The stage and creative assets remain recognizable, editable and persistent across Studio and Web.                                                                                        |
+| #1653               | Installed-VSIX screenshots, cross-surface tests and learner/educator review establish visual comprehension before visual readiness is claimed.                                           |
+
+These are the existing work items for this goal. Implementation slices link back to them; a passing semantic test alone does not close a visual-usability acceptance criterion.
+
 ## Layout and behavior
 
 | Area       | Build                                                          | Scene                                                      | Evidence                   |
 | ---------- | -------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------- |
-| Left tools | Visual block palette and search                                | Collapsed to free drawing space                            | Available on demand        |
-| Center     | Runtime stage and canonical block program                      | Runtime stage beside character, costume and backdrop tools | Runtime stage and evidence |
+| Left tools | Visual block palette and search; overlay at 900 px             | Collapsed to free drawing space                            | Available on demand        |
+| Center     | Canonical block program beside a live stage                    | Runtime stage beside character, costume and backdrop tools | Runtime stage and evidence |
 | Right dock | Ori                                                            | Ori                                                        | Ori                        |
 | Code       | Opens the existing synchronized projection in a VS Code editor | Same                                                       | Same                       |
 
-Tools and Ori can each be hidden from the header without discarding the current workbench state. The center tabs switch views without creating a second program model. At 900 × 700 the Scene tools sit beside the stage; at 1440 × 900 the editor has additional room. Below 700 px the Scene tools stack under the stage. All colors use VS Code theme tokens.
+Tools and Ori can each be hidden from the header without discarding the current workbench state. Build also exposes a Blocks button beside the program title. At 900 × 700 the tool palette starts collapsed; Build puts the program and stage side by side with Ori visible. The palette opens over the stage while the program stays available as a drop target, then the stage returns when the palette closes. At 1440 × 900 the editor has room for the persistent tool rail when it is open. The center tabs switch views without creating a second program model. Below 700 px the Scene tools stack under the stage. All colors use VS Code theme tokens.
 
 Each actor-owned script has a visible header in Build. Its Delete script action requires a second explicit confirmation and removes the script from the canonical program and actor ownership in one project commit. The final project script cannot be removed, so the editor always retains a runnable entry point.
 
@@ -54,7 +65,7 @@ The runtime list watcher is visible in the installed VSIX at both sizes:
 | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | ![List watcher at 900](./assets/studio-vsix-list-watchers-900.png) | ![List watcher at 1440](./assets/studio-vsix-list-watchers-1440.png) |
 
-The real-window check exposed three issues now fixed: the custom editor had scripts disabled, the webview CSP blocked catalog images, and the host message parser rejected advanced canonical blocks so Program appeared empty. The 900 px layout also keeps the palette, stage, and Ori side by side with a wider central stage. On initial command-line file opening, VS Code still selects its text editor; **Reopen Editor With → Agorix Workbench** opens the visual editor. The extension declares Agorix Workbench as the default custom editor in its manifest, but automatic selection on command-line opening remains unverified.
+The real-window check exposed three issues now fixed: the custom editor had scripts disabled, the webview CSP blocked catalog images, and the host message parser rejected advanced canonical blocks so Program appeared empty. The 900 px Build view keeps the program, stage and Ori visible together; the palette opens over the stage so it cannot block program drop targets. On initial command-line file opening, VS Code still selects its text editor; **Reopen Editor With → Agorix Workbench** opens the visual editor. The extension declares Agorix Workbench as the default custom editor in its manifest, but automatic selection on command-line opening remains unverified.
 
 The installed-extension suite in `extensions/vscode/test/integration/index.cjs` now opens a project with two actors, two costumes, a backdrop, a visible variable and a condition containing a repeat. Against a packaged VSIX in a clean VS Code profile, it checks the code projection, deterministic execution frames and evidence, a read-only Ori explanation, a proposal diff, explicit rejection with unchanged project bytes, and explicit acceptance with the canonical project saved. The Inspector's flat tree now supports VS Code's reveal contract, which this run exposed.
 

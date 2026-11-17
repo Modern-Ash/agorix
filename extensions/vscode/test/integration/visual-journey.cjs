@@ -78,6 +78,7 @@ async function main() {
     if (!page) throw new Error("VS Code window not found");
     await page.locator(".monaco-workbench").waitFor({ timeout: 30000 });
     await page.bringToFront();
+    await page.setViewportSize({ width: 900, height: 700 });
     const onboarding = page.getByRole("dialog", { name: "Welcome to Visual Studio Code" });
     await onboarding.waitFor({ timeout: 10000 }).catch(() => undefined);
     if (await onboarding.isVisible()) {
@@ -101,6 +102,21 @@ async function main() {
       await webview.locator('.stage-list-watcher[data-list-id="inventory"]').innerText(),
       /Inventory/,
     );
+    const programBounds = await webview.locator(".studio-program").boundingBox();
+    const stageBounds = await webview.locator(".studio-play").boundingBox();
+    const oriBounds = await webview.locator(".studio-ori-dock").boundingBox();
+    if (
+      !programBounds ||
+      !stageBounds ||
+      !oriBounds ||
+      programBounds.y > 260 ||
+      stageBounds.y > 260 ||
+      stageBounds.x <= programBounds.x ||
+      oriBounds.x <= stageBounds.x
+    ) {
+      throw new Error("Build must show program, stage and Ori side by side in the first viewport");
+    }
+    assert.equal(await webview.locator(".studio-tools").isVisible(), false);
     if (process.env.AGORIX_CAPTURE_VISUAL === "1") {
       for (const [width, height] of [
         [900, 700],
@@ -188,7 +204,13 @@ async function main() {
     await drawing.evaluate(async (canvas) => {
       const context = canvas.getContext("2d");
       for (let attempt = 0; attempt < 100; attempt++) {
-        if (context?.getImageData(20, 20, 1, 1).data[3]) return;
+        if (
+          context &&
+          context
+            .getImageData(0, 0, canvas.width, canvas.height)
+            .data.some((value, index) => index % 4 === 3 && value > 0)
+        )
+          return;
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
       throw new Error("Existing costume did not load into the drawing canvas");
@@ -225,6 +247,14 @@ async function main() {
     );
     console.log("Edited the same costume without changing its ID");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    const paletteBounds = await webview.locator(".studio-tools").boundingBox();
+    const targetBounds = await webview.locator(".studio-program").boundingBox();
+    if (
+      !paletteBounds ||
+      !targetBounds ||
+      paletteBounds.x < targetBounds.x + targetBounds.width - 10
+    )
+      throw new Error("Open block palette must leave the program available for dropping blocks");
     const move = webview
       .locator(".palette button[draggable='true']")
       .filter({ hasText: "Move" })
