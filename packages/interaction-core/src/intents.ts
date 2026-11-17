@@ -33,6 +33,11 @@ export const STUDIO_LOGICAL_OPERAND_TYPES = [
   "sensing_touching_goal",
   "sensing_touching_actor",
   "sensing_touching_stage_edge",
+  "operator_less_than",
+  "operator_greater_than",
+  "operator_less_or_equal",
+  "operator_greater_or_equal",
+  "operator_equals",
 ] as const satisfies readonly BlockType[];
 
 export const STUDIO_COMPARISON_BLOCK_TYPES = [
@@ -187,6 +192,13 @@ export type Intent =
       readonly location: StatementLocation;
       readonly side: "left" | "right" | "value";
       readonly value: boolean;
+    }
+  | {
+      readonly type: "setLogicalComparisonNumber";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right" | "value";
+      readonly operand: "left" | "right";
+      readonly value: number;
     }
   | { readonly type: "addVariable"; readonly name: string }
   | { readonly type: "renameVariable"; readonly variableId: string; readonly name: string }
@@ -875,6 +887,22 @@ export function intentToChange(
           ? {
               ...createDefaultBlock(intent.blockType, current.id),
               id: current.id,
+              ...((STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(intent.blockType)
+                ? {
+                    inputs: {
+                      left: {
+                        id: `${current.id}:left`,
+                        type: "literal_number" as const,
+                        fields: { value: 0 },
+                      },
+                      right: {
+                        id: `${current.id}:right`,
+                        type: "literal_number" as const,
+                        fields: { value: 10 },
+                      },
+                    },
+                  }
+                : {}),
               ...(intent.blockType === "sensing_touching_actor" && intent.actorId !== undefined
                 ? { fields: { actorId: intent.actorId } }
                 : {}),
@@ -896,6 +924,60 @@ export function intentToChange(
           inputs: {
             ...block.inputs,
             condition: { ...condition, inputs: { ...condition.inputs, [intent.side]: next } },
+          },
+        },
+      };
+    }
+    case "setLogicalComparisonNumber": {
+      if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const condition = block?.inputs?.condition;
+      if (
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
+        condition === undefined ||
+        Array.isArray(condition) ||
+        !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
+        (condition.type === "operator_not" ? intent.side !== "value" : intent.side === "value")
+      )
+        return undefined;
+      const comparison = condition.inputs?.[intent.side];
+      if (
+        comparison === undefined ||
+        Array.isArray(comparison) ||
+        !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(comparison.type)
+      )
+        return undefined;
+      const current = comparison.inputs?.[intent.operand];
+      if (
+        current === undefined ||
+        Array.isArray(current) ||
+        current.type !== "literal_number" ||
+        typeof current.fields?.value !== "number"
+      )
+        return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: {
+              ...condition,
+              inputs: {
+                ...condition.inputs,
+                [intent.side]: {
+                  ...comparison,
+                  inputs: {
+                    ...comparison.inputs,
+                    [intent.operand]: {
+                      ...current,
+                      fields: { ...current.fields, value: intent.value },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       };

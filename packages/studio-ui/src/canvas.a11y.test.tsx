@@ -829,6 +829,55 @@ describe("canvas keyboard and screen reader behaviour", () => {
       actorId: "actor:robot",
     });
   });
+  it("edits a comparison nested inside a visual logical condition", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "if:nested-compare",
+        type: "control_if",
+        inputs: {
+          then: [],
+          condition: {
+            id: "and:nested-compare",
+            type: "operator_and",
+            inputs: {
+              left: { id: "goal:nested-compare", type: "sensing_touching_goal" },
+              right: {
+                id: "compare:nested",
+                type: "operator_less_than",
+                inputs: {
+                  left: { id: "number:left", type: "literal_number", fields: { value: 2 } },
+                  right: { id: "number:right", type: "literal_number", fields: { value: 10 } },
+                },
+              },
+            },
+          },
+        },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.logical-fields select[aria-label="Condition: right source"]',
+    )!;
+    expect(source.value).toBe("operator_less_than");
+    const number = host.querySelector<HTMLInputElement>(
+      '.logical-fields input[aria-label="Condition: right Left value"]',
+    )!;
+    expect(number.value).toBe("2");
+    act(() => {
+      number.value = "7";
+      number.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalComparisonNumber",
+      side: "right",
+      operand: "left",
+      value: 7,
+    });
+  });
   it("edits numeric comparison operands directly and keeps invalid values out of intents", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",
