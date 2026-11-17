@@ -74,6 +74,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .variable-management-actions .watcher-toggle input, .list-management-actions .watcher-toggle input { width: auto; min-width: auto; }
 .scene-create-actor { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .scene-create-actor input { flex: 1 1 120px; min-width: 0; }
+.scene-delete-actor { width: 100%; margin-top: 8px; border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-panel-border)) !important; }
+.scene-delete-actor:disabled { opacity: 0.5; cursor: not-allowed; }
 .block-asset-field { display: inline-flex; align-items: center; gap: 5px; }
 .block-asset-field img { width: 28px; height: 28px; object-fit: contain; border: 1px solid var(--vscode-panel-border); }
 .stage-sprite[data-costume-id="asset:costume.default"] { border-color: var(--vscode-charts-blue); background: color-mix(in srgb, var(--vscode-charts-blue), transparent 58%); }

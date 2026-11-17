@@ -201,6 +201,33 @@ async function main() {
     );
     console.log("Created and explicitly removed an actor-owned script");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
+    await webview.getByLabel("Actor name").fill("Temporary actor");
+    await webview.getByRole("button", { name: "Add actor" }).click();
+    const { value: withTemporaryActor } = await waitForProject((envelope) =>
+      envelope.project?.metadata?.actors?.items?.some((actor) => actor.name === "Temporary actor"),
+    );
+    const temporaryActor = withTemporaryActor.project.metadata.actors.items.find(
+      (actor) => actor.name === "Temporary actor",
+    );
+    const temporaryScriptId = temporaryActor.scripts[0];
+    await webview.getByRole("button", { name: "Delete selected actor" }).click();
+    assert.equal(
+      JSON.parse(fs.readFileSync(project, "utf8")).project.metadata.actors.items.length,
+      3,
+    );
+    await webview
+      .getByRole("button", { name: /Confirm delete Temporary actor and 1 script/ })
+      .click();
+    await waitForProject(
+      (envelope) =>
+        envelope.project?.metadata?.actors?.items?.length === 2 &&
+        !envelope.project.program.scripts.some((script) => script.id === temporaryScriptId),
+    );
+    await webview
+      .locator(".studio-scene-editor .scene-actors button")
+      .filter({ hasText: "Helper" })
+      .click();
+    console.log("Confirmed atomic removal of a temporary actor and its script");
     await webview
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Costumes" })

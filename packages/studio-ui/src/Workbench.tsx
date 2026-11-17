@@ -1163,6 +1163,16 @@ export function Workbench({
         pendingActorCreation.current = true;
         bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "createActor", name });
       }}
+      onDeleteActor={(actorId, ownedScriptIds) => {
+        if (programHash === undefined) return;
+        bridge.post({
+          schema: STUDIO_PROTOCOL_VERSION,
+          type: "deleteActor",
+          actorId,
+          ownedScriptIds,
+          baseHash: programHash,
+        });
+      }}
       onCreateScript={(actorId, trigger, detail) => {
         if (programHash === undefined) return;
         pendingScriptCreation.current = true;

@@ -97,6 +97,16 @@ function actorsForMetadata(metadata: ProjectMetadata): ProjectActors {
   return metadata.actors ?? { activeId: fallback.id, items: [fallback] };
 }
 
+function referencesActor(value: unknown, actorId: string): boolean {
+  if (Array.isArray(value)) return value.some((item) => referencesActor(item, actorId));
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    record["actorId"] === actorId ||
+    Object.values(record).some((item) => referencesActor(item, actorId))
+  );
+}
+
 function actorPatchForPersistence(patch: ActorPatch): Partial<ProjectActor> {
   return Object.fromEntries(
     Object.entries(patch).filter(([key]) => key !== "appearanceId"),
@@ -600,6 +610,56 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           },
         };
         await port.commitProject(nextProgram, nextMetadata, "Workbench: create actor and script");
+        return snapshot();
+      }
+      case "deleteActor": {
+        const program = port.getProgram();
+        const metadata = port.getMetadata();
+        if (program === undefined || metadata === undefined) return [];
+        if (message.baseHash !== programSemanticHash(program)) {
+          return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
+        }
+        const current = actorsForMetadata(metadata);
+        const actor = current.items.find((item) => item.id === message.actorId);
+        const owned = actor?.scripts;
+        if (
+          current.items.length <= 1 ||
+          owned === undefined ||
+          owned.length !== message.ownedScriptIds.length ||
+          owned.some((id, index) => id !== message.ownedScriptIds[index]) ||
+          owned.some((id) => !program.scripts.some((script) => script.id === id)) ||
+          current.items.some(
+            (item) =>
+              item.id !== message.actorId &&
+              (item.scripts === undefined || item.scripts.some((id) => owned.includes(id))),
+          )
+        ) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const ownedIds = new Set(owned);
+        const remainingScripts = program.scripts.filter((script) => !ownedIds.has(script.id));
+        if (remainingScripts.length === 0 || referencesActor(remainingScripts, message.actorId)) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const remainingActors = current.items.filter((item) => item.id !== message.actorId);
+        const activeId =
+          current.activeId === message.actorId ? remainingActors[0]!.id : current.activeId;
+        const stage = metadata.stage ?? defaultProjectStage();
+        const nextMetadata: ProjectMetadata = {
+          ...metadata,
+          actors: { activeId, items: remainingActors },
+          stage: {
+            ...stage,
+            ...(stage.actorOrder === undefined
+              ? {}
+              : { actorOrder: stage.actorOrder.filter((id) => id !== message.actorId) }),
+          },
+        };
+        await port.commitProject(
+          validateProgram({ ...program, scripts: remainingScripts }),
+          nextMetadata,
+          "Workbench: delete actor and owned scripts",
+        );
         return snapshot();
       }
       case "createScript": {
