@@ -475,6 +475,12 @@ export function StagePanel({
   const viewportRef = useRef<HTMLDivElement>(null);
   const suppressActorClick = useRef(false);
   const [dragPreview, setDragPreview] = useState<{ actorId: string; x: number; y: number }>();
+  const [transformDraft, setTransformDraft] = useState<{
+    actorId: string;
+    direction: number;
+    size: number;
+  }>();
+  useEffect(() => setTransformDraft(undefined), [selectedActorId, frame?.running]);
   const dragPosition = (actorId: string, clientX: number, clientY: number) => {
     const drag = pointerDrag.current;
     if (drag?.actorId !== actorId || state === undefined) return undefined;
@@ -623,7 +629,8 @@ export function StagePanel({
               .filter((actor) => actor.visible)
               .map((actor) => {
                 const position = dragPreview?.actorId === actor.id ? dragPreview : actor;
-                const size = Math.max(28, Math.min(110, Math.round((actor.size / 100) * 48)));
+                const appearance = transformDraft?.actorId === actor.id ? transformDraft : actor;
+                const size = Math.max(28, Math.min(110, Math.round((appearance.size / 100) * 48)));
                 const costumeImage = imageForId(actor.costumeId ?? "asset:costume.default", assets);
                 return (
                   <button
@@ -737,7 +744,7 @@ export function StagePanel({
                       bottom: stagePercent(position.y, state.viewport.height),
                       width: `${size}px`,
                       height: `${size}px`,
-                      transform: `translate(-50%, 50%) rotate(${-actor.direction}deg)`,
+                      transform: `translate(-50%, 50%) rotate(${-appearance.direction}deg)`,
                     }}
                     aria-label={`${copy.stageSprite} ${actor.name}: x ${actor.x}, y ${actor.y}, ${copy.actorDirection} ${actor.direction}${actor.costumeId === undefined ? "" : `, ${copy.actorCostume} ${assetNames.get(actor.costumeId) ?? actor.costumeId}`}`}
                   >
@@ -771,12 +778,55 @@ export function StagePanel({
                 onTransformActor(actor.id, {
                   size: Math.max(1, Math.min(400, actor.size + delta)),
                 });
+              const preview = transformDraft?.actorId === actor.id ? transformDraft : actor;
+              const commitTransform = (kind: "direction" | "size", value: number) => {
+                if (
+                  transformDraft?.actorId !== actor.id ||
+                  !Number.isInteger(value) ||
+                  frame?.running
+                )
+                  return;
+                setTransformDraft(undefined);
+                if (value !== actor[kind]) onTransformActor(actor.id, { [kind]: value });
+              };
+              const slider = (kind: "direction" | "size") => (
+                <label className="stage-transform-slider">
+                  <span>
+                    {kind === "direction" ? copy.actorDirection : copy.actorSize}: {preview[kind]}
+                    {kind === "direction" ? "°" : "%"}
+                  </span>
+                  <input
+                    type="range"
+                    min={kind === "direction" ? 0 : 1}
+                    max={kind === "direction" ? 359 : 400}
+                    step={1}
+                    aria-label={`${kind === "direction" ? copy.actorDirection : copy.actorSize}: ${actor.name}`}
+                    value={preview[kind]}
+                    onInput={(event) =>
+                      setTransformDraft({
+                        actorId: actor.id,
+                        direction:
+                          kind === "direction"
+                            ? Number(event.currentTarget.value)
+                            : preview.direction,
+                        size: kind === "size" ? Number(event.currentTarget.value) : preview.size,
+                      })
+                    }
+                    onPointerUp={(event) =>
+                      commitTransform(kind, Number(event.currentTarget.value))
+                    }
+                    onPointerCancel={() => setTransformDraft(undefined)}
+                    onKeyUp={(event) => commitTransform(kind, Number(event.currentTarget.value))}
+                    onBlur={(event) => commitTransform(kind, Number(event.currentTarget.value))}
+                  />
+                </label>
+              );
               return (
                 <div
                   className="stage-actor-tools"
                   style={{
-                    left: `clamp(64px, ${stagePercent(actor.x, state.viewport.width)}, calc(100% - 64px))`,
-                    bottom: `clamp(8px, ${stagePercent(actor.y, state.viewport.height)}, calc(100% - 55px))`,
+                    left: `clamp(95px, ${stagePercent(actor.x, state.viewport.width)}, calc(100% - 95px))`,
+                    bottom: `clamp(8px, ${stagePercent(actor.y, state.viewport.height)}, calc(100% - 110px))`,
                   }}
                   role="group"
                   aria-label={`${actor.name}: ${copy.actorDirection}, ${copy.actorSize}`}
@@ -809,6 +859,8 @@ export function StagePanel({
                   >
                     +
                   </button>
+                  {slider("direction")}
+                  {slider("size")}
                 </div>
               );
             })()}

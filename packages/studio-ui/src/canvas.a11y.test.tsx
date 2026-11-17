@@ -1512,6 +1512,32 @@ describe("canvas keyboard and screen reader behaviour", () => {
       { actorId: "actor:nova", direction: 345 },
       { actorId: "actor:nova", size: 110 },
     ]);
+    const direction = host.querySelector<HTMLInputElement>('[aria-label="Direction: Nova"]')!;
+    act(() => {
+      Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, "value")!.set!.call(
+        direction,
+        "90",
+      );
+      direction.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+      direction.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(actor.style.transform).toContain("rotate(-90deg)");
+    expect(transformed).toHaveLength(2);
+    act(() => direction.dispatchEvent(new dom.window.Event("pointerup", { bubbles: true })));
+    expect(transformed.at(-1)).toEqual({ actorId: "actor:nova", direction: 90 });
+    const size = host.querySelector<HTMLInputElement>('[aria-label="Size: Nova"]')!;
+    act(() => {
+      Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, "value")!.set!.call(
+        size,
+        "150",
+      );
+      size.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+      size.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(actor.style.width).toBe("72px");
+    act(() => size.dispatchEvent(new dom.window.Event("pointercancel", { bubbles: true })));
+    expect(actor.style.width).toBe("48px");
+    expect(transformed).toHaveLength(3);
     expect(events).toEqual([]);
   });
   it("does not expose actor transforms while the stage is running", () => {
