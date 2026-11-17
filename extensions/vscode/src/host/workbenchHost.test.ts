@@ -821,11 +821,11 @@ describe("workbenchHost", () => {
     const robotScriptId = robot.scripts![0]!;
     const request = {
       schema,
-      type: "deleteScript" as const,
+      type: "deleteScript",
       actorId: robot.id,
       scriptId: robotScriptId,
       baseHash: programSemanticHash(get()!),
-    };
+    } as const;
     const before = labels.length;
     expect((await host.handle({ ...request, scriptId: "main" }))[0]).toMatchObject({
       type: "error",
