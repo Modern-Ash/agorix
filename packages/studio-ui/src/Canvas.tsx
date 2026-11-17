@@ -774,7 +774,15 @@ export function Canvas({
                                     ? "yPosition"
                                     : part?.type === "sensing_distance_to_actor"
                                       ? "distanceToActor"
-                                      : "other";
+                                      : part?.type === "operator_add"
+                                        ? "add"
+                                        : part?.type === "operator_subtract"
+                                          ? "subtract"
+                                          : part?.type === "operator_multiply"
+                                            ? "multiply"
+                                            : part?.type === "operator_divide"
+                                              ? "divide"
+                                              : "other";
                         const selectSource = (
                           next:
                             | "number"
@@ -782,7 +790,11 @@ export function Canvas({
                             | "listLength"
                             | "xPosition"
                             | "yPosition"
-                            | "distanceToActor",
+                            | "distanceToActor"
+                            | "add"
+                            | "subtract"
+                            | "multiply"
+                            | "divide",
                           referenceId?: string,
                         ) =>
                           onIntent({
@@ -804,7 +816,11 @@ export function Canvas({
                                 | "listLength"
                                 | "xPosition"
                                 | "yPosition"
-                                | "distanceToActor";
+                                | "distanceToActor"
+                                | "add"
+                                | "subtract"
+                                | "multiply"
+                                | "divide";
                               selectSource(
                                 next,
                                 next === "variable"
@@ -819,6 +835,10 @@ export function Canvas({
                             onKeyDown={(event) => event.stopPropagation()}
                           >
                             <option value="number">{copy.numericLiteral}</option>
+                            <option value="add">{copy.operatorAdd}</option>
+                            <option value="subtract">{copy.operatorSubtract}</option>
+                            <option value="multiply">{copy.operatorMultiply}</option>
+                            <option value="divide">{copy.operatorDivide}</option>
                             {(workspace.variables?.length ?? 0) > 0 ? (
                               <option value="variable">{copy.variableValue}</option>
                             ) : null}
@@ -876,6 +896,58 @@ export function Canvas({
                                   ))}
                                 </select>
                               )}
+                              {(["add", "subtract", "multiply", "divide"] as const).includes(
+                                source as "add" | "subtract" | "multiply" | "divide",
+                              )
+                                ? (["left", "right"] as const).map((nestedSide) => {
+                                    const nested = part?.inputs?.[nestedSide];
+                                    if (
+                                      nested?.type !== "literal_number" ||
+                                      typeof nested.fields?.value !== "number"
+                                    )
+                                      return null;
+                                    const value = nested.fields.value;
+                                    return (
+                                      <label key={nestedSide} className="block-field">
+                                        <span>
+                                          {nestedSide === "left"
+                                            ? copy.conditionLeft
+                                            : copy.conditionRight}
+                                        </span>
+                                        <input
+                                          key={`${pos}:${input}:${side}:${nestedSide}:${value}`}
+                                          type="number"
+                                          aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide}`}
+                                          defaultValue={value}
+                                          draggable={false}
+                                          onDragStart={(event) => event.stopPropagation()}
+                                          onKeyDown={(event) => {
+                                            event.stopPropagation();
+                                            if (event.key === "Enter") event.currentTarget.blur();
+                                          }}
+                                          onBlur={(event) => {
+                                            const raw = event.currentTarget.value.trim();
+                                            const next = Number(raw);
+                                            if (
+                                              raw !== "" &&
+                                              Number.isFinite(next) &&
+                                              next !== value
+                                            )
+                                              onIntent({
+                                                type: "setArithmeticOperand",
+                                                location: block.location,
+                                                input,
+                                                path: [side],
+                                                side: nestedSide,
+                                                value: next,
+                                              });
+                                            event.currentTarget.value = String(value);
+                                          }}
+                                        />
+                                      </label>
+                                    );
+                                  })
+                                : null}
                             </span>
                           );
                         }

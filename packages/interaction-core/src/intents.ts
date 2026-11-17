@@ -222,6 +222,7 @@ export type Intent =
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max";
       readonly value: number;
+      readonly path?: readonly ("left" | "right" | "min" | "max")[];
     }
   | {
       readonly type: "setArithmeticOperandSource";
@@ -229,7 +230,16 @@ export type Intent =
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max";
       readonly reporter:
-        "number" | "variable" | "listLength" | "xPosition" | "yPosition" | "distanceToActor";
+        | "number"
+        | "variable"
+        | "listLength"
+        | "xPosition"
+        | "yPosition"
+        | "distanceToActor"
+        | "add"
+        | "subtract"
+        | "multiply"
+        | "divide";
       readonly referenceId?: string;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
@@ -589,7 +599,34 @@ export function intentToChange(
         lists_replace_at: ["index", "value"],
       };
       if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
-      const expression = block.inputs?.[intent.input];
+      const rootExpression = block.inputs?.[intent.input];
+      if (
+        intent.path !== undefined &&
+        (intent.path.length !== 1 || rootExpression === undefined || Array.isArray(rootExpression))
+      )
+        return undefined;
+      const parentSide = intent.path?.[0];
+      if (
+        parentSide !== undefined &&
+        rootExpression !== undefined &&
+        !Array.isArray(rootExpression)
+      ) {
+        const rootRange =
+          rootExpression.type === "operator_random" ||
+          rootExpression.type === "operator_random_integer";
+        if (
+          rootRange
+            ? parentSide !== "min" && parentSide !== "max"
+            : parentSide !== "left" && parentSide !== "right"
+        )
+          return undefined;
+      }
+      const expression =
+        parentSide === undefined
+          ? rootExpression
+          : rootExpression !== undefined && !Array.isArray(rootExpression)
+            ? rootExpression.inputs?.[parentSide]
+            : undefined;
       if (
         expression === undefined ||
         Array.isArray(expression) ||
@@ -615,6 +652,20 @@ export function intentToChange(
       const operand = expression.inputs?.[intent.side];
       if (operand?.type !== "literal_number" || typeof operand.fields?.value !== "number")
         return undefined;
+      const nextExpression = {
+        ...expression,
+        inputs: {
+          ...expression.inputs,
+          [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
+        },
+      };
+      const nextRoot =
+        parentSide === undefined
+          ? nextExpression
+          : {
+              ...rootExpression,
+              inputs: { ...rootExpression?.inputs, [parentSide]: nextExpression },
+            };
       return {
         type: "editBlock",
         location: intent.location,
@@ -622,13 +673,7 @@ export function intentToChange(
           ...block,
           inputs: {
             ...block.inputs,
-            [intent.input]: {
-              ...expression,
-              inputs: {
-                ...expression.inputs,
-                [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
-              },
-            },
+            [intent.input]: nextRoot,
           },
         },
       };
@@ -705,6 +750,19 @@ export function intentToChange(
             id: current.id,
             type: "sensing_distance_to_actor",
             fields: { actorId: intent.referenceId },
+          };
+          break;
+        case "add":
+        case "subtract":
+        case "multiply":
+        case "divide":
+          replacement = {
+            id: current.id,
+            type: `operator_${intent.reporter}`,
+            inputs: {
+              left: { id: `${current.id}:left`, type: "literal_number", fields: { value: 0 } },
+              right: { id: `${current.id}:right`, type: "literal_number", fields: { value: 1 } },
+            },
           };
           break;
       }

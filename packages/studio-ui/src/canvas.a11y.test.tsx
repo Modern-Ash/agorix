@@ -585,6 +585,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
       '.numeric-socket select[aria-label*="Left value source"]',
     )!;
     expect(nestedSource).not.toBeNull();
+    expect(Array.from(nestedSource.options).map((option) => option.value)).toContain("multiply");
     act(() => {
       nestedSource.value = "listLength";
       nestedSource.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
@@ -601,6 +602,50 @@ describe("canvas keyboard and screen reader behaviour", () => {
       source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
     });
     expect(intents.at(-1)).toMatchObject({ type: "setNumericInput", reporter: "divide" });
+  });
+  it("edits numbers in a second arithmetic level from the visual canvas", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: { type: "numericLiteral", value: 2 },
+                  right: { type: "numericLiteral", value: 3 },
+                },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const nested = host.querySelector<HTMLInputElement>(
+      '.numeric-socket input[aria-label*="Left value right"]',
+    )!;
+    expect(nested).not.toBeNull();
+    act(() => {
+      nested.value = "6";
+      nested.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperand",
+      input: "value",
+      path: ["left"],
+      side: "right",
+      value: 6,
+    });
   });
   it("changes a nested variable reporter through its visible reference picker", () => {
     const workspace = programToWorkspace({
