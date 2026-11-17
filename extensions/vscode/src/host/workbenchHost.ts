@@ -113,14 +113,6 @@ function actorPatchForPersistence(patch: ActorPatch): Partial<ProjectActor> {
   ) as Partial<ProjectActor>;
 }
 
-function knownCostumeIds(metadata: ProjectMetadata): ReadonlySet<string> {
-  return new Set(
-    [...(metadata.assets ?? []), ...studioAssetCatalog()]
-      .filter((asset) => asset.kind === "costume")
-      .map((asset) => asset.id),
-  );
-}
-
 function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
   const catalog = studioAssetCatalog();
   const catalogIds = new Set(catalog.map((asset) => asset.id));
@@ -131,6 +123,13 @@ function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
     kind: asset.kind,
     tags: asset.tags ?? [],
     ...(/^builtin:kids-gallery-(costume|backdrop):[a-z]+$/.test(asset.source) ||
+    [
+      "builtin:costume.default",
+      "builtin:costume.spark",
+      "builtin:space.trailhead",
+      "builtin:space.nebula",
+      "builtin:sound.beacon",
+    ].includes(asset.source) ||
     validEmbeddedImageSource(asset.source)
       ? { source: asset.source }
       : {}),
@@ -153,6 +152,25 @@ function knownAssetIds(
       .filter((asset) => kind === undefined || asset.kind === kind)
       .map((asset) => asset.id),
   );
+}
+
+/** Persist a selected bundled asset before canonical actors, stage or blocks reference it. */
+function metadataWithCatalogAsset(
+  metadata: ProjectMetadata,
+  kind: "costume" | "backdrop" | "sound",
+  assetId: string,
+): ProjectMetadata | undefined {
+  const existing = metadata.assets?.find((asset) => asset.id === assetId);
+  if (existing !== undefined) return existing.kind === kind ? metadata : undefined;
+  const asset = studioAssetCatalog().find((entry) => entry.id === assetId && entry.kind === kind);
+  if (asset?.source === undefined || (metadata.assets?.length ?? 0) >= 128) return undefined;
+  return {
+    ...metadata,
+    assets: [
+      ...(metadata.assets ?? []),
+      { id: asset.id, kind, name: asset.name, source: asset.source, tags: asset.tags },
+    ],
+  };
 }
 
 function validationIssuesForMetadata(metadata: ProjectMetadata): readonly ValidationIssueView[] {
@@ -440,6 +458,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         if (isMutatingIntent(message) && message.baseHash !== programSemanticHash(program)) {
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
         }
+        let assetMetadata: ProjectMetadata | undefined;
         if (intent.type === "setTextField") {
           if (intent.field === "actorId") {
             const metadata = port.getMetadata();
@@ -470,7 +489,11 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
                   : undefined;
           if (kind !== undefined) {
             const metadata = port.getMetadata();
-            if (metadata === undefined || !knownAssetIds(metadata, kind).has(intent.value)) {
+            assetMetadata =
+              metadata === undefined
+                ? undefined
+                : metadataWithCatalogAsset(metadata, kind, intent.value);
+            if (assetMetadata === undefined) {
               return [
                 { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
               ];
@@ -538,10 +561,10 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               ? [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }]
               : [];
           }
-          await port.commit(
-            applyWorkspaceChange(workspace, change).program,
-            `Workbench: ${intent.type}`,
-          );
+          const nextProgram = applyWorkspaceChange(workspace, change).program;
+          if (assetMetadata !== undefined && assetMetadata !== port.getMetadata())
+            await port.commitProject(nextProgram, assetMetadata, `Workbench: ${intent.type}`);
+          else await port.commit(nextProgram, `Workbench: ${intent.type}`);
           edits += 1;
         } catch (error) {
           if (isKnownFailure(error) || error instanceof Error) {
@@ -564,7 +587,11 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         if (!current.items.some((actor) => actor.id === message.actorId)) {
           return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "BLOCK_NOT_FOUND" }];
         }
-        if (patch.costumeId !== undefined && !knownCostumeIds(metadata).has(patch.costumeId)) {
+        const withCostume =
+          patch.costumeId === undefined
+            ? metadata
+            : metadataWithCatalogAsset(metadata, "costume", patch.costumeId);
+        if (withCostume === undefined) {
           return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
         }
         const nextActors = current.items.map((actor) =>
@@ -572,7 +599,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         );
         await port.commitMetadata(
           {
-            ...metadata,
+            ...withCostume,
             actors: { activeId: current.activeId, items: nextActors },
           },
           "Workbench: update actor",
@@ -583,7 +610,12 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         const program = port.getProgram();
         const metadata = port.getMetadata();
         if (program === undefined || metadata === undefined) return [];
-        if (message.costumeId !== undefined && !knownCostumeIds(metadata).has(message.costumeId)) {
+        const withCostume = metadataWithCatalogAsset(
+          metadata,
+          "costume",
+          message.costumeId ?? "asset:costume.default",
+        );
+        if (withCostume === undefined) {
           return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
         }
         const current = actorsForMetadata(metadata);
@@ -622,7 +654,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         };
         const stage = metadata.stage ?? defaultProjectStage();
         const nextMetadata: ProjectMetadata = {
-          ...metadata,
+          ...withCostume,
           actors: { activeId: actorId, items: [...ownedExisting, actor] },
           stage: {
             ...stage,
@@ -819,11 +851,12 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       case "updateStage": {
         const metadata = port.getMetadata();
         if (metadata === undefined) return [];
-        if (!knownAssetIds(metadata, "backdrop").has(message.backdropId)) {
+        const withBackdrop = metadataWithCatalogAsset(metadata, "backdrop", message.backdropId);
+        if (withBackdrop === undefined) {
           return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
         }
         await port.commitMetadata(
-          { ...metadata, stage: { ...metadata.stage, backdropId: message.backdropId } },
+          { ...withBackdrop, stage: { ...withBackdrop.stage, backdropId: message.backdropId } },
           "Workbench: update stage backdrop",
         );
         return [...sceneMessage(), ...validationMessage()];

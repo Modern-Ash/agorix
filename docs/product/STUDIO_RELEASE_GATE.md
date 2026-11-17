@@ -12,6 +12,27 @@
 > component breadth. A learner seeing text rows or missing costume controls is
 > an open product gap even when the shared program and runtime tests pass.
 
+## Visual IDE readiness (#1653)
+
+Semantic compatibility and visual usability are separate release decisions. The
+green shared-contract rows below establish that Web and Studio can read the same
+canonical project; they do not establish that an advanced learner can find and
+use Studio's visual tools.
+
+| Gate                                       | Evidence                                                                                                                                                                                 | Status                                                                          |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Canonical Web ↔ Studio project and runtime | Shared program, persistence and cross-surface tests below                                                                                                                                | Automated baseline green                                                        |
+| Installed VSIX at 900 × 700 and 1440 × 900 | `pnpm --filter agorix-studio test:visual`; checks program, stage and Ori in the first viewport, actor and asset tools, keyboard block nesting, art edit, runtime evidence and Web reopen | Automated journey; run on a packaged VSIX before visual release                 |
+| Visual asset and actor comprehension       | The installed journey filters the 12-character gallery, creates an actor from a costume, confirms its stage image, then reopens that actor in Web                                        | Automated mechanics; educator and advanced-learner comprehension review pending |
+| Ori's proposal boundary                    | Installed VSIX and cross-surface journeys must show preview, explicit acceptance or rejection and unchanged state after rejection                                                        | Automated mechanics exist; human teaching review pending                        |
+| Accessibility and offline path             | Keyboard actions, deterministic runtime without a provider, and the installed VSIX journey                                                                                               | Automated coverage exists; human review pending                                 |
+
+Do not label Studio visually ready until an educator and advanced learner have
+reviewed the installed layout, discoverability of creation and editing, and
+Ori's proposal boundary. Record observations without child identity or media.
+The screenshots in `STUDIO_VISUAL_WORKSPACE.md` document rendering at target
+sizes; a screenshot alone is not evidence of comprehension.
+
 ## Ori in VS Code: new release gate (#1622)
 
 The historical green matrix below remains a baseline for the original Studio
@@ -95,8 +116,9 @@ Human review with an advanced learner/developer should confirm:
 
 - Studio feels native to VS Code: Activity Bar views, editor projections, diff,
   tasks, SCM and Output are recognizable IDE affordances.
-- The learner does not need to manipulate Scratch-like blocks in Studio to use
-  Agorix code, runtime evidence, AI help or proposals.
+- The learner can build with Studio's visual blocks and scene assets, inspect
+  the synchronized code, and use runtime evidence and Ori without losing the
+  canonical edit path.
 - The learner recognizes the same project, mission, runtime and companion
   concepts from Web.
 - Intentional differences are explained as surface differences, not product

@@ -1182,6 +1182,9 @@ describe("workbenchHost", () => {
     });
     const actor = metadata().actors!.items.find((item) => item.name === "Mika")!;
     expect(actor.costumeId).toBe("costume:mika");
+    expect(metadata().assets).toContainEqual(
+      expect.objectContaining({ id: "costume:mika", source: "builtin:kids-gallery-costume:mika" }),
+    );
     expect(actor.scripts).toHaveLength(1);
     expect(get()!.scripts).toHaveLength(before + 1);
     expect(result).toContainEqual(
@@ -1194,6 +1197,48 @@ describe("workbenchHost", () => {
       }),
     );
     expect(labels).toEqual(["Workbench: create actor and script"]);
+  });
+
+  it("materializes gallery assets before actor, stage and block references use them", async () => {
+    const { host, get, metadata, labels } = setup({
+      ...base,
+      scripts: [
+        {
+          ...base.scripts[0]!,
+          statements: [{ type: "switchCostume", costumeId: "asset:costume.default" }],
+        },
+      ],
+    } as ProjectProgram);
+    await host.handle({
+      schema,
+      type: "updateActor",
+      actorId: "actor:main",
+      patch: { costumeId: "costume:pip" },
+    });
+    expect(metadata().assets).toContainEqual(expect.objectContaining({ id: "costume:pip" }));
+    await host.handle({ schema, type: "updateStage", backdropId: "backdrop:forest" });
+    expect(metadata().assets).toContainEqual(expect.objectContaining({ id: "backdrop:forest" }));
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "costumeId",
+        value: "costume:comet",
+      },
+      baseHash: programSemanticHash(get()!),
+    });
+    expect(get()!.scripts[0]?.statements[0]).toMatchObject({
+      type: "switchCostume",
+      costumeId: "costume:comet",
+    });
+    expect(metadata().assets).toContainEqual(expect.objectContaining({ id: "costume:comet" }));
+    expect(labels).toEqual([
+      "Workbench: update actor",
+      "Workbench: update stage backdrop",
+      "Workbench: setTextField",
+    ]);
   });
 
   it("deletes an actor with its scripts atomically and refuses stale or referenced actors", async () => {
