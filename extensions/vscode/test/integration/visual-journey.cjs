@@ -117,6 +117,34 @@ async function main() {
       throw new Error("Build must show program, stage and Ori side by side in the first viewport");
     }
     assert.equal(await webview.locator(".studio-tools").isVisible(), false);
+    const resize = webview.locator(".studio-ori-resize");
+    const resizeBounds = await resize.boundingBox();
+    if (!resizeBounds) throw new Error("Ori resize handle is not visible");
+    const initialOriWidth = (await webview.locator(".studio-ori-dock").boundingBox()).width;
+    await page.mouse.move(resizeBounds.x + 4, resizeBounds.y + 50);
+    await page.mouse.down();
+    await page.mouse.move(resizeBounds.x - 16, resizeBounds.y + 50, { steps: 5 });
+    await page.mouse.up();
+    const expandedOriWidth = (await webview.locator(".studio-ori-dock").boundingBox()).width;
+    if (expandedOriWidth < initialOriWidth + 10) throw new Error("Dragging must widen Ori");
+    const firstBlockLabelFits = await webview
+      .locator(".studio-program .block .label")
+      .first()
+      .evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
+    if (!firstBlockLabelFits)
+      throw new Error("Resizing Ori must keep the first block label legible");
+    if (process.env.AGORIX_CAPTURE_ORI === "1")
+      await page.screenshot({
+        path: path.join(repoRoot, "docs/product/assets/studio-vsix-ori-resized-900.png"),
+      });
+    await webview.locator('.studio-shell-actions button[aria-controls="studio-ori"]').click();
+    await webview.locator('.studio-shell-actions button[aria-controls="studio-ori"]').click();
+    const restoredOriWidth = (await webview.locator(".studio-ori-dock").boundingBox()).width;
+    if (Math.abs(restoredOriWidth - expandedOriWidth) > 2)
+      throw new Error("Ori width must survive collapse and reopen");
+    await resize.press("ArrowRight");
+    const keyboardOriWidth = (await webview.locator(".studio-ori-dock").boundingBox()).width;
+    if (keyboardOriWidth > restoredOriWidth - 10) throw new Error("ArrowRight must narrow Ori");
     if (process.env.AGORIX_CAPTURE_VISUAL === "1") {
       for (const [width, height] of [
         [900, 700],

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState, type CSSProperties } from "react";
 import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import { LIST_MAX_ITEMS, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX } from "@agorix/program-model";
@@ -893,6 +893,30 @@ export function Workbench({
     typeof window === "undefined" ? true : window.innerWidth > 1100,
   );
   const [oriOpen, setOriOpen] = useState(true);
+  const [oriWidth, setOriWidth] = useState<number | undefined>();
+  const workbenchRef = useRef<HTMLDivElement>(null);
+  const oriDockRef = useRef<HTMLDivElement>(null);
+  const oriResizeStart = useRef<{ x: number; width: number } | undefined>(undefined);
+  const oriWidthLimit = () => {
+    const viewport = typeof window === "undefined" ? 1440 : window.innerWidth;
+    const width = workbenchRef.current?.getBoundingClientRect().width ?? viewport;
+    return Math.max(190, Math.min(420, width - (toolsOpen && viewport > 1100 ? 224 : 0) - 540));
+  };
+  const currentOriWidth = () => {
+    const viewport = typeof window === "undefined" ? 1440 : window.innerWidth;
+    return (
+      oriDockRef.current?.getBoundingClientRect().width ??
+      (viewport <= 1100 ? 210 : Math.max(250, Math.min(320, viewport * 0.24)))
+    );
+  };
+  const resizeOri = (width: number) =>
+    setOriWidth(Math.max(190, Math.min(oriWidthLimit(), Math.round(width))));
+  useEffect(() => {
+    const fitDock = () =>
+      setOriWidth((width) => (width === undefined ? undefined : Math.min(width, oriWidthLimit())));
+    window.addEventListener("resize", fitDock);
+    return () => window.removeEventListener("resize", fitDock);
+  }, [toolsOpen]);
   const [selectedExpression, setSelectedExpression] = useState<BlockType | undefined>();
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
   const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
@@ -1144,7 +1168,11 @@ export function Workbench({
 
   return (
     <div
+      ref={workbenchRef}
       className="workbench"
+      style={
+        oriWidth === undefined ? undefined : ({ "--ori-width": `${oriWidth}px` } as CSSProperties)
+      }
       data-density={layout}
       data-dragging={dragging}
       data-workspace-view={workspaceView}
@@ -1633,7 +1661,45 @@ export function Workbench({
           {status}
         </div>
       </main>
-      <div id="studio-ori" className="studio-ori-dock">
+      <div id="studio-ori" className="studio-ori-dock" ref={oriDockRef}>
+        <div
+          className="studio-ori-resize"
+          role="separator"
+          tabIndex={0}
+          aria-label={copy.oriResize}
+          aria-orientation="vertical"
+          aria-valuemin={190}
+          aria-valuemax={oriWidthLimit()}
+          aria-valuenow={oriWidth ?? Math.round(currentOriWidth())}
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            oriResizeStart.current = { x: event.clientX, width: currentOriWidth() };
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+            event.preventDefault();
+          }}
+          onPointerMove={(event) => {
+            const start = oriResizeStart.current;
+            if (start !== undefined) resizeOri(start.width + start.x - event.clientX);
+          }}
+          onPointerUp={(event) => {
+            oriResizeStart.current = undefined;
+            if (event.currentTarget.hasPointerCapture?.(event.pointerId))
+              event.currentTarget.releasePointerCapture(event.pointerId);
+          }}
+          onPointerCancel={() => {
+            oriResizeStart.current = undefined;
+          }}
+          onDoubleClick={() => setOriWidth(undefined)}
+          onKeyDown={(event) => {
+            const width = currentOriWidth();
+            if (event.key === "ArrowLeft") resizeOri(width + 20);
+            else if (event.key === "ArrowRight") resizeOri(width - 20);
+            else if (event.key === "Home") resizeOri(190);
+            else if (event.key === "End") resizeOri(oriWidthLimit());
+            else return;
+            event.preventDefault();
+          }}
+        />
         <AgentPanel
           state={agentUi}
           send={(message) => bridge.post(message)}
