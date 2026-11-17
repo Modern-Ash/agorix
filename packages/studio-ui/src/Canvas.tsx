@@ -18,6 +18,7 @@ import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
 import { visualBlock, visualLabel } from "./visualBlocks.js";
 import { imageForId } from "./visualArt.js";
+import { LogicalComparisonFields } from "./LogicalComparisonFields.js";
 
 const DRAG_TYPE = "application/x-agorix-drag";
 
@@ -1219,55 +1220,21 @@ export function Canvas({
                           </select>
                         </label>
                       ) : null}
-                      {(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(operand.type)
-                        ? (["left", "right"] as const).map((comparisonSide) => {
-                            const numeric = operand.inputs?.[comparisonSide];
-                            if (
-                              numeric === undefined ||
-                              Array.isArray(numeric) ||
-                              numeric.type !== "literal_number" ||
-                              typeof numeric.fields?.value !== "number"
-                            )
-                              return null;
-                            const label =
-                              comparisonSide === "left" ? copy.conditionLeft : copy.conditionRight;
-                            return (
-                              <label key={comparisonSide}>
-                                <span>{label}</span>
-                                <input
-                                  key={`${pos}:${side}:${comparisonSide}:${numeric.fields.value}`}
-                                  type="number"
-                                  tabIndex={isTabbable ? 0 : -1}
-                                  aria-label={`${copy.condition}: ${side} ${label}`}
-                                  defaultValue={numeric.fields.value}
-                                  draggable={false}
-                                  onDragStart={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => {
-                                    event.stopPropagation();
-                                    if (event.key === "Enter") event.currentTarget.blur();
-                                  }}
-                                  onBlur={(event) => {
-                                    const raw = event.currentTarget.value.trim();
-                                    const next = Number(raw);
-                                    if (
-                                      raw !== "" &&
-                                      Number.isFinite(next) &&
-                                      next !== numeric.fields?.value
-                                    )
-                                      onIntent({
-                                        type: "setLogicalComparisonNumber",
-                                        location: block.location,
-                                        side,
-                                        operand: comparisonSide,
-                                        value: next,
-                                      });
-                                    event.currentTarget.value = String(numeric.fields?.value);
-                                  }}
-                                />
-                              </label>
-                            );
-                          })
-                        : null}
+                      {(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(
+                        operand.type,
+                      ) ? (
+                        <LogicalComparisonFields
+                          comparison={operand}
+                          side={side}
+                          location={block.location}
+                          workspace={workspace}
+                          actors={actors}
+                          copy={copy}
+                          onIntent={onIntent}
+                          pos={pos}
+                          isTabbable={isTabbable}
+                        />
+                      ) : null}
                     </span>
                   );
                 })}

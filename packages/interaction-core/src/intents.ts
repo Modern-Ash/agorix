@@ -200,6 +200,22 @@ export type Intent =
       readonly operand: "left" | "right";
       readonly value: number;
     }
+  | {
+      readonly type: "setLogicalComparisonSource";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right" | "value";
+      readonly operand: "left" | "right";
+      readonly source: (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number];
+      readonly referenceId?: string;
+    }
+  | {
+      readonly type: "setLogicalComparisonNestedNumber";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right" | "value";
+      readonly operand: "left" | "right";
+      readonly field: "index" | "min" | "max";
+      readonly value: number;
+    }
   | { readonly type: "addVariable"; readonly name: string }
   | { readonly type: "renameVariable"; readonly variableId: string; readonly name: string }
   | { readonly type: "deleteVariable"; readonly variableId: string }
@@ -975,6 +991,134 @@ export function intentToChange(
                       fields: { ...current.fields, value: intent.value },
                     },
                   },
+                },
+              },
+            },
+          },
+        },
+      };
+    }
+    case "setLogicalComparisonSource":
+    case "setLogicalComparisonNestedNumber": {
+      if (workspace === undefined) return undefined;
+      if (intent.type === "setLogicalComparisonSource") {
+        if (!(STUDIO_COMPARISON_OPERAND_SOURCES as readonly string[]).includes(intent.source))
+          return undefined;
+      } else if (!Number.isFinite(intent.value)) return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const condition = block?.inputs?.condition;
+      if (
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
+        condition === undefined ||
+        Array.isArray(condition) ||
+        !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
+        (condition.type === "operator_not" ? intent.side !== "value" : intent.side === "value")
+      )
+        return undefined;
+      const comparison = condition.inputs?.[intent.side];
+      if (
+        comparison === undefined ||
+        Array.isArray(comparison) ||
+        !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(comparison.type)
+      )
+        return undefined;
+      const current = comparison.inputs?.[intent.operand];
+      if (current === undefined || Array.isArray(current)) return undefined;
+      let next: BlockNode;
+      if (intent.type === "setLogicalComparisonNestedNumber") {
+        if (
+          current.type === "lists_item"
+            ? intent.field !== "index"
+            : current.type === "operator_random_integer"
+              ? intent.field !== "min" && intent.field !== "max"
+              : true
+        )
+          return undefined;
+        const nested = current.inputs?.[intent.field];
+        if (nested === undefined || Array.isArray(nested) || nested.type !== "literal_number")
+          return undefined;
+        next = {
+          ...current,
+          inputs: {
+            ...current.inputs,
+            [intent.field]: { ...nested, fields: { ...nested.fields, value: intent.value } },
+          },
+        };
+      } else {
+        switch (intent.source) {
+          case "number":
+            next = { id: current.id, type: "literal_number", fields: { value: 0 } };
+            break;
+          case "variable":
+            if (!workspace.variables?.some((entry) => entry.id === intent.referenceId))
+              return undefined;
+            next = {
+              id: current.id,
+              type: "variables_value",
+              fields: { variableId: intent.referenceId },
+            };
+            break;
+          case "listLength":
+          case "listItem":
+            if (!workspace.lists?.some((entry) => entry.id === intent.referenceId))
+              return undefined;
+            next =
+              intent.source === "listLength"
+                ? { id: current.id, type: "lists_length", fields: { listId: intent.referenceId } }
+                : {
+                    id: current.id,
+                    type: "lists_item",
+                    fields: { listId: intent.referenceId },
+                    inputs: {
+                      index: {
+                        id: `${current.id}:index`,
+                        type: "literal_number",
+                        fields: { value: 1 },
+                      },
+                    },
+                  };
+            break;
+          case "xPosition":
+          case "yPosition":
+            next = {
+              id: current.id,
+              type: intent.source === "xPosition" ? "sensing_x_position" : "sensing_y_position",
+            };
+            break;
+          case "distanceToActor":
+            if (intent.referenceId === undefined || !isSafeId(intent.referenceId)) return undefined;
+            next = {
+              id: current.id,
+              type: "sensing_distance_to_actor",
+              fields: { actorId: intent.referenceId },
+            };
+            break;
+          case "randomInteger":
+            next = {
+              id: current.id,
+              type: "operator_random_integer",
+              inputs: {
+                min: { id: `${current.id}:min`, type: "literal_number", fields: { value: 1 } },
+                max: { id: `${current.id}:max`, type: "literal_number", fields: { value: 10 } },
+              },
+            };
+            break;
+        }
+      }
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition: {
+              ...condition,
+              inputs: {
+                ...condition.inputs,
+                [intent.side]: {
+                  ...comparison,
+                  inputs: { ...comparison.inputs, [intent.operand]: next },
                 },
               },
             },
