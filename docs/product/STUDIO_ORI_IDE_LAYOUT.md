@@ -57,6 +57,9 @@ costume controls beside the stage and asset library. Selecting another actor
 updates these controls immediately; edits still go through the validated host
 metadata path. Project details contain the secondary mission, actor list and
 asset inventory.
+Scene also lists project sounds. Its bundled beacon preview is local audio for
+choosing a sound; it does not execute the canonical program or prove a runtime
+result. Other sound sources remain listed without an unsafe preview path.
 
 Scene can create an actor with an owned green-flag script in one project write.
 Selecting an actor scopes the visible canvas and palette insertion to that
