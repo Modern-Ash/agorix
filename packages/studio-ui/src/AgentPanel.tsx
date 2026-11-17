@@ -377,6 +377,7 @@ export function AgentPanel({
 }) {
   const copy = copyFor(locale ?? "en");
   const [text, setText] = useState("");
+  const [lastIntent, setLastIntent] = useState("");
   const post: Send = (message) =>
     send({ schema: STUDIO_PROTOCOL_VERSION, ...message } as UiMessage);
   const stage = state.workflow?.stage;
@@ -394,8 +395,30 @@ export function AgentPanel({
           <p>{copy.oriSubtitle}</p>
         </div>
       </header>
-      <Agreements agreements={state.agreements} send={post} copy={copy} />
-      <Ribbon stage={stage} copy={copy} />
+      {lastIntent && stage !== undefined && stage !== "intent" && (
+        <div className="ori-turn ori-turn-learner">
+          <span className="ori-turn-label">{copy.oriYou}</span>
+          <p>{lastIntent}</p>
+        </div>
+      )}
+      <div className="ori-turn ori-turn-companion" role="status" aria-live="polite">
+        <span className="ori-turn-label">{copy.oriTitle}</span>
+        <p>
+          {!state.available
+            ? copy.agentUnavailable
+            : state.proposal !== undefined
+              ? copy.oriReviewPrompt
+              : state.help !== undefined
+                ? copy.oriHelpPrompt
+                : stage === "plan"
+                  ? copy.oriPlanPrompt
+                  : stage === "run" || stage === "compare"
+                    ? copy.oriEvidencePrompt
+                    : stage === "explain"
+                      ? copy.oriExplainPrompt
+                      : copy.oriWelcome}
+        </p>
+      </div>
       {showIntent && (
         <form
           className="intent-bar"
@@ -404,6 +427,7 @@ export function AgentPanel({
             const value = text.trim();
             if (value.length > 0 && state.available) {
               post({ type: "stateIntent", text: value });
+              setLastIntent(value);
               setText("");
             }
           }}
@@ -422,6 +446,13 @@ export function AgentPanel({
           </button>
         </form>
       )}
+      <details className="ori-workflow-settings">
+        <summary>
+          {copy.agentLoop} · {copy.agreements}
+        </summary>
+        <Ribbon stage={stage} copy={copy} />
+        <Agreements agreements={state.agreements} send={post} copy={copy} />
+      </details>
       {stage === "plan" && state.clarify !== undefined && (
         <section aria-label={copy.question}>
           <p>{copy.clarifyQuestion}</p>

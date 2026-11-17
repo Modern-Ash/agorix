@@ -402,6 +402,15 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .ori-header h2 { margin: 0; font-size: 1.2em; line-height: 1.1; }
 .ori-header p { margin: 4px 0 0; color: var(--vscode-descriptionForeground); font-size: 0.84em; }
 .ori-mark { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border: 1px solid var(--vscode-charts-purple, var(--vscode-focusBorder)); border-radius: 10px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 1.25em; }
+.ori-turn { min-width: 0; padding: 10px 12px; border: 1px solid var(--vscode-panel-border); border-radius: 10px; overflow-wrap: anywhere; }
+.ori-turn p { margin: 5px 0 0; line-height: 1.45; }
+.ori-turn-label { font-size: 0.72em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--vscode-descriptionForeground); }
+.ori-turn-companion { margin-right: 10px; border-color: color-mix(in srgb, var(--vscode-charts-purple, var(--vscode-focusBorder)), var(--vscode-panel-border) 55%); background: color-mix(in srgb, var(--vscode-charts-purple, var(--vscode-focusBorder)), transparent 93%); }
+.ori-turn-learner { margin-left: 10px; background: var(--vscode-input-background); }
+.ori-workflow-settings { border-top: 1px solid var(--vscode-panel-border); padding-top: 9px; }
+.ori-workflow-settings > summary { cursor: pointer; color: var(--vscode-descriptionForeground); font-size: 0.8em; }
+.ori-workflow-settings > summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.ori-workflow-settings .ribbon { margin: 10px 0; }
 .workbench[data-density="compact"] .studio-banner { padding: 8px 12px; }
 .workbench[data-density="compact"] .studio-program, .workbench[data-density="compact"] .studio-evidence { padding: 10px; }
 @media (min-width: 761px) and (max-width: 1100px) { .workbench, .workbench[data-tools-open="false"] { --ori-width: 210px; grid-template-columns: minmax(0, 1fr) var(--ori-width); } .workbench[data-ori-open="false"], .workbench[data-ori-open="false"][data-tools-open="false"] { grid-template-columns: minmax(0, 1fr); } .workbench .studio-main { grid-column: 1; } .workbench .studio-ori-dock, .workbench[data-tools-open="false"] .studio-ori-dock { grid-column: 2; } .workbench .studio-tools { position: fixed; z-index: 10; top: 96px; right: var(--ori-width); width: 220px; height: calc(100vh - 96px); box-sizing: border-box; box-shadow: -8px 0 22px #0004; } .workbench[data-ori-open="false"] .studio-tools { right: 0; } .studio-ori-dock .agent { padding-inline: 10px; } .ori-header { margin-inline: -10px; padding-inline: 10px; } }

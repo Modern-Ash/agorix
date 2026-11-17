@@ -102,15 +102,21 @@ describe("agent ui", () => {
     expect(html).toContain("Suggestion (AI, not in your program yet)");
     expect(html).toContain("Accept");
     expect(html).toContain("Reject");
+    expect(html).toContain("Your program changes only if you accept it.");
+    expect(html).toContain('class="ori-turn ori-turn-companion"');
+    expect(html).toContain("Ori workflow · Ori settings");
     expect(html).not.toMatch(/success|style=/);
     const intent = renderToStaticMarkup(
       <AgentPanel state={initialAgentUi()} send={() => undefined} />,
     );
     expect(intent).toContain('maxLength="140"');
+    expect(intent).toContain("What would you like to make?");
     const off = renderToStaticMarkup(
       <AgentPanel state={{ ...initialAgentUi(), available: false }} send={() => undefined} />,
     );
     expect(off).toContain("disabled");
+    expect(off).toContain("The agent is not available right now.");
+    expect(off).not.toContain("What would you like to make?");
   });
 
   it("marks ghost blocks and ignores unknown ids", () => {
@@ -171,6 +177,7 @@ describe("clarification ui", () => {
     expect(intent).toContain('aria-label="Ori, compañero de aprendizaje"');
     expect(intent).toContain("Que queres crear?");
     expect(intent).toContain("Pedir");
+    expect(intent).toContain("¿Qué querés crear?");
   });
 });
 
