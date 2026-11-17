@@ -83,6 +83,42 @@ describe("studio-ui", () => {
     expect(markup.match(/<img/g)).toHaveLength(3);
     expect(markup.match(/aria-pressed="true"/g)).toHaveLength(4);
   });
+  it("shows project sounds in Scene and limits previews to a known built-in source", () => {
+    const markup = renderToStaticMarkup(
+      <SceneLibrary
+        copy={copyFor("es")}
+        actors={[]}
+        assets={[
+          {
+            id: "sound:beacon",
+            kind: "sound",
+            name: "Baliza",
+            tags: [],
+            source: "builtin:sound.beacon",
+            durationMs: 200,
+          },
+          {
+            id: "sound:remote",
+            kind: "sound",
+            name: "Remoto",
+            tags: [],
+            source: "https://example.com/sound.wav",
+          },
+        ]}
+        selectedActorId={undefined}
+        backdropId={undefined}
+        onSelectActor={() => undefined}
+        onCostume={() => undefined}
+        onBackdrop={() => undefined}
+      />,
+    );
+    expect(markup).toContain("Sonidos");
+    expect(markup).toContain("Baliza");
+    expect(markup).toContain("0.2 s");
+    expect(markup).toContain("Escuchar sonido: Baliza");
+    expect(markup).toContain("disabled");
+    expect(markup).not.toContain("https://example.com");
+  });
   it("renders shared gallery art and rejects remote or unknown image sources", () => {
     const costume = {
       id: "costume:nova",

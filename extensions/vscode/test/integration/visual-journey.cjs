@@ -160,6 +160,18 @@ async function main() {
     console.log("Loaded canonical program, stage and Ori");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
     await webview
+      .locator(".studio-scene-editor .scene-section-tabs button")
+      .filter({ hasText: "Sounds" })
+      .click();
+    assert.equal(
+      await webview.locator(".studio-scene-editor section[aria-label='Sounds']").isVisible(),
+      true,
+    );
+    await webview
+      .locator(".studio-scene-editor .scene-section-tabs button")
+      .filter({ hasText: "Actors" })
+      .click();
+    await webview
       .locator(".studio-scene-editor .scene-actors button")
       .filter({ hasText: "Helper" })
       .click();

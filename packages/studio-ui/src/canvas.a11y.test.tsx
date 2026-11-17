@@ -1608,7 +1608,7 @@ describe("workbench live region and focus after inserting from the palette", () 
     expect(host.querySelector<HTMLElement>(".studio-details")?.hidden).toBe(false);
     expect(host.querySelector<HTMLElement>(".studio-scene-editor")?.hidden).toBe(false);
     const sceneTabs = host.querySelector<HTMLElement>(".studio-scene-editor .scene-section-tabs")!;
-    expect(sceneTabs.querySelectorAll("button")).toHaveLength(4);
+    expect(sceneTabs.querySelectorAll("button")).toHaveLength(5);
     expect(
       host.querySelector<HTMLElement>(".studio-scene-editor .scene-create-actor")?.hidden,
     ).not.toBe(true);
@@ -1726,7 +1726,7 @@ describe("workbench live region and focus after inserting from the palette", () 
         />,
       ),
     );
-    act(() => host.querySelectorAll<HTMLButtonElement>(".scene-section-tabs button")[3]!.click());
+    act(() => host.querySelectorAll<HTMLButtonElement>(".scene-section-tabs button")[4]!.click());
     const canvas = host.querySelector<HTMLCanvasElement>(".scene-create-image canvas")!;
     vi.spyOn(canvas, "getContext").mockReturnValue(context as unknown as CanvasRenderingContext2D);
     vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({

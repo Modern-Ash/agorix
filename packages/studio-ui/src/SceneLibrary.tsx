@@ -3,6 +3,7 @@ import type { StudioUiCopy } from "./i18n.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
 import { useEffect, useRef, useState } from "react";
 import { validEmbeddedImageSource } from "@agorix/program-model";
+import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
 
 export function SceneLibrary({
   copy,
@@ -39,10 +40,11 @@ export function SceneLibrary({
   const drawingHistory = useRef<ImageData[]>([]);
   const [assetKind, setAssetKind] = useState<"costume" | "backdrop">("costume");
   const [activeSection, setActiveSection] = useState<
-    "actors" | "costumes" | "backdrops" | "create"
+    "actors" | "costumes" | "backdrops" | "sounds" | "create"
   >("actors");
   const [assetName, setAssetName] = useState("");
   const [assetError, setAssetError] = useState("");
+  const [soundPreviewError, setSoundPreviewError] = useState(false);
   const [editingAssetId, setEditingAssetId] = useState<string>();
   const [pendingAsset, setPendingAsset] = useState<
     | { mode: "create"; kind: "costume" | "backdrop"; knownIds: readonly string[] }
@@ -162,6 +164,7 @@ export function SceneLibrary({
   const selected = actors.find((actor) => actor.id === selectedActorId) ?? actors[0];
   const costumes = assets.filter((asset) => asset.kind === "costume");
   const backdrops = assets.filter((asset) => asset.kind === "backdrop");
+  const sounds = assets.filter((asset) => asset.kind === "sound");
   const preview = (asset: AssetView) => {
     const image = imageForAsset(asset);
     return image === undefined ? (
@@ -178,6 +181,7 @@ export function SceneLibrary({
             ["actors", copy.sceneActors, actors.length],
             ["costumes", copy.sceneCostumes, costumes.length],
             ["backdrops", copy.sceneBackdrops, backdrops.length],
+            ["sounds", copy.sceneSounds, sounds.length],
             ...(onImportAsset === undefined
               ? []
               : [["create", copy.sceneCreateImage, undefined] as const]),
@@ -373,6 +377,33 @@ export function SceneLibrary({
             + {copy.sceneCreateImage}
           </button>
         )}
+      </section>
+      <section aria-label={copy.sceneSounds} hidden={activeSection !== "sounds"}>
+        <h3>{copy.sceneSounds}</h3>
+        <p className="scene-sound-hint">{copy.sceneSoundHint}</p>
+        {sounds.length === 0 ? <p>{copy.sceneNoSounds}</p> : null}
+        <div className="scene-library-grid scene-sounds">
+          {sounds.map((asset) => (
+            <div key={asset.id} className="scene-sound-card">
+              <span className="scene-sound-icon" aria-hidden="true">
+                ♫
+              </span>
+              <strong>{asset.name}</strong>
+              {asset.durationMs === undefined ? null : (
+                <small>{(asset.durationMs / 1000).toFixed(1)} s</small>
+              )}
+              <button
+                type="button"
+                disabled={!canPreviewSound(asset)}
+                aria-label={`${copy.scenePreviewSound}: ${asset.name}`}
+                onClick={() => setSoundPreviewError(!playSoundPreview(asset))}
+              >
+                {canPreviewSound(asset) ? copy.scenePreviewSound : copy.scenePreviewUnavailable}
+              </button>
+            </div>
+          ))}
+        </div>
+        {soundPreviewError ? <p role="status">{copy.scenePreviewUnavailable}</p> : null}
       </section>
       {onImportAsset === undefined ? null : (
         <section

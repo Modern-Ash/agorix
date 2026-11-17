@@ -50,6 +50,11 @@ export const COPY = {
     sceneCostumes: "Costumes",
     sceneBackdrops: "Backdrops",
     sceneSounds: "Sounds",
+    sceneSoundHint:
+      "Choose a Play sound block in Blocks, then select one of these sounds on the block.",
+    sceneNoSounds: "This project has no sounds yet.",
+    scenePreviewSound: "Preview sound",
+    scenePreviewUnavailable: "Audio preview is unavailable for this sound.",
     stageWatchers: "Stage watchers",
     stageEmptyList: "Empty list",
     sceneSelectCostume: "Choose costume",
@@ -462,6 +467,11 @@ export const COPY = {
     sceneCostumes: "Disfraces",
     sceneBackdrops: "Fondos",
     sceneSounds: "Sonidos",
+    sceneSoundHint:
+      "Agregá un bloque Reproducir sonido en Bloques y elegí ahí uno de estos sonidos.",
+    sceneNoSounds: "Este proyecto todavía no tiene sonidos.",
+    scenePreviewSound: "Escuchar sonido",
+    scenePreviewUnavailable: "La vista previa de audio no está disponible para este sonido.",
     stageWatchers: "Monitores del escenario",
     stageEmptyList: "Lista vacía",
     sceneSelectCostume: "Elegir disfraz",

@@ -276,6 +276,12 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .scene-library-grid button:disabled { opacity: 0.5; cursor: not-allowed; }
 .scene-library-grid img { display: block; width: 60px; height: 48px; object-fit: contain; }
 .scene-library-grid button > span:last-child { display: block; max-width: 100%; overflow: hidden; font-size: 0.76em; text-overflow: ellipsis; white-space: nowrap; }
+.scene-sound-hint { margin: 0 0 8px; color: var(--vscode-descriptionForeground); font-size: 0.82em; line-height: 1.4; }
+.scene-sound-card { display: grid; justify-items: center; gap: 4px; min-width: 0; padding: 8px 5px; border: 1px solid var(--vscode-panel-border); border-radius: 7px; background: var(--vscode-button-secondaryBackground); text-align: center; }
+.scene-sound-card strong { max-width: 100%; overflow: hidden; font-size: 0.82em; text-overflow: ellipsis; white-space: nowrap; }
+.scene-sound-card small { color: var(--vscode-descriptionForeground); }
+.scene-sound-card button { width: 100%; font-size: 0.78em; }
+.scene-sound-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); background: color-mix(in srgb, var(--vscode-charts-purple, var(--vscode-focusBorder)), transparent 86%); font-size: 1.4em; }
 .studio-tools > p { margin: 0 0 12px; color: var(--vscode-descriptionForeground); font-size: 0.82em; line-height: 1.35; }
 .studio-tools .palette { display: flex; flex-direction: column; gap: 8px; }
 .studio-tools .palette-section { gap: 5px; }
