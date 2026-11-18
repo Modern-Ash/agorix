@@ -712,13 +712,18 @@ async function main() {
     const beforeOri = JSON.parse(fs.readFileSync(project, "utf8"));
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
     await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget:visible input").first().fill(">Build Proposal");
-    const buildCommand = page
-      .locator(".quick-input-widget:visible .monaco-list-row")
-      .filter({ hasText: "Build Proposal" })
-      .first();
-    await buildCommand.waitFor();
-    await buildCommand.click();
+    const commandInput = page.locator(".quick-input-widget:visible input").first();
+    await commandInput.fill(">Agorix Studio: Build Proposal");
+    await page.waitForFunction(() => {
+      const widget = [...document.querySelectorAll(".quick-input-widget")].find(
+        (element) => element.getBoundingClientRect().height > 0,
+      );
+      const first = [...(widget?.querySelectorAll(".monaco-list-row") ?? [])].find(
+        (element) => element.getBoundingClientRect().height > 0,
+      );
+      return first?.getAttribute("aria-label") === "Agorix Studio: Build Proposal";
+    });
+    await commandInput.press("Enter");
     try {
       await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
     } catch (error) {
