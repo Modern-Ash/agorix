@@ -1319,7 +1319,8 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter !== "divide" &&
           reporter !== "modulo" &&
           reporter !== "random" &&
-          reporter !== "randomInteger")
+          reporter !== "randomInteger" &&
+          reporter !== "mathFunction")
       )
         return undefined;
       if (
@@ -1332,7 +1333,8 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter === "divide" ||
           reporter === "modulo" ||
           reporter === "random" ||
-          reporter === "randomInteger") &&
+          reporter === "randomInteger" ||
+          reporter === "mathFunction") &&
         (referenceId !== undefined || itemIndex !== undefined)
       )
         return undefined;
@@ -1347,6 +1349,7 @@ function parseIntent(value: unknown): Intent | undefined {
         reporter !== "modulo" &&
         reporter !== "random" &&
         reporter !== "randomInteger" &&
+        reporter !== "mathFunction" &&
         !isSafeId(referenceId)
       )
         return undefined;
@@ -1361,6 +1364,27 @@ function parseIntent(value: unknown): Intent | undefined {
         ...(typeof referenceId === "string" ? { referenceId } : {}),
         ...(typeof itemIndex === "number" ? { itemIndex } : {}),
       };
+    }
+    case "setMathFunction": {
+      const location = parseLocation(value["location"]);
+      const input = value["input"];
+      const fn = value["function"];
+      const number = value["value"];
+      return location !== undefined &&
+        (input === "value" || input === "delta" || input === "index") &&
+        (fn === "abs" || fn === "round" || fn === "floor" || fn === "ceiling") &&
+        (number === undefined ||
+          (isFiniteNumber(number) &&
+            number >= NUMERIC_LITERAL_MIN &&
+            number <= NUMERIC_LITERAL_MAX))
+        ? {
+            type: "setMathFunction",
+            location,
+            input,
+            function: fn,
+            ...(number === undefined ? {} : { value: number }),
+          }
+        : undefined;
     }
     case "setArithmeticOperand": {
       const location = parseLocation(value["location"]);

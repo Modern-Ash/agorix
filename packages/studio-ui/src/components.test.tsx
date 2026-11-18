@@ -342,6 +342,7 @@ describe("studio-ui", () => {
     expect(palette).toContain('draggable="true"');
     expect(palette).toContain("add numbers");
     expect(palette).toContain("remainder after division");
+    expect(palette).toContain("math function");
     expect(palette).not.toContain("list length");
     const withLists = renderToStaticMarkup(
       <Palette onAdd={() => undefined} hasLists hasVariables hasActors />,

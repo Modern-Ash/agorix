@@ -18,6 +18,7 @@ const REPORTERS: Partial<Record<BlockType, NumericReporter>> = {
   operator_modulo: "modulo",
   operator_random: "random",
   operator_random_integer: "randomInteger",
+  operator_math_function: "mathFunction",
 };
 
 export function numericReporterForBlock(type: BlockType): NumericReporter | undefined {

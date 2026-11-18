@@ -532,6 +532,48 @@ async function main() {
     );
     console.log("Placed a visual numeric reporter and restored the canonical value");
     await webview.locator(".studio-shell-actions button").filter({ hasText: "Show tools" }).click();
+    await webview.locator('.palette button[aria-label="math function"]').click();
+    await webview.locator(".studio-program .numeric-place").first().click();
+    const mathFunction = webview.locator(".studio-program .math-function-fields").first();
+    await mathFunction.getByRole("combobox").selectOption("round");
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "mathFunction" &&
+            statement.value.function === "round",
+        ),
+    );
+    await mathFunction.getByRole("spinbutton").fill("3.5");
+    await mathFunction.getByRole("spinbutton").press("Tab");
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "mathFunction" &&
+            statement.value.function === "round" &&
+            statement.value.value?.value === 3.5,
+        ),
+    );
+    await webview.locator(".studio-shell-actions button").filter({ hasText: "Hide tools" }).click();
+    for (let edit = 0; edit < 3; edit += 1)
+      await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "numericLiteral" &&
+            statement.value.value === 1,
+        ),
+    );
+    console.log("Selected, configured and undid a visual math function");
+    await webview.locator(".studio-shell-actions button").filter({ hasText: "Show tools" }).click();
     const move = webview
       .locator(".palette button[draggable='true']")
       .filter({ hasText: "Move" })
