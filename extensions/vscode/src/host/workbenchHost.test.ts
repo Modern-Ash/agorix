@@ -61,6 +61,71 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("commits a nested math function from the visual arithmetic protocol", async () => {
+    const program = {
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: { type: "numericLiteral", value: 1 },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { host, get } = setup(program);
+    const location = { container: script, index: 0 };
+    for (const intent of [
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        side: "left",
+        reporter: "mathFunction",
+      },
+      {
+        type: "setArithmeticMathFunction",
+        location,
+        input: "value",
+        side: "left",
+        function: "round",
+      },
+      {
+        type: "setArithmeticOperand",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "value",
+        value: 3.5,
+      },
+    ]) {
+      const message = parseUiMessage({
+        schema,
+        type: "intent",
+        intent,
+        baseHash: programSemanticHash(get()!),
+      });
+      expect(message).toBeDefined();
+      expect((await host.handle(message!))[0]).toMatchObject({ type: "workspace" });
+    }
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      value: {
+        type: "add",
+        left: { type: "mathFunction", function: "round", value: { value: 3.5 } },
+        right: { value: 2 },
+      },
+    });
+  });
   it("commits a visual math function inside a comparison through the protocol", async () => {
     const program = {
       schema: "agorix/program/v1",

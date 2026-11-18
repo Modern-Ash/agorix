@@ -867,6 +867,53 @@ describe("studio-protocol", () => {
       parseUiMessage({
         schema,
         type: "intent",
+        intent: { ...nested, reporter: "mathFunction", referenceId: undefined },
+      }),
+    ).toMatchObject({ intent: { reporter: "mathFunction" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticMathFunction",
+          location,
+          input: "value",
+          side: "left",
+          function: "floor",
+        },
+      }),
+    ).toMatchObject({ intent: { function: "floor" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticMathFunction",
+          location,
+          input: "value",
+          side: "left",
+          function: "sqrt",
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "value",
+          value: 3.5,
+        },
+      }),
+    ).toMatchObject({ intent: { side: "value", value: 3.5 } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
         intent: {
           type: "setArithmeticOperand",
           location,

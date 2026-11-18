@@ -72,7 +72,7 @@ Layer journey: create two overlapping actors → add Go to front or back layer t
 
 Arithmetic operand journey: create `score` and `inventory` → set a variable to Add or Random integer → choose Variable, List length, X/Y position or Distance to actor for either operand → choose a declared reference when needed → Run/Step and inspect the result. Unknown declarations, actors, sides and stale edits are refused before accepted state changes.
 
-Two-level arithmetic journey: set `score` to Add → choose Multiply, Remainder, Random or Random integer for the left operand → edit its two numeric values or minimum/maximum inside the block → Run/Step and inspect the canonical code and runtime result. Invalid paths, nonliteral values and stale edits are refused before accepted state changes.
+Two-level arithmetic journey: set `score` to Add → choose Multiply, Remainder, Random, Random integer or Math function for the left operand → edit its two numeric values, minimum/maximum, or function and literal value inside the block → Run/Step and inspect the canonical code and runtime result. Invalid paths, nonliteral values and stale edits are refused before accepted state changes.
 
 Costume drop journey: open Scene → drag a known costume thumbnail onto a visible stage actor → inspect its updated costume immediately and after Run/Step. Dropping an unknown costume or a backdrop on an actor is ignored; the host also rejects an unknown costume id before metadata persistence. Clicking a costume for the selected actor remains the keyboard-accessible path.
 

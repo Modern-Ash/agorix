@@ -1886,6 +1886,120 @@ describe("interaction-core", () => {
       value: { type: "add", left: { type: "random", min: { value: 0 }, max: { value: 10 } } },
     });
   });
+  it("edits a math function nested in arithmetic without replacing its sibling", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: { type: "numericLiteral", value: 1 },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const location = { container: script, index: 0 };
+    const inserted = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          side: "left",
+          reporter: "mathFunction",
+        },
+        newId,
+        workspace,
+      )!,
+    ).workspace;
+    const selected = applyWorkspaceChange(
+      inserted,
+      intentToChange(
+        {
+          type: "setArithmeticMathFunction",
+          location,
+          input: "value",
+          side: "left",
+          function: "round",
+        },
+        newId,
+        inserted,
+      )!,
+    ).workspace;
+    const changed = applyWorkspaceChange(
+      selected,
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "value",
+          value: 3.5,
+        },
+        newId,
+        selected,
+      )!,
+    );
+    expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+      value: {
+        type: "add",
+        left: { type: "mathFunction", function: "round", value: { value: 3.5 } },
+        right: { value: 2 },
+      },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticMathFunction",
+          location,
+          input: "value",
+          side: "right",
+          function: "round",
+        },
+        newId,
+        selected,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticMathFunction",
+          location,
+          input: "value",
+          side: "left",
+          function: "sqrt",
+        } as never,
+        newId,
+        selected,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "max",
+          value: 4,
+        },
+        newId,
+        selected,
+      ),
+    ).toBeUndefined();
+  });
   it("creates bounded random reporters and edits only their literal range", () => {
     const workspace = applyWorkspaceChange(createStarterWorkspace(), {
       type: "addBlock",

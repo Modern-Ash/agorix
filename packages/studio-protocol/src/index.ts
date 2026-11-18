@@ -1530,7 +1530,7 @@ function parseIntent(value: unknown): Intent | undefined {
       const path = value["path"];
       return location !== undefined &&
         (value["input"] === "value" || value["input"] === "delta" || value["input"] === "index") &&
-        (["left", "right", "min", "max"] as unknown[]).includes(value["side"]) &&
+        (["left", "right", "min", "max", "value"] as unknown[]).includes(value["side"]) &&
         isFiniteNumber(value["value"]) &&
         (path === undefined ||
           (Array.isArray(path) &&
@@ -1540,7 +1540,7 @@ function parseIntent(value: unknown): Intent | undefined {
             type: "setArithmeticOperand",
             location,
             input: value["input"],
-            side: value["side"] as "left" | "right" | "min" | "max",
+            side: value["side"] as "left" | "right" | "min" | "max" | "value",
             value: value["value"],
             ...(path === undefined ? {} : { path: path as ("left" | "right" | "min" | "max")[] }),
           }
@@ -1568,7 +1568,8 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter !== "divide" &&
           reporter !== "modulo" &&
           reporter !== "random" &&
-          reporter !== "randomInteger")
+          reporter !== "randomInteger" &&
+          reporter !== "mathFunction")
       )
         return undefined;
       if (reporter === "variable" || reporter === "listLength" || reporter === "distanceToActor") {
@@ -1582,6 +1583,18 @@ function parseIntent(value: unknown): Intent | undefined {
         reporter,
         ...(typeof referenceId === "string" ? { referenceId } : {}),
       };
+    }
+    case "setArithmeticMathFunction": {
+      const location = parseLocation(value["location"]);
+      const input = value["input"];
+      const side = value["side"];
+      const fn = value["function"];
+      return location !== undefined &&
+        (input === "value" || input === "delta" || input === "index") &&
+        (side === "left" || side === "right" || side === "min" || side === "max") &&
+        (fn === "abs" || fn === "round" || fn === "floor" || fn === "ceiling")
+        ? { type: "setArithmeticMathFunction", location, input, side, function: fn }
+        : undefined;
     }
     case "setNumericField": {
       const location = parseLocation(value["location"]);
