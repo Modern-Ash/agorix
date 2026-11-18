@@ -7,6 +7,7 @@ import {
   type TextRange,
 } from "@agorix/code-generator";
 import {
+  ADVANCED_SOUNDS,
   getLocalizedFirstMission,
   normalizeLocale,
   worldCopy,
@@ -1433,13 +1434,13 @@ export function defaultProjectAssets(): NonNullable<ProjectMetadata["assets"]> {
       source: "builtin:space.trailhead",
       tags: ["gallery", "space", "mission"],
     },
-    {
-      id: "asset:sound.beacon",
-      kind: "sound",
-      name: "Beacon Ping",
-      source: "builtin:sound.beacon",
-      tags: ["starter", "feedback"],
-    },
+    ...ADVANCED_SOUNDS.map((sound) => ({
+      id: sound.id,
+      kind: "sound" as const,
+      name: sound.en,
+      source: sound.source,
+      tags: [...sound.tags],
+    })),
   ];
 }
 
@@ -1525,15 +1526,15 @@ export function studioAssetCatalog(): readonly AssetView[] {
       height: 192,
       preview: "nebula",
     },
-    {
-      id: "asset:sound.beacon",
-      name: "Beacon Ping",
+    ...ADVANCED_SOUNDS.map((sound): AssetView => ({
+      id: sound.id,
+      name: sound.en,
       kind: "sound",
-      source: "builtin:sound.beacon",
-      tags: ["starter", "feedback"],
-      durationMs: 420,
-      preview: "sine",
-    },
+      source: sound.source,
+      tags: sound.tags,
+      durationMs: sound.durationMs,
+      preview: sound.wave,
+    })),
   ];
 }
 

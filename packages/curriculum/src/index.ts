@@ -12,6 +12,7 @@ import {
 } from "@agorix/runtime";
 
 export const PACKAGE_NAME = "@agorix/curriculum";
+export { ADVANCED_SOUNDS } from "./advancedSounds.js";
 
 export const MISSION_SCHEMA_VERSION = "agorix/mission/v1";
 export const DEFAULT_LOCALE = "en";

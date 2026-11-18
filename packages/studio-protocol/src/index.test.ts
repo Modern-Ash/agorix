@@ -248,6 +248,22 @@ describe("studio-protocol", () => {
       parseHostMessage({
         schema,
         type: "assets",
+        assets: [
+          { ...asset, id: "asset:sound.chime", kind: "sound", source: "builtin:sound.chime" },
+        ],
+      }),
+    ).toBeDefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "assets",
+        assets: [{ ...asset, id: "asset:sound.fake", kind: "sound", source: "builtin:sound.fake" }],
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "assets",
         assets: [{ ...asset, source: "https://example.com/x.png" }],
       }),
     ).toBeUndefined();

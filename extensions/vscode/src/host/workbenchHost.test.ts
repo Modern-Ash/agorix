@@ -498,6 +498,31 @@ describe("workbenchHost", () => {
       }),
     );
   });
+
+  it("exposes only bundled sound sources to the visual preview", async () => {
+    const { host, port, metadata } = setup();
+    await port.commitMetadata(
+      {
+        ...metadata(),
+        assets: [
+          { id: "asset:sound.chime", kind: "sound", name: "Chime", source: "builtin:sound.chime" },
+          {
+            id: "sound:remote",
+            kind: "sound",
+            name: "Remote",
+            source: "https://example.com/a.wav",
+          },
+        ],
+      },
+      "test fixture",
+    );
+    const message = host.snapshot().find((item) => item.type === "assets");
+    const assets = message?.type === "assets" ? message.assets : [];
+    expect(assets.find((asset) => asset.id === "asset:sound.chime")?.source).toBe(
+      "builtin:sound.chime",
+    );
+    expect(assets.find((asset) => asset.id === "sound:remote")?.source).toBeUndefined();
+  });
   it("answers ready with the workspace and hash, or nothing without a project", async () => {
     const { host } = setup();
     expect(await host.handle({ schema, type: "ready" })).toMatchObject([

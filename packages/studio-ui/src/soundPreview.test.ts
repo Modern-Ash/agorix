@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AssetView } from "@agorix/studio-protocol";
+import { ADVANCED_SOUNDS } from "@agorix/curriculum";
 import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
 
 const beacon: AssetView = {
@@ -11,7 +12,7 @@ const beacon: AssetView = {
 };
 
 describe("Studio sound preview", () => {
-  it("plays only the known built-in sound without editing the project", () => {
+  it("previews every bundled sound with its bounded local tone", () => {
     const start = vi.fn();
     const stop = vi.fn();
     const close = vi.fn(async () => undefined);
@@ -32,12 +33,18 @@ describe("Studio sound preview", () => {
       currentTime: 2,
       close,
     } as unknown as AudioContext;
-    expect(playSoundPreview(beacon, () => context)).toBe(true);
-    expect(oscillator.frequency.value).toBe(520);
-    expect(start).toHaveBeenCalledOnce();
-    expect(stop).toHaveBeenCalledWith(2.2);
-    oscillator.onended?.();
-    expect(close).toHaveBeenCalledOnce();
+    for (const sound of ADVANCED_SOUNDS) {
+      const asset = { ...beacon, id: sound.id, source: sound.source };
+      expect(canPreviewSound(asset)).toBe(true);
+      expect(playSoundPreview(asset, () => context)).toBe(true);
+      expect(oscillator.type).toBe(sound.wave);
+      expect(oscillator.frequency.value).toBe(sound.frequencyHz);
+      expect(gain.gain.value).toBe(sound.gain);
+      expect(stop).toHaveBeenLastCalledWith(2 + sound.durationMs / 1000);
+      oscillator.onended?.();
+    }
+    expect(start).toHaveBeenCalledTimes(ADVANCED_SOUNDS.length);
+    expect(close).toHaveBeenCalledTimes(ADVANCED_SOUNDS.length);
   });
 
   it("refuses unknown or remote sources and handles a blocked audio device", () => {
@@ -45,6 +52,8 @@ describe("Studio sound preview", () => {
       throw new Error("audio blocked");
     });
     expect(canPreviewSound({ ...beacon, source: "https://example.com/sound.wav" })).toBe(false);
+    expect(canPreviewSound({ ...beacon, kind: "costume" })).toBe(false);
+    expect(canPreviewSound({ ...beacon, source: "builtin:sound.unknown" })).toBe(false);
     expect(playSoundPreview({ ...beacon, source: "https://example.com/sound.wav" }, create)).toBe(
       false,
     );

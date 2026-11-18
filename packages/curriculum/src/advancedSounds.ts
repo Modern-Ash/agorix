@@ -1,0 +1,36 @@
+/** Built-in advanced-project sounds shared by Web and Studio. Sources are identifiers, not URLs. */
+export const ADVANCED_SOUNDS = [
+  {
+    id: "asset:sound.beacon",
+    source: "builtin:sound.beacon",
+    en: "Beacon Ping",
+    es: "Pulso de baliza",
+    tags: ["starter", "feedback"],
+    wave: "sine",
+    frequencyHz: 520,
+    durationMs: 200,
+    gain: 0.06,
+  },
+  {
+    id: "asset:sound.chime",
+    source: "builtin:sound.chime",
+    en: "Chime",
+    es: "Campana",
+    tags: ["music", "feedback"],
+    wave: "sine",
+    frequencyHz: 880,
+    durationMs: 360,
+    gain: 0.06,
+  },
+  {
+    id: "asset:sound.drum",
+    source: "builtin:sound.drum",
+    en: "Drum",
+    es: "Tambor",
+    tags: ["music", "rhythm"],
+    wave: "triangle",
+    frequencyHz: 160,
+    durationMs: 180,
+    gain: 0.08,
+  },
+] as const;

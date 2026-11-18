@@ -100,6 +100,13 @@ async function main() {
     path.join(userDir, "settings.json"),
     JSON.stringify({ "agorixStudio.agent.endpoint": `http://127.0.0.1:${boundaryPort}` }),
   );
+  fs.writeFileSync(
+    path.join(userDir, "keybindings.json"),
+    JSON.stringify([
+      { key: "ctrl+alt+shift+r", command: "agorixStudio.suggestRepeat" },
+      { key: "ctrl+alt+shift+b", command: "agorixStudio.companionBuild" },
+    ]),
+  );
   const install = cp.spawnSync(cli, [...cliArgs, ...profile, "--install-extension", vsix], {
     env,
     encoding: "utf8",
@@ -165,9 +172,9 @@ async function main() {
     }
     await page.waitForTimeout(1000);
     await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget input").first().fill(">Reopen Editor With");
+    await page.locator(".quick-input-widget:visible input").first().fill(">Reopen Editor With");
     await page.getByText("View: Reopen Editor With...", { exact: true }).click();
-    await page.locator(".quick-input-widget input").first().fill("Agorix Workbench");
+    await page.locator(".quick-input-widget:visible input").first().fill("Agorix Workbench");
     await page.keyboard.press("Enter");
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
     const webview = page.frameLocator("iframe.webview.ready").frameLocator("iframe#active-frame");
@@ -180,9 +187,8 @@ async function main() {
       /Inventory/,
     );
     const beforeOriReview = fs.readFileSync(project, "utf8");
-    await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget input").first().fill(">Suggest repeat");
-    await page.keyboard.press("Enter");
+    await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
+    await page.keyboard.press("Control+Alt+Shift+R");
     await page.getByRole("button", { name: "Reject", exact: true }).click();
     assert.equal(fs.readFileSync(project, "utf8"), beforeOriReview);
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
@@ -269,8 +275,7 @@ async function main() {
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
     const backdropPicker = webview.locator(".stage-panel .stage-backdrop-picker");
     await backdropPicker.locator("summary").click();
-    if ((await backdropPicker.locator(".stage-backdrop-options button").count()) < 9)
-      throw new Error("Stage must expose the bundled visual backdrop gallery");
+    await backdropPicker.locator(".stage-backdrop-options button").nth(8).waitFor();
     await backdropPicker.getByRole("button", { name: "Choose backdrop: Forest" }).click();
     await waitForProject(
       (envelope) => envelope.project?.metadata?.stage?.backdropId === "backdrop:forest",
@@ -299,6 +304,17 @@ async function main() {
       await webview.locator(".studio-scene-editor section[aria-label='Sounds']").isVisible(),
       true,
     );
+    const soundCards = webview.locator(
+      ".studio-scene-editor section[aria-label='Sounds'] .scene-sound-card",
+    );
+    await soundCards.nth(2).waitFor();
+    assert.equal(await soundCards.count(), 3);
+    for (const name of ["Beacon Ping", "Chime", "Drum"]) {
+      const preview = soundCards
+        .filter({ hasText: name })
+        .getByRole("button", { name: `Preview sound: ${name}` });
+      assert.equal(await preview.isEnabled(), true);
+    }
     await webview
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Actors" })
@@ -373,9 +389,8 @@ async function main() {
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Costumes" })
       .waitFor();
-    const costumeGallery = webview
-      .locator(".studio-scene-editor section:not([hidden])")
-      .filter({ has: webview.locator(".scene-library-grid") });
+    const costumeGallery = webview.locator('.studio-scene-editor section[aria-label="Costumes"]');
+    await costumeGallery.locator(".scene-asset-card").nth(11).waitFor();
     const galleryCount = await costumeGallery.locator(".scene-asset-card").count();
     if (galleryCount < 12) {
       const sectionState = await webview
@@ -690,10 +705,7 @@ async function main() {
     if (after <= before) throw new Error(`Block drag did not insert: ${before} → ${after}`);
     console.log("Dragged a block into the canonical program");
     await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
-    await webview
-      .locator(".execution-readout")
-      .filter({ hasText: "completed" })
-      .waitFor({ timeout: 10000 });
+    await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Evidence" }).click();
     await webview.locator(".studio-evidence").waitFor();
     const traceCount = (await webview.locator(".event-trace header span").textContent())?.split(
@@ -702,10 +714,19 @@ async function main() {
     if (!traceCount || Number(traceCount) < 1) throw new Error("Run produced no event trace");
     console.log("Ran project and opened evidence");
     const beforeOri = JSON.parse(fs.readFileSync(project, "utf8"));
-    await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget input").first().fill(">Build Proposal");
-    await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
+    await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
+    await page.keyboard.press("Control+Alt+Shift+B");
+    try {
+      await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
+    } catch (error) {
+      const notifications = await page.locator(".notifications-toasts").allTextContents();
+      const openTabs = await page.locator(".tab").allTextContents();
+      throw new Error(
+        `Ori review did not show Apply; boundary calls=${JSON.stringify(boundaryCalls)}; ` +
+          `notifications=${JSON.stringify(notifications)}; tabs=${JSON.stringify(openTabs)}`,
+        { cause: error },
+      );
+    }
     const { value: afterOri } = await waitForProject(
       (envelope) =>
         envelope.project?.program?.scripts?.[0]?.statements?.length ===
@@ -720,6 +741,38 @@ async function main() {
     await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
     await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
     console.log("Accepted a provider-backed Ori proposal and ran the canonical program");
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    const showSoundTools = webview
+      .locator(".studio-shell-actions button")
+      .filter({ hasText: "Show tools" });
+    if (await showSoundTools.isVisible()) await showSoundTools.click();
+    await webview.locator('.palette button[aria-label="play sound"]').click();
+    await webview
+      .locator('.studio-program .block[data-tone="sound"] .block-asset-field select')
+      .last()
+      .selectOption("asset:sound.chime");
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts?.some((script) =>
+        script.statements.some(
+          (statement) =>
+            statement.type === "playSound" && statement.soundId === "asset:sound.chime",
+        ),
+      ),
+    );
+    console.log("Selected a bundled sound directly on its visual block");
+    const hideSoundTools = webview
+      .locator(".studio-shell-actions button")
+      .filter({ hasText: "Hide tools" });
+    if (await hideSoundTools.isVisible()) await hideSoundTools.click();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    let runStatus = "";
+    for (let attempt = 0; attempt < 100; attempt++) {
+      runStatus = (await webview.locator(".execution-readout").textContent()) ?? "";
+      if (runStatus.includes("completed")) break;
+      await pause(200);
+    }
+    assert.match(runStatus, /completed/, "Run must complete after sound selection");
+    console.log("Ran the canonical program with the selected sound");
     const watcher = webview.locator('.stage-list-watcher[data-list-id="inventory"]');
     assert.deepEqual(await watcher.locator("li").allTextContents(), ["2", "5"]);
     const saved = JSON.parse(fs.readFileSync(project, "utf8"));

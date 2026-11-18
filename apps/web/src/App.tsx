@@ -34,6 +34,7 @@ import {
   type EditorHistory,
 } from "@agorix/block-editor";
 import {
+  ADVANCED_SOUNDS,
   WORLDS,
   createMissionRunFeedback,
   getLocalizedFirstMission,
@@ -454,13 +455,13 @@ function defaultAssets(locale: Locale): readonly ProjectAsset[] {
       source: "builtin:space.nebula",
       tags: ["space"],
     },
-    {
-      id: "asset:sound.beacon",
-      kind: "sound",
-      name: locale === "es" ? "Pulso de baliza" : "Beacon ping",
-      source: "builtin:sound.beacon",
-      tags: ["starter", "feedback"],
-    },
+    ...ADVANCED_SOUNDS.map((sound) => ({
+      id: sound.id,
+      kind: "sound" as const,
+      name: locale === "es" ? sound.es : sound.en,
+      source: sound.source,
+      tags: [...sound.tags],
+    })),
   ];
 }
 

@@ -15,6 +15,7 @@ import {
   type WorkflowState,
 } from "@agorix/agent-workflow";
 import { getBlockDefinition } from "@agorix/block-editor";
+import { ADVANCED_SOUNDS } from "@agorix/curriculum";
 import type {
   BlockNode,
   PlacementReason,
@@ -987,8 +988,8 @@ function parseAsset(value: unknown): AssetView | undefined {
             "builtin:costume.spark",
             "builtin:space.trailhead",
             "builtin:space.nebula",
-            "builtin:sound.beacon",
-          ].includes(source))) ||
+          ].includes(source) ||
+          ADVANCED_SOUNDS.some((sound) => sound.source === source))) ||
       validEmbeddedImageSource(source)
     )
   )
