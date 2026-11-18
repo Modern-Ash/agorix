@@ -1023,7 +1023,13 @@ export function Canvas({
                                             ? "multiply"
                                             : part?.type === "operator_divide"
                                               ? "divide"
-                                              : "other";
+                                              : part?.type === "operator_modulo"
+                                                ? "modulo"
+                                                : part?.type === "operator_random"
+                                                  ? "random"
+                                                  : part?.type === "operator_random_integer"
+                                                    ? "randomInteger"
+                                                    : "other";
                         const selectSource = (
                           next:
                             | "number"
@@ -1035,7 +1041,10 @@ export function Canvas({
                             | "add"
                             | "subtract"
                             | "multiply"
-                            | "divide",
+                            | "divide"
+                            | "modulo"
+                            | "random"
+                            | "randomInteger",
                           referenceId?: string,
                         ) =>
                           onIntent({
@@ -1061,7 +1070,10 @@ export function Canvas({
                                 | "add"
                                 | "subtract"
                                 | "multiply"
-                                | "divide";
+                                | "divide"
+                                | "modulo"
+                                | "random"
+                                | "randomInteger";
                               selectSource(
                                 next,
                                 next === "variable"
@@ -1080,6 +1092,9 @@ export function Canvas({
                             <option value="subtract">{copy.operatorSubtract}</option>
                             <option value="multiply">{copy.operatorMultiply}</option>
                             <option value="divide">{copy.operatorDivide}</option>
+                            <option value="modulo">{copy.operatorModulo}</option>
+                            <option value="random">{copy.operatorRandom}</option>
+                            <option value="randomInteger">{copy.operatorRandomInteger}</option>
                             {(workspace.variables?.length ?? 0) > 0 ? (
                               <option value="variable">{copy.variableValue}</option>
                             ) : null}
@@ -1137,10 +1152,30 @@ export function Canvas({
                                   ))}
                                 </select>
                               )}
-                              {(["add", "subtract", "multiply", "divide"] as const).includes(
-                                source as "add" | "subtract" | "multiply" | "divide",
+                              {(
+                                [
+                                  "add",
+                                  "subtract",
+                                  "multiply",
+                                  "divide",
+                                  "modulo",
+                                  "random",
+                                  "randomInteger",
+                                ] as const
+                              ).includes(
+                                source as
+                                  | "add"
+                                  | "subtract"
+                                  | "multiply"
+                                  | "divide"
+                                  | "modulo"
+                                  | "random"
+                                  | "randomInteger",
                               )
-                                ? (["left", "right"] as const).map((nestedSide) => {
+                                ? (source === "random" || source === "randomInteger"
+                                    ? (["min", "max"] as const)
+                                    : (["left", "right"] as const)
+                                  ).map((nestedSide) => {
                                     const nested = part?.inputs?.[nestedSide];
                                     if (
                                       nested?.type !== "literal_number" ||
@@ -1153,7 +1188,11 @@ export function Canvas({
                                         <span>
                                           {nestedSide === "left"
                                             ? copy.conditionLeft
-                                            : copy.conditionRight}
+                                            : nestedSide === "right"
+                                              ? copy.conditionRight
+                                              : nestedSide === "min"
+                                                ? copy.rangeMin
+                                                : copy.rangeMax}
                                         </span>
                                         <input
                                           key={`${pos}:${input}:${side}:${nestedSide}:${value}`}

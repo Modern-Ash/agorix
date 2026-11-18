@@ -724,6 +724,18 @@ describe("studio-protocol", () => {
         intent: { ...nested, reporter: "multiply", referenceId: undefined },
       }),
     ).toMatchObject({ intent: { reporter: "multiply" } });
+    for (const reporter of ["modulo", "random", "randomInteger"]) {
+      expect(
+        parseUiMessage({
+          schema,
+          type: "intent",
+          intent: { ...nested, reporter, referenceId: undefined },
+        }),
+      ).toMatchObject({ intent: { reporter } });
+      expect(
+        parseUiMessage({ schema, type: "intent", intent: { ...nested, reporter } }),
+      ).toBeUndefined();
+    }
     expect(
       parseUiMessage({
         schema,

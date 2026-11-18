@@ -1458,7 +1458,10 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter !== "add" &&
           reporter !== "subtract" &&
           reporter !== "multiply" &&
-          reporter !== "divide")
+          reporter !== "divide" &&
+          reporter !== "modulo" &&
+          reporter !== "random" &&
+          reporter !== "randomInteger")
       )
         return undefined;
       if (reporter === "variable" || reporter === "listLength" || reporter === "distanceToActor") {

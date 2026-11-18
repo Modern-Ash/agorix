@@ -1639,6 +1639,90 @@ describe("interaction-core", () => {
         workspace,
       ),
     ).toBeUndefined();
+    const random = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          side: "left",
+          reporter: "randomInteger",
+        },
+        newId,
+        workspace,
+      )!,
+    ).workspace;
+    const ranged = applyWorkspaceChange(
+      random,
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "max",
+          value: 8,
+        },
+        newId,
+        random,
+      )!,
+    );
+    expect(ranged.program.scripts[0]?.statements[0]).toMatchObject({
+      value: {
+        type: "add",
+        left: { type: "randomInteger", min: { value: 0 }, max: { value: 8 } },
+        right: { value: 1 },
+      },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "right",
+          value: 8,
+        },
+        newId,
+        random,
+      ),
+    ).toBeUndefined();
+    const modulo = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          side: "left",
+          reporter: "modulo",
+        },
+        newId,
+        workspace,
+      )!,
+    );
+    expect(modulo.program.scripts[0]?.statements[0]).toMatchObject({
+      value: { type: "add", left: { type: "modulo", left: { value: 0 }, right: { value: 1 } } },
+    });
+    const randomFloat = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          side: "left",
+          reporter: "random",
+        },
+        newId,
+        workspace,
+      )!,
+    );
+    expect(randomFloat.program.scripts[0]?.statements[0]).toMatchObject({
+      value: { type: "add", left: { type: "random", min: { value: 0 }, max: { value: 10 } } },
+    });
   });
   it("creates bounded random reporters and edits only their literal range", () => {
     const workspace = applyWorkspaceChange(createStarterWorkspace(), {
