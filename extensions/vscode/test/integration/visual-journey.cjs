@@ -700,36 +700,8 @@ async function main() {
     }
     if (after <= before) throw new Error(`Block drag did not insert: ${before} → ${after}`);
     console.log("Dragged a block into the canonical program");
-    const showSoundTools = webview
-      .locator(".studio-shell-actions button")
-      .filter({ hasText: "Show tools" });
-    if (await showSoundTools.isVisible()) await showSoundTools.click();
-    await webview.locator('.palette button[aria-label="play sound"]').click();
-    await webview
-      .locator('.studio-program .block[data-tone="sound"] .block-asset-field select')
-      .last()
-      .selectOption("asset:sound.chime");
-    await waitForProject((envelope) =>
-      envelope.project?.program?.scripts?.some((script) =>
-        script.statements.some(
-          (statement) =>
-            statement.type === "playSound" && statement.soundId === "asset:sound.chime",
-        ),
-      ),
-    );
-    console.log("Selected a bundled sound directly on its visual block");
-    const hideSoundTools = webview
-      .locator(".studio-shell-actions button")
-      .filter({ hasText: "Hide tools" });
-    if (await hideSoundTools.isVisible()) await hideSoundTools.click();
     await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
-    let runStatus = "";
-    for (let attempt = 0; attempt < 50; attempt++) {
-      runStatus = (await webview.locator(".execution-readout").textContent()) ?? "";
-      if (runStatus.includes("completed")) break;
-      await pause(200);
-    }
-    assert.match(runStatus, /completed/, "Run must complete after sound selection");
+    await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Evidence" }).click();
     await webview.locator(".studio-evidence").waitFor();
     const traceCount = (await webview.locator(".event-trace header span").textContent())?.split(
@@ -757,6 +729,38 @@ async function main() {
     await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
     await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
     console.log("Accepted a provider-backed Ori proposal and ran the canonical program");
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    const showSoundTools = webview
+      .locator(".studio-shell-actions button")
+      .filter({ hasText: "Show tools" });
+    if (await showSoundTools.isVisible()) await showSoundTools.click();
+    await webview.locator('.palette button[aria-label="play sound"]').click();
+    await webview
+      .locator('.studio-program .block[data-tone="sound"] .block-asset-field select')
+      .last()
+      .selectOption("asset:sound.chime");
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts?.some((script) =>
+        script.statements.some(
+          (statement) =>
+            statement.type === "playSound" && statement.soundId === "asset:sound.chime",
+        ),
+      ),
+    );
+    console.log("Selected a bundled sound directly on its visual block");
+    const hideSoundTools = webview
+      .locator(".studio-shell-actions button")
+      .filter({ hasText: "Hide tools" });
+    if (await hideSoundTools.isVisible()) await hideSoundTools.click();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    let runStatus = "";
+    for (let attempt = 0; attempt < 100; attempt++) {
+      runStatus = (await webview.locator(".execution-readout").textContent()) ?? "";
+      if (runStatus.includes("completed")) break;
+      await pause(200);
+    }
+    assert.match(runStatus, /completed/, "Run must complete after sound selection");
+    console.log("Ran the canonical program with the selected sound");
     const watcher = webview.locator('.stage-list-watcher[data-list-id="inventory"]');
     assert.deepEqual(await watcher.locator("li").allTextContents(), ["2", "5"]);
     const saved = JSON.parse(fs.readFileSync(project, "utf8"));
