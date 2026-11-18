@@ -138,6 +138,8 @@ export function Canvas({
   selectedScriptId,
   onSelectScript,
   onDeleteScript,
+  breakpointBlockIds,
+  onToggleBreakpoint,
   assets = [],
   actors = [],
 }: {
@@ -157,6 +159,8 @@ export function Canvas({
   readonly selectedScriptId?: string | undefined;
   readonly onSelectScript?: ((id: string) => void) | undefined;
   readonly onDeleteScript?: ((id: string) => void) | undefined;
+  readonly breakpointBlockIds?: ReadonlySet<string> | undefined;
+  readonly onToggleBreakpoint?: ((id: string) => void) | undefined;
   readonly assets?: readonly AssetView[];
   readonly actors?: readonly ActorView[];
 }) {
@@ -380,6 +384,7 @@ export function Canvas({
         const isSkipped = hints?.skipped.includes(block.id) === true;
         const isSel = sync?.selectedBlockId === block.id;
         const isExec = sync?.executingBlockId === block.id;
+        const hasBreakpoint = breakpointBlockIds?.has(block.id) === true;
         const isFail = sync?.failedBlockId === block.id;
         const visual = visualBlock(block.type);
         const fieldEntries = Object.entries(block.fields);
@@ -1966,6 +1971,20 @@ export function Canvas({
             )}
             {isFail ? <span className="sync-badge fail-badge">{copy.canvasFailedHere}</span> : null}
             {isExec ? <span className="sync-badge">{copy.canvasRunning}</span> : null}
+            {onToggleBreakpoint === undefined ? null : (
+              <button
+                type="button"
+                tabIndex={isTabbable ? 0 : -1}
+                className="block-breakpoint"
+                data-active={hasBreakpoint}
+                aria-pressed={hasBreakpoint}
+                aria-label={`${hasBreakpoint ? copy.removeBreakpoint : copy.setBreakpoint}: ${label}`}
+                title={hasBreakpoint ? copy.removeBreakpoint : copy.setBreakpoint}
+                onClick={() => onToggleBreakpoint(block.id)}
+              >
+                ●
+              </button>
+            )}
             <button
               type="button"
               tabIndex={isTabbable ? 0 : -1}

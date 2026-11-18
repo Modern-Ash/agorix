@@ -249,6 +249,11 @@ function blockIdFor(nodeId: string): string {
   return `block:${nodeId.replace(/[^A-Za-z0-9_-]+/g, "_")}`;
 }
 
+/** The stable visual id for a canonical node path in this workspace projection. */
+export function blockIdForNode(nodeId: string): string {
+  return blockIdFor(nodeId);
+}
+
 function mapBlock(
   mapping: BlockMappingEntry[],
   blockId: string,

@@ -36,6 +36,8 @@ The World Preview doubles as the Studio **Stage**: a dense toolbar with Run, Ste
 
 A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one selected, one executing and one failed canonical node id. The canvas, code editor, World Preview and Inspector write selections into it; each surface reflects the shared state (canvas via the `sync` protocol message mapped to block ids, code via reveal and run/fail decorations, World Preview via `agorix-sync`, Inspector via tree reveal). Failure is shown with text and an accessible description, never color alone. A program change reconciles the hub so removed nodes are cleared.
 
+Studio's visual debugger keeps block breakpoints and a selected variable watch in local Workbench presentation state. Play advances through deterministic runtime frames and pauses after a marked block or a watched value change; Evidence shows only observed value transitions. The learner chooses variables from declarations, not free expressions. Edits clear stale breakpoint positions, and debugger controls never mutate or serialize into the canonical program.
+
 ## Agent gating and Workbench robustness
 
 - An unclear intent (no task keyword, more than one task available) gets at most one clarifying question made of fixed task titles; the learner text is never echoed or stored.

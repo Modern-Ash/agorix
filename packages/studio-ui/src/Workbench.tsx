@@ -17,6 +17,7 @@ import { locationKey, toRows } from "./blockView.js";
 import { Palette } from "./Palette.js";
 import { SceneLibrary, STAGE_BACKDROP_DRAG_TYPE, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { densityAnnouncement } from "./density.js";
+import { advanceDebugSession, type DebugSnapshot } from "./debugSession.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
 import { AgentPanel } from "./AgentPanel.js";
 import { copyFor, normalizeStudioUiLocale, type StudioUiLocale } from "./i18n.js";
@@ -425,6 +426,65 @@ export function EventTracePanel({
               <small>
                 {copy.eventTraceReason}: {item.reason}
               </small>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+export function VisualDebuggerPanel({
+  copy,
+  variables,
+  selectedVariableId,
+  onSelectVariable,
+  pauseOnChange,
+  onPauseOnChange,
+  snapshot,
+}: {
+  readonly copy: StudioUiCopy;
+  readonly variables: readonly { readonly id: string; readonly name: string }[];
+  readonly selectedVariableId: string;
+  readonly onSelectVariable: (id: string) => void;
+  readonly pauseOnChange: boolean;
+  readonly onPauseOnChange: (value: boolean) => void;
+  readonly snapshot: DebugSnapshot | undefined;
+}) {
+  const history = snapshot?.history[selectedVariableId] ?? [];
+  return (
+    <section className="studio-debugger" aria-label={copy.debuggerTitle}>
+      <h3>{copy.debuggerTitle}</h3>
+      <label>
+        {copy.watchVariable}
+        <select
+          value={selectedVariableId}
+          onChange={(event) => onSelectVariable(event.currentTarget.value)}
+        >
+          <option value="">{copy.watchNone}</option>
+          {variables.map((variable) => (
+            <option key={variable.id} value={variable.id}>
+              {variable.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={pauseOnChange}
+          disabled={selectedVariableId === ""}
+          onChange={(event) => onPauseOnChange(event.currentTarget.checked)}
+        />
+        {copy.pauseOnChange}
+      </label>
+      {history.length === 0 ? (
+        <p>{copy.debugNoHistory}</p>
+      ) : (
+        <ol aria-label={copy.watchVariable}>
+          {history.map((point) => (
+            <li key={point.frameIndex}>
+              #{point.step}: {point.value}
             </li>
           ))}
         </ol>
@@ -1337,6 +1397,19 @@ export function Workbench({
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
   const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
   const [playing, setPlaying] = useState(false);
+  const playingRef = useRef(false);
+  const pausedReasonRef = useRef<string | undefined>();
+  const [breakpointBlockIds, setBreakpointBlockIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const breakpointBlockIdsRef = useRef<ReadonlySet<string>>(breakpointBlockIds);
+  const [selectedWatchId, setSelectedWatchId] = useState("");
+  const selectedWatchIdRef = useRef("");
+  const [pauseOnChange, setPauseOnChange] = useState(false);
+  const pauseOnChangeRef = useRef(false);
+  const [debugSnapshot, setDebugSnapshot] = useState<DebugSnapshot | undefined>();
+  const debugSnapshotRef = useRef<DebugSnapshot | undefined>();
+  const previousProgramHash = useRef<string | undefined>();
   const [programHash, setProgramHash] = useState<string | undefined>();
   const [selection, setSelection] = useState<SelectionState>({ include: [], overrides: {} });
   const [sync, setSync] = useState<SyncView>({});
@@ -1369,6 +1442,17 @@ export function Workbench({
       }
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
+        if (
+          previousProgramHash.current !== undefined &&
+          previousProgramHash.current !== message.programHash
+        ) {
+          breakpointBlockIdsRef.current = new Set();
+          setBreakpointBlockIds(breakpointBlockIdsRef.current);
+          debugSnapshotRef.current = undefined;
+          setDebugSnapshot(undefined);
+          pausedReasonRef.current = undefined;
+        }
+        previousProgramHash.current = message.programHash;
         setPendingVariableDelete(undefined);
         setPendingListDelete(undefined);
         setProgramHash(message.programHash);
@@ -1391,9 +1475,13 @@ export function Workbench({
       }
       if (message.type === "executionState") {
         setExecution(message);
-        setStatus(`${message.status}: ${message.stepsUsed} ${copy.steps}`);
+        setStatus(
+          pausedReasonRef.current ?? `${message.status}: ${message.stepsUsed} ${copy.steps}`,
+        );
         if (message.status === "completed" || message.status === "stopped") {
+          playingRef.current = false;
           setPlaying(false);
+          pausedReasonRef.current = undefined;
         }
         return;
       }
@@ -1403,6 +1491,28 @@ export function Workbench({
       }
       if (message.type === "stageFrame") {
         setStageFrame(message.frame);
+        const advance = advanceDebugSession(
+          debugSnapshotRef.current,
+          message.frame,
+          breakpointBlockIdsRef.current,
+        );
+        debugSnapshotRef.current = advance.snapshot;
+        setDebugSnapshot(advance.snapshot);
+        if (playingRef.current && advance.breakpointBlockId !== undefined) {
+          playingRef.current = false;
+          setPlaying(false);
+          pausedReasonRef.current = copy.debugPausedBlock;
+          setStatus(copy.debugPausedBlock);
+        } else if (
+          playingRef.current &&
+          pauseOnChangeRef.current &&
+          advance.changedVariableIds.includes(selectedWatchIdRef.current)
+        ) {
+          playingRef.current = false;
+          setPlaying(false);
+          pausedReasonRef.current = copy.debugPausedVariable;
+          setStatus(copy.debugPausedVariable);
+        }
         return;
       }
       if (message.type === "actors") {
@@ -1539,12 +1649,15 @@ export function Workbench({
   };
 
   const execute = (command: ExecutionCommand) => {
+    pausedReasonRef.current = undefined;
     if (command === "run") {
+      playingRef.current = true;
       setPlaying(true);
       postExecution("step");
       return;
     }
-    if (command === "stop" || command === "reset") {
+    if (command === "step" || command === "stop" || command === "reset") {
+      playingRef.current = false;
       setPlaying(false);
     }
     postExecution(command);
@@ -2143,6 +2256,14 @@ export function Workbench({
               selectedExpression={selectedExpression}
               selectedNumeric={selectedNumeric}
               onIntent={post}
+              breakpointBlockIds={breakpointBlockIds}
+              onToggleBreakpoint={(id) => {
+                const next = new Set(breakpointBlockIdsRef.current);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                breakpointBlockIdsRef.current = next;
+                setBreakpointBlockIds(next);
+              }}
               onAnnounce={announce}
               focusRequest={focusRequest}
               ghosts={agentUi.proposal === undefined ? undefined : anchored.ghosts}
@@ -2177,6 +2298,25 @@ export function Workbench({
           hidden={workspaceView !== "review"}
         >
           <h2>{copy.evidenceTitle}</h2>
+          <VisualDebuggerPanel
+            copy={copy}
+            variables={workspace?.variables ?? []}
+            selectedVariableId={selectedWatchId}
+            onSelectVariable={(id) => {
+              selectedWatchIdRef.current = id;
+              setSelectedWatchId(id);
+              if (id === "") {
+                pauseOnChangeRef.current = false;
+                setPauseOnChange(false);
+              }
+            }}
+            pauseOnChange={pauseOnChange}
+            onPauseOnChange={(value) => {
+              pauseOnChangeRef.current = value;
+              setPauseOnChange(value);
+            }}
+            snapshot={debugSnapshot}
+          />
           <EventTracePanel copy={copy} state={execution} selectedActorId={selectedActorId} />
           <ValidationPanel copy={copy} issues={validationIssues} />
         </section>

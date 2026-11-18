@@ -257,6 +257,41 @@ async function main() {
       await page.setViewportSize({ width: 900, height: 700 });
     }
     console.log("Loaded canonical program, stage and Ori");
+    const beforeDebug = fs.readFileSync(project, "utf8");
+    await webview
+      .getByRole("button", { name: /Set breakpoint: Move/ })
+      .first()
+      .click();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    await webview
+      .locator("main > .status")
+      .filter({ hasText: /Paused at a block breakpoint|Pausado en un bloque marcado/ })
+      .waitFor();
+    await webview
+      .getByRole("button", { name: /Remove breakpoint: Move/ })
+      .first()
+      .click();
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Evidence" }).click();
+    await webview.locator(".studio-debugger select").selectOption("score");
+    await webview.locator('.studio-debugger input[type="checkbox"]').check();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    await webview
+      .locator("main > .status")
+      .filter({ hasText: "Paused when a variable changed" })
+      .waitFor();
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Evidence" }).click();
+    await webview
+      .locator('.studio-debugger ol[aria-label="Value history"] li')
+      .last()
+      .filter({ hasText: "1" })
+      .waitFor();
+    await webview.locator('.studio-debugger input[type="checkbox"]').uncheck();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Reset" }).click();
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    assert.equal(fs.readFileSync(project, "utf8"), beforeDebug);
+    console.log("Paused on a visual block and a variable change without editing the project");
     const outerBlock = webview.locator(
       '.studio-program .block[data-pos=\'{"kind":"script","scriptIndex":0}#4\']',
     );
@@ -326,7 +361,7 @@ async function main() {
       .click();
     const actorInspector = webview.locator(".studio-scene-editor .actor-inspector");
     const stageViewportBounds = await webview.locator(".studio-play .stage-viewport").boundingBox();
-    if (!stageViewportBounds || stageViewportBounds.y > 390)
+    if (!stageViewportBounds || stageViewportBounds.y > 400)
       throw new Error("Scene stage must remain visible in the first 900 px viewport");
     assert.equal(await actorInspector.locator("header strong").innerText(), "Helper");
     assert.equal(

@@ -15,6 +15,7 @@ export type {
 } from "./adapter.js";
 export {
   BlockEditorAdapterError,
+  blockIdForNode,
   getCanonicalNodeIdForBlock,
   programToWorkspace,
   workspaceToProgram,
