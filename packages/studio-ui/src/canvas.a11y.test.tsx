@@ -1633,6 +1633,69 @@ describe("canvas keyboard and screen reader behaviour", () => {
     });
     expect(placed).toEqual([]);
   });
+  it("chooses a validated backdrop visually and disables changes while running", () => {
+    const onBackdrop = vi.fn();
+    const frame = (running: boolean) => ({
+      state: {
+        sprite: { x: 0, y: 0, heading: 0, radius: 10 },
+        goal: { x: 10, y: 10, radius: 10 },
+        viewport: { width: 240, height: 180 },
+        backdropId: "backdrop:forest",
+      },
+      frameIndex: 0,
+      frameCount: 1,
+      step: 0,
+      running,
+      reachedGoal: false,
+    });
+    const renderPicker = (running: boolean) =>
+      act(() =>
+        root.render(
+          <StagePanel
+            copy={copyFor("en")}
+            selectedActorId={undefined}
+            showBackdropPicker
+            editingDisabled={running}
+            onBackdrop={onBackdrop}
+            assets={[
+              {
+                id: "backdrop:forest",
+                name: "Forest",
+                kind: "backdrop",
+                tags: ["nature"],
+                source: "builtin:kids-gallery-backdrop:forest",
+              },
+              {
+                id: "backdrop:garden",
+                name: "Garden",
+                kind: "backdrop",
+                tags: ["nature"],
+                source: "builtin:kids-gallery-backdrop:garden",
+              },
+              { id: "costume:mika", name: "Mika", kind: "costume", tags: ["animals"] },
+            ]}
+            frame={frame(running)}
+          />,
+        ),
+      );
+    renderPicker(false);
+    expect(host.querySelector(".stage-backdrop-picker summary img")).not.toBeNull();
+    expect(host.querySelectorAll(".stage-backdrop-options button")).toHaveLength(2);
+    expect(
+      host
+        .querySelector('.stage-backdrop-options button[aria-pressed="true"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Choose backdrop: Forest");
+    act(() =>
+      host.querySelector<HTMLButtonElement>('[aria-label="Choose backdrop: Garden"]')?.click(),
+    );
+    expect(onBackdrop).toHaveBeenCalledWith("backdrop:garden");
+    renderPicker(true);
+    expect(
+      host.querySelector<HTMLButtonElement>('[aria-label="Choose backdrop: Garden"]')?.disabled,
+    ).toBe(true);
+  });
+
   it("drops known costumes and backdrops onto their stage targets", () => {
     const applied: string[] = [];
     const backdrops: string[] = [];

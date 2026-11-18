@@ -175,6 +175,30 @@ async function main() {
     );
     console.log("Nested and outdented a canonical block with the keyboard");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
+    const backdropPicker = webview.locator(".stage-panel .stage-backdrop-picker");
+    await backdropPicker.locator("summary").click();
+    if ((await backdropPicker.locator(".stage-backdrop-options button").count()) < 9)
+      throw new Error("Stage must expose the bundled visual backdrop gallery");
+    await backdropPicker.getByRole("button", { name: "Choose backdrop: Forest" }).click();
+    await waitForProject(
+      (envelope) => envelope.project?.metadata?.stage?.backdropId === "backdrop:forest",
+    );
+    await webview.locator('.stage-backdrop[data-backdrop-id="backdrop:forest"]').waitFor();
+    await backdropPicker.locator("summary").click();
+    if (process.env.AGORIX_CAPTURE_BACKDROP_PICKER === "1") {
+      for (const [width, height] of [
+        [900, 700],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: path.join(repoRoot, `docs/product/assets/studio-vsix-backdrop-picker-${width}.png`),
+        });
+      }
+      await page.setViewportSize({ width: 900, height: 700 });
+    }
+    await backdropPicker.locator("summary").click();
+    console.log("Selected and persisted a visual backdrop from the stage");
     await webview
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Sounds" })
@@ -518,6 +542,7 @@ async function main() {
     if (!reopened) throw new Error("Web did not persist the imported project");
     assert.deepEqual(reopened.program, saved.project.program);
     assert.deepEqual(reopened.metadata.actors, saved.project.metadata.actors);
+    assert.equal(reopened.metadata.stage.backdropId, "backdrop:forest");
     const expectedAssets = saved.project.metadata.assets.map((asset) => ({
       ...asset,
       source: asset.source.startsWith("embedded:") ? saved.media[asset.id] : asset.source,
