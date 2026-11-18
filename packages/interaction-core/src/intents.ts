@@ -306,7 +306,10 @@ export type Intent =
         | "add"
         | "subtract"
         | "multiply"
-        | "divide";
+        | "divide"
+        | "modulo"
+        | "random"
+        | "randomInteger";
       readonly referenceId?: string;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
@@ -964,12 +967,38 @@ export function intentToChange(
         case "subtract":
         case "multiply":
         case "divide":
+        case "modulo":
+        case "random":
+        case "randomInteger":
           replacement = {
             id: current.id,
-            type: `operator_${intent.reporter}`,
+            type: `operator_${intent.reporter === "randomInteger" ? "random_integer" : intent.reporter}`,
             inputs: {
-              left: { id: `${current.id}:left`, type: "literal_number", fields: { value: 0 } },
-              right: { id: `${current.id}:right`, type: "literal_number", fields: { value: 1 } },
+              ...(intent.reporter === "random" || intent.reporter === "randomInteger"
+                ? {
+                    min: {
+                      id: `${current.id}:min`,
+                      type: "literal_number" as const,
+                      fields: { value: 0 },
+                    },
+                    max: {
+                      id: `${current.id}:max`,
+                      type: "literal_number" as const,
+                      fields: { value: 10 },
+                    },
+                  }
+                : {
+                    left: {
+                      id: `${current.id}:left`,
+                      type: "literal_number" as const,
+                      fields: { value: 0 },
+                    },
+                    right: {
+                      id: `${current.id}:right`,
+                      type: "literal_number" as const,
+                      fields: { value: 1 },
+                    },
+                  }),
             },
           };
           break;
