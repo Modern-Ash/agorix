@@ -62,6 +62,7 @@ export const STUDIO_COMPARISON_OPERAND_SOURCES = [
   "yPosition",
   "distanceToActor",
   "randomInteger",
+  "mathFunction",
 ] as const;
 
 function statementsAt(
@@ -166,8 +167,15 @@ export type Intent =
       readonly type: "setComparisonNestedNumber";
       readonly location: StatementLocation;
       readonly side: "left" | "right";
-      readonly field: "index" | "min" | "max";
+      readonly field: "index" | "min" | "max" | "value";
       readonly value: number;
+    }
+  | {
+      readonly type: "setComparisonMathFunction";
+      readonly location: StatementLocation;
+      readonly side: "left" | "right";
+      readonly logicalSide?: "left" | "right" | "value";
+      readonly function: MathFunction;
     }
   | {
       readonly type: "setConditionBoolean";
@@ -218,7 +226,7 @@ export type Intent =
       readonly location: StatementLocation;
       readonly side: "left" | "right" | "value";
       readonly operand: "left" | "right";
-      readonly field: "index" | "min" | "max";
+      readonly field: "index" | "min" | "max" | "value";
       readonly value: number;
     }
   | { readonly type: "addVariable"; readonly name: string }
@@ -1222,7 +1230,9 @@ export function intentToChange(
             ? intent.field !== "index"
             : current.type === "operator_random_integer"
               ? intent.field !== "min" && intent.field !== "max"
-              : true
+              : current.type === "operator_math_function"
+                ? intent.field !== "value"
+                : true
         )
           return undefined;
         const nested = current.inputs?.[intent.field];
@@ -1291,6 +1301,16 @@ export function intentToChange(
               inputs: {
                 min: { id: `${current.id}:min`, type: "literal_number", fields: { value: 1 } },
                 max: { id: `${current.id}:max`, type: "literal_number", fields: { value: 10 } },
+              },
+            };
+            break;
+          case "mathFunction":
+            next = {
+              id: current.id,
+              type: "operator_math_function",
+              fields: { function: "abs" },
+              inputs: {
+                value: { id: `${current.id}:value`, type: "literal_number", fields: { value: 0 } },
               },
             };
             break;
@@ -1388,6 +1408,16 @@ export function intentToChange(
             },
           };
           break;
+        case "mathFunction":
+          next = {
+            id: current.id,
+            type: "operator_math_function",
+            fields: { function: "abs" },
+            inputs: {
+              value: { id: `${current.id}:value`, type: "literal_number", fields: { value: 0 } },
+            },
+          };
+          break;
       }
       return {
         type: "editBlock",
@@ -1397,6 +1427,68 @@ export function intentToChange(
           inputs: {
             ...block.inputs,
             condition: { ...condition, inputs: { ...condition.inputs, [intent.side]: next } },
+          },
+        },
+      };
+    }
+    case "setComparisonMathFunction": {
+      if (
+        workspace === undefined ||
+        !(["abs", "round", "floor", "ceiling"] as readonly string[]).includes(intent.function)
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const condition = block?.inputs?.condition;
+      if (
+        (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
+        condition === undefined ||
+        Array.isArray(condition)
+      )
+        return undefined;
+      let comparison: BlockNode;
+      if (intent.logicalSide === undefined) comparison = condition;
+      else {
+        if (
+          !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
+          (condition.type === "operator_not"
+            ? intent.logicalSide !== "value"
+            : intent.logicalSide === "value")
+        )
+          return undefined;
+        const nested = condition.inputs?.[intent.logicalSide];
+        if (nested === undefined || Array.isArray(nested)) return undefined;
+        comparison = nested;
+      }
+      if (!(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(comparison.type))
+        return undefined;
+      const operand = comparison.inputs?.[intent.side];
+      if (
+        operand === undefined ||
+        Array.isArray(operand) ||
+        operand.type !== "operator_math_function"
+      )
+        return undefined;
+      const nextComparison = {
+        ...comparison,
+        inputs: {
+          ...comparison.inputs,
+          [intent.side]: { ...operand, fields: { ...operand.fields, function: intent.function } },
+        },
+      };
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            condition:
+              intent.logicalSide === undefined
+                ? nextComparison
+                : {
+                    ...condition,
+                    inputs: { ...condition.inputs, [intent.logicalSide]: nextComparison },
+                  },
           },
         },
       };
@@ -1419,7 +1511,9 @@ export function intentToChange(
           ? intent.field !== "index"
           : operand.type === "operator_random_integer"
             ? intent.field !== "min" && intent.field !== "max"
-            : true
+            : operand.type === "operator_math_function"
+              ? intent.field !== "value"
+              : true
       )
         return undefined;
       const current = operand.inputs?.[intent.field];

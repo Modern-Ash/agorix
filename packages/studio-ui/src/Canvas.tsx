@@ -1587,13 +1587,15 @@ export function Canvas({
                             ? "listItem"
                             : operand.type === "operator_random_integer"
                               ? "randomInteger"
-                              : operand.type === "sensing_x_position"
-                                ? "xPosition"
-                                : operand.type === "sensing_y_position"
-                                  ? "yPosition"
-                                  : operand.type === "sensing_distance_to_actor"
-                                    ? "distanceToActor"
-                                    : "other";
+                              : operand.type === "operator_math_function"
+                                ? "mathFunction"
+                                : operand.type === "sensing_x_position"
+                                  ? "xPosition"
+                                  : operand.type === "sensing_y_position"
+                                    ? "yPosition"
+                                    : operand.type === "sensing_distance_to_actor"
+                                      ? "distanceToActor"
+                                      : "other";
                   const sideLabel = side === "left" ? copy.conditionLeft : copy.conditionRight;
                   const referenceId =
                     source === "variable"
@@ -1646,6 +1648,7 @@ export function Canvas({
                             <option value="listItem">{copy.listItem}</option>
                           ) : null}
                           <option value="randomInteger">{copy.operatorRandomInteger}</option>
+                          <option value="mathFunction">{copy.operatorMathFunction}</option>
                           <option value="xPosition">{copy.positionX}</option>
                           <option value="yPosition">{copy.positionY}</option>
                           {actors.length > 0 ? (
@@ -1687,10 +1690,38 @@ export function Canvas({
                           </select>
                         </label>
                       ) : null}
-                      {(source === "listItem" || source === "randomInteger") &&
+                      {source === "mathFunction" ? (
+                        <label>
+                          <span>{copy.mathFunction}</span>
+                          <select
+                            aria-label={`${copy.condition}: ${sideLabel} ${copy.mathFunction}`}
+                            value={String(operand.fields?.function ?? "abs")}
+                            onChange={(event) =>
+                              onIntent({
+                                type: "setComparisonMathFunction",
+                                location: block.location,
+                                side,
+                                function: event.currentTarget.value as
+                                  "abs" | "round" | "floor" | "ceiling",
+                              })
+                            }
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            <option value="abs">{copy.mathAbs}</option>
+                            <option value="round">{copy.mathRound}</option>
+                            <option value="floor">{copy.mathFloor}</option>
+                            <option value="ceiling">{copy.mathCeiling}</option>
+                          </select>
+                        </label>
+                      ) : null}
+                      {(source === "listItem" ||
+                        source === "randomInteger" ||
+                        source === "mathFunction") &&
                         (source === "listItem"
                           ? (["index"] as const)
-                          : (["min", "max"] as const)
+                          : source === "mathFunction"
+                            ? (["value"] as const)
+                            : (["min", "max"] as const)
                         ).map((field) => {
                           const nested = operand.inputs?.[field];
                           if (
@@ -1703,9 +1734,11 @@ export function Canvas({
                           const label =
                             field === "index"
                               ? copy.listIndex
-                              : field === "min"
-                                ? copy.rangeMin
-                                : copy.rangeMax;
+                              : field === "value"
+                                ? copy.mathValue
+                                : field === "min"
+                                  ? copy.rangeMin
+                                  : copy.rangeMax;
                           return (
                             <label key={field}>
                               <span>{label}</span>
