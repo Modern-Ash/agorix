@@ -73,6 +73,8 @@ The Scene stage exposes its current backdrop as artwork and opens a thumbnail pi
 
 The stage also offers **+ Character** beside the backdrop control. It opens the full visual costume gallery, clears stale filters and keeps the stage in view. The learner chooses a costume card to create the actor and its owned start script explicitly.
 
+At 900 px the component palette is an explicit drawer. The category launcher and Show tools control open it; entering Scene or Evidence closes it, and returning to Build keeps it closed until the learner opens it again. Run and the stage remain reachable after a tab change, while the palette can still be opened for a drag or insertion and closes after insertion. At wider sizes the palette remains a docked tool area in Build.
+
 | 900 × 700                                                               | 1440 × 900                                                                |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | ![Character entry at 900](./assets/studio-vsix-character-entry-900.png) | ![Character entry at 1440](./assets/studio-vsix-character-entry-1440.png) |
