@@ -6,6 +6,20 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("accepts bounded custom-block authoring and rejects malformed requests", () => {
+    for (const intent of [
+      { type: "createProcedure", scriptIndex: 0, name: "Wave", count: 2 },
+      { type: "renameProcedure", scriptIndex: 0, procedureId: "proc:wave", name: "Wave again" },
+      { type: "deleteProcedure", scriptIndex: 0, procedureId: "proc:wave", inlineCalls: true },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    for (const intent of [
+      { type: "createProcedure", scriptIndex: 0, name: "!", count: 2 },
+      { type: "createProcedure", scriptIndex: 0, name: "Wave", count: 21 },
+      { type: "deleteProcedure", scriptIndex: 0, procedureId: "proc:wave" },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
+  });
   it("accepts bounded math function controls in direct and logical comparisons", () => {
     const location = { container: script, index: 0 };
     for (const intent of [

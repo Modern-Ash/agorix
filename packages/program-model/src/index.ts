@@ -53,6 +53,8 @@ export type {
 } from "./schema.js";
 export { SCHEMA_VERSION } from "./schema.js";
 export { procedureIdentifiers } from "./procedures.js";
+export { editProgramProcedure } from "./procedureAuthoring.js";
+export type { ProcedureEdit } from "./procedureAuthoring.js";
 export {
   analyzeProgramLoops,
   analyzeProgramSharedWrites,

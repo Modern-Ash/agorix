@@ -8,6 +8,7 @@ import { intentToChange, type AgentAnchorRef, type AgentVerb } from "@agorix/int
 import {
   ProgramValidationError,
   analyzeProgramBeforePlay,
+  editProgramProcedure,
   validateProgram,
   validEmbeddedImageSource,
   validEmbeddedSoundSource,
@@ -249,6 +250,9 @@ function isKnownFailure(error: unknown): boolean {
 
 function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): boolean {
   return (
+    intent.intent.type === "createProcedure" ||
+    intent.intent.type === "renameProcedure" ||
+    intent.intent.type === "deleteProcedure" ||
     intent.intent.type === "insertBlock" ||
     intent.intent.type === "moveBlock" ||
     intent.intent.type === "deleteBlock" ||
@@ -479,6 +483,48 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         }
         if (isMutatingIntent(message) && message.baseHash !== programSemanticHash(program)) {
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
+        }
+        if (
+          intent.type === "createProcedure" ||
+          intent.type === "renameProcedure" ||
+          intent.type === "deleteProcedure"
+        ) {
+          try {
+            const existingIds = new Set([
+              ...program.scripts.map((script) => script.id),
+              ...(program.variables ?? []).map((variable) => variable.id),
+              ...(program.lists ?? []).map((list) => list.id),
+              ...program.scripts.flatMap((script) =>
+                (script.procedures ?? []).map((procedure) => procedure.id),
+              ),
+            ]);
+            let procedureId = "";
+            if (intent.type === "createProcedure") {
+              for (let attempt = 0; attempt < 100; attempt += 1) {
+                const candidate = `proc:${newBlockId()}`;
+                if (!existingIds.has(candidate)) {
+                  procedureId = candidate;
+                  break;
+                }
+              }
+              if (!procedureId) throw new RangeError("unable to allocate custom block id");
+            }
+            const next = editProgramProcedure(
+              program,
+              intent.type === "createProcedure"
+                ? { ...intent, type: "create", id: procedureId }
+                : intent.type === "renameProcedure"
+                  ? { ...intent, type: "rename" }
+                  : { ...intent, type: "delete" },
+            );
+            await port.commit(next, `Workbench: ${intent.type}`);
+            edits += 1;
+            return snapshot();
+          } catch {
+            return [
+              { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+            ];
+          }
         }
         let assetMetadata: ProjectMetadata | undefined;
         if (intent.type === "setTextField") {

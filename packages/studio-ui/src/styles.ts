@@ -88,6 +88,13 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .list-management-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
 .list-management-actions label { flex: 1 1 100%; }
 .list-management-actions input { width: 100%; box-sizing: border-box; }
+.procedure-tools { border-top: 1px solid var(--vscode-panel-border); padding-top: 8px; }
+.procedure-tools summary { cursor: pointer; font-weight: 600; }
+.procedure-tools form, .procedure-tools li { display: grid; gap: 6px; margin-top: 8px; }
+.procedure-tools label { display: grid; gap: 3px; }
+.procedure-tools input { min-width: 0; width: 100%; box-sizing: border-box; }
+.procedure-preview ol, .procedure-tools ul { margin: 4px 0; padding-left: 20px; }
+.procedure-tools li { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 8px; }
 .variable-management summary { cursor: pointer; }
 .variable-management-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
 .variable-management-actions label { flex: 1 1 100%; }

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
 import { Palette } from "./Palette.js";
+import { ProcedureTools } from "./ProcedureTools.js";
 import { SceneLibrary } from "./SceneLibrary.js";
 import {
   ActorInspector,
@@ -42,6 +43,32 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("shows custom-block creation beside the selected script and an explicit delete decision", () => {
+    const created = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc:wave" }],
+          procedures: [{ id: "proc:wave", name: "Wave", body: [{ type: "move", steps: 3 }] }],
+        },
+      ],
+    }).workspace;
+    const html = renderToStaticMarkup(
+      <ProcedureTools
+        workspace={created}
+        scriptIndex={0}
+        copy={copyFor("en")}
+        onIntent={() => undefined}
+      />,
+    );
+    expect(html).toContain("My blocks");
+    expect(html).toContain("Create from last blocks");
+    expect(html).toContain("Blocks to turn into one call");
+    expect(html).toContain("Wave");
+    expect(html).toContain("Delete block");
+  });
   it("renders bounded pre-play finding cards with inspect and Ori actions", () => {
     const copy = copyFor("en");
     const markup = renderToStaticMarkup(

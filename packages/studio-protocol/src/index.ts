@@ -1122,6 +1122,38 @@ function parseIntent(value: unknown): Intent | undefined {
     return undefined;
   }
   switch (value["type"]) {
+    case "createProcedure": {
+      const scriptIndex = value["scriptIndex"];
+      const count = value["count"];
+      const name = value["name"];
+      return isIndex(scriptIndex) &&
+        isIndex(count) &&
+        count >= 1 &&
+        count <= 20 &&
+        typeof name === "string" &&
+        /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u.test(name)
+        ? { type: "createProcedure", scriptIndex, count, name }
+        : undefined;
+    }
+    case "renameProcedure": {
+      const scriptIndex = value["scriptIndex"];
+      const procedureId = value["procedureId"];
+      const name = value["name"];
+      return isIndex(scriptIndex) &&
+        isSafeId(procedureId) &&
+        typeof name === "string" &&
+        /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u.test(name)
+        ? { type: "renameProcedure", scriptIndex, procedureId, name }
+        : undefined;
+    }
+    case "deleteProcedure": {
+      const scriptIndex = value["scriptIndex"];
+      const procedureId = value["procedureId"];
+      const inlineCalls = value["inlineCalls"];
+      return isIndex(scriptIndex) && isSafeId(procedureId) && typeof inlineCalls === "boolean"
+        ? { type: "deleteProcedure", scriptIndex, procedureId, inlineCalls }
+        : undefined;
+    }
     case "insertBlock": {
       const to = parseLocation(value["to"]);
       const blockType = (BLOCK_TYPES as readonly unknown[]).includes(value["blockType"])
