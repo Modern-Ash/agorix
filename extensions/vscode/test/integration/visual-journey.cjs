@@ -117,6 +117,13 @@ async function main() {
       throw new Error("Build must show program, stage and Ori side by side in the first viewport");
     }
     assert.equal(await webview.locator(".studio-tools").isVisible(), false);
+    const componentLauncher = webview.locator(".studio-component-launcher");
+    assert.equal(await componentLauncher.isVisible(), true);
+    await componentLauncher.getByRole("button", { name: "Motion" }).click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), true);
+    assert.equal(await webview.locator(".studio-tools .palette-section").count(), 1);
+    await webview.locator(".studio-program-heading button").click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), false);
     const resize = webview.locator(".studio-ori-resize");
     const resizeBounds = await resize.boundingBox();
     if (!resizeBounds) throw new Error("Ori resize handle is not visible");
@@ -535,7 +542,7 @@ async function main() {
     await webview.locator('.palette button[aria-label="math function"]').click();
     await webview.locator(".studio-program .numeric-place").first().click();
     const mathFunction = webview.locator(".studio-program .math-function-fields").first();
-    await mathFunction.getByRole("combobox").selectOption("round");
+    await mathFunction.getByRole("combobox", { name: / Function$/ }).selectOption("round");
     await waitForProject((envelope) =>
       envelope.project?.program?.scripts
         ?.find((script) => script.id === "main")

@@ -14,7 +14,11 @@ puts the editable canonical program beside Run and the stage, Ori at the right,
 and detailed execution evidence in its own tab. This keeps the edit, run,
 observe loop in the first viewport at 900 × 700 and wider. Numeric block values are edited directly
 on the block and committed through the canonical workspace transaction, with
-stale edits and invalid values refused. The block palette is one click from the program heading at ordinary window widths and opens over the editor without shrinking it. At wider widths it is a visible toolbox with
+stale edits and invalid values refused. At 900 × 700 a compact, color-coded
+launcher in the program shows Motion, Looks, Control and Sensing. Choosing a
+category opens its visual blocks in the toolbox; the program heading opens the
+full catalogue. The palette overlays the editor at this width without shrinking
+it. At wider widths it is a visible toolbox with
 drag handles, a click-to-add path and visible insertion targets while dragging.
 An empty script shows its insertion target immediately. Mission, actors and
 assets live in a disclosure section. The
