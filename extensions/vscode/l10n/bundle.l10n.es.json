@@ -27,7 +27,7 @@
   "Agorix proposal: {0}": "Propuesta de Agorix: {0}",
   "Agorix starter": "Punto de partida de Agorix",
   "Agorix validation {0}; {1} projection diagnostics.": "Validación de Agorix: {0}; {1} diagnósticos de proyección.",
-  "Applied proposal. Use Undo Proposal to restore it.": "Propuesta aplicada. Usá «Deshacer la propuesta» para volver atrás.",
+  "Applied proposal. Use Undo Studio Change to restore it.": "Propuesta aplicada. Usá «Deshacer cambio de Studio» para volver atrás.",
   "Applied modified proposal.": "Se aplicó la propuesta modificada.",
   "Apply": "Aplicar",
   "Apply your modified proposal?": "¿Aplicar tu propuesta modificada?",

@@ -330,6 +330,10 @@ export function activate(context: vscode.ExtensionContext): void {
     afterCanonicalProgramChange();
   };
   const surfaceCommands = createStudioSurfaceCommandHandlers({
+    historyState: () => ({
+      canUndo: session.undoStack.length > 0,
+      canRedo: session.redoStack.length > 0,
+    }),
     context,
     hub,
     requireProject,

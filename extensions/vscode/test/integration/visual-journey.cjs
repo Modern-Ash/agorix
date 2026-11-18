@@ -339,6 +339,22 @@ async function main() {
       ),
     );
     await webview.locator('.stage-sprite[data-costume-id="costume:mika"]').waitFor();
+    const undoChange = webview.getByRole("button", { name: "Undo change" });
+    const redoChange = webview.getByRole("button", { name: "Redo change" });
+    await undoChange.click();
+    await waitForProject((envelope) =>
+      envelope.project?.metadata?.actors?.items?.some(
+        (actor) => actor.name === "Mika" && actor.costumeId === "costume:pip",
+      ),
+    );
+    await webview.locator('.stage-sprite[data-costume-id="costume:pip"]').waitFor();
+    await redoChange.click();
+    await waitForProject((envelope) =>
+      envelope.project?.metadata?.actors?.items?.some(
+        (actor) => actor.name === "Mika" && actor.costumeId === "costume:mika",
+      ),
+    );
+    await webview.locator('.stage-sprite[data-costume-id="costume:mika"]').waitFor();
     if (process.env.AGORIX_CAPTURE_COSTUME_PICKER === "1") {
       for (const [width, height] of [
         [900, 700],

@@ -8,6 +8,18 @@ const script = { kind: "script", scriptIndex: 0 } as const;
 describe("studio-protocol", () => {
   it("opens the code projection through an explicit workspace message", () => {
     expect(parseUiMessage({ schema, type: "openCode" })).toEqual({ schema, type: "openCode" });
+    expect(parseUiMessage({ schema, type: "historyCommand", command: "undo" })).toEqual({
+      schema,
+      type: "historyCommand",
+      command: "undo",
+    });
+    expect(parseUiMessage({ schema, type: "historyCommand", command: "erase" })).toBeUndefined();
+    expect(
+      parseHostMessage({ schema, type: "historyState", canUndo: true, canRedo: false }),
+    ).toEqual({ schema, type: "historyState", canUndo: true, canRedo: false });
+    expect(
+      parseHostMessage({ schema, type: "historyState", canUndo: "yes", canRedo: false }),
+    ).toBeUndefined();
     expect(parseUiMessage({ schema: "other", type: "openCode" })).toBeUndefined();
   });
   it("accepts advanced motion and timing blocks only through typed insert intents", () => {

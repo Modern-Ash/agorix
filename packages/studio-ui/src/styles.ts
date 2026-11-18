@@ -386,6 +386,9 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-editor-tabs button[aria-pressed="true"] { border-bottom-color: var(--vscode-focusBorder); color: var(--vscode-foreground); font-weight: 700; }
 .studio-editor-tabs .studio-code-tab { margin-left: auto; color: var(--vscode-textLink-foreground, var(--vscode-focusBorder)); }
 .studio-play { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 0; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editorBackground, var(--vscode-editor-background)); }
+.studio-history-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.studio-history-actions button { min-height: 28px; padding: 3px 8px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
+.studio-history-actions button:disabled { opacity: .45; cursor: default; }
 .studio-play .execution-toolbar, .studio-play .stage-panel { margin: 0; }
 .studio-play .stage-viewport { min-height: clamp(260px, 36vh, 420px); max-height: none; }
 .studio-play .stage-panel[data-empty="true"] .stage-viewport { min-height: 260px; }

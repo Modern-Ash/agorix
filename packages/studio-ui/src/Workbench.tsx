@@ -1286,6 +1286,7 @@ export function Workbench({
   const [pendingListDelete, setPendingListDelete] = useState<string | undefined>();
   const [status, setStatus] = useState("");
   const [execution, setExecution] = useState<ExecutionState | undefined>();
+  const [history, setHistory] = useState({ canUndo: false, canRedo: false });
   const [stageFrame, setStageFrame] = useState<StageFrameMessage["frame"] | undefined>();
   const [actors, setActors] = useState<ActorsMessage | undefined>();
   const [selectedActorId, setSelectedActorId] = useState<string | undefined>();
@@ -1387,6 +1388,10 @@ export function Workbench({
         if (message.status === "completed" || message.status === "stopped") {
           setPlaying(false);
         }
+        return;
+      }
+      if (message.type === "historyState") {
+        setHistory({ canUndo: message.canUndo, canRedo: message.canRedo });
         return;
       }
       if (message.type === "stageFrame") {
@@ -1978,6 +1983,34 @@ export function Workbench({
           </button>
         </nav>
         <section className="studio-play" aria-label={copy.evidenceTitle}>
+          <div className="studio-history-actions" role="group" aria-label={copy.historyUndo}>
+            <button
+              type="button"
+              disabled={!history.canUndo}
+              onClick={() =>
+                bridge.post({
+                  schema: STUDIO_PROTOCOL_VERSION,
+                  type: "historyCommand",
+                  command: "undo",
+                })
+              }
+            >
+              {copy.historyUndo}
+            </button>
+            <button
+              type="button"
+              disabled={!history.canRedo}
+              onClick={() =>
+                bridge.post({
+                  schema: STUDIO_PROTOCOL_VERSION,
+                  type: "historyCommand",
+                  command: "redo",
+                })
+              }
+            >
+              {copy.historyRedo}
+            </button>
+          </div>
           <ExecutionToolbar
             copy={copy}
             disabled={workspace === undefined}

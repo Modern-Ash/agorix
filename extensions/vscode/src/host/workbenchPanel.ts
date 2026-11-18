@@ -75,6 +75,10 @@ async function send(messages: readonly HostMessage[]): Promise<void> {
   }
 }
 
+function historyMessage(port: HostPort): HostMessage {
+  return { schema: STUDIO_PROTOCOL_VERSION, type: "historyState", ...port.historyState() };
+}
+
 function executionMessages(view: unknown): HostMessage[] {
   const candidate = view as Partial<StudioExecutionViewState> | undefined;
   if (
@@ -237,6 +241,13 @@ export function attachWorkbenchPanel(
         await vscode.commands.executeCommand("agorixStudio.openProjection");
         return;
       }
+      if (message.type === "historyCommand") {
+        await vscode.commands.executeCommand(
+          message.command === "undo" ? "agorixStudio.undoProposal" : "agorixStudio.redoProposal",
+        );
+        await send([historyMessage(port)]);
+        return;
+      }
       if (message.type === "stageEvent") {
         const view = port.runStageEvent?.(
           message.event === "keyPressed"
@@ -248,6 +259,7 @@ export function attachWorkbenchPanel(
       }
       if (message.type === "ready") {
         await send(await workbench.handle(message));
+        await send([historyMessage(port)]);
         await send(agentHost.snapshot());
         await send(workbench.syncMessage(hub.getState()));
         await send(
@@ -300,6 +312,7 @@ export function refreshWorkbench(): void {
   if (host !== undefined && agent !== undefined) {
     const messages = [
       ...host.snapshot(),
+      ...(currentPort === undefined ? [] : [historyMessage(currentPort)]),
       ...agent.onProgramChanged(),
       ...(currentHub === undefined ? [] : host.syncMessage(currentHub.getState())),
       ...(currentExecutionView?.() === undefined

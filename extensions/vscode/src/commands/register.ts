@@ -144,8 +144,8 @@ export function registerStudioCommands(
       label: "Reveal Proposal Affected Node",
       body: handlers.revealProposalAffectedNode,
     },
-    { id: "agorixStudio.undoProposal", label: "Undo Proposal", body: handlers.undoProposal },
-    { id: "agorixStudio.redoProposal", label: "Redo Proposal", body: handlers.redoProposal },
+    { id: "agorixStudio.undoProposal", label: "Undo Studio Change", body: handlers.undoProposal },
+    { id: "agorixStudio.redoProposal", label: "Redo Studio Change", body: handlers.redoProposal },
     {
       id: "agorixStudio.showEvidence",
       label: "Show Execution Evidence",
