@@ -444,6 +444,8 @@ export function StagePanel({
   onTransformActor,
   onCostume,
   onBackdrop,
+  showBackdropPicker = false,
+  editingDisabled = false,
   onStageEvent,
 }: {
   readonly copy: StudioUiCopy;
@@ -459,6 +461,8 @@ export function StagePanel({
   ) => void;
   readonly onCostume?: (actorId: string, costumeId: string) => void;
   readonly onBackdrop?: (backdropId: string) => void;
+  readonly showBackdropPicker?: boolean;
+  readonly editingDisabled?: boolean;
   readonly onStageEvent?: (
     event: { event: "keyPressed"; key: string } | { event: "actorClicked"; actorId: string },
   ) => void;
@@ -473,6 +477,7 @@ export function StagePanel({
     y: number;
   }>();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const backdropPickerRef = useRef<HTMLDetailsElement>(null);
   const suppressActorClick = useRef(false);
   const [dragPreview, setDragPreview] = useState<{ actorId: string; x: number; y: number }>();
   const [transformDraft, setTransformDraft] = useState<{
@@ -496,6 +501,7 @@ export function StagePanel({
   };
   const assetNames = new Map(assets.map((asset) => [asset.id, asset.name]));
   const backdropImage = imageForId(state?.backdropId, assets);
+  const backdrops = assets.filter((asset) => asset.kind === "backdrop");
   const visibleVariables = (state?.variables ?? []).filter((variable) => variable.visible);
   const visibleLists = (state?.lists ?? []).filter((list) => list.visible);
   const activeSoundIds = state?.sounds?.activeSoundIds ?? [];
@@ -540,6 +546,48 @@ export function StagePanel({
           )}
         </div>
       </header>
+      {showBackdropPicker && onBackdrop !== undefined && state !== undefined ? (
+        <details ref={backdropPickerRef} className="stage-backdrop-picker">
+          <summary
+            aria-label={`${copy.sceneSelectBackdrop}: ${assetNames.get(state.backdropId ?? "") ?? copy.actorNoCostume}`}
+          >
+            {backdropImage === undefined ? (
+              <span className="stage-backdrop-preview" aria-hidden="true" />
+            ) : (
+              <img className="stage-backdrop-preview" src={backdropImage} alt="" />
+            )}
+            <span>
+              {copy.sceneBackdrops}:{" "}
+              <strong>{assetNames.get(state.backdropId ?? "") ?? copy.actorNoCostume}</strong>
+            </span>
+          </summary>
+          <div className="stage-backdrop-options" role="group" aria-label={copy.sceneBackdrops}>
+            {backdrops.map((asset) => {
+              const image = imageForAsset(asset);
+              return (
+                <button
+                  key={asset.id}
+                  type="button"
+                  aria-label={`${copy.sceneSelectBackdrop}: ${asset.name}`}
+                  aria-pressed={asset.id === state.backdropId}
+                  disabled={editingDisabled}
+                  onClick={() => {
+                    onBackdrop(asset.id);
+                    if (backdropPickerRef.current) backdropPickerRef.current.open = false;
+                  }}
+                >
+                  {image === undefined ? (
+                    <span className="stage-backdrop-thumb" aria-hidden="true" />
+                  ) : (
+                    <img src={image} alt="" />
+                  )}
+                  <span>{asset.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </details>
+      ) : null}
       <div
         ref={viewportRef}
         className="stage-viewport"
@@ -1934,6 +1982,8 @@ export function Workbench({
             onTransformActor={(actorId, patch) => updateActor(actorId, patch)}
             onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
             onBackdrop={updateBackdrop}
+            showBackdropPicker={workspaceView === "scene"}
+            editingDisabled={execution?.status === "running"}
             onStageEvent={(event) =>
               bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "stageEvent", ...event })
             }

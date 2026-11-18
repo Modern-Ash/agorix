@@ -69,6 +69,12 @@ The actor inspector shows the selected costume as artwork. Its expandable visual
 | --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | ![Costume picker at 900](./assets/studio-vsix-costume-picker-900.png) | ![Costume picker at 1440](./assets/studio-vsix-costume-picker-1440.png) |
 
+The Scene stage exposes its current backdrop as artwork and opens a thumbnail picker beside the live preview. Choosing a backdrop persists the project metadata and redraws the idle stage; the installed journey confirms the chosen backdrop after Web import.
+
+| 900 × 700                                                               | 1440 × 900                                                                |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| ![Backdrop picker at 900](./assets/studio-vsix-backdrop-picker-900.png) | ![Backdrop picker at 1440](./assets/studio-vsix-backdrop-picker-1440.png) |
+
 The same installed-VSIX journey captures editing a saved costume at both target sizes:
 
 | 900 × 700                                                         | 1440 × 900                                                          |

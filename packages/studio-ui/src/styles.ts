@@ -29,6 +29,22 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .stage-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--vscode-panel-border); color: var(--vscode-descriptionForeground); font-size: 0.9em; }
 .stage-panel-header strong { color: var(--vscode-foreground); }
 .stage-panel-header div { display: grid; justify-items: end; gap: 2px; min-width: 0; }
+.stage-backdrop-picker { position: relative; z-index: 5; border-bottom: 1px solid var(--vscode-panel-border); }
+.stage-backdrop-picker summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px; cursor: pointer; list-style: none; }
+.stage-backdrop-picker summary::-webkit-details-marker { display: none; }
+.stage-backdrop-picker summary::after { content: "⌄"; margin-left: auto; color: var(--vscode-descriptionForeground); }
+.stage-backdrop-picker[open] summary::after { content: "⌃"; }
+.stage-backdrop-picker summary:focus-visible, .stage-backdrop-options button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.stage-backdrop-picker summary span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stage-backdrop-picker summary strong { color: var(--vscode-foreground); }
+.stage-backdrop-preview { flex: 0 0 54px; width: 54px; height: 36px; border-radius: 4px; object-fit: cover; background: var(--vscode-editor-background); }
+.stage-backdrop-options { position: absolute; top: 100%; right: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: min(100%, 330px); max-height: 340px; overflow: auto; padding: 8px; box-sizing: border-box; border: 1px solid var(--vscode-focusBorder); border-radius: 0 0 6px 6px; background: var(--vscode-editorWidget-background); box-shadow: 0 5px 16px color-mix(in srgb, black, transparent 55%); }
+.stage-backdrop-options button { display: grid; justify-items: center; gap: 4px; min-width: 0; padding: 5px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
+.stage-backdrop-options button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+.stage-backdrop-options button:disabled { opacity: 0.55; cursor: not-allowed; }
+.stage-backdrop-options img, .stage-backdrop-thumb { width: 100%; height: 60px; border-radius: 3px; object-fit: cover; background: var(--vscode-editor-background); }
+.stage-backdrop-options button span:last-child { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 701px) and (max-width: 1100px) { .stage-backdrop-options { grid-template-columns: 1fr; width: min(52%, 170px); } }
 .stage-active-route { overflow: hidden; max-width: 320px; font-family: var(--vscode-editor-font-family); text-overflow: ellipsis; white-space: nowrap; }
 .stage-viewport { position: relative; min-height: 180px; overflow: hidden; background: var(--vscode-editor-background); }
 .stage-viewport > p { margin: 0; padding: 18px; color: var(--vscode-descriptionForeground); }
