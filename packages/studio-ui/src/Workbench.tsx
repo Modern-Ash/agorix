@@ -2086,12 +2086,11 @@ export function Workbench({
               aria-pressed={workspaceView === view}
               onClick={() => {
                 setWorkspaceView(view);
-                if (view === "scene") {
+                if (view === "build") {
                   setLibraryTab("blocks");
+                  setToolsOpen(window.innerWidth > 1100);
+                } else {
                   setToolsOpen(false);
-                } else if (view === "build") {
-                  setLibraryTab("blocks");
-                  setToolsOpen(true);
                 }
               }}
             >

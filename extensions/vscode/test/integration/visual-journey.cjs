@@ -271,9 +271,14 @@ async function main() {
       .getByRole("button", { name: /Remove breakpoint: Move/ })
       .first()
       .click();
+    await webview.locator(".studio-program-heading button").click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), true);
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Evidence" }).click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), false);
     await webview.locator(".studio-debugger select").selectOption("score");
     await webview.locator('.studio-debugger input[type="checkbox"]').check();
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), false);
     await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
     await webview
       .locator("main > .status")
@@ -308,7 +313,10 @@ async function main() {
         envelope.project.program.scripts[0].statements.length === 6,
     );
     console.log("Nested and outdented a canonical block with the keyboard");
+    await webview.locator(".studio-program-heading button").click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), true);
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), false);
     const backdropPicker = webview.locator(".stage-panel .stage-backdrop-picker");
     await backdropPicker.locator("summary").click();
     await backdropPicker.locator(".stage-backdrop-options button").nth(8).waitFor();
@@ -652,6 +660,8 @@ async function main() {
       .filter({ hasText: "Explorer" })
       .click();
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    assert.equal(await webview.locator(".studio-tools").isVisible(), false);
+    await webview.locator(".studio-program-heading button").click();
     const paletteBounds = await webview.locator(".studio-tools").boundingBox();
     const targetBounds = await webview.locator(".studio-program").boundingBox();
     if (
