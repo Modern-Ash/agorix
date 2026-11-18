@@ -340,7 +340,16 @@ describe("studio-ui", () => {
     expect(palette).toContain("Touching the goal?");
     expect(palette).not.toContain("disabled");
     expect(palette).toContain('draggable="true"');
-    expect(palette).not.toContain("[N] + [N]");
+    expect(palette).toContain("add numbers");
+    expect(palette).toContain("remainder after division");
+    expect(palette).not.toContain("list length");
+    const withLists = renderToStaticMarkup(
+      <Palette onAdd={() => undefined} hasLists hasVariables hasActors />,
+    );
+    expect(withLists).toContain("list length");
+    expect(withLists).toContain("list item");
+    expect(withLists).toContain("variable value");
+    expect(withLists).toContain("distance to character");
     const canvas = renderToStaticMarkup(
       <Canvas workspace={workspace} onIntent={() => undefined} />,
     );

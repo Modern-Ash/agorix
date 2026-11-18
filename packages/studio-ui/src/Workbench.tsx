@@ -1327,6 +1327,7 @@ export function Workbench({
     return () => window.removeEventListener("resize", fitDock);
   }, [toolsOpen]);
   const [selectedExpression, setSelectedExpression] = useState<BlockType | undefined>();
+  const [selectedNumeric, setSelectedNumeric] = useState<BlockType | undefined>();
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
   const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
   const [playing, setPlaying] = useState(false);
@@ -1942,7 +1943,11 @@ export function Workbench({
               onAdd={add}
               onSelectExpression={setSelectedExpression}
               selectedExpression={selectedExpression}
+              onSelectNumeric={setSelectedNumeric}
+              selectedNumeric={selectedNumeric}
               hasLists={(workspace?.lists?.length ?? 0) > 0}
+              hasVariables={(workspace?.variables?.length ?? 0) > 0}
+              hasActors={(actors?.actors.length ?? 0) > 0}
             />
           </div>
         ) : (
@@ -2102,6 +2107,7 @@ export function Workbench({
                 if (selectedScriptId === scriptId) setSelectedScriptId(undefined);
               }}
               selectedExpression={selectedExpression}
+              selectedNumeric={selectedNumeric}
               onIntent={post}
               onAnnounce={announce}
               focusRequest={focusRequest}

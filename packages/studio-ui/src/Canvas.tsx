@@ -19,6 +19,7 @@ import { copyFor, type StudioUiCopy } from "./i18n.js";
 import { visualBlock, visualLabel } from "./visualBlocks.js";
 import { imageForId } from "./visualArt.js";
 import { LogicalComparisonFields } from "./LogicalComparisonFields.js";
+import { numericReporterForBlock } from "./numericPalette.js";
 
 const DRAG_TYPE = "application/x-agorix-drag";
 
@@ -132,6 +133,7 @@ export function Canvas({
   onAnnounce,
   focusRequest,
   selectedExpression,
+  selectedNumeric,
   visibleScriptIds,
   selectedScriptId,
   onSelectScript,
@@ -150,6 +152,7 @@ export function Canvas({
   readonly onAnnounce?: ((text: string) => void) | undefined;
   readonly focusRequest?: FocusRequest | undefined;
   readonly selectedExpression?: BlockType | undefined;
+  readonly selectedNumeric?: BlockType | undefined;
   readonly visibleScriptIds?: readonly string[] | undefined;
   readonly selectedScriptId?: string | undefined;
   readonly onSelectScript?: ((id: string) => void) | undefined;
@@ -635,9 +638,48 @@ export function Canvas({
                   ...(nextReference === undefined ? {} : { referenceId: nextReference }),
                   ...(nextIndex === undefined ? {} : { itemIndex: nextIndex }),
                 });
+              const placeNumeric = (blockType: BlockType) => {
+                const source = numericReporterForBlock(blockType);
+                if (source === undefined) return;
+                const referenceId =
+                  source === "variable"
+                    ? workspace.variables?.[0]?.id
+                    : source === "listLength" || source === "listItem"
+                      ? workspace.lists?.[0]?.id
+                      : source === "distanceToActor"
+                        ? actors[0]?.id
+                        : undefined;
+                if (
+                  ((source === "variable" || source === "listLength" || source === "listItem") &&
+                    referenceId === undefined) ||
+                  (source === "distanceToActor" && referenceId === undefined)
+                )
+                  return;
+                choose(source, referenceId);
+              };
               const itemIndex = operand.inputs?.index?.fields?.value;
+              const selectedSource =
+                selectedNumeric === undefined
+                  ? undefined
+                  : numericReporterForBlock(selectedNumeric);
+              const selectedSourceAvailable =
+                selectedSource !== undefined &&
+                (selectedSource !== "variable" || (workspace.variables?.length ?? 0) > 0) &&
+                ((selectedSource !== "listLength" && selectedSource !== "listItem") ||
+                  (workspace.lists?.length ?? 0) > 0) &&
+                (selectedSource !== "distanceToActor" || actors.length > 0);
               return (
-                <div key={input} className="block-field numeric-socket">
+                <div
+                  key={input}
+                  className="block-field numeric-socket"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const source = readSource(event);
+                    if (source?.kind === "palette") placeNumeric(source.blockType);
+                  }}
+                >
                   <label>
                     <span>{operandLabel}</span>
                     <select
@@ -701,6 +743,18 @@ export function Canvas({
                       ) : null}
                     </select>
                   </label>
+                  {!selectedSourceAvailable ? null : (
+                    <button
+                      type="button"
+                      className="numeric-place"
+                      aria-label={`${copy.placeValue}: ${label}: ${operandLabel}`}
+                      onClick={() => {
+                        if (selectedNumeric !== undefined) placeNumeric(selectedNumeric);
+                      }}
+                    >
+                      {copy.placeValue}
+                    </button>
+                  )}
                   {reporter === "number" && typeof operand.fields?.value === "number" ? (
                     <input
                       key={`${pos}:${input}:${operand.fields.value}`}

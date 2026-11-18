@@ -408,6 +408,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-program .numeric-socket { flex: 0 1 160px; min-width: 110px; padding: 3px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; }
 .studio-program .numeric-socket label { display: grid; gap: 2px; min-width: 0; }
 .studio-program .numeric-socket select { width: 100%; min-height: 28px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); }
+.studio-program .numeric-socket:has(.numeric-place) { border-color: var(--vscode-focusBorder); }
+.studio-program .numeric-place { width: 100%; margin-top: 4px; min-height: 24px; border: 1px dashed var(--vscode-focusBorder); border-radius: 3px; background: transparent; color: var(--vscode-foreground); cursor: pointer; }
 .studio-program .condition-detail { flex-basis: 128px; }
 .studio-program .condition-detail select { width: 100%; min-height: 28px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); }
 .studio-program .block-field:has(input[type="text"]) { flex-basis: clamp(76px, 14vw, 170px); }

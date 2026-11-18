@@ -17,6 +17,8 @@ import type { HostBridge } from "./bridge.js";
 import { STUDIO_PROTOCOL_VERSION, type ActorView, type HostMessage } from "@agorix/studio-protocol";
 import { locationKey } from "./blockView.js";
 import { copyFor } from "./i18n.js";
+import { Palette } from "./Palette.js";
+import type { BlockType } from "@agorix/block-editor";
 
 // A DOM is installed by hand so the test does not depend on which jsdom Vitest would pick.
 const dom = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true });
@@ -384,6 +386,7 @@ function render(
     focusRequest?: FocusRequest;
     locale?: "en" | "es";
     actors?: readonly ActorView[];
+    selectedNumeric?: BlockType;
   } = {},
 ) {
   act(() =>
@@ -394,6 +397,7 @@ function render(
         onAnnounce={props.onAnnounce}
         focusRequest={props.focusRequest}
         copy={copyFor(props.locale ?? "en")}
+        selectedNumeric={props.selectedNumeric}
         {...(props.actors === undefined ? {} : { actors: props.actors })}
       />,
     ),
@@ -409,6 +413,89 @@ const key = (target: HTMLElement, init: KeyboardEventInit) =>
   });
 
 describe("canvas keyboard and screen reader behaviour", () => {
+  it("places a selected or dropped numeric reporter into a typed value socket", () => {
+    const selected: BlockType[] = [];
+    act(() =>
+      root.render(
+        <Palette onAdd={() => undefined} onSelectNumeric={(type) => selected.push(type)} />,
+      ),
+    );
+    act(() => host.querySelector<HTMLButtonElement>('button[aria-label="add numbers"]')!.click());
+    expect(selected).toEqual(["operator_add"]);
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "set:score",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: { value: { id: "value:score", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, {
+      selectedNumeric: selected[0]!,
+      onIntent: (intent) => intents.push(intent),
+    });
+    act(() => host.querySelector<HTMLButtonElement>(".numeric-place")!.click());
+    expect(intents.at(-1)).toMatchObject({
+      type: "setNumericInput",
+      input: "value",
+      reporter: "add",
+    });
+    const socket = host.querySelector<HTMLElement>(".numeric-socket")!;
+    const drop = (blockType: string) => {
+      const event = new dom.window.MouseEvent("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "dataTransfer", {
+        value: {
+          getData: (kind: string) =>
+            kind === "application/x-agorix-drag"
+              ? JSON.stringify({ kind: "palette", blockType })
+              : "",
+        },
+      });
+      act(() => socket.dispatchEvent(event));
+    };
+    drop("operator_modulo");
+    expect(intents.at(-1)).toMatchObject({
+      type: "setNumericInput",
+      input: "value",
+      reporter: "modulo",
+    });
+    const count = intents.length;
+    drop("control_repeat");
+    expect(intents).toHaveLength(count);
+  });
+  it("uses the declared list id when placing a list reporter", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "set:score",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: { value: { id: "value:score", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(
+      {
+        ...workspace,
+        lists: [{ id: "inventory", name: "Inventory", initialItems: [], visible: true }],
+      },
+      { selectedNumeric: "lists_length", onIntent: (intent) => intents.push(intent) },
+    );
+    act(() => host.querySelector<HTMLButtonElement>(".numeric-place")!.click());
+    expect(intents).toContainEqual({
+      type: "setNumericInput",
+      location: { container: script, index: 0 },
+      input: "value",
+      reporter: "listLength",
+      referenceId: "inventory",
+    });
+  });
   it("shows visual asset choices on costume blocks and posts an explicit selection", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",
