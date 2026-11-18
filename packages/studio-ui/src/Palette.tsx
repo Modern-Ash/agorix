@@ -81,7 +81,10 @@ export function Palette({
                     .includes(normalizedQuery),
             ),
         }))
-        .filter((section) => section.blocks.length > 0 && (!sectionFilter || section.name === sectionFilter)),
+        .filter(
+          (section) =>
+            section.blocks.length > 0 && (!sectionFilter || section.name === sectionFilter),
+        ),
     [copy, normalizedQuery, hasLists, hasVariables, hasActors, sectionFilter],
   );
   return (
