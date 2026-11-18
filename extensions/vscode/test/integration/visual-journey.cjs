@@ -43,6 +43,11 @@ async function waitForProject(predicate) {
 }
 
 async function main() {
+  const watchdog = setTimeout(() => {
+    console.error("Installed VSIX visual journey exceeded four minutes");
+    process.exit(1);
+  }, 240_000);
+  watchdog.unref();
   if (!fs.existsSync(vsix)) throw new Error("Package the VSIX first");
   const vscode =
     process.env.VSCODE_EXECUTABLE ||
@@ -98,8 +103,11 @@ async function main() {
   const install = cp.spawnSync(cli, [...cliArgs, ...profile, "--install-extension", vsix], {
     env,
     encoding: "utf8",
+    timeout: 60_000,
   });
+  if (install.error) throw install.error;
   if (install.status !== 0) throw new Error(`VSIX install failed: ${install.stderr}`);
+  console.log("Installed packaged VSIX in isolated profile");
   const child = cp.spawn(
     vscode,
     [
@@ -136,6 +144,7 @@ async function main() {
       await pause(500);
     }
     browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+    console.log("Connected to VS Code workbench");
     const context = browser.contexts()[0];
     let page;
     for (let attempt = 0; attempt < 30; attempt++) {
@@ -802,6 +811,7 @@ async function main() {
     console.log("Reopened the same program, actors and costume in Web; runtime evidence visible");
     console.log("Visual cross-surface journey passed");
   } finally {
+    boundary.closeAllConnections();
     await new Promise((resolve) => boundary.close(resolve));
     await webBrowser?.close();
     if (webChild !== undefined) {
