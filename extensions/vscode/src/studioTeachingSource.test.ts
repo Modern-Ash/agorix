@@ -65,4 +65,26 @@ describe("explicit Studio teaching source", () => {
     });
     expect(await source.request(project(), "explain", {})).toBeUndefined();
   });
+
+  it("rejects a mismatched teaching capability and falls back when the service fails", async () => {
+    const response = createCompanionTurn(project(), "explain").response;
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: "response",
+        response: {
+          ...response,
+          metadata: { ...response.metadata, provenance: "local-provider" },
+        },
+        locality: "local",
+      })
+      .mockRejectedValueOnce(new Error("network failed"));
+    const source = createTeachingSource({
+      pipeline: createStudioPipeline({ route: allow }),
+      client: { request } as unknown as StudioProviderClient,
+    });
+    expect(await source.request(project(), "debug", {})).toBeUndefined();
+    expect(await source.request(project(), "debug", {})).toBeUndefined();
+    expect(request).toHaveBeenCalledTimes(2);
+  });
 });

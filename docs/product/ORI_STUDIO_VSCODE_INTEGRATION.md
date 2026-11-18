@@ -2,8 +2,10 @@
 
 Issue #1619. This document distinguishes the VS Code extension from the Kids
 "Studio" scene in the Web app. It is the product and architecture input for
-#1621, #1620, #1623 and #1622. Status: design contract; the VS Code Ori journey
-has not shipped.
+#1621, #1620, #1623 and #1622. The audit table below records the starting gap;
+the implementation status is in `STUDIO_RELEASE_GATE.md`. The adapter, contextual
+teaching and proposal review are implemented, while the installed VSIX Ori
+journey and human release evidence remain pending under #1622.
 
 ## Learner outcome
 
@@ -12,7 +14,7 @@ the learner directs a bounded task, asks Ori for help when useful, inspects a
 suggestion, predicts, decides, runs the canonical program and explains the
 observed result. Ori's words never prove behavior or complete a mission.
 
-## Baseline audit
+## Baseline audit before #1621–#1623
 
 | Capability                    | Web/Kids evidence                                                                                                                                | VS Code evidence                                                                                                                | Gap                                                                                                                                                                                                                   |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -865,6 +865,40 @@ describe("Studio extension wiring", () => {
     }
   });
 
+  it("discards an Ori explanation when the program changes during the request", async () => {
+    const { createDeterministicLearningCompanionResponse } = await import("@agorix/tutor-contract");
+    let finishRequest: (() => void) | undefined;
+    vi.stubGlobal("fetch", async (url: string, init: { body?: string }) => {
+      if (url.endsWith("/health"))
+        return { ok: true, status: 200, text: async () => '{"status":"available"}' };
+      const baseline = createDeterministicLearningCompanionResponse(JSON.parse(init.body ?? "{}"));
+      return new Promise((resolve) => {
+        finishRequest = () =>
+          resolve({
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                ...baseline,
+                metadata: { ...baseline.metadata, provenance: "local-provider" },
+              }),
+          });
+      });
+    });
+    try {
+      agentConfig["endpoint"] = "http://127.0.0.1:9/api/tutor/studio-companion";
+      await openFile("/p/ori-help-original.json", repeated);
+      const pending = handlers.get("agorixStudio.companionExplain")!();
+      await vi.waitFor(() => expect(finishRequest).toBeDefined());
+      await openFile("/p/ori-help-original.json", stored([]));
+      finishRequest?.();
+      expect(await pending).toBeUndefined();
+      expect(treeProviders.get("agorixStudio.companionHistory")?.getChildren()).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("runs and stops through coherent execution controls", async () => {
     await openFile("/p/a.json", repeated);
 
