@@ -23,8 +23,20 @@ export interface RenderBlock {
 
 export type RenderRow =
   | { readonly kind: "script"; readonly scriptIndex: number }
+  | {
+      readonly kind: "procedure";
+      readonly scriptIndex: number;
+      readonly procedureIndex: number;
+      readonly procedureId: string;
+      readonly name: string;
+    }
   | { readonly kind: "slot"; readonly slot: InsertionPoint; readonly depth: number }
-  | { readonly kind: "elseBranch"; readonly scriptIndex: number; readonly depth: number }
+  | {
+      readonly kind: "elseBranch";
+      readonly scriptIndex: number;
+      readonly procedureIndex?: number;
+      readonly depth: number;
+    }
   | { readonly kind: "block"; readonly block: RenderBlock; readonly depth: number };
 
 /** Stable DOM identity of a block by where it sits; block ids are positional, so focus follows location. */
@@ -41,6 +53,7 @@ function pushList(
   depth: number,
   branchPath: readonly ("body" | "then" | "else")[] = [],
 ): void {
+  const procedureIndex = container.kind === "script" ? undefined : container.procedureIndex;
   rows.push({ kind: "slot", slot: { container, index: 0 }, depth });
   list.forEach((node, index) => {
     rows.push({
@@ -67,6 +80,7 @@ function pushList(
         {
           kind: "repeatBody",
           scriptIndex,
+          ...(procedureIndex === undefined ? {} : { procedureIndex }),
           statementPath: childPath,
           branchPath: [...branchPath, "body"],
         },
@@ -82,6 +96,7 @@ function pushList(
         {
           kind: "repeatUntilBody",
           scriptIndex,
+          ...(procedureIndex === undefined ? {} : { procedureIndex }),
           statementPath: childPath,
           branchPath: [...branchPath, "body"],
         },
@@ -97,6 +112,7 @@ function pushList(
         {
           kind: "ifThen",
           scriptIndex,
+          ...(procedureIndex === undefined ? {} : { procedureIndex }),
           statementPath: childPath,
           branchPath: [...branchPath, "then"],
         },
@@ -105,13 +121,19 @@ function pushList(
         depth + 1,
         [...branchPath, "then"],
       );
-      rows.push({ kind: "elseBranch", scriptIndex, depth: depth + 1 });
+      rows.push({
+        kind: "elseBranch",
+        scriptIndex,
+        ...(procedureIndex === undefined ? {} : { procedureIndex }),
+        depth: depth + 1,
+      });
       pushList(
         rows,
         node.inputs?.else ?? [],
         {
           kind: "ifElse",
           scriptIndex,
+          ...(procedureIndex === undefined ? {} : { procedureIndex }),
           statementPath: childPath,
           branchPath: [...branchPath, "else"],
         },
@@ -131,6 +153,23 @@ export function toRows(workspace: BlockWorkspaceSnapshot): RenderRow[] {
   workspace.scripts.forEach((script, scriptIndex) => {
     rows.push({ kind: "script", scriptIndex });
     pushList(rows, script.statements, { kind: "script", scriptIndex }, scriptIndex, [], 0);
+    script.procedures?.forEach((procedure, procedureIndex) => {
+      rows.push({
+        kind: "procedure",
+        scriptIndex,
+        procedureIndex,
+        procedureId: procedure.id,
+        name: procedure.name,
+      });
+      pushList(
+        rows,
+        procedure.body,
+        { kind: "procedure", scriptIndex, procedureIndex },
+        scriptIndex,
+        [],
+        0,
+      );
+    });
   });
   return rows;
 }
@@ -167,7 +206,8 @@ export function nestedMoveIntent(
   );
   if (current?.kind !== "block") return undefined;
   if (direction === "out") {
-    if (location.container.kind === "script") return undefined;
+    if (location.container.kind === "script" || location.container.kind === "procedure")
+      return undefined;
     const firstSlot = rows.findIndex(
       (row) =>
         row.kind === "slot" &&
@@ -210,12 +250,19 @@ export function nestedMoveIntent(
   const container: StatementContainerPath = {
     kind,
     scriptIndex: location.container.scriptIndex,
+    ...(location.container.kind === "script" || location.container.procedureIndex === undefined
+      ? {}
+      : { procedureIndex: location.container.procedureIndex }),
     statementPath: [
-      ...(location.container.kind === "script" ? [] : location.container.statementPath),
+      ...(location.container.kind === "script" || location.container.kind === "procedure"
+        ? []
+        : location.container.statementPath),
       location.index - 1,
     ],
     branchPath: [
-      ...(location.container.kind === "script" ? [] : (location.container.branchPath ?? [])),
+      ...(location.container.kind === "script" || location.container.kind === "procedure"
+        ? []
+        : (location.container.branchPath ?? [])),
       kind === "ifThen" ? "then" : kind === "ifElse" ? "else" : "body",
     ],
   };

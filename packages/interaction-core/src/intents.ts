@@ -70,8 +70,11 @@ function statementsAt(
   container: StatementContainerPath,
 ): readonly BlockNode[] | undefined {
   let statements: readonly BlockNode[] | undefined =
-    workspace.scripts[container.scriptIndex]?.statements;
+    container.kind === "script" || container.procedureIndex === undefined
+      ? workspace.scripts[container.scriptIndex]?.statements
+      : workspace.scripts[container.scriptIndex]?.procedures?.[container.procedureIndex]?.body;
   if (container.kind === "script") return statements;
+  if (container.kind === "procedure") return statements;
   if (container.statementPath.length === 0) return undefined;
   if (
     container.branchPath !== undefined &&

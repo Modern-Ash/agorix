@@ -924,3 +924,92 @@ describe("custom block workspace", () => {
     expect(back.scripts[0]?.statements).toEqual(program.scripts[0]?.statements);
   });
 });
+
+describe("visual procedure body editing", () => {
+  const program: ProjectProgram = {
+    schema: "agorix/program/v1",
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [{ type: "callProcedure", procedureId: "proc:wave" }],
+        procedures: [
+          {
+            id: "proc:wave",
+            name: "Wave",
+            body: [
+              { type: "move", steps: 3 },
+              { type: "repeat", count: 2, body: [{ type: "turn", degrees: 90 }] },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const body = { kind: "procedure", scriptIndex: 0, procedureIndex: 0 } as const;
+
+  it("edits the canonical procedure body and nested slots without changing the call", () => {
+    const start = programToWorkspace(program).workspace;
+    const added = applyWorkspaceChange(start, {
+      type: "addBlock",
+      container: body,
+      index: 1,
+      block: { id: "wait:1", type: "control_wait", fields: { seconds: 1 } },
+    });
+    expect(added.program.scripts[0]?.procedures?.[0]?.body[1]).toEqual({
+      type: "wait",
+      seconds: 1,
+    });
+    expect(added.program.scripts[0]?.statements).toEqual(program.scripts[0]?.statements);
+    const edited = applyWorkspaceChange(added.workspace, {
+      type: "editBlock",
+      location: { container: body, index: 0 },
+      block: { id: "move:edited", type: "motion_move", fields: { steps: 8 } },
+    });
+    expect(edited.program.scripts[0]?.procedures?.[0]?.body[0]).toEqual({ type: "move", steps: 8 });
+    const nested = {
+      kind: "repeatBody",
+      scriptIndex: 0,
+      procedureIndex: 0,
+      statementPath: [1],
+      branchPath: ["body"],
+    } as const;
+    const moved = applyWorkspaceChange(edited.workspace, {
+      type: "moveBlock",
+      from: { container: body, index: 1 },
+      to: { container: nested, index: 1 },
+    });
+    expect(moved.program.scripts[0]?.procedures?.[0]?.body[1]).toEqual({
+      type: "repeat",
+      count: 2,
+      body: [
+        { type: "turn", degrees: 90 },
+        { type: "wait", seconds: 1 },
+      ],
+    });
+  });
+
+  it("rejects an unknown procedure and removing its final required block", () => {
+    const start = programToWorkspace(program).workspace;
+    expect(() =>
+      applyWorkspaceChange(start, {
+        type: "addBlock",
+        container: { kind: "procedure", scriptIndex: 0, procedureIndex: 9 },
+        index: 0,
+        block: { id: "wait:1", type: "control_wait", fields: { seconds: 1 } },
+      }),
+    ).toThrow(BlockEditorAdapterError);
+    const one = programToWorkspace({
+      ...program,
+      scripts: [
+        {
+          ...program.scripts[0]!,
+          procedures: [{ id: "proc:wave", name: "Wave", body: [{ type: "move", steps: 3 }] }],
+        },
+      ],
+    }).workspace;
+    expect(() =>
+      applyWorkspaceChange(one, { type: "deleteBlock", location: { container: body, index: 0 } }),
+    ).toThrow();
+  });
+});

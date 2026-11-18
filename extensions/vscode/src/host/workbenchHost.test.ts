@@ -61,6 +61,55 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("persists visual edits inside a procedure body and rejects stale or invalid targets", async () => {
+    const program: ProjectProgram = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc:wave" }],
+          procedures: [{ id: "proc:wave", name: "Wave", body: [{ type: "move", steps: 3 }] }],
+        },
+      ],
+    };
+    const { host, get } = setup(program);
+    const body = { kind: "procedure", scriptIndex: 0, procedureIndex: 0 };
+    const send = async (intent: unknown, baseHash = programSemanticHash(get()!)) => {
+      const message = parseUiMessage({ schema, type: "intent", intent, baseHash });
+      expect(message).toBeDefined();
+      return host.handle(message!);
+    };
+    const staleHash = programSemanticHash(get()!);
+    expect(
+      (
+        await send({
+          type: "insertBlock",
+          blockType: "control_wait",
+          to: { container: body, index: 1 },
+        })
+      )[0]?.type,
+    ).not.toBe("error");
+    expect(get()?.scripts[0]?.procedures?.[0]?.body).toEqual([
+      { type: "move", steps: 3 },
+      { type: "wait", seconds: 1 },
+    ]);
+    expect(get()?.scripts[0]?.statements).toEqual(program.scripts[0]?.statements);
+    expect(
+      (await send({ type: "deleteBlock", location: { container: body, index: 1 } }, staleHash))[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    const before = JSON.stringify(get());
+    expect(
+      (
+        await send({
+          type: "insertBlock",
+          blockType: "motion_move",
+          to: { container: { kind: "procedure", scriptIndex: 0, procedureIndex: 9 }, index: 0 },
+        })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(JSON.stringify(get())).toBe(before);
+  });
   it("creates, renames and explicitly inlines a custom block with stale-edit protection", async () => {
     const { host, get } = setup();
     const send = async (intent: unknown, baseHash = programSemanticHash(get()!)) => {

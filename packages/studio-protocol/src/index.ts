@@ -1078,6 +1078,11 @@ function parseContainer(value: unknown): Container | undefined {
   if (value["kind"] === "script") {
     return { kind: "script", scriptIndex };
   }
+  if (value["kind"] === "procedure") {
+    return isIndex(value["procedureIndex"])
+      ? { kind: "procedure", scriptIndex, procedureIndex: value["procedureIndex"] }
+      : undefined;
+  }
   const path = value["statementPath"];
   if (
     (value["kind"] === "repeatBody" ||
@@ -1090,6 +1095,8 @@ function parseContainer(value: unknown): Container | undefined {
     path.every(isIndex)
   ) {
     const branches = value["branchPath"];
+    const procedureIndex = value["procedureIndex"];
+    if (procedureIndex !== undefined && !isIndex(procedureIndex)) return undefined;
     if (
       branches !== undefined &&
       (!Array.isArray(branches) ||
@@ -1100,6 +1107,7 @@ function parseContainer(value: unknown): Container | undefined {
     return {
       kind: value["kind"],
       scriptIndex,
+      ...(procedureIndex === undefined ? {} : { procedureIndex }),
       statementPath: [...path] as number[],
       ...(branches === undefined
         ? {}

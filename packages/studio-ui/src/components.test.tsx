@@ -43,6 +43,35 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("renders a custom block body as a visual canvas with its own canonical slots", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc:wave" }],
+          procedures: [{ id: "proc:wave", name: "Wave", body: [{ type: "move", steps: 3 }] }],
+        },
+      ],
+    }).workspace;
+    const rows = toRows(workspace);
+    expect(rows.some((row) => row.kind === "slot" && row.slot.container.kind === "procedure")).toBe(
+      true,
+    );
+    const html = renderToStaticMarkup(
+      <Canvas
+        workspace={workspace}
+        activeProcedureId="proc:wave"
+        onCloseProcedure={() => undefined}
+        onIntent={() => undefined}
+      />,
+    );
+    expect(html).toContain("Custom block: Wave");
+    expect(html).toContain("Back to script");
+    expect(html).toContain("Move [N] steps");
+    expect(html).not.toContain("Call custom block");
+  });
   it("shows custom-block creation beside the selected script and an explicit delete decision", () => {
     const created = programToWorkspace({
       schema: "agorix/program/v1",

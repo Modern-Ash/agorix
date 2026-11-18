@@ -6,6 +6,46 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("accepts procedure body targets and rejects malformed ownership paths", () => {
+    for (const container of [
+      { kind: "procedure", scriptIndex: 0, procedureIndex: 0 },
+      {
+        kind: "repeatBody",
+        scriptIndex: 0,
+        procedureIndex: 0,
+        statementPath: [1],
+        branchPath: ["body"],
+      },
+    ]) {
+      expect(
+        parseUiMessage({
+          schema,
+          type: "intent",
+          intent: {
+            type: "insertBlock",
+            blockType: "motion_move",
+            to: { container, index: 0 },
+          },
+        }),
+      ).toMatchObject({ intent: { to: { container } } });
+    }
+    for (const container of [
+      { kind: "procedure", scriptIndex: 0 },
+      { kind: "procedure", scriptIndex: 0, procedureIndex: -1 },
+      { kind: "repeatBody", scriptIndex: 0, procedureIndex: "zero", statementPath: [0] },
+    ])
+      expect(
+        parseUiMessage({
+          schema,
+          type: "intent",
+          intent: {
+            type: "insertBlock",
+            blockType: "motion_move",
+            to: { container, index: 0 },
+          },
+        }),
+      ).toBeUndefined();
+  });
   it("accepts bounded custom-block authoring and rejects malformed requests", () => {
     for (const intent of [
       { type: "createProcedure", scriptIndex: 0, name: "Wave", count: 2 },
