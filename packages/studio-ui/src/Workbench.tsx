@@ -2133,6 +2133,13 @@ export function Workbench({
               hasLists={(workspace?.lists?.length ?? 0) > 0}
               hasVariables={(workspace?.variables?.length ?? 0) > 0}
               hasActors={(actors?.actors.length ?? 0) > 0}
+              hasProcedures={
+                (activeScriptId === undefined
+                  ? (workspace?.scripts[0]?.procedures?.length ?? 0)
+                  : (workspace?.scripts.find(
+                      (script) => (script.programId ?? script.id) === activeScriptId,
+                    )?.procedures?.length ?? 0)) > 0
+              }
               sectionFilter={paletteFocus}
             />
           </div>

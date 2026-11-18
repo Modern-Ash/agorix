@@ -396,6 +396,17 @@ export function intentToChange(
   switch (intent.type) {
     case "insertBlock": {
       const block = createDefaultBlock(intent.blockType, newBlockId());
+      if (intent.blockType === "procedures_call") {
+        const procedureId =
+          workspace?.scripts[intent.to.container.scriptIndex]?.procedures?.[0]?.id;
+        if (procedureId === undefined) return undefined;
+        return {
+          type: "addBlock",
+          container: intent.to.container,
+          index: intent.to.index,
+          block: { ...block, fields: { procedureId } },
+        };
+      }
       if (intent.blockType.startsWith("lists_")) {
         const listId = workspace?.lists?.[0]?.id;
         if (listId === undefined) return undefined;

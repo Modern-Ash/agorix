@@ -393,6 +393,7 @@ export function Canvas({
             ([name, value]) =>
               name !== "variableId" &&
               name !== "listId" &&
+              name !== "procedureId" &&
               !["costumeId", "backdropId", "soundId"].includes(name) &&
               typeof value !== "number" &&
               !(typeof value === "string" && ["text", "message", "key"].includes(name)),
@@ -1911,6 +1912,39 @@ export function Canvas({
                   />
                 </label>
               ))}
+            {block.type === "procedures_call" ? (
+              <label className="block-field">
+                <span>{copy.customBlock}</span>
+                <select
+                  aria-label={`${label}: ${copy.customBlock}`}
+                  value={String(block.fields?.procedureId ?? "")}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setTextField",
+                      location: block.location,
+                      field: "procedureId",
+                      value: event.currentTarget.value,
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  {workspace.scripts[block.location.container.scriptIndex]?.procedures?.some(
+                    (procedure) => procedure.id === block.fields?.procedureId,
+                  ) ? null : (
+                    <option value={String(block.fields?.procedureId ?? "")}>
+                      {String(block.fields?.procedureId ?? "")}
+                    </option>
+                  )}
+                  {workspace.scripts[block.location.container.scriptIndex]?.procedures?.map(
+                    (procedure) => (
+                      <option key={procedure.id} value={procedure.id}>
+                        {procedure.name}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+            ) : null}
             {block.type === "looks_go_to_layer" ? (
               <label className="block-field">
                 <span>{copy.layer}</span>

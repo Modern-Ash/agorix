@@ -639,6 +639,7 @@ const BLOCK_TYPES = [
   "control_wait",
   "control_repeat_until",
   "control_if",
+  "procedures_call",
   "sensing_touching_goal",
   "sensing_touching_actor",
   "sensing_touching_stage_edge",

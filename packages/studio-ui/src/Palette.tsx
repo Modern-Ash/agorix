@@ -31,6 +31,7 @@ export function Palette({
   hasLists = false,
   hasVariables = false,
   hasActors = false,
+  hasProcedures = false,
   sectionFilter,
 }: {
   readonly copy?: StudioUiCopy;
@@ -42,6 +43,7 @@ export function Palette({
   readonly hasLists?: boolean;
   readonly hasVariables?: boolean;
   readonly hasActors?: boolean;
+  readonly hasProcedures?: boolean;
   readonly sectionFilter?: string | undefined;
 }) {
   const [query, setQuery] = useState("");
@@ -67,6 +69,7 @@ export function Palette({
             .filter((block) => hasLists || !block.type.startsWith("lists_"))
             .filter((block) => hasVariables || block.type !== "variables_value")
             .filter((block) => hasActors || block.type !== "sensing_distance_to_actor")
+            .filter((block) => hasProcedures || block.type !== "procedures_call")
             .filter(
               (block) =>
                 STUDIO_INSERTABLE_STATEMENTS.includes(block.type) ||
@@ -85,7 +88,7 @@ export function Palette({
           (section) =>
             section.blocks.length > 0 && (!sectionFilter || section.name === sectionFilter),
         ),
-    [copy, normalizedQuery, hasLists, hasVariables, hasActors, sectionFilter],
+    [copy, normalizedQuery, hasLists, hasVariables, hasActors, hasProcedures, sectionFilter],
   );
   return (
     <nav className="palette" aria-label={copy.paletteBlocks}>
