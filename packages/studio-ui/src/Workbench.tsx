@@ -1418,6 +1418,7 @@ export function Workbench({
   const [actors, setActors] = useState<ActorsMessage | undefined>();
   const [selectedActorId, setSelectedActorId] = useState<string | undefined>();
   const [selectedScriptId, setSelectedScriptId] = useState<string | undefined>();
+  const [selectedProcedureId, setSelectedProcedureId] = useState<string | undefined>();
   const pendingScriptCreation = useRef(false);
   const pendingActorCreation = useRef(false);
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
@@ -1678,17 +1679,26 @@ export function Workbench({
           ) ?? -1);
     const script = workspace?.scripts[scriptIndex];
     if (script === undefined) return;
-    const container = { kind: "script", scriptIndex } as const;
+    const procedureIndex =
+      script.procedures?.findIndex((procedure) => procedure.id === selectedProcedureId) ?? -1;
+    const container =
+      procedureIndex < 0
+        ? ({ kind: "script", scriptIndex } as const)
+        : ({ kind: "procedure", scriptIndex, procedureIndex } as const);
+    const length =
+      procedureIndex < 0
+        ? script.statements.length
+        : script.procedures![procedureIndex]!.body.length;
     const labels: Readonly<Record<string, string>> = copy.blockLabels;
     announce(copy.addedAnnouncement(labels[blockType] ?? blockType));
     setFocusRequest((previous) => ({
-      pos: locationKey({ container, index: script.statements.length }),
+      pos: locationKey({ container, index: length }),
       nonce: (previous?.nonce ?? 0) + 1,
     }));
     post({
       type: "insertBlock",
       blockType,
-      to: { container, index: script.statements.length },
+      to: { container, index: length },
     });
   };
 
@@ -1748,6 +1758,11 @@ export function Workbench({
       : (workspace?.scripts.findIndex(
           (script) => (script.programId ?? script.id) === activeScriptId,
         ) ?? -1);
+  const activeProcedureId = workspace?.scripts[activeScriptIndex]?.procedures?.some(
+    (procedure) => procedure.id === selectedProcedureId,
+  )
+    ? selectedProcedureId
+    : undefined;
 
   const sceneLibrary = () => (
     <SceneLibrary
@@ -2137,6 +2152,8 @@ export function Workbench({
                 scriptIndex={activeScriptIndex}
                 copy={copy}
                 onIntent={post}
+                onEditBody={setSelectedProcedureId}
+                editingProcedureId={activeProcedureId}
               />
             ) : null}
             <Palette
@@ -2339,6 +2356,8 @@ export function Workbench({
               actors={actors?.actors ?? []}
               visibleScriptIds={activeScriptIds}
               selectedScriptId={activeScriptId}
+              activeProcedureId={activeProcedureId}
+              onCloseProcedure={() => setSelectedProcedureId(undefined)}
               onSelectScript={setSelectedScriptId}
               onDeleteScript={(scriptId) => {
                 if (programHash === undefined || selectedActorId === undefined) return;

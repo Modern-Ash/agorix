@@ -19,9 +19,11 @@ export interface BlockEditorProjectionUpdate {
 
 export type StatementContainerPath =
   | { readonly kind: "script"; readonly scriptIndex: number }
+  | { readonly kind: "procedure"; readonly scriptIndex: number; readonly procedureIndex: number }
   | {
       readonly kind: "repeatBody" | "repeatUntilBody" | "ifThen" | "ifElse";
       readonly scriptIndex: number;
+      readonly procedureIndex?: number;
       readonly statementPath: readonly number[];
       readonly branchPath?: readonly ("body" | "then" | "else")[];
     };
@@ -141,6 +143,20 @@ function mutableStatementsFor(
   if (container.kind === "script") {
     return script.statements as BlockNode[];
   }
+  const root =
+    container.procedureIndex === undefined
+      ? (script.statements as BlockNode[])
+      : (script.procedures?.[container.procedureIndex]?.body as BlockNode[] | undefined);
+  if (root === undefined) {
+    throw new BlockEditorAdapterError(
+      "INVALID_WORKSPACE",
+      "procedureIndex",
+      "expected a custom block body",
+      container.procedureIndex,
+      "BLOCK_NOT_FOUND",
+    );
+  }
+  if (container.kind === "procedure") return root;
   if (container.statementPath.length === 0) {
     throw new BlockEditorAdapterError(
       "INVALID_FIELD_TYPE",
@@ -150,7 +166,7 @@ function mutableStatementsFor(
       "NOT_A_CONTAINER",
     );
   }
-  let list = script.statements as BlockNode[];
+  let list = root;
   if (
     container.branchPath !== undefined &&
     container.branchPath.length !== container.statementPath.length

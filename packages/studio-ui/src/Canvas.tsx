@@ -136,6 +136,8 @@ export function Canvas({
   selectedNumeric,
   visibleScriptIds,
   selectedScriptId,
+  activeProcedureId,
+  onCloseProcedure,
   onSelectScript,
   onDeleteScript,
   breakpointBlockIds,
@@ -157,6 +159,8 @@ export function Canvas({
   readonly selectedNumeric?: BlockType | undefined;
   readonly visibleScriptIds?: readonly string[] | undefined;
   readonly selectedScriptId?: string | undefined;
+  readonly activeProcedureId?: string | undefined;
+  readonly onCloseProcedure?: (() => void) | undefined;
   readonly onSelectScript?: ((id: string) => void) | undefined;
   readonly onDeleteScript?: ((id: string) => void) | undefined;
   readonly breakpointBlockIds?: ReadonlySet<string> | undefined;
@@ -171,9 +175,38 @@ export function Canvas({
   const [activeKey, setActiveKey] = useState<string | undefined>();
   const [deleteCandidate, setDeleteCandidate] = useState<string | undefined>();
   const rows = toRows(workspace).filter((row) => {
+    const procedureIndex =
+      row.kind === "procedure" || row.kind === "elseBranch"
+        ? row.procedureIndex
+        : row.kind === "slot"
+          ? row.slot.container.kind === "script"
+            ? undefined
+            : row.slot.container.procedureIndex
+          : row.kind === "block"
+            ? row.block.location.container.kind === "script"
+              ? undefined
+              : row.block.location.container.procedureIndex
+            : undefined;
+    if (
+      activeProcedureId === undefined &&
+      (row.kind === "procedure" || procedureIndex !== undefined)
+    )
+      return false;
+    if (activeProcedureId !== undefined) {
+      if (row.kind === "script" || procedureIndex === undefined) return false;
+      const owner =
+        workspace.scripts[
+          row.kind === "procedure" || row.kind === "elseBranch"
+            ? row.scriptIndex
+            : row.kind === "slot"
+              ? row.slot.container.scriptIndex
+              : row.block.location.container.scriptIndex
+        ];
+      if (owner?.procedures?.[procedureIndex]?.id !== activeProcedureId) return false;
+    }
     if (visibleScriptIds === undefined) return true;
     const scriptIndex =
-      row.kind === "script"
+      row.kind === "script" || row.kind === "procedure"
         ? row.scriptIndex
         : row.kind === "elseBranch"
           ? row.scriptIndex
@@ -299,6 +332,20 @@ export function Canvas({
                   {deleteCandidate === scriptId
                     ? copy.sceneConfirmDeleteScript
                     : copy.sceneDeleteScript}
+                </button>
+              )}
+            </div>
+          );
+        }
+        if (row.kind === "procedure") {
+          return (
+            <div key={key} className="script-heading procedure-heading">
+              <strong>
+                {copy.customBlock}: {row.name}
+              </strong>
+              {onCloseProcedure === undefined ? null : (
+                <button type="button" onClick={onCloseProcedure}>
+                  {copy.customBlockBack}
                 </button>
               )}
             </div>

@@ -8,11 +8,15 @@ export function ProcedureTools({
   scriptIndex,
   copy,
   onIntent,
+  onEditBody,
+  editingProcedureId,
 }: {
   readonly workspace: BlockWorkspaceSnapshot;
   readonly scriptIndex: number;
   readonly copy: StudioUiCopy;
   readonly onIntent: (intent: Intent) => void;
+  readonly onEditBody?: (procedureId: string) => void;
+  readonly editingProcedureId?: string | undefined;
 }) {
   const [name, setName] = useState("");
   const [count, setCount] = useState(1);
@@ -110,6 +114,15 @@ export function ProcedureTools({
               <span>
                 {procedure.body.length} {copy.customBlockSteps}
               </span>
+              {onEditBody === undefined ? null : (
+                <button
+                  type="button"
+                  aria-pressed={editingProcedureId === procedure.id}
+                  onClick={() => onEditBody(procedure.id)}
+                >
+                  {copy.customBlockEditBody}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
