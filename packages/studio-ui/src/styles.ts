@@ -145,6 +145,21 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .actor-inspector { display: grid; gap: 8px; margin-bottom: 10px; padding: 8px; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
 .actor-inspector header { display: flex; justify-content: space-between; gap: 8px; color: var(--vscode-descriptionForeground); }
 .actor-inspector header strong { color: var(--vscode-foreground); }
+.actor-costume-picker { min-width: 0; }
+.actor-costume-picker summary { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 5px; border: 1px solid var(--vscode-panel-border); border-radius: 6px; cursor: pointer; list-style: none; }
+.actor-costume-picker summary::-webkit-details-marker { display: none; }
+.actor-costume-picker summary::after { content: "⌄"; margin-left: auto; color: var(--vscode-descriptionForeground); }
+.actor-costume-picker[open] summary::after { content: "⌃"; }
+.actor-costume-picker summary:focus-visible, .actor-costume-grid button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.actor-costume-picker summary small { display: block; color: var(--vscode-descriptionForeground); }
+.actor-costume-picker summary strong { display: block; color: var(--vscode-foreground); }
+.actor-costume-preview { display: grid; place-items: center; flex: 0 0 42px; height: 42px; border-radius: 5px; background: var(--vscode-editor-background); }
+.actor-costume-preview img, .actor-costume-grid img { width: 38px; height: 38px; object-fit: contain; }
+.actor-costume-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; max-height: 230px; overflow-y: auto; padding: 7px 2px; }
+.actor-costume-grid button { display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 5px 2px; border: 1px solid var(--vscode-panel-border); border-radius: 6px; color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
+.actor-costume-grid button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+.actor-costume-grid button span { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 701px) and (max-width: 1100px) { .actor-costume-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .actor-inspector label { display: grid; gap: 3px; color: var(--vscode-descriptionForeground); font-size: 0.9em; }
 .actor-inspector input, .actor-inspector select { min-height: 26px; box-sizing: border-box; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
 .actor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }

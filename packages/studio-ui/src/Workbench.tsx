@@ -988,6 +988,8 @@ export function ActorInspector({
   const actor = actors.find((candidate) => candidate.id === selectedActorId) ?? actors[0];
   if (actor === undefined) return null;
   const costumes = assets.filter((asset) => asset.kind === "costume");
+  const selectedCostume = costumes.find((asset) => asset.id === actor.costumeId);
+  const selectedImage = imageForId(actor.costumeId, assets);
   const numberPatch = (field: "x" | "y" | "direction" | "size") => (value: string) => {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) onPatch(actor.id, { [field]: parsed });
@@ -1050,22 +1052,42 @@ export function ActorInspector({
         />
         {copy.actorVisible}
       </label>
-      <label>
-        {copy.actorCostume}
-        <select
-          value={actor.costumeId ?? ""}
-          onChange={(event) =>
-            onPatch(actor.id, { costumeId: event.currentTarget.value || undefined })
-          }
-        >
-          {actor.costumeId === undefined ? <option value="">{copy.actorNoCostume}</option> : null}
-          {costumes.map((asset) => (
-            <option key={asset.id} value={asset.id}>
-              {asset.name} · {asset.id}
-            </option>
-          ))}
-        </select>
-      </label>
+      <details className="actor-costume-picker">
+        <summary aria-label={`${copy.sceneSelectCostume}: ${actor.name}`}>
+          <span className="actor-costume-preview" aria-hidden="true">
+            {selectedImage === undefined ? (
+              actor.name.slice(0, 1)
+            ) : (
+              <img src={selectedImage} alt="" />
+            )}
+          </span>
+          <span>
+            <small>{copy.actorCostume}</small>
+            <strong>{selectedCostume?.name ?? copy.actorNoCostume}</strong>
+          </span>
+        </summary>
+        <div className="actor-costume-grid" role="group" aria-label={copy.sceneCostumes}>
+          {costumes.map((asset) => {
+            const image = imageForAsset(asset);
+            return (
+              <button
+                key={asset.id}
+                type="button"
+                aria-label={`${copy.sceneSelectCostume}: ${asset.name}`}
+                aria-pressed={asset.id === actor.costumeId}
+                onClick={() => onPatch(actor.id, { costumeId: asset.id })}
+              >
+                {image === undefined ? (
+                  <span aria-hidden="true">{asset.name.slice(0, 1)}</span>
+                ) : (
+                  <img src={image} alt="" />
+                )}
+                <span>{asset.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </details>
       <p className="actor-ref">{actor.id}</p>
     </section>
   );
