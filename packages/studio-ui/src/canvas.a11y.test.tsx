@@ -782,7 +782,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
     expect(nestedSource).not.toBeNull();
     expect(Array.from(nestedSource.options).map((option) => option.value)).toContain("multiply");
     expect(Array.from(nestedSource.options).map((option) => option.value)).toEqual(
-      expect.arrayContaining(["modulo", "random", "randomInteger"]),
+      expect.arrayContaining(["modulo", "random", "randomInteger", "mathFunction"]),
     );
     act(() => {
       nestedSource.value = "randomInteger";
@@ -852,6 +852,62 @@ describe("canvas keyboard and screen reader behaviour", () => {
       path: ["left"],
       side: "right",
       value: 6,
+    });
+  });
+  it("edits a math function nested in a visual arithmetic block", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "mathFunction",
+                  function: "abs",
+                  value: { type: "numericLiteral", value: -3 },
+                },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const functionPicker = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="Function"]',
+    )!;
+    expect(functionPicker).not.toBeNull();
+    act(() => {
+      functionPicker.value = "round";
+      functionPicker.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticMathFunction",
+      side: "left",
+      function: "round",
+    });
+    const value = host.querySelector<HTMLInputElement>(
+      '.numeric-socket input[aria-label*="Left value value"]',
+    )!;
+    expect(value).not.toBeNull();
+    act(() => {
+      value.value = "3.5";
+      value.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperand",
+      path: ["left"],
+      side: "value",
+      value: 3.5,
     });
   });
   it("edits nested random integer bounds from the visual canvas", () => {

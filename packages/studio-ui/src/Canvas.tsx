@@ -1029,7 +1029,9 @@ export function Canvas({
                                                   ? "random"
                                                   : part?.type === "operator_random_integer"
                                                     ? "randomInteger"
-                                                    : "other";
+                                                    : part?.type === "operator_math_function"
+                                                      ? "mathFunction"
+                                                      : "other";
                         const selectSource = (
                           next:
                             | "number"
@@ -1044,7 +1046,8 @@ export function Canvas({
                             | "divide"
                             | "modulo"
                             | "random"
-                            | "randomInteger",
+                            | "randomInteger"
+                            | "mathFunction",
                           referenceId?: string,
                         ) =>
                           onIntent({
@@ -1073,7 +1076,8 @@ export function Canvas({
                                 | "divide"
                                 | "modulo"
                                 | "random"
-                                | "randomInteger";
+                                | "randomInteger"
+                                | "mathFunction";
                               selectSource(
                                 next,
                                 next === "variable"
@@ -1095,6 +1099,7 @@ export function Canvas({
                             <option value="modulo">{copy.operatorModulo}</option>
                             <option value="random">{copy.operatorRandom}</option>
                             <option value="randomInteger">{copy.operatorRandomInteger}</option>
+                            <option value="mathFunction">{copy.operatorMathFunction}</option>
                             {(workspace.variables?.length ?? 0) > 0 ? (
                               <option value="variable">{copy.variableValue}</option>
                             ) : null}
@@ -1152,6 +1157,31 @@ export function Canvas({
                                   ))}
                                 </select>
                               )}
+                              {source === "mathFunction" ? (
+                                <label className="block-field">
+                                  <span>{copy.mathFunction}</span>
+                                  <select
+                                    aria-label={`${label}: ${operandLabel} ${sideLabel} ${copy.mathFunction}`}
+                                    value={String(part?.fields?.function ?? "abs")}
+                                    onChange={(event) =>
+                                      onIntent({
+                                        type: "setArithmeticMathFunction",
+                                        location: block.location,
+                                        input,
+                                        side,
+                                        function: event.currentTarget.value as
+                                          "abs" | "round" | "floor" | "ceiling",
+                                      })
+                                    }
+                                    onKeyDown={(event) => event.stopPropagation()}
+                                  >
+                                    <option value="abs">{copy.mathAbs}</option>
+                                    <option value="round">{copy.mathRound}</option>
+                                    <option value="floor">{copy.mathFloor}</option>
+                                    <option value="ceiling">{copy.mathCeiling}</option>
+                                  </select>
+                                </label>
+                              ) : null}
                               {(
                                 [
                                   "add",
@@ -1161,6 +1191,7 @@ export function Canvas({
                                   "modulo",
                                   "random",
                                   "randomInteger",
+                                  "mathFunction",
                                 ] as const
                               ).includes(
                                 source as
@@ -1170,11 +1201,14 @@ export function Canvas({
                                   | "divide"
                                   | "modulo"
                                   | "random"
-                                  | "randomInteger",
+                                  | "randomInteger"
+                                  | "mathFunction",
                               )
-                                ? (source === "random" || source === "randomInteger"
-                                    ? (["min", "max"] as const)
-                                    : (["left", "right"] as const)
+                                ? (source === "mathFunction"
+                                    ? (["value"] as const)
+                                    : source === "random" || source === "randomInteger"
+                                      ? (["min", "max"] as const)
+                                      : (["left", "right"] as const)
                                   ).map((nestedSide) => {
                                     const nested = part?.inputs?.[nestedSide];
                                     if (
@@ -1186,13 +1220,15 @@ export function Canvas({
                                     return (
                                       <label key={nestedSide} className="block-field">
                                         <span>
-                                          {nestedSide === "left"
-                                            ? copy.conditionLeft
-                                            : nestedSide === "right"
-                                              ? copy.conditionRight
-                                              : nestedSide === "min"
-                                                ? copy.rangeMin
-                                                : copy.rangeMax}
+                                          {nestedSide === "value"
+                                            ? copy.mathValue
+                                            : nestedSide === "left"
+                                              ? copy.conditionLeft
+                                              : nestedSide === "right"
+                                                ? copy.conditionRight
+                                                : nestedSide === "min"
+                                                  ? copy.rangeMin
+                                                  : copy.rangeMax}
                                         </span>
                                         <input
                                           key={`${pos}:${input}:${side}:${nestedSide}:${value}`}

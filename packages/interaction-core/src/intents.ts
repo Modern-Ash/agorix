@@ -295,7 +295,7 @@ export type Intent =
       readonly type: "setArithmeticOperand";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
-      readonly side: "left" | "right" | "min" | "max";
+      readonly side: "left" | "right" | "min" | "max" | "value";
       readonly value: number;
       readonly path?: readonly ("left" | "right" | "min" | "max")[];
     }
@@ -317,8 +317,16 @@ export type Intent =
         | "divide"
         | "modulo"
         | "random"
-        | "randomInteger";
+        | "randomInteger"
+        | "mathFunction";
       readonly referenceId?: string;
+    }
+  | {
+      readonly type: "setArithmeticMathFunction";
+      readonly location: StatementLocation;
+      readonly input: "value" | "delta" | "index";
+      readonly side: "left" | "right" | "min" | "max";
+      readonly function: MathFunction;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
   | { readonly type: "revealNode"; readonly nodeId: string }
@@ -857,15 +865,18 @@ export function intentToChange(
           "operator_modulo",
           "operator_random",
           "operator_random_integer",
+          "operator_math_function",
         ].includes(expression.type)
       )
         return undefined;
       const range =
         expression.type === "operator_random" || expression.type === "operator_random_integer";
       if (
-        range
-          ? intent.side !== "min" && intent.side !== "max"
-          : intent.side !== "left" && intent.side !== "right"
+        expression.type === "operator_math_function"
+          ? intent.side !== "value"
+          : range
+            ? intent.side !== "min" && intent.side !== "max"
+            : intent.side !== "left" && intent.side !== "right"
       )
         return undefined;
       const operand = expression.inputs?.[intent.side];
@@ -1010,6 +1021,16 @@ export function intentToChange(
             },
           };
           break;
+        case "mathFunction":
+          replacement = {
+            id: current.id,
+            type: "operator_math_function",
+            fields: { function: "abs" },
+            inputs: {
+              value: { id: `${current.id}:value`, type: "literal_number", fields: { value: 0 } },
+            },
+          };
+          break;
       }
       return {
         type: "editBlock",
@@ -1021,6 +1042,72 @@ export function intentToChange(
             [intent.input]: {
               ...expression,
               inputs: { ...expression.inputs, [intent.side]: replacement },
+            },
+          },
+        },
+      };
+    }
+    case "setArithmeticMathFunction": {
+      if (
+        workspace === undefined ||
+        !(["abs", "round", "floor", "ceiling"] as readonly string[]).includes(intent.function)
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const supported: Readonly<Record<string, readonly string[]>> = {
+        variables_set: ["value"],
+        variables_change: ["delta"],
+        lists_add: ["value"],
+        lists_remove_at: ["index"],
+        lists_insert_at: ["index", "value"],
+        lists_replace_at: ["index", "value"],
+      };
+      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
+      const root = block.inputs?.[intent.input];
+      if (
+        root === undefined ||
+        Array.isArray(root) ||
+        ![
+          "operator_add",
+          "operator_subtract",
+          "operator_multiply",
+          "operator_divide",
+          "operator_modulo",
+          "operator_random",
+          "operator_random_integer",
+        ].includes(root.type)
+      )
+        return undefined;
+      const range = root.type === "operator_random" || root.type === "operator_random_integer";
+      if (
+        range
+          ? intent.side !== "min" && intent.side !== "max"
+          : intent.side !== "left" && intent.side !== "right"
+      )
+        return undefined;
+      const operand = root.inputs?.[intent.side];
+      if (
+        operand === undefined ||
+        Array.isArray(operand) ||
+        operand.type !== "operator_math_function"
+      )
+        return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            [intent.input]: {
+              ...root,
+              inputs: {
+                ...root.inputs,
+                [intent.side]: {
+                  ...operand,
+                  fields: { ...operand.fields, function: intent.function },
+                },
+              },
             },
           },
         },
