@@ -216,6 +216,31 @@ async function main() {
     assert.equal(await webview.locator(".studio-tools .palette-section").count(), 1);
     await webview.locator(".studio-program-heading button").click();
     assert.equal(await webview.locator(".studio-tools").isVisible(), false);
+    const beforeFinding = fs.readFileSync(project, "utf8");
+    await componentLauncher.getByRole("button", { name: "Control" }).click();
+    await webview.locator('.palette button[aria-label="repeat until condition"]').click();
+    const findingCard = webview.locator(".studio-findings");
+    await findingCard.getByText("This loop may run without a wait.").waitFor();
+    await webview.locator(".studio-program").evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.screenshot({
+      path: path.join(repoRoot, "docs/product/assets/studio-vsix-findings-900.png"),
+    });
+    await findingCard.getByRole("button", { name: "Ask Ori about these findings" }).click();
+    await webview
+      .locator(".studio-ori-dock")
+      .getByText(/1 loop that may run without a wait/)
+      .waitFor();
+    await findingCard.getByRole("button", { name: "Inspect block" }).click();
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await findingCard.waitFor({ state: "hidden" });
+    await waitForProject((envelope) => envelope.project.program.scripts[0].statements.length === 6);
+    assert.deepEqual(
+      JSON.parse(fs.readFileSync(project, "utf8")).project.program,
+      JSON.parse(beforeFinding).project.program,
+    );
+    console.log("Reviewed a pre-play loop finding and Ori's counts-only explanation");
     const resize = webview.locator(".studio-ori-resize");
     const resizeBounds = await resize.boundingBox();
     if (!resizeBounds) throw new Error("Ori resize handle is not visible");

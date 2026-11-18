@@ -456,6 +456,17 @@ describe("studio-protocol", () => {
     };
     const message = { schema, type: "workspace", workspace, programHash: "fnv1a32:test" };
     expect(parseHostMessage(message)).toMatchObject({ workspace });
+    const findings = [{ kind: "loop-without-wait", nodeId: "scripts[0]/statements[0]" }];
+    expect(parseHostMessage({ ...message, findings })).toMatchObject({ findings });
+    expect(
+      parseHostMessage({
+        ...message,
+        findings: [{ kind: "loop-without-wait", nodeId: "<script>" }],
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({ ...message, findings: [{ kind: "forged", nodeId: findings[0].nodeId }] }),
+    ).toBeUndefined();
   });
 
   it("preserves known advanced event blocks in workspace snapshots", () => {

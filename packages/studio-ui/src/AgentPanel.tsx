@@ -370,6 +370,7 @@ export function AgentPanel({
   onRevealBlock,
   revealableBlockIds,
   locale,
+  findingSummary,
 }: {
   readonly state: AgentUiState;
   readonly send: (message: UiMessage) => void;
@@ -378,6 +379,7 @@ export function AgentPanel({
   readonly onRevealBlock?: ((blockId: string) => void) | undefined;
   readonly revealableBlockIds?: readonly string[] | undefined;
   readonly locale?: StudioUiLocale | undefined;
+  readonly findingSummary?: string | undefined;
 }) {
   const copy = copyFor(locale ?? "en");
   const [text, setText] = useState("");
@@ -423,6 +425,12 @@ export function AgentPanel({
                       : copy.oriWelcome}
         </p>
       </div>
+      {findingSummary !== undefined && (
+        <div className="ori-turn ori-turn-companion" role="status" aria-live="polite">
+          <span className="ori-turn-label">{copy.oriTitle}</span>
+          <p>{findingSummary}</p>
+        </div>
+      )}
       {showIntent && (
         <form
           className="intent-bar"

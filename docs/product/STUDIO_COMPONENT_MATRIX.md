@@ -42,6 +42,8 @@ Sound import journey: open Scene → Sounds → name and import a PCM WAV under 
 
 Visual debugging journey: mark a statement block with a breakpoint → Play → Studio pauses on the corresponding deterministic runtime frame, with the block highlighted → resume or Step. In Evidence, choose a declared variable from the closed list to see its observed value history, and optionally pause when its value changes. A missing variable or unmarked block never triggers a pause; duplicate frames never create duplicate history points. Breakpoints and watches are local presentation state and never change the canonical program or travel with its portable file.
 
+Pre-play review journey: insert a `repeat until` with a condition that may change and no wait → Studio shows a finding card before Play → choose Inspect block to focus it or ask Ori for a local counts-only explanation → add a wait or remove the loop and the card disappears. A structurally false condition is reported separately as a loop that cannot exit. A condition that is already true, or a body that may wait through a custom block, is not flagged. These findings are advisory; only a run can prove observed behavior.
+
 Image creation journey: open Scene → choose costume or backdrop → import a PNG/WebP under 60 KB or draw on the canvas → save → select the new thumbnail. The protocol and host reject remote URLs, other image formats and oversized data before project metadata changes.
 
 Event journey: select an actor → create a script triggered by message `go` → select that script header → add blocks → add a Broadcast `go` block to another script → Run/Step → inspect deterministic execution. Unknown actor ids and stale program hashes refuse script creation without changing accepted state.

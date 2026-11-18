@@ -373,6 +373,17 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-program-heading h2 { margin: 0; }
 .studio-program-heading button { min-height: 30px; padding: 4px 9px; border: 1px solid var(--vscode-panel-border); border-radius: 5px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
 .studio-program-heading button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.studio-findings { margin: 0 0 10px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--vscode-charts-orange, var(--vscode-focusBorder)), var(--vscode-panel-border) 52%); border-left: 3px solid var(--vscode-charts-orange, var(--vscode-focusBorder)); border-radius: 6px; background: color-mix(in srgb, var(--vscode-charts-orange, var(--vscode-focusBorder)), var(--vscode-editorWidget-background) 94%); }
+.studio-findings header { display: flex; align-items: center; gap: 8px; }
+.studio-findings h3 { margin: 0; font-size: 0.82em; }
+.studio-findings header span { min-width: 19px; border-radius: 10px; text-align: center; background: var(--vscode-charts-orange, var(--vscode-focusBorder)); color: var(--vscode-editor-background); font-size: 0.72em; font-weight: 700; }
+.studio-findings p { margin: 5px 0; color: var(--vscode-descriptionForeground); font-size: 0.76em; }
+.studio-findings ul { display: grid; gap: 4px; max-height: 120px; overflow: auto; margin: 6px 0; padding: 0; list-style: none; }
+.studio-findings li { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.78em; }
+.studio-findings li strong { flex: 1; font-weight: 500; }
+.studio-findings button { min-height: 26px; padding: 2px 6px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
+.studio-findings button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.studio-findings-ori { margin-top: 3px; }
 .studio-component-launcher { display: none; }
 .studio-component-launcher button { --block-accent: var(--vscode-focusBorder); flex: 0 0 auto; min-height: 30px; padding: 3px 5px; border: 1px solid color-mix(in srgb, var(--block-accent), var(--vscode-panel-border) 45%); border-bottom: 3px solid var(--block-accent); border-radius: 6px; background: color-mix(in srgb, var(--block-accent), var(--vscode-editorWidget-background) 88%); color: var(--vscode-foreground); font-size: 0.8em; cursor: pointer; }
 .studio-component-launcher button[data-tone="motion"] { --block-accent: var(--vscode-charts-blue, var(--vscode-focusBorder)); }

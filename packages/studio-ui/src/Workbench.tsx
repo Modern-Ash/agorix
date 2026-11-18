@@ -1,7 +1,12 @@
 import { useEffect, useReducer, useRef, useState, type CSSProperties } from "react";
-import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
+import { blockIdForNode, type BlockType, type BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
-import { LIST_MAX_ITEMS, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX } from "@agorix/program-model";
+import {
+  LIST_MAX_ITEMS,
+  NUMERIC_LITERAL_MIN,
+  NUMERIC_LITERAL_MAX,
+  type ProgramFinding,
+} from "@agorix/program-model";
 import {
   STUDIO_PROTOCOL_VERSION,
   studioStageKey,
@@ -430,6 +435,47 @@ export function EventTracePanel({
           ))}
         </ol>
       )}
+    </section>
+  );
+}
+
+export function ProgramFindingsPanel({
+  copy,
+  findings,
+  onInspect,
+  onAskOri,
+}: {
+  readonly copy: StudioUiCopy;
+  readonly findings: readonly ProgramFinding[];
+  readonly onInspect: (nodeId: string) => void;
+  readonly onAskOri: () => void;
+}) {
+  if (findings.length === 0) return null;
+  return (
+    <section className="studio-findings" aria-label={copy.findingsTitle}>
+      <header>
+        <h3>{copy.findingsTitle}</h3>
+        <span>{findings.length}</span>
+      </header>
+      <p>{copy.findingsIntro}</p>
+      <ul>
+        {findings.map((finding) => (
+          <li key={`${finding.kind}:${finding.nodeId}`}>
+            <span aria-hidden="true">◇</span>
+            <strong>
+              {finding.kind === "loop-never-exits"
+                ? copy.findingNeverExits
+                : copy.findingWithoutWait}
+            </strong>
+            <button type="button" onClick={() => onInspect(finding.nodeId)}>
+              {finding.nodeId.includes("/procedures[") ? copy.findingOpenCode : copy.findingInspect}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="studio-findings-ori" onClick={onAskOri}>
+        {copy.findingAskOri}
+      </button>
     </section>
   );
 }
@@ -1347,6 +1393,8 @@ export function Workbench({
   const [dragging, setDragging] = useState(false);
   const layoutRef = useRef<WorkbenchDensity>(density);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
+  const [findings, setFindings] = useState<readonly ProgramFinding[]>([]);
+  const [showFindingSummary, setShowFindingSummary] = useState(false);
   const [pendingVariableDelete, setPendingVariableDelete] = useState<string | undefined>();
   const [pendingListDelete, setPendingListDelete] = useState<string | undefined>();
   const [status, setStatus] = useState("");
@@ -1442,6 +1490,8 @@ export function Workbench({
       }
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
+        setFindings(message.findings ?? []);
+        setShowFindingSummary(false);
         if (
           previousProgramHash.current !== undefined &&
           previousProgramHash.current !== message.programHash
@@ -2230,6 +2280,19 @@ export function Workbench({
               </button>
             ))}
           </nav>
+          <ProgramFindingsPanel
+            copy={copy}
+            findings={findings}
+            onInspect={(nodeId) => {
+              if (nodeId.includes("/procedures["))
+                bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "openCode" });
+              else revealHelpBlock(blockIdForNode(nodeId));
+            }}
+            onAskOri={() => {
+              setShowFindingSummary(true);
+              setOriOpen(true);
+            }}
+          />
           {workspace === undefined ? (
             <p>{copy.openProjectToStart}</p>
           ) : (
@@ -2381,6 +2444,14 @@ export function Workbench({
           onRevealBlock={revealHelpBlock}
           revealableBlockIds={revealableBlockIds}
           locale={copyLocale}
+          findingSummary={
+            showFindingSummary
+              ? copy.findingOriSummary(
+                  findings.filter((finding) => finding.kind === "loop-never-exits").length,
+                  findings.filter((finding) => finding.kind === "loop-without-wait").length,
+                )
+              : undefined
+          }
         />
       </div>
     </div>

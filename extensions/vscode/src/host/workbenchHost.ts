@@ -7,6 +7,7 @@ import {
 import { intentToChange, type AgentAnchorRef, type AgentVerb } from "@agorix/interaction-core";
 import {
   ProgramValidationError,
+  analyzeProgramLoops,
   validateProgram,
   validEmbeddedImageSource,
   validEmbeddedSoundSource,
@@ -330,7 +331,13 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     try {
       const { workspace } = programToWorkspace(program);
       return [
-        { schema, type: "workspace", workspace, programHash: programSemanticHash(program) },
+        {
+          schema,
+          type: "workspace",
+          workspace,
+          programHash: programSemanticHash(program),
+          findings: analyzeProgramLoops(program),
+        },
         ...actorsMessage(),
         ...sceneMessage(),
         {

@@ -38,6 +38,8 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 
 Studio's visual debugger keeps block breakpoints and a selected variable watch in local Workbench presentation state. Play advances through deterministic runtime frames and pauses after a marked block or a watched value change; Evidence shows only observed value transitions. The learner chooses variables from declarations, not free expressions. Edits clear stale breakpoint positions, and debugger controls never mutate or serialize into the canonical program.
 
+Before Play, a pure analysis over the canonical program reports `repeatUntil` loops whose condition is structurally always false and loops with a changing condition but no visible wait. These are possibilities to investigate, not claims that the runtime has proved a behavior. Studio shows compact cards beside the blocks, lets the learner focus a flagged visual block or open Code for a procedure body, and gives Ori a local explanation assembled only from finding kinds and counts. No learner names, values or source text are sent to a provider for this explanation. The analysis never mutates the program or blocks Play.
+
 ## Agent gating and Workbench robustness
 
 - An unclear intent (no task keyword, more than one task available) gets at most one clarifying question made of fixed task titles; the learner text is never echoed or stored.
