@@ -63,6 +63,12 @@ The bundled gallery is also exercised in the installed VSIX: filter the characte
 | ------------------------------------------------------------- | --------------------------------------------------------------- |
 | ![Gallery actor at 900](./assets/studio-vsix-gallery-900.png) | ![Gallery actor at 1440](./assets/studio-vsix-gallery-1440.png) |
 
+The actor inspector shows the selected costume as artwork. Its expandable visual picker offers the validated costumes with a visible selection state. Choosing a different thumbnail persists the actor edit and updates the deterministic stage before Run.
+
+| 900 × 700                                                             | 1440 × 900                                                              |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| ![Costume picker at 900](./assets/studio-vsix-costume-picker-900.png) | ![Costume picker at 1440](./assets/studio-vsix-costume-picker-1440.png) |
+
 The same installed-VSIX journey captures editing a saved costume at both target sizes:
 
 | 900 × 700                                                         | 1440 × 900                                                          |

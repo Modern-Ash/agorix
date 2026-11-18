@@ -502,7 +502,7 @@ describe("studio-ui", () => {
     ).toBeUndefined();
   });
 
-  it("renders actor costume as an asset-backed inspector select", () => {
+  it("renders actor costume as a visual asset-backed picker", () => {
     const markup = renderToStaticMarkup(
       <ActorInspector
         copy={copyFor("en")}
@@ -536,9 +536,9 @@ describe("studio-ui", () => {
         ]}
       />,
     );
-    expect(markup).toContain("<select");
-    expect(markup).toContain("Spark · asset:costume.spark");
-    expect(markup).not.toContain("Nebula · asset:space.nebula");
+    expect(markup).toContain("actor-costume-preview");
+    expect(markup).toContain("Choose costume: Spark");
+    expect(markup).not.toContain("Choose costume: Nebula");
   });
 
   it("renders Studio assets with technical search and kind filters", () => {

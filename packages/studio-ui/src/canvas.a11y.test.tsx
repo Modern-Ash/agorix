@@ -12,7 +12,7 @@ import type { Intent } from "@agorix/interaction-core";
 import { Canvas, type FocusRequest } from "./Canvas.js";
 import { SceneLibrary } from "./SceneLibrary.js";
 import { STAGE_BACKDROP_DRAG_TYPE, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
-import { StagePanel, Workbench } from "./Workbench.js";
+import { ActorInspector, StagePanel, Workbench } from "./Workbench.js";
 import type { HostBridge } from "./bridge.js";
 import { STUDIO_PROTOCOL_VERSION, type ActorView, type HostMessage } from "@agorix/studio-protocol";
 import { locationKey } from "./blockView.js";
@@ -56,6 +56,57 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
+});
+
+it("offers visual costume choices while preserving an explicit actor edit", () => {
+  const onPatch = vi.fn();
+  act(() =>
+    root.render(
+      <ActorInspector
+        copy={copyFor("en")}
+        selectedActorId="actor:main"
+        onPatch={onPatch}
+        actors={[
+          {
+            id: "actor:main",
+            name: "Explorer",
+            x: 0,
+            y: 0,
+            direction: 0,
+            size: 100,
+            visible: true,
+            costumeId: "costume:mika",
+          },
+        ]}
+        assets={[
+          {
+            id: "costume:mika",
+            name: "Mika",
+            kind: "costume",
+            tags: ["animals"],
+            source: "builtin:kids-gallery-costume:mika",
+          },
+          {
+            id: "costume:pip",
+            name: "Pip",
+            kind: "costume",
+            tags: ["animals"],
+            source: "builtin:kids-gallery-costume:pip",
+          },
+          { id: "backdrop:forest", name: "Forest", kind: "backdrop", tags: ["nature"] },
+        ]}
+      />,
+    ),
+  );
+  expect(host.querySelector(".actor-costume-preview img")).not.toBeNull();
+  expect(host.querySelectorAll(".actor-costume-grid button")).toHaveLength(2);
+  expect(
+    host
+      .querySelector('.actor-costume-grid button[aria-pressed="true"]')
+      ?.getAttribute("aria-label"),
+  ).toBe("Choose costume: Mika");
+  act(() => host.querySelector<HTMLButtonElement>('[aria-label="Choose costume: Pip"]')?.click());
+  expect(onPatch).toHaveBeenCalledWith("actor:main", { costumeId: "costume:pip" });
 });
 
 it("returns from an Ori pointer to its canonical block", () => {

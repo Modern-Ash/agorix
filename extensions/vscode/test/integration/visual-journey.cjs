@@ -284,6 +284,37 @@ async function main() {
       ),
     );
     await webview.locator('.stage-sprite[data-costume-id="costume:mika"]').waitFor();
+    const costumePicker = webview.locator(".studio-scene-editor .actor-costume-picker");
+    await costumePicker.locator("summary").click();
+    if ((await costumePicker.locator(".actor-costume-grid button").count()) < 12)
+      throw new Error("Actor inspector must expose visual costume choices");
+    await costumePicker.getByRole("button", { name: "Choose costume: Pip" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.metadata?.actors?.items?.some(
+        (actor) => actor.name === "Mika" && actor.costumeId === "costume:pip",
+      ),
+    );
+    await webview.locator('.stage-sprite[data-costume-id="costume:pip"]').waitFor();
+    await costumePicker.getByRole("button", { name: "Choose costume: Mika" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.metadata?.actors?.items?.some(
+        (actor) => actor.name === "Mika" && actor.costumeId === "costume:mika",
+      ),
+    );
+    await webview.locator('.stage-sprite[data-costume-id="costume:mika"]').waitFor();
+    if (process.env.AGORIX_CAPTURE_COSTUME_PICKER === "1") {
+      for (const [width, height] of [
+        [900, 700],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: path.join(repoRoot, `docs/product/assets/studio-vsix-costume-picker-${width}.png`),
+        });
+      }
+      await page.setViewportSize({ width: 900, height: 700 });
+    }
+    console.log("Selected and persisted visual costumes from the actor inspector");
     if (process.env.AGORIX_CAPTURE_GALLERY === "1") {
       for (const [width, height] of [
         [900, 700],
@@ -333,10 +364,10 @@ async function main() {
     await webview.getByRole("button", { name: "Save drawing" }).click();
     await page.getByText("I am an adult and approve").click();
     await page.keyboard.press("Escape");
-    await webview
+    await costumeGallery
       .getByRole("button", { name: "Choose costume: My painted star" })
       .waitFor({ timeout: 5000 });
-    await webview
+    await costumeGallery
       .getByRole("button", { name: "Choose costume: My painted star" })
       .click({ timeout: 5000 });
     console.log("Created and selected a painted costume");
