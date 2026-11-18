@@ -7,9 +7,11 @@ const cp = require("node:child_process");
 const http = require("node:http");
 const assert = require("node:assert/strict");
 const { chromium } = require("../../../../apps/web/node_modules/@playwright/test");
+const {
+  downloadAndUnzipVSCode,
+  resolveCliArgsFromVSCodeExecutablePath,
+} = require("@vscode/test-electron");
 
-const vscode = process.env.VSCODE_EXECUTABLE || "/usr/share/code/code";
-const cli = path.join(path.dirname(vscode), "bin", "code");
 const vsix = path.resolve(__dirname, "../../dist/agorix-studio.vsix");
 const fixture = path.resolve(__dirname, "fixtures/visual-workspace.agorix");
 const repoRoot = path.resolve(__dirname, "../../../..");
@@ -42,6 +44,10 @@ async function waitForProject(predicate) {
 
 async function main() {
   if (!fs.existsSync(vsix)) throw new Error("Package the VSIX first");
+  const vscode =
+    process.env.VSCODE_EXECUTABLE ||
+    (await downloadAndUnzipVSCode(process.env.VSCODE_VERSION || "stable"));
+  const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(vscode);
   fs.copyFileSync(fixture, project);
   const boundaryBundle = path.join(scratch, "ori-boundary.cjs");
   buildSync({
@@ -87,7 +93,7 @@ async function main() {
     path.join(userDir, "settings.json"),
     JSON.stringify({ "agorixStudio.agent.endpoint": `http://127.0.0.1:${boundaryPort}` }),
   );
-  const install = cp.spawnSync(cli, [...profile, "--install-extension", vsix], {
+  const install = cp.spawnSync(cli, [...cliArgs, ...profile, "--install-extension", vsix], {
     env,
     encoding: "utf8",
   });
@@ -120,7 +126,12 @@ async function main() {
     }
     browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
     const context = browser.contexts()[0];
-    const page = context.pages().find((item) => item.url().startsWith("vscode-file:"));
+    let page;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      page = context.pages().find((item) => item.url().startsWith("vscode-file:"));
+      if (page !== undefined) break;
+      await pause(200);
+    }
     if (!page) throw new Error("VS Code window not found");
     await page.locator(".monaco-workbench").waitFor({ timeout: 30000 });
     await page.bringToFront();
