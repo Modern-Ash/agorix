@@ -268,10 +268,11 @@ async function main() {
       .filter({ hasText: "Helper" })
       .click();
     console.log("Confirmed atomic removal of a temporary actor and its script");
+    await webview.locator(".stage-panel .stage-add-character").click();
     await webview
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Costumes" })
-      .click();
+      .waitFor();
     const costumeGallery = webview
       .locator(".studio-scene-editor section:not([hidden])")
       .filter({ has: webview.locator(".scene-library-grid") });
@@ -291,6 +292,18 @@ async function main() {
       throw new Error(
         `Studio must expose the bundled visual character gallery (found ${galleryCount}; sections ${JSON.stringify(sectionState)})`,
       );
+    }
+    if (process.env.AGORIX_CAPTURE_CHARACTER_ENTRY === "1") {
+      for (const [width, height] of [
+        [900, 700],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: path.join(repoRoot, `docs/product/assets/studio-vsix-character-entry-${width}.png`),
+        });
+      }
+      await page.setViewportSize({ width: 900, height: 700 });
     }
     await costumeGallery.getByLabel("Asset category").selectOption("animals");
     assert.equal(await costumeGallery.locator(".scene-asset-card").count(), 3);

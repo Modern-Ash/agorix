@@ -71,6 +71,12 @@ The actor inspector shows the selected costume as artwork. Its expandable visual
 
 The Scene stage exposes its current backdrop as artwork and opens a thumbnail picker beside the live preview. Choosing a backdrop persists the project metadata and redraws the idle stage; the installed journey confirms the chosen backdrop after Web import.
 
+The stage also offers **+ Character** beside the backdrop control. It opens the full visual costume gallery, clears stale filters and keeps the stage in view. The learner chooses a costume card to create the actor and its owned start script explicitly.
+
+| 900 × 700                                                               | 1440 × 900                                                                |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| ![Character entry at 900](./assets/studio-vsix-character-entry-900.png) | ![Character entry at 1440](./assets/studio-vsix-character-entry-1440.png) |
+
 | 900 × 700                                                               | 1440 × 900                                                                |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | ![Backdrop picker at 900](./assets/studio-vsix-backdrop-picker-900.png) | ![Backdrop picker at 1440](./assets/studio-vsix-backdrop-picker-1440.png) |
