@@ -47,7 +47,9 @@ async function main() {
   const vscode =
     process.env.VSCODE_EXECUTABLE ||
     (await downloadAndUnzipVSCode(process.env.VSCODE_VERSION || "stable"));
-  const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(vscode);
+  const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(vscode, {
+    reuseMachineInstall: true,
+  });
   fs.copyFileSync(fixture, project);
   const boundaryBundle = path.join(scratch, "ori-boundary.cjs");
   buildSync({
@@ -102,14 +104,22 @@ async function main() {
     vscode,
     [
       `--remote-debugging-port=${port}`,
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
       "--window-size=900,700",
       ...profile,
       "--disable-workspace-trust",
       "--new-window",
       project,
     ],
-    { env, detached: true, stdio: "ignore" },
+    { env, detached: true, stdio: ["ignore", "pipe", "pipe"] },
   );
+  let startupOutput = "";
+  for (const stream of [child.stdout, child.stderr]) {
+    stream.on("data", (chunk) => {
+      startupOutput = (startupOutput + String(chunk)).slice(-2000);
+    });
+  }
   let browser;
   let webBrowser;
   let webChild;
@@ -121,7 +131,8 @@ async function main() {
       } catch {
         /* VS Code is starting */
       }
-      if (attempt === 59) throw new Error("VS Code CDP did not start");
+      if (attempt === 59)
+        throw new Error(`VS Code CDP did not start (exit ${child.exitCode}): ${startupOutput}`);
       await pause(500);
     }
     browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
