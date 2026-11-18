@@ -496,6 +496,46 @@ describe("canvas keyboard and screen reader behaviour", () => {
       referenceId: "inventory",
     });
   });
+  it("edits a math function and its literal through explicit intents", () => {
+    const workspace = applyWorkspaceChange(initial, {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "set:math",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: {
+          value: {
+            id: "math:score",
+            type: "operator_math_function",
+            fields: { function: "abs" },
+            inputs: {
+              value: { id: "math:number", type: "literal_number", fields: { value: -3.5 } },
+            },
+          },
+        },
+      },
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const select = host.querySelector<HTMLSelectElement>(
+      '.math-function-fields select[aria-label*="Function"]',
+    )!;
+    act(() => {
+      select.value = "round";
+      select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({ type: "setMathFunction", function: "round" });
+    const input = host.querySelector<HTMLInputElement>(
+      '.math-function-fields input[aria-label*="Number"]',
+    )!;
+    act(() => {
+      input.value = "4.5";
+      input.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({ type: "setMathFunction", value: 4.5 });
+  });
   it("shows visual asset choices on costume blocks and posts an explicit selection", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",
@@ -618,6 +658,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
       "modulo",
       "random",
       "randomInteger",
+      "mathFunction",
       "xPosition",
       "yPosition",
       "variable",

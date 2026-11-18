@@ -1430,6 +1430,93 @@ describe("interaction-core", () => {
       ),
     ).toBeDefined();
   });
+  it("creates and edits a math function through a canonical numeric socket", () => {
+    const workspace = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: script,
+      index: 0,
+      block: {
+        id: "var:function",
+        type: "variables_set",
+        fields: { variableId: "score" },
+        inputs: { value: { id: "num:function", type: "literal_number", fields: { value: 0 } } },
+      },
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const inserted = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        { type: "setNumericInput", location, input: "value", reporter: "mathFunction" },
+        newId,
+        workspace,
+      )!,
+    ).workspace;
+    const changed = applyWorkspaceChange(
+      inserted,
+      intentToChange(
+        { type: "setMathFunction", location, input: "value", function: "round", value: 3.5 },
+        newId,
+        inserted,
+      )!,
+    );
+    expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+      type: "setVariable",
+      value: {
+        type: "mathFunction",
+        function: "round",
+        value: { type: "numericLiteral", value: 3.5 },
+      },
+    });
+    for (const invalid of [
+      { type: "setMathFunction", location, input: "value", function: "sqrt" },
+      { type: "setMathFunction", location, input: "value", function: "abs", value: Infinity },
+      { type: "setMathFunction", location, input: "index", function: "abs" },
+    ])
+      expect(intentToChange(invalid as never, newId, inserted)).toBeUndefined();
+    const withVariable = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "mathFunction",
+                function: "abs",
+                value: { type: "variable", variableId: "score" },
+              },
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const preserved = applyWorkspaceChange(
+      withVariable,
+      intentToChange(
+        { type: "setMathFunction", location, input: "value", function: "ceiling" },
+        newId,
+        withVariable,
+      )!,
+    );
+    expect(preserved.program.scripts[0]?.statements[0]).toMatchObject({
+      value: {
+        type: "mathFunction",
+        function: "ceiling",
+        value: { type: "variable", variableId: "score" },
+      },
+    });
+    expect(
+      intentToChange(
+        { type: "setMathFunction", location, input: "value", function: "ceiling", value: 2 },
+        newId,
+        withVariable,
+      ),
+    ).toBeUndefined();
+  });
   it("composes a second arithmetic level and edits its literal without replacing siblings", () => {
     let workspace = applyWorkspaceChange(createStarterWorkspace(), {
       type: "addBlock",

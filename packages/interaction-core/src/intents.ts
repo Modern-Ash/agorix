@@ -7,7 +7,12 @@ import {
   type StatementLocation,
   type WorkspaceChange,
 } from "@agorix/block-editor";
-import { LIST_MAX_ITEMS, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX } from "@agorix/program-model";
+import {
+  LIST_MAX_ITEMS,
+  NUMERIC_LITERAL_MIN,
+  NUMERIC_LITERAL_MAX,
+  type MathFunction,
+} from "@agorix/program-model";
 import { isSafeId, parseAnchorRef, type AgentAnchorRef } from "./anchors.js";
 
 export type AgentVerb = "explain" | "debug" | "challenge";
@@ -258,9 +263,17 @@ export type Intent =
         | "divide"
         | "modulo"
         | "random"
-        | "randomInteger";
+        | "randomInteger"
+        | "mathFunction";
       readonly referenceId?: string;
       readonly itemIndex?: number;
+    }
+  | {
+      readonly type: "setMathFunction";
+      readonly location: StatementLocation;
+      readonly input: "value" | "delta" | "index";
+      readonly function: MathFunction;
+      readonly value?: number;
     }
   | {
       readonly type: "setArithmeticOperand";
@@ -625,11 +638,77 @@ export function intentToChange(
             },
           };
           break;
+        case "mathFunction":
+          replacement = {
+            id: current.id,
+            type: "operator_math_function",
+            fields: { function: "abs" },
+            inputs: {
+              value: { id: `${current.id}:value`, type: "literal_number", fields: { value: 0 } },
+            },
+          };
+          break;
       }
       return {
         type: "editBlock",
         location: intent.location,
         block: { ...block, inputs: { ...block.inputs, [intent.input]: replacement } },
+      };
+    }
+    case "setMathFunction": {
+      if (
+        workspace === undefined ||
+        !(["abs", "round", "floor", "ceiling"] as readonly string[]).includes(intent.function) ||
+        (intent.value !== undefined &&
+          (!Number.isFinite(intent.value) ||
+            intent.value < NUMERIC_LITERAL_MIN ||
+            intent.value > NUMERIC_LITERAL_MAX))
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const supported: Readonly<Record<string, readonly string[]>> = {
+        variables_set: ["value"],
+        variables_change: ["delta"],
+        lists_add: ["value"],
+        lists_remove_at: ["index"],
+        lists_insert_at: ["index", "value"],
+        lists_replace_at: ["index", "value"],
+      };
+      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
+      const operand = block.inputs?.[intent.input];
+      if (
+        operand === undefined ||
+        Array.isArray(operand) ||
+        operand.type !== "operator_math_function"
+      )
+        return undefined;
+      const value = operand.inputs?.value;
+      if (
+        intent.value !== undefined &&
+        (value === undefined || Array.isArray(value) || value.type !== "literal_number")
+      )
+        return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            [intent.input]: {
+              ...operand,
+              fields: { ...operand.fields, function: intent.function },
+              ...(intent.value === undefined || value === undefined || Array.isArray(value)
+                ? {}
+                : {
+                    inputs: {
+                      ...operand.inputs,
+                      value: { ...value, fields: { ...value.fields, value: intent.value } },
+                    },
+                  }),
+            },
+          },
+        },
       };
     }
     case "setArithmeticOperand": {

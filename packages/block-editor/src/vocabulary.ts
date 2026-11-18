@@ -635,6 +635,20 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "operator_math_function",
+    label: "math function [N]",
+    section: "Operators",
+    placement: "expression",
+    accessibleName: "math function",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({
+      id,
+      type: "operator_math_function",
+      fields: { function: "abs" },
+      inputs: { value: { id: `${id}:value`, type: "literal_number", fields: { value: 0 } } },
+    }),
+  },
+  {
     type: "variables_value",
     label: "score",
     section: "Variables",

@@ -596,7 +596,9 @@ export function Canvas({
                                           ? "random"
                                           : operand.type === "operator_random_integer"
                                             ? "randomInteger"
-                                            : "other";
+                                            : operand.type === "operator_math_function"
+                                              ? "mathFunction"
+                                              : "other";
               const referenceId =
                 reporter === "variable"
                   ? operand.fields?.variableId
@@ -626,7 +628,8 @@ export function Canvas({
                   | "divide"
                   | "modulo"
                   | "random"
-                  | "randomInteger",
+                  | "randomInteger"
+                  | "mathFunction",
                 nextReference?: string,
                 nextIndex?: number,
               ) =>
@@ -700,7 +703,8 @@ export function Canvas({
                           | "divide"
                           | "modulo"
                           | "random"
-                          | "randomInteger";
+                          | "randomInteger"
+                          | "mathFunction";
                         choose(
                           next,
                           next === "variable"
@@ -722,6 +726,7 @@ export function Canvas({
                       <option value="modulo">{copy.operatorModulo}</option>
                       <option value="random">{copy.operatorRandom}</option>
                       <option value="randomInteger">{copy.operatorRandomInteger}</option>
+                      <option value="mathFunction">{copy.operatorMathFunction}</option>
                       <option value="xPosition">{copy.positionX}</option>
                       <option value="yPosition">{copy.positionY}</option>
                       {actors.length > 0 ? (
@@ -781,6 +786,73 @@ export function Canvas({
                         event.currentTarget.value = String(operand.fields?.value);
                       }}
                     />
+                  ) : null}
+                  {reporter === "mathFunction" ? (
+                    <span className="math-function-fields">
+                      <label>
+                        <span>{copy.mathFunction}</span>
+                        <select
+                          aria-label={`${label}: ${operandLabel} ${copy.mathFunction}`}
+                          value={String(operand.fields?.function ?? "abs")}
+                          onChange={(event) =>
+                            onIntent({
+                              type: "setMathFunction",
+                              location: block.location,
+                              input,
+                              function: event.currentTarget.value as
+                                "abs" | "round" | "floor" | "ceiling",
+                            })
+                          }
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <option value="abs">{copy.mathAbs}</option>
+                          <option value="round">{copy.mathRound}</option>
+                          <option value="floor">{copy.mathFloor}</option>
+                          <option value="ceiling">{copy.mathCeiling}</option>
+                        </select>
+                      </label>
+                      {operand.inputs?.value?.type === "literal_number" ? (
+                        <label>
+                          <span>{copy.mathValue}</span>
+                          <input
+                            key={`${pos}:${input}:math:${operand.inputs.value.fields?.value}`}
+                            type="number"
+                            aria-label={`${label}: ${operandLabel} ${copy.mathValue}`}
+                            defaultValue={
+                              typeof operand.inputs.value.fields?.value === "number"
+                                ? operand.inputs.value.fields.value
+                                : 0
+                            }
+                            onKeyDown={(event) => {
+                              event.stopPropagation();
+                              if (event.key === "Enter") event.currentTarget.blur();
+                            }}
+                            onBlur={(event) => {
+                              const raw = event.currentTarget.value.trim();
+                              const value = Number(raw);
+                              if (
+                                raw !== "" &&
+                                Number.isFinite(value) &&
+                                value !== operand.inputs?.value?.fields?.value
+                              )
+                                onIntent({
+                                  type: "setMathFunction",
+                                  location: block.location,
+                                  input,
+                                  function: operand.fields?.function as
+                                    "abs" | "round" | "floor" | "ceiling",
+                                  value,
+                                });
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <span>
+                          {getBlockDefinition(operand.inputs?.value?.type as BlockType)?.label ??
+                            operand.inputs?.value?.type}
+                        </span>
+                      )}
+                    </span>
                   ) : null}
                   {(
                     [

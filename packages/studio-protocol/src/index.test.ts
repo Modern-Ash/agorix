@@ -602,6 +602,46 @@ describe("studio-protocol", () => {
       referenceId: "list:items",
       itemIndex: 2,
     };
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setNumericInput", location, input: "value", reporter: "mathFunction" },
+      }),
+    ).toMatchObject({ intent: { reporter: "mathFunction" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setMathFunction",
+          location,
+          input: "value",
+          function: "floor",
+          value: -3.5,
+        },
+      }),
+    ).toMatchObject({ intent: { function: "floor", value: -3.5 } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { type: "setMathFunction", location, input: "value", function: "sqrt" },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setMathFunction",
+          location,
+          input: "value",
+          function: "abs",
+          value: Infinity,
+        },
+      }),
+    ).toBeUndefined();
     expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
     expect(
       parseUiMessage({
