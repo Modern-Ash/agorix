@@ -3,6 +3,7 @@ import {
   validateProgram,
   validateProjectCreativeState,
   validEmbeddedImageSource,
+  validEmbeddedSoundSource,
   type ProjectProgram,
 } from "@agorix/program-model";
 import {
@@ -81,7 +82,7 @@ export interface AgorixProjectEnvelopeV2 {
   readonly format: typeof AGORIX_PROJECT_FORMAT;
   readonly formatVersion: typeof AGORIX_PROJECT_MEDIA_FORMAT_VERSION;
   readonly exportedAt: string;
-  /** In-memory project has its embedded image sources rehydrated. */
+  /** In-memory project has its embedded media sources rehydrated. */
   readonly project: StoredProject;
   readonly media: Readonly<Record<string, string>>;
 }
@@ -110,7 +111,8 @@ export function serializeAgorixProject(
   const project = validatePortableStoredProject(stored, true);
   const media: Record<string, string> = {};
   const assets = project.metadata.assets?.map((asset) => {
-    if (!asset.source.startsWith("data:image/")) return asset;
+    if (!asset.source.startsWith("data:image/") && !asset.source.startsWith("data:audio/wav;"))
+      return asset;
     media[asset.id] = asset.source;
     return { ...asset, source: `embedded:${asset.id}` };
   });
@@ -123,7 +125,7 @@ export function serializeAgorixProject(
     );
   }
   if (Object.keys(media).length > 12) {
-    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "too many embedded images");
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "too many embedded media");
   }
   const portableProject = hasMedia
     ? validatePortableStoredProject({
@@ -216,9 +218,10 @@ export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnve
   }
   for (const asset of embedded) {
     if (
-      asset.kind === "sound" ||
       asset.source !== `embedded:${asset.id}` ||
-      !validEmbeddedImageSource(input.media[asset.id])
+      !(asset.kind === "sound"
+        ? validEmbeddedSoundSource(input.media[asset.id])
+        : validEmbeddedImageSource(input.media[asset.id]))
     ) {
       throw new PersistenceError(
         "SCHEMA_MISMATCH",
@@ -428,7 +431,10 @@ function validateAssets(input: unknown, allowInlineImages: boolean): ProjectMeta
     if (
       typeof asset.source !== "string" ||
       (asset.source.startsWith("data:")
-        ? !allowInlineImages || asset.kind === "sound" || !validEmbeddedImageSource(asset.source)
+        ? !allowInlineImages ||
+          !(asset.kind === "sound"
+            ? validEmbeddedSoundSource(asset.source)
+            : validEmbeddedImageSource(asset.source))
         : asset.source.length < 1 || asset.source.length > 120)
     ) {
       throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.source invalid`);

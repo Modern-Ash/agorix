@@ -3342,8 +3342,8 @@ export function App({
   }
 
   function exportProject() {
-    const hasEmbeddedMedia = creativeState.assets?.some((asset) =>
-      asset.source.startsWith("data:image/"),
+    const hasEmbeddedMedia = creativeState.assets?.some(
+      (asset) => asset.source.startsWith("data:image/") || asset.source.startsWith("data:audio/"),
     );
     if (hasEmbeddedMedia && !window.confirm(t(locale, "projectMediaExportConfirm"))) return;
     try {

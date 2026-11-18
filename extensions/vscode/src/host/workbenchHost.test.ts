@@ -1662,7 +1662,7 @@ describe("workbenchHost", () => {
     expect(accepted.find((message) => message.type === "assets")).toMatchObject({
       assets: expect.arrayContaining([expect.objectContaining({ name: "Nova" })]),
     });
-    expect(labels).toEqual(["Workbench: import image asset"]);
+    expect(labels).toEqual(["Workbench: import asset"]);
     const refused = await host.handle({
       schema,
       type: "importAsset",
@@ -1672,6 +1672,27 @@ describe("workbenchHost", () => {
     });
     expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
     expect(labels).toHaveLength(1);
+  });
+
+  it("imports an embedded sound and refuses a remote sound without mutation", async () => {
+    const { host, metadata, labels } = setup();
+    const source =
+      "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACAAA==";
+    await host.handle({ schema, type: "importAsset", kind: "sound", name: "Bell", source });
+    expect(metadata().assets).toEqual([
+      expect.objectContaining({ kind: "sound", name: "Bell", source }),
+    ]);
+    const before = structuredClone(metadata().assets);
+    const refused = await host.handle({
+      schema,
+      type: "importAsset",
+      kind: "sound",
+      name: "Remote",
+      source: "https://example.com/bell.wav",
+    });
+    expect(refused[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(metadata().assets).toEqual(before);
+    expect(labels).toEqual(["Workbench: import asset"]);
   });
 
   it("edits a known costume in place and refuses unknown assets", async () => {

@@ -174,6 +174,24 @@ describe("studio-ui", () => {
     expect(markup).toContain("disabled");
     expect(markup).not.toContain("https://example.com");
   });
+  it("offers a local WAV import beside project sounds", () => {
+    const markup = renderToStaticMarkup(
+      <SceneLibrary
+        copy={copyFor("en")}
+        actors={[]}
+        assets={[]}
+        selectedActorId={undefined}
+        backdropId={undefined}
+        onSelectActor={() => undefined}
+        onCostume={() => undefined}
+        onBackdrop={() => undefined}
+        onImportAsset={() => undefined}
+      />,
+    );
+    expect(markup).toContain("Import WAV sound");
+    expect(markup).toContain('accept="audio/wav,.wav"');
+    expect(markup).toContain("Sound name");
+  });
   it("renders shared gallery art and rejects remote or unknown image sources", () => {
     const costume = {
       id: "costume:nova",

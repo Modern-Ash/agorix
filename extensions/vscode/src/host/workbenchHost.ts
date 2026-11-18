@@ -9,6 +9,7 @@ import {
   ProgramValidationError,
   validateProgram,
   validEmbeddedImageSource,
+  validEmbeddedSoundSource,
   type ProjectProgram,
 } from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
@@ -131,7 +132,8 @@ function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
       "builtin:space.nebula",
     ].includes(asset.source) ||
     ADVANCED_SOUNDS.some((sound) => sound.source === asset.source) ||
-    validEmbeddedImageSource(asset.source)
+    validEmbeddedImageSource(asset.source) ||
+    (asset.kind === "sound" && validEmbeddedSoundSource(asset.source))
       ? { source: asset.source }
       : {}),
   });
@@ -797,7 +799,12 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       case "importAsset": {
         const metadata = port.getMetadata();
         if (metadata === undefined) return [];
-        if (!validEmbeddedImageSource(message.source) || (metadata.assets?.length ?? 0) >= 128) {
+        if (
+          !(message.kind === "sound"
+            ? validEmbeddedSoundSource(message.source)
+            : validEmbeddedImageSource(message.source)) ||
+          (metadata.assets?.length ?? 0) >= 128
+        ) {
           return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
         }
         const known = knownAssetIds(metadata);
@@ -813,7 +820,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               { id, kind: message.kind, name: message.name, source: message.source },
             ],
           },
-          "Workbench: import image asset",
+          "Workbench: import asset",
         );
         return snapshot();
       }

@@ -16,6 +16,8 @@ import { PersistenceError, type StoredProject } from "./store.js";
 const exportedAt = "2026-01-02T03:04:05.000Z";
 const png =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==";
+const wav =
+  "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACAAA==";
 
 const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
@@ -407,7 +409,7 @@ describe(".agorix portable project v1", () => {
   });
 });
 
-describe(".agorix portable embedded image v2", () => {
+describe(".agorix portable embedded media v2", () => {
   function withImage(): StoredProject {
     return cloneProject({
       metadata: {
@@ -432,6 +434,28 @@ describe(".agorix portable embedded image v2", () => {
     expect(raw.project.metadata.assets?.[0]?.source).toBe("embedded:costume:rocket");
     expect(raw.media["costume:rocket"]).toBe(png);
     expect(parseAgorixProject(exported).project).toEqual(source);
+  });
+
+  it("round-trips a project sound only after explicit media opt-in", () => {
+    const source = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        assets: storedProject.metadata.assets!.map((asset) =>
+          asset.id === "sound:ping" ? { ...asset, source: wav } : asset,
+        ),
+      },
+    });
+    expect(() => serializeAgorixProject(source, { exportedAt })).toThrow(/adult opt-in/);
+    const exported = serializeAgorixProject(source, { exportedAt, includeMedia: true });
+    const raw = JSON.parse(exported) as {
+      project: StoredProject;
+      media: Record<string, string>;
+    };
+    expect(raw.project.metadata.assets?.[2]?.source).toBe("embedded:sound:ping");
+    expect(raw.media["sound:ping"]).toBe(wav);
+    expect(parseAgorixProject(exported).project).toEqual(source);
+    raw.media["sound:ping"] = "https://example.com/sound.wav";
+    expect(() => parseAgorixProject(JSON.stringify(raw))).toThrow();
   });
 
   it("rejects missing, extra, malformed and unsupported embedded images", () => {

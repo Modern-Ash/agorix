@@ -1,9 +1,45 @@
 import { describe, expect, it } from "vitest";
 import { FULL_COVERAGE_PROGRAM } from "./fixtures.js";
 import { ProgramValidationError } from "./validate.js";
-import { validateProjectCreativeState } from "./creative.js";
+import { validEmbeddedSoundSource, validateProjectCreativeState } from "./creative.js";
+
+const wav =
+  "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACAAA==";
 
 describe("validateProjectCreativeState", () => {
+  it("accepts bounded PCM WAV and refuses malformed inline sound", () => {
+    const program = { ...FULL_COVERAGE_PROGRAM, scripts: [] };
+    expect(validEmbeddedSoundSource(wav)).toBe(true);
+    expect(
+      validateProjectCreativeState(
+        { assets: [{ id: "sound:mine", kind: "sound", name: "Mine", source: wav }] },
+        program,
+      ).assets?.[0]?.source,
+    ).toBe(wav);
+    for (const source of [
+      "data:audio/wav;base64,AAAA",
+      wav.replace("UklG", "AAAA"),
+      `data:audio/wav;base64,${"A".repeat(82_004)}`,
+      "data:audio/mpeg;base64,AAAA",
+    ]) {
+      expect(validEmbeddedSoundSource(source)).toBe(false);
+      expect(() =>
+        validateProjectCreativeState(
+          { assets: [{ id: "sound:mine", kind: "sound", name: "Mine", source }] },
+          program,
+        ),
+      ).toThrow(/INVALID_CREATIVE_STATE/);
+    }
+    const longWav = new Uint8Array(48_044);
+    const header = atob(wav.slice("data:audio/wav;base64,".length));
+    for (let index = 0; index < 44; index++) longWav[index] = header.charCodeAt(index);
+    const view = new DataView(longWav.buffer);
+    view.setUint32(4, longWav.length - 8, true);
+    view.setUint32(40, 48_000, true);
+    expect(
+      validEmbeddedSoundSource(`data:audio/wav;base64,${btoa(String.fromCharCode(...longWav))}`),
+    ).toBe(false);
+  });
   it("accepts bounded PNG art and rejects scriptable or oversized inline sources", () => {
     const png =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==";

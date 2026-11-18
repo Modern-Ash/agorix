@@ -10,8 +10,24 @@ const beacon: AssetView = {
   tags: [],
   source: "builtin:sound.beacon",
 };
+const wav =
+  "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACAAA==";
 
 describe("Studio sound preview", () => {
+  it("previews a bounded embedded WAV without requesting a remote source", () => {
+    const play = vi.fn(async () => undefined);
+    const createAudio = vi.fn(() => ({ play }) as unknown as HTMLAudioElement);
+    const createContext = vi.fn(() => {
+      throw new Error("tone context should not open");
+    });
+    const sound = { ...beacon, source: wav };
+    expect(canPreviewSound(sound)).toBe(true);
+    expect(playSoundPreview(sound, createContext, createAudio)).toBe(true);
+    expect(createAudio).toHaveBeenCalledWith(wav);
+    expect(play).toHaveBeenCalledOnce();
+    expect(createContext).not.toHaveBeenCalled();
+    expect(canPreviewSound({ ...sound, source: "https://example.com/sound.wav" })).toBe(false);
+  });
   it("previews every bundled sound with its bounded local tone", () => {
     const start = vi.fn();
     const stop = vi.fn();

@@ -68,7 +68,7 @@ const messages = {
     projectExported: "Project exported. Keep the file to continue later.",
     projectExportFailed: "We couldn't export this project file.",
     projectMediaExportConfirm:
-      "An adult must approve including images made on this device in the portable project. Are you an adult and do you approve?",
+      "An adult must approve including images or sounds made on this device in the portable project. Are you an adult and do you approve?",
     projectImported: "Project imported. Blocks and code loaded from the file.",
     projectImportFailed: "We couldn't import that project file.",
     rejectProposal: "Reject proposal",
@@ -419,7 +419,7 @@ const messages = {
     projectExported: "Proyecto exportado. Guarda el archivo para continuar después.",
     projectExportFailed: "No pudimos exportar este archivo de proyecto.",
     projectMediaExportConfirm:
-      "Una persona adulta debe aprobar que las imágenes creadas en este dispositivo se incluyan en el proyecto portátil. ¿Eres una persona adulta y lo apruebas?",
+      "Una persona adulta debe aprobar que las imágenes o sonidos creados en este dispositivo se incluyan en el proyecto portátil. ¿Eres una persona adulta y lo apruebas?",
     projectImported: "Proyecto importado. Bloques y código cargados desde el archivo.",
     projectImportFailed: "No pudimos importar ese archivo de proyecto.",
     rejectProposal: "Rechazar propuesta",

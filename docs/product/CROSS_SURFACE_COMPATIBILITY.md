@@ -85,5 +85,6 @@ Compatibility tests must cover:
 - UI-specific identifiers do not leak into the canonical model.
 - Web and Studio ownership envelopes can differ while the canonical project
   remains semantically equivalent.
+- Studio-imported bounded PCM WAV sounds remain in project metadata through Web import and Studio reopen. Portable media export requires the existing explicit adult opt-in; remote audio URLs are never fetched for previews.
 - identity, session and project-ownership identifiers do not leak into the
   canonical model.
