@@ -7,9 +7,11 @@ const cp = require("node:child_process");
 const http = require("node:http");
 const assert = require("node:assert/strict");
 const { chromium } = require("../../../../apps/web/node_modules/@playwright/test");
+const {
+  downloadAndUnzipVSCode,
+  resolveCliArgsFromVSCodeExecutablePath,
+} = require("@vscode/test-electron");
 
-const vscode = process.env.VSCODE_EXECUTABLE || "/usr/share/code/code";
-const cli = path.join(path.dirname(vscode), "bin", "code");
 const vsix = path.resolve(__dirname, "../../dist/agorix-studio.vsix");
 const fixture = path.resolve(__dirname, "fixtures/visual-workspace.agorix");
 const repoRoot = path.resolve(__dirname, "../../../..");
@@ -41,7 +43,18 @@ async function waitForProject(predicate) {
 }
 
 async function main() {
+  const watchdog = setTimeout(() => {
+    console.error("Installed VSIX visual journey exceeded four minutes");
+    process.exit(1);
+  }, 240_000);
+  watchdog.unref();
   if (!fs.existsSync(vsix)) throw new Error("Package the VSIX first");
+  const vscode =
+    process.env.VSCODE_EXECUTABLE ||
+    (await downloadAndUnzipVSCode(process.env.VSCODE_VERSION || "stable"));
+  const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(vscode, {
+    reuseMachineInstall: true,
+  });
   fs.copyFileSync(fixture, project);
   const boundaryBundle = path.join(scratch, "ori-boundary.cjs");
   buildSync({
@@ -87,23 +100,34 @@ async function main() {
     path.join(userDir, "settings.json"),
     JSON.stringify({ "agorixStudio.agent.endpoint": `http://127.0.0.1:${boundaryPort}` }),
   );
-  const install = cp.spawnSync(cli, [...profile, "--install-extension", vsix], {
+  const install = cp.spawnSync(cli, [...cliArgs, ...profile, "--install-extension", vsix], {
     env,
     encoding: "utf8",
+    timeout: 60_000,
   });
+  if (install.error) throw install.error;
   if (install.status !== 0) throw new Error(`VSIX install failed: ${install.stderr}`);
+  console.log("Installed packaged VSIX in isolated profile");
   const child = cp.spawn(
     vscode,
     [
       `--remote-debugging-port=${port}`,
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
       "--window-size=900,700",
       ...profile,
       "--disable-workspace-trust",
       "--new-window",
       project,
     ],
-    { env, detached: true, stdio: "ignore" },
+    { env, detached: true, stdio: ["ignore", "pipe", "pipe"] },
   );
+  let startupOutput = "";
+  for (const stream of [child.stdout, child.stderr]) {
+    stream.on("data", (chunk) => {
+      startupOutput = (startupOutput + String(chunk)).slice(-2000);
+    });
+  }
   let browser;
   let webBrowser;
   let webChild;
@@ -115,12 +139,19 @@ async function main() {
       } catch {
         /* VS Code is starting */
       }
-      if (attempt === 59) throw new Error("VS Code CDP did not start");
+      if (attempt === 59)
+        throw new Error(`VS Code CDP did not start (exit ${child.exitCode}): ${startupOutput}`);
       await pause(500);
     }
     browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+    console.log("Connected to VS Code workbench");
     const context = browser.contexts()[0];
-    const page = context.pages().find((item) => item.url().startsWith("vscode-file:"));
+    let page;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      page = context.pages().find((item) => item.url().startsWith("vscode-file:"));
+      if (page !== undefined) break;
+      await pause(200);
+    }
     if (!page) throw new Error("VS Code window not found");
     await page.locator(".monaco-workbench").waitFor({ timeout: 30000 });
     await page.bringToFront();
@@ -780,8 +811,8 @@ async function main() {
     console.log("Reopened the same program, actors and costume in Web; runtime evidence visible");
     console.log("Visual cross-surface journey passed");
   } finally {
-    await new Promise((resolve) => boundary.close(resolve));
-    await webBrowser?.close();
+    boundary.closeAllConnections();
+    boundary.close();
     if (webChild !== undefined) {
       try {
         process.kill(-webChild.pid, "SIGTERM");
@@ -789,18 +820,24 @@ async function main() {
         /* already exited */
       }
     }
-    await browser?.close();
     try {
       process.kill(-child.pid, "SIGTERM");
     } catch {
       /* already exited */
     }
+    await Promise.race([Promise.allSettled([webBrowser?.close(), browser?.close()]), pause(2_000)]);
     await pause(800);
   }
 }
 main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(() => fs.rmSync(scratch, { recursive: true, force: true }));
+  .then(
+    () => 0,
+    (error) => {
+      console.error(error);
+      return 1;
+    },
+  )
+  .then((code) => {
+    fs.rmSync(scratch, { recursive: true, force: true });
+    process.exit(code);
+  });
