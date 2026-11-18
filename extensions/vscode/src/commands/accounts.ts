@@ -213,7 +213,7 @@ function openRemotePayload(payload: StudioRemoteProjectPayload): StudioProject {
   return parseProjectFile(serializeStoredProject(payload.project), `${payload.id}.json`);
 }
 
-async function createRemoteClient(
+export async function createRemoteClient(
   context: vscode.ExtensionContext,
 ): Promise<StudioRemoteClient | undefined> {
   const serverUrl = vscode.workspace

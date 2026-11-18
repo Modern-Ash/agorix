@@ -102,6 +102,14 @@ async function main() {
       await webview.locator('.stage-list-watcher[data-list-id="inventory"]').innerText(),
       /Inventory/,
     );
+    const beforeOriReview = fs.readFileSync(project, "utf8");
+    await page.keyboard.press("F1");
+    await page.locator(".quick-input-widget input").first().fill(">Suggest repeat");
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Reject", exact: true }).click();
+    assert.equal(fs.readFileSync(project, "utf8"), beforeOriReview);
+    await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
+    console.log("Rejected a reviewed Studio proposal without changing the project");
     const programBounds = await webview.locator(".studio-program").boundingBox();
     const stageBounds = await webview.locator(".studio-play").boundingBox();
     const oriBounds = await webview.locator(".studio-ori-dock").boundingBox();

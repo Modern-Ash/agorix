@@ -593,11 +593,13 @@ describe("Studio extension wiring", () => {
       JSON.parse(new TextDecoder().decode(files.get("/p/workbench.json"))).metadata.stage
         .backdropId,
     ).toBe("asset:space.nebula");
-    expect(sent.filter((message) => message.type === "historyState").at(-1)).toMatchObject({
-      type: "historyState",
-      canUndo: true,
-      canRedo: false,
-    });
+    await vi.waitFor(() =>
+      expect(sent.filter((message) => message.type === "historyState").at(-1)).toMatchObject({
+        type: "historyState",
+        canUndo: true,
+        canRedo: false,
+      }),
+    );
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "createActor",
@@ -1078,6 +1080,134 @@ describe("Studio extension wiring", () => {
 
     await handlers.get("agorixStudio.signOut")!();
     expect(secrets.has("agorixStudio.accountToken")).toBe(false);
+  });
+
+  it("commits and undoes remote proposals only through an authorized revisioned save", async () => {
+    secrets.set("agorixStudio.accountToken", "test-token");
+    serverUrl = "https://studio.example";
+    const remoteProject = JSON.parse(stored([]));
+    const saves: Array<{ expectedRevision: string; project: typeof remoteProject }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer test-token" });
+        if (url.endsWith("/projects") && init?.method === undefined)
+          return new Response(JSON.stringify([{ id: "p1", title: "First", revision: "r1" }]));
+        if (init?.method === undefined)
+          return new Response(
+            JSON.stringify({ id: "p1", title: "First", revision: "r1", project: remoteProject }),
+          );
+        const save = JSON.parse(String(init.body)) as {
+          expectedRevision: string;
+          project: typeof remoteProject;
+        };
+        saves.push(save);
+        if (saves.length > 2)
+          return new Response(
+            JSON.stringify({
+              status: "conflict",
+              expectedRevision: save.expectedRevision,
+              actualRevision: "r4",
+              latest: remoteProject,
+            }),
+            { status: 409 },
+          );
+        return new Response(
+          JSON.stringify({
+            status: "saved",
+            revision: `r${saves.length + 1}`,
+            project: save.project,
+          }),
+        );
+      }),
+    );
+    quickPick = { project: { id: "p1", title: "First", revision: "r1" } };
+    await handlers.get("agorixStudio.openRemoteProject")!();
+    choice = "Apply";
+    await handlers.get("agorixStudio.suggestFirstStep")!();
+    expect(saves[0]?.expectedRevision).toBe("r1");
+    expect(saves[0]?.project.program.scripts[0].statements).toEqual([{ type: "move", steps: 10 }]);
+    await handlers.get("agorixStudio.applyProposal")!();
+    expect(saves).toHaveLength(1);
+    await handlers.get("agorixStudio.undoProposal")!();
+    expect(saves[1]?.expectedRevision).toBe("r2");
+    expect(saves[1]?.project.program.scripts[0].statements).toEqual([]);
+    await handlers.get("agorixStudio.redoProposal")!();
+    expect(saves[2]?.expectedRevision).toBe("r3");
+    expect(shown.some((message) => message.includes("server project changed"))).toBe(true);
+    await handlers.get("agorixStudio.redoProposal")!();
+    expect(saves[3]?.expectedRevision).toBe("r3");
+    savePicked = { fsPath: "/p/remote-after-conflict.agorix" };
+    await handlers.get("agorixStudio.exportAgorix")!();
+    const exported = JSON.parse(
+      new TextDecoder().decode(files.get("/p/remote-after-conflict.agorix")),
+    );
+    expect(exported.project.program.scripts[0].statements).toEqual([]);
+  });
+
+  it("does not apply a remote proposal after the account session disappears", async () => {
+    secrets.set("agorixStudio.accountToken", "test-token");
+    serverUrl = "https://studio.example";
+    const remoteProject = JSON.parse(stored([]));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") throw new Error("remote write must be refused");
+      if (url.endsWith("/projects"))
+        return new Response(JSON.stringify([{ id: "p1", title: "First", revision: "r1" }]));
+      return new Response(
+        JSON.stringify({ id: "p1", title: "First", revision: "r1", project: remoteProject }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    quickPick = { project: { id: "p1", title: "First", revision: "r1" } };
+    await handlers.get("agorixStudio.openRemoteProject")!();
+    secrets.delete("agorixStudio.accountToken");
+    choice = "Apply";
+    await handlers.get("agorixStudio.suggestFirstStep")!();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+    secrets.set("agorixStudio.accountToken", "test-token");
+    await handlers.get("agorixStudio.applyProposal")!();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(1);
+    expect(shown.some((message) => message.includes("Project unchanged"))).toBe(true);
+    savePicked = { fsPath: "/p/remote-without-session.agorix" };
+    await handlers.get("agorixStudio.exportAgorix")!();
+    const exported = JSON.parse(
+      new TextDecoder().decode(files.get("/p/remote-without-session.agorix")),
+    );
+    expect(exported.project.program.scripts[0].statements).toEqual([]);
+  });
+
+  it("keeps manual remote block edits staged until Save Account Project", async () => {
+    secrets.set("agorixStudio.accountToken", "test-token");
+    serverUrl = "https://studio.example";
+    const remoteProject = JSON.parse(stored([]));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") throw new Error("manual edit must not auto-save");
+      if (url.endsWith("/projects"))
+        return new Response(JSON.stringify([{ id: "p1", title: "First", revision: "r1" }]));
+      return new Response(
+        JSON.stringify({ id: "p1", title: "First", revision: "r1", project: remoteProject }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    quickPick = { project: { id: "p1", title: "First", revision: "r1" } };
+    await handlers.get("agorixStudio.openRemoteProject")!();
+    await handlers.get("agorixStudio.openWorkbench")!();
+    const workspace = (workbenchPanel()?.messages ?? [])
+      .filter((message) => (message as { type?: string }).type === "workspace")
+      .at(-1) as { programHash: string };
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "intent",
+      baseHash: workspace.programHash,
+      intent: {
+        type: "insertBlock",
+        blockType: "motion_turn",
+        to: { container: { kind: "script", scriptIndex: 0 }, index: 0 },
+      },
+    });
+    await flushWorkbench();
+    await handlers.get("agorixStudio.undoProposal")!();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
   });
 
   it("shows a diff and does not write the file unless the learner applies", async () => {

@@ -43,6 +43,7 @@ export interface StudioRemoteClient {
 export interface StoredSnapshot {
   readonly uri: vscode.Uri;
   readonly raw: string;
+  readonly remoteCommitted?: boolean;
 }
 
 export interface StudioSessionState {

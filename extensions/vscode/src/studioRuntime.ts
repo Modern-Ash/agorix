@@ -164,6 +164,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   });
   const proposalCommands = createStudioProposalCommandHandlers({
+    context,
     requireProject,
     agentAgreements: () => session.agentAgreements,
     getCurrentProject: () => session.current,

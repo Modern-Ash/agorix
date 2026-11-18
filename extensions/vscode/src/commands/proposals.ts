@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { createRemoteClient } from "./accounts.js";
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import { canPropose, ceilingMessage } from "../assistance.js";
 import { t } from "../l10n.js";
@@ -20,6 +21,7 @@ import {
 import { REMOTE_SCHEME, type OpenProject, type StoredSnapshot } from "../store/session.js";
 
 export interface StudioProposalCommandPort {
+  readonly context: vscode.ExtensionContext;
   requireProject(): OpenProject | undefined;
   agentAgreements(): AgentAgreements;
   getCurrentProject(): OpenProject | undefined;
@@ -63,36 +65,73 @@ export function createStudioProposalCommandHandlers(
 
   const writeCurrentProject = async (
     stored: ReturnType<typeof createStoredProjectWithProgram>,
-  ): Promise<void> => {
+    remoteCommit = false,
+  ): Promise<boolean> => {
     const open = port.requireProject();
     if (open === undefined) {
-      return;
+      return false;
     }
-    const raw = serializeProjectFile(stored, open.uri.fsPath, { includeMedia: true });
+    let accepted = stored;
+    let remote = open.remote;
+    if (open.uri.scheme === REMOTE_SCHEME && remoteCommit) {
+      if (remote === undefined) return false;
+      const client = await createRemoteClient(port.context);
+      if (client === undefined) return false;
+      if (port.getCurrentProject() !== open) return false;
+      try {
+        const result = await client.saveProject({
+          id: remote.id,
+          expectedRevision: remote.revision,
+          project: stored,
+        });
+        if (result.status !== "saved") {
+          void vscode.window.showWarningMessage(
+            t("The server project changed; reopen it before applying the proposal."),
+          );
+          return false;
+        }
+        if (port.getCurrentProject() !== open) {
+          void vscode.window.showWarningMessage(
+            t("Proposal saved on the server. Reopen the project to see it."),
+          );
+          return false;
+        }
+        accepted = result.project;
+        remote = { ...remote, revision: result.revision };
+      } catch {
+        void vscode.window.showWarningMessage(t("Could not save the proposal. Project unchanged."));
+        return false;
+      }
+    }
+    const raw = serializeProjectFile(accepted, open.uri.fsPath, { includeMedia: true });
     if (open.uri.scheme !== REMOTE_SCHEME) {
       await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
     }
     port.setCurrentProject({
       uri: open.uri,
       project: parseProjectFile(raw, open.uri.fsPath),
-      ...(open.remote === undefined ? {} : { remote: open.remote }),
-    });
-    port.afterCanonicalProgramChange();
-  };
-
-  const restoreSnapshot = async (snapshot: StoredSnapshot): Promise<void> => {
-    const remote = port.getCurrentProject()?.remote;
-    const restored = parseStoredProject(snapshot.raw);
-    const raw = serializeProjectFile(restored.stored, snapshot.uri.fsPath, { includeMedia: true });
-    if (snapshot.uri.scheme !== REMOTE_SCHEME) {
-      await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(raw));
-    }
-    port.setCurrentProject({
-      uri: snapshot.uri,
-      project: parseProjectFile(raw, snapshot.uri.fsPath),
       ...(remote === undefined ? {} : { remote }),
     });
     port.afterCanonicalProgramChange();
+    return true;
+  };
+
+  const restoreSnapshot = async (snapshot: StoredSnapshot): Promise<boolean> => {
+    const open = port.requireProject();
+    if (open === undefined || snapshot.uri.toString() !== open.uri.toString()) return false;
+    const restored = parseStoredProject(snapshot.raw);
+    if (snapshot.uri.scheme === REMOTE_SCHEME && snapshot.remoteCommitted)
+      return writeCurrentProject(restored.stored, true);
+    const raw = serializeProjectFile(restored.stored, snapshot.uri.fsPath, { includeMedia: true });
+    if (snapshot.uri.scheme !== REMOTE_SCHEME)
+      await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(raw));
+    port.setCurrentProject({
+      uri: snapshot.uri,
+      project: parseProjectFile(raw, snapshot.uri.fsPath),
+      ...(open.remote === undefined ? {} : { remote: open.remote }),
+    });
+    port.afterCanonicalProgramChange();
+    return true;
   };
 
   const reviewProposalSession = async (proposalSession: StudioProposalSession): Promise<void> => {
@@ -208,10 +247,18 @@ export function createStudioProposalCommandHandlers(
       applying = true;
       try {
         const previousRaw = serializeStoredProject(current.project.stored);
-        await writeCurrentProject(
-          createStoredProjectWithProgram(current.project.stored, decision.program),
-        );
-        port.undoStack().push({ uri: current.uri, raw: previousRaw });
+        if (
+          !(await writeCurrentProject(
+            createStoredProjectWithProgram(current.project.stored, decision.program),
+            true,
+          ))
+        )
+          return;
+        port.undoStack().push({
+          uri: current.uri,
+          raw: previousRaw,
+          ...(current.remote === undefined ? {} : { remoteCommitted: true }),
+        });
         port.redoStack().length = 0;
         port.setActiveProposal(undefined);
         void vscode.window.showInformationMessage(t("Applied modified proposal."));
@@ -278,8 +325,12 @@ export function createStudioProposalCommandHandlers(
       const previousRaw = serializeStoredProject(open.project.stored);
       const decision = applyProposalSession(open.project.stored.program, activeProposal);
       const stored = createStoredProjectWithProgram(open.project.stored, decision.program);
-      await writeCurrentProject(stored);
-      port.undoStack().push({ uri: open.uri, raw: previousRaw });
+      if (!(await writeCurrentProject(stored, true))) return;
+      port.undoStack().push({
+        uri: open.uri,
+        raw: previousRaw,
+        ...(open.remote === undefined ? {} : { remoteCommitted: true }),
+      });
       port.redoStack().length = 0;
       port.afterCanonicalProgramChange();
       port.setActiveProposal(undefined);
@@ -306,22 +357,60 @@ export function createStudioProposalCommandHandlers(
 
   const undoProposal = async (): Promise<void> => {
     const open = port.requireProject();
-    const previous = port.undoStack().pop();
+    const previous = port.undoStack().at(-1);
     if (open === undefined || previous === undefined) {
       return;
     }
-    port.redoStack().push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
-    await restoreSnapshot(previous);
+    port.undoStack().pop();
+    port.redoStack().push({
+      uri: open.uri,
+      raw: serializeStoredProject(open.project.stored),
+      ...(previous.remoteCommitted ? { remoteCommitted: true } : {}),
+    });
+    let restored: boolean;
+    try {
+      restored = await restoreSnapshot(previous);
+    } catch (error) {
+      if (port.getCurrentProject() === open) {
+        port.redoStack().pop();
+        port.undoStack().push(previous);
+      }
+      throw error;
+    }
+    if (!restored) {
+      port.redoStack().pop();
+      port.undoStack().push(previous);
+      return;
+    }
   };
 
   const redoProposal = async (): Promise<void> => {
     const open = port.requireProject();
-    const next = port.redoStack().pop();
+    const next = port.redoStack().at(-1);
     if (open === undefined || next === undefined) {
       return;
     }
-    port.undoStack().push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
-    await restoreSnapshot(next);
+    port.redoStack().pop();
+    port.undoStack().push({
+      uri: open.uri,
+      raw: serializeStoredProject(open.project.stored),
+      ...(next.remoteCommitted ? { remoteCommitted: true } : {}),
+    });
+    let restored: boolean;
+    try {
+      restored = await restoreSnapshot(next);
+    } catch (error) {
+      if (port.getCurrentProject() === open) {
+        port.undoStack().pop();
+        port.redoStack().push(next);
+      }
+      throw error;
+    }
+    if (!restored) {
+      port.undoStack().pop();
+      port.redoStack().push(next);
+      return;
+    }
   };
 
   const commitProgram = async (program: ProjectProgram): Promise<void> => {
@@ -330,7 +419,8 @@ export function createStudioProposalCommandHandlers(
       return;
     }
     const previousRaw = serializeStoredProject(open.project.stored);
-    await writeCurrentProject(createStoredProjectWithProgram(open.project.stored, program));
+    if (!(await writeCurrentProject(createStoredProjectWithProgram(open.project.stored, program))))
+      return;
     port.undoStack().push({ uri: open.uri, raw: previousRaw });
     port.redoStack().length = 0;
     port.afterCanonicalProgramChange();
