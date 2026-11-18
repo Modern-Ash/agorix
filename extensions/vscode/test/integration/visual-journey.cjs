@@ -492,6 +492,14 @@ async function main() {
       1,
     );
     console.log("Edited the same costume without changing its ID");
+    await webview
+      .locator(".studio-scene-editor .scene-section-tabs button")
+      .filter({ hasText: "Actors" })
+      .click();
+    await webview
+      .locator(".studio-scene-editor .scene-actors button")
+      .filter({ hasText: "Explorer" })
+      .click();
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
     const paletteBounds = await webview.locator(".studio-tools").boundingBox();
     const targetBounds = await webview.locator(".studio-program").boundingBox();
@@ -501,6 +509,29 @@ async function main() {
       paletteBounds.x < targetBounds.x + targetBounds.width - 10
     )
       throw new Error("Open block palette must leave the program available for dropping blocks");
+    await webview.locator('.palette button[aria-label="add numbers"]').click();
+    await webview.locator(".studio-program .numeric-place").first().click();
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) => statement.type === "setVariable" && statement.value?.type === "add",
+        ),
+    );
+    await webview.locator(".studio-shell-actions button").filter({ hasText: "Hide tools" }).click();
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "numericLiteral" &&
+            statement.value.value === 1,
+        ),
+    );
+    console.log("Placed a visual numeric reporter and restored the canonical value");
+    await webview.locator(".studio-shell-actions button").filter({ hasText: "Show tools" }).click();
     const move = webview
       .locator(".palette button[draggable='true']")
       .filter({ hasText: "Move" })

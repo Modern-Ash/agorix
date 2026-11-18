@@ -727,6 +727,27 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   ),
   {
+    type: "lists_length",
+    label: "length of list",
+    section: "Lists",
+    placement: "expression",
+    accessibleName: "list length",
+    createDefaultBlock: (id) => ({ id, type: "lists_length", fields: { listId: "items" } }),
+  },
+  {
+    type: "lists_item",
+    label: "item [N] of list",
+    section: "Lists",
+    placement: "expression",
+    accessibleName: "list item",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "lists_item",
+      fields: { listId: "items" },
+      inputs: { index: { id: `${id}:index`, type: "literal_number", fields: { value: 1 } } },
+    }),
+  },
+  {
     type: "literal_number",
     label: "[N]",
     section: "Operators",

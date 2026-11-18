@@ -10,6 +10,7 @@ import { STUDIO_CONDITION_BLOCK_TYPES } from "@agorix/interaction-core";
 import { STUDIO_INSERTABLE_STATEMENTS } from "@agorix/studio-protocol";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
 import { visualBlock, visualLabel } from "./visualBlocks.js";
+import { numericReporterForBlock } from "./numericPalette.js";
 
 function sectionLabel(name: string, copy: StudioUiCopy): string {
   if (name === "Move") return copy.paletteMotion;
@@ -24,13 +25,21 @@ export function Palette({
   onAdd,
   onSelectExpression,
   selectedExpression,
+  onSelectNumeric,
+  selectedNumeric,
   hasLists = false,
+  hasVariables = false,
+  hasActors = false,
 }: {
   readonly copy?: StudioUiCopy;
   readonly onAdd: (blockType: BlockType) => void;
   readonly onSelectExpression?: (blockType: BlockType) => void;
   readonly selectedExpression?: BlockType | undefined;
+  readonly onSelectNumeric?: (blockType: BlockType) => void;
+  readonly selectedNumeric?: BlockType | undefined;
   readonly hasLists?: boolean;
+  readonly hasVariables?: boolean;
+  readonly hasActors?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
@@ -53,10 +62,13 @@ export function Palette({
           ]
             .filter((block) => getBlockDefinition(block.type)?.placement !== "trigger")
             .filter((block) => hasLists || !block.type.startsWith("lists_"))
+            .filter((block) => hasVariables || block.type !== "variables_value")
+            .filter((block) => hasActors || block.type !== "sensing_distance_to_actor")
             .filter(
               (block) =>
                 STUDIO_INSERTABLE_STATEMENTS.includes(block.type) ||
-                (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(block.type),
+                (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(block.type) ||
+                numericReporterForBlock(block.type) !== undefined,
             )
             .filter((block) =>
               normalizedQuery.length === 0
@@ -67,7 +79,7 @@ export function Palette({
             ),
         }))
         .filter((section) => section.blocks.length > 0),
-    [copy, normalizedQuery, hasLists],
+    [copy, normalizedQuery, hasLists, hasVariables, hasActors],
   );
   return (
     <nav className="palette" aria-label={copy.paletteBlocks}>
@@ -88,7 +100,8 @@ export function Palette({
             const canUseAsCondition = (STUDIO_CONDITION_BLOCK_TYPES as readonly string[]).includes(
               block.type,
             );
-            const enabled = canInsertInScript || canUseAsCondition;
+            const canUseAsNumber = numericReporterForBlock(block.type) !== undefined;
+            const enabled = canInsertInScript || canUseAsCondition || canUseAsNumber;
             const labels: Readonly<Record<string, string>> = copy.blockLabels;
             const accessibleNames: Readonly<Record<string, string>> = copy.blockAccessibleNames;
             const label = labels[block.type] ?? block.label;
@@ -101,13 +114,21 @@ export function Palette({
                 type="button"
                 disabled={!enabled}
                 draggable={enabled}
-                aria-pressed={canUseAsCondition ? selectedExpression === block.type : undefined}
+                aria-pressed={
+                  canUseAsCondition
+                    ? selectedExpression === block.type
+                    : canUseAsNumber
+                      ? selectedNumeric === block.type
+                      : undefined
+                }
                 title={
                   canInsertInScript
                     ? accessibleName
                     : canUseAsCondition
                       ? `${accessibleName}: ${copy.condition}`
-                      : copy.paletteNestedOnly
+                      : canUseAsNumber
+                        ? `${accessibleName}: ${copy.placeValue}`
+                        : copy.paletteNestedOnly
                 }
                 aria-label={
                   enabled ? accessibleName : `${accessibleName}. ${copy.paletteNestedOnly}`
@@ -115,6 +136,7 @@ export function Palette({
                 onClick={() => {
                   if (canInsertInScript) onAdd(block.type);
                   else if (canUseAsCondition) onSelectExpression?.(block.type);
+                  else if (canUseAsNumber) onSelectNumeric?.(block.type);
                 }}
                 onDragStart={(event) => {
                   if (!enabled) return;
