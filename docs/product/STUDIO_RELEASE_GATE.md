@@ -19,13 +19,13 @@ green shared-contract rows below establish that Web and Studio can read the same
 canonical project; they do not establish that an advanced learner can find and
 use Studio's visual tools.
 
-| Gate                                       | Evidence                                                                                                                                                                                      | Status                                                                          |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Canonical Web ↔ Studio project and runtime | Shared program, persistence and cross-surface tests below                                                                                                                                     | Automated baseline green                                                        |
-| Installed VSIX at 900 × 700 and 1440 × 900 | `pnpm --filter agorix-studio test:visual`; checks program, stage and Ori in the first viewport, actor and asset tools, keyboard block nesting, art edit, runtime evidence and Web reopen      | Automated journey; run on a packaged VSIX before visual release                 |
-| Visual asset and actor comprehension       | The installed journey filters the 12-character gallery, creates an actor from a costume, confirms its stage image, then reopens that actor in Web                                             | Automated mechanics; educator and advanced-learner comprehension review pending |
-| Ori's proposal boundary                    | Installed VSIX rejects a reviewed deterministic proposal without changing the project; unit and cross-surface journeys cover acceptance. A provider-backed installed journey remains required | Partial installed proof; human teaching review pending                          |
-| Accessibility and offline path             | Keyboard actions, deterministic runtime without a provider, and the installed VSIX journey                                                                                                    | Automated coverage exists; human review pending                                 |
+| Gate                                       | Evidence                                                                                                                                                                                                    | Status                                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Canonical Web ↔ Studio project and runtime | Shared program, persistence and cross-surface tests below                                                                                                                                                   | Automated baseline green                                                        |
+| Installed VSIX at 900 × 700 and 1440 × 900 | `pnpm --filter agorix-studio test:visual`; checks program, stage and Ori in the first viewport, actor and asset tools, keyboard block nesting, art edit, runtime evidence and Web reopen                    | Automated journey; run on a packaged VSIX before visual release                 |
+| Visual asset and actor comprehension       | The installed journey filters the 12-character gallery, creates an actor from a costume, confirms its stage image, then reopens that actor in Web                                                           | Automated mechanics; educator and advanced-learner comprehension review pending |
+| Ori's proposal boundary                    | Installed VSIX rejects a reviewed deterministic proposal unchanged, then accepts one response from a configured loopback tutor boundary, reruns the canonical program and imports the resulting file in Web | Automated installed proof; human teaching review pending                        |
+| Accessibility and offline path             | Keyboard actions, deterministic runtime without a provider, and the installed VSIX journey                                                                                                                  | Automated coverage exists; human review pending                                 |
 
 Do not label Studio visually ready until an educator and advanced learner have
 reviewed the installed layout, discoverability of creation and editing, and
@@ -45,7 +45,7 @@ capabilities. Ori in the VS Code extension has a separate gate:
 | Ori program suggestion                         | One bounded move or turn, wrapped as `ProgramProposal`                                          | No; requires the configured endpoint                       | Rejected/invalid model output falls back; full creative breadth is later work     | `oriStudioCompanion.test.ts`, `extension.test.ts`                         |
 | Learner review                                 | Diff, accept, reject and numeric modify with a second preview                                   | Yes for any presented proposal                             | Owned project writes follow an explicit decision and use expected-revision checks | `extensions/vscode/src/extension.test.ts`                                 |
 | Remote proposal decision                       | Accept, modify, undo and redo save through the authenticated project API with expected revision | Only for an open account project                           | Conflict, missing session and server failure leave accepted local state unchanged | `extensions/vscode/src/extension.test.ts` remote proposal cases           |
-| Web → Studio → Ori → Web                       | Automated semantic journey                                                                      | No live deployment proof yet                               | Installed VSIX and real child/educator review remain release gates                | `extensions/vscode/src/oriCrossSurfaceJourney.test.ts`                    |
+| Web → Studio → Ori → Web                       | Automated semantic journey and packaged VSIX loopback boundary journey                          | No live deployment proof yet                               | Real child/educator review remains a release gate                                 | `oriCrossSurfaceJourney.test.ts`, `test/integration/visual-journey.cjs`   |
 
 Release requires all of the following:
 
@@ -61,9 +61,11 @@ Release requires all of the following:
 4. An independent reviewer checks proposal authorization, privacy, accessibility
    and failure behavior. CI and human review are both required before rollout.
 
-Current status: automated cross-surface journey and an installed VSIX rejection
-path exist. A provider-backed installed VSIX accept/run journey, human
-pedagogical evidence and independent review are pending.
+Current status: the automated cross-surface journey and a packaged VSIX
+reject/accept/run journey against a local tutor boundary pass. The local test
+substitutes a bounded Ori model response; it does not prove a deployed model or
+teaching quality. Human pedagogical evidence and independent review remain
+pending.
 
 Issue #214 is the release gate for Studio as a professional projection of Agorix.
 The gate is intentionally source-controlled: Web and Studio may feel different,

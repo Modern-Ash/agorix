@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const cp = require("node:child_process");
+const http = require("node:http");
 const assert = require("node:assert/strict");
 const { chromium } = require("../../../../apps/web/node_modules/@playwright/test");
 
@@ -24,6 +25,7 @@ const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;
 const port = 9300 + Math.floor(Math.random() * 300);
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const { buildSync } = require("esbuild");
 async function waitForProject(predicate) {
   for (let attempt = 0; attempt < 50; attempt++) {
     try {
@@ -41,6 +43,50 @@ async function waitForProject(predicate) {
 async function main() {
   if (!fs.existsSync(vsix)) throw new Error("Package the VSIX first");
   fs.copyFileSync(fixture, project);
+  const boundaryBundle = path.join(scratch, "ori-boundary.cjs");
+  buildSync({
+    entryPoints: [path.join(repoRoot, "apps/tutor-api/src/oriStudioCompanion.ts")],
+    outfile: boundaryBundle,
+    bundle: true,
+    platform: "node",
+    format: "cjs",
+  });
+  const { runOriStudioCompanion } = require(boundaryBundle);
+  const boundaryCalls = [];
+  const boundary = http.createServer(async (request, response) => {
+    response.setHeader("Content-Type", "application/json");
+    if (request.method === "GET" && request.url === "/health") {
+      response.end(JSON.stringify({ status: "available" }));
+      return;
+    }
+    if (request.method !== "POST" || request.url !== "/companion") {
+      response.writeHead(404).end("{}");
+      return;
+    }
+    try {
+      let body = "";
+      for await (const chunk of request) body += chunk;
+      const asked = JSON.parse(body);
+      boundaryCalls.push(asked.capability);
+      const answer = await runOriStudioCompanion(asked, {
+        generate: async () =>
+          asked.capability === "builder"
+            ? '{"type":"turn","degrees":90}'
+            : '{"message":"What changed after the last run?"}',
+      });
+      response.end(JSON.stringify(answer));
+    } catch {
+      response.writeHead(400).end("{}");
+    }
+  });
+  await new Promise((resolve) => boundary.listen(0, "127.0.0.1", resolve));
+  const boundaryPort = boundary.address().port;
+  const userDir = path.join(scratch, "profile", "User");
+  fs.mkdirSync(userDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(userDir, "settings.json"),
+    JSON.stringify({ "agorixStudio.agent.endpoint": `http://127.0.0.1:${boundaryPort}` }),
+  );
   const install = cp.spawnSync(cli, [...profile, "--install-extension", vsix], {
     env,
     encoding: "utf8",
@@ -624,6 +670,25 @@ async function main() {
     )[1];
     if (!traceCount || Number(traceCount) < 1) throw new Error("Run produced no event trace");
     console.log("Ran project and opened evidence");
+    const beforeOri = JSON.parse(fs.readFileSync(project, "utf8"));
+    await page.keyboard.press("F1");
+    await page.locator(".quick-input-widget input").first().fill(">Build Proposal");
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
+    const { value: afterOri } = await waitForProject(
+      (envelope) =>
+        envelope.project?.program?.scripts?.[0]?.statements?.length ===
+        beforeOri.project.program.scripts[0].statements.length + 1,
+    );
+    assert.deepEqual(afterOri.project.program.scripts[0].statements.at(-1), {
+      type: "turn",
+      degrees: 90,
+    });
+    assert.ok(boundaryCalls.includes("builder"), "Installed VSIX did not request Ori builder");
+    await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
+    console.log("Accepted a provider-backed Ori proposal and ran the canonical program");
     const watcher = webview.locator('.stage-list-watcher[data-list-id="inventory"]');
     assert.deepEqual(await watcher.locator("li").allTextContents(), ["2", "5"]);
     const saved = JSON.parse(fs.readFileSync(project, "utf8"));
@@ -715,6 +780,7 @@ async function main() {
     console.log("Reopened the same program, actors and costume in Web; runtime evidence visible");
     console.log("Visual cross-surface journey passed");
   } finally {
+    await new Promise((resolve) => boundary.close(resolve));
     await webBrowser?.close();
     if (webChild !== undefined) {
       try {
