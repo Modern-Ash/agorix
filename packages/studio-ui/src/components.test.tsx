@@ -8,6 +8,7 @@ import {
   ActorInspector,
   AssetPanel,
   EventTracePanel,
+  VisualDebuggerPanel,
   MissionSpecPanel,
   StagePanel,
   stageDropPosition,
@@ -40,6 +41,44 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("shows a block breakpoint and a closed-choice runtime value history", () => {
+    const blockId = workspace.scripts[0]!.statements[0]!.id;
+    const canvas = renderToStaticMarkup(
+      <Canvas
+        workspace={workspace}
+        onIntent={() => undefined}
+        breakpointBlockIds={new Set([blockId])}
+        onToggleBreakpoint={() => undefined}
+      />,
+    );
+    expect(canvas).toContain('aria-label="Remove breakpoint: Move');
+    expect(canvas).toContain('aria-pressed="true"');
+    const panel = renderToStaticMarkup(
+      <VisualDebuggerPanel
+        copy={copyFor("en")}
+        variables={[{ id: "score", name: "Score" }]}
+        selectedVariableId="score"
+        onSelectVariable={() => undefined}
+        pauseOnChange={true}
+        onPauseOnChange={() => undefined}
+        snapshot={{
+          frameIndex: 2,
+          step: 1,
+          values: { score: 5 },
+          history: {
+            score: [
+              { frameIndex: 0, step: 0, value: 0 },
+              { frameIndex: 2, step: 1, value: 5 },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(panel).toContain('value="score"');
+    expect(panel).toContain("#0: 0");
+    expect(panel).toContain("#1: 5");
+    expect(panel).not.toContain('type="text"');
+  });
   it("moves blocks into and out of a preceding loop through canonical slots", () => {
     const source = programToWorkspace({
       schema: "agorix/program/v1",

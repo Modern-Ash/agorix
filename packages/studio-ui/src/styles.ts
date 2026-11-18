@@ -441,6 +441,14 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-program .block-field input:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; }
 .studio-program .block button { flex: 0 0 26px; min-width: 26px; min-height: 28px; padding: 2px; text-align: center; font-size: 1.05em; }
 .studio-program .block button.block-ori { margin-left: auto; flex-basis: 34px; min-width: 34px; color: var(--vscode-charts-purple, var(--vscode-focusBorder)); font-size: 0.78em; font-weight: 700; }
+.studio-program .block button.block-breakpoint { color: var(--vscode-descriptionForeground); opacity: 0.65; }
+.studio-program .block button.block-breakpoint[data-active="true"] { color: var(--vscode-charts-red, #e05a65); opacity: 1; font-weight: 800; }
+.studio-debugger { display: grid; gap: 10px; margin: 10px 0; padding: 12px; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
+.studio-debugger h3 { margin: 0; font-size: 0.95em; }
+.studio-debugger label { display: flex; align-items: center; gap: 8px; }
+.studio-debugger select { min-width: 130px; max-width: 220px; }
+.studio-debugger ol { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.studio-debugger li { padding: 4px 7px; border: 1px solid var(--vscode-panel-border); font-family: var(--vscode-editor-font-family); }
 .studio-program .slot { display: grid; place-items: center; height: 36px; border-top: 1px dashed var(--vscode-panel-border); border-radius: 4px; color: var(--vscode-descriptionForeground); box-sizing: border-box; }
 .studio-program .slot span { visibility: hidden; font-size: 0.8em; }
 .studio-program .slot.is-empty { height: 72px; margin: 8px 0; border: 1px dashed var(--vscode-focusBorder); background: color-mix(in srgb, var(--vscode-focusBorder), transparent 94%); }
