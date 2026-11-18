@@ -34,6 +34,7 @@ function setup(initial: ProjectProgram | null = base) {
   };
   const labels: string[] = [];
   const port: HostPort = {
+    historyState: () => ({ canUndo: false, canRedo: false }),
     getProgram: () => program,
     getMetadata: () => (program === undefined ? undefined : metadata),
     commit: async (next, label) => {

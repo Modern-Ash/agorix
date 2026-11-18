@@ -14,6 +14,7 @@ import {
   suggestFirstStep,
   suggestRepeat,
   parseProjectFile,
+  parseStoredProject,
   type StudioProposalSession,
 } from "../studioCore.js";
 import { REMOTE_SCHEME, type OpenProject, type StoredSnapshot } from "../store/session.js";
@@ -81,12 +82,14 @@ export function createStudioProposalCommandHandlers(
 
   const restoreSnapshot = async (snapshot: StoredSnapshot): Promise<void> => {
     const remote = port.getCurrentProject()?.remote;
+    const restored = parseStoredProject(snapshot.raw);
+    const raw = serializeProjectFile(restored.stored, snapshot.uri.fsPath, { includeMedia: true });
     if (snapshot.uri.scheme !== REMOTE_SCHEME) {
-      await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(snapshot.raw));
+      await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(raw));
     }
     port.setCurrentProject({
       uri: snapshot.uri,
-      project: parseProjectFile(snapshot.raw, snapshot.uri.fsPath),
+      project: parseProjectFile(raw, snapshot.uri.fsPath),
       ...(remote === undefined ? {} : { remote }),
     });
     port.afterCanonicalProgramChange();
@@ -278,9 +281,10 @@ export function createStudioProposalCommandHandlers(
       await writeCurrentProject(stored);
       port.undoStack().push({ uri: open.uri, raw: previousRaw });
       port.redoStack().length = 0;
+      port.afterCanonicalProgramChange();
       port.setActiveProposal(undefined);
       await vscode.window.showInformationMessage(
-        t("Applied proposal. Use Undo Proposal to restore it."),
+        t("Applied proposal. Use Undo Studio Change to restore it."),
       );
     } finally {
       applying = false;
@@ -329,6 +333,7 @@ export function createStudioProposalCommandHandlers(
     await writeCurrentProject(createStoredProjectWithProgram(open.project.stored, program));
     port.undoStack().push({ uri: open.uri, raw: previousRaw });
     port.redoStack().length = 0;
+    port.afterCanonicalProgramChange();
   };
 
   return {

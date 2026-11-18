@@ -205,6 +205,9 @@ vi.mock("vscode", () => {
       },
       executeCommand: async (...args: unknown[]) => {
         commandCalls.push(args);
+        if (args[0] === "agorixStudio.undoProposal" || args[0] === "agorixStudio.redoProposal") {
+          return handlers.get(args[0])?.();
+        }
         if (args[0] === "vscode.diff") {
           diffs.push(args);
         }
@@ -567,6 +570,36 @@ describe("Studio extension wiring", () => {
     expect(JSON.parse(afterActorUpdate).metadata.stage.backdropId).toBe("asset:space.nebula");
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
+      type: "historyCommand",
+      command: "undo",
+    });
+    await flushWorkbench();
+    expect(
+      JSON.parse(new TextDecoder().decode(files.get("/p/workbench.json"))).metadata.stage
+        ?.backdropId,
+    ).not.toBe("asset:space.nebula");
+    expect(sent.filter((message) => message.type === "historyState").at(-1)).toMatchObject({
+      type: "historyState",
+      canUndo: true,
+      canRedo: true,
+    });
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "historyCommand",
+      command: "redo",
+    });
+    await flushWorkbench();
+    expect(
+      JSON.parse(new TextDecoder().decode(files.get("/p/workbench.json"))).metadata.stage
+        .backdropId,
+    ).toBe("asset:space.nebula");
+    expect(sent.filter((message) => message.type === "historyState").at(-1)).toMatchObject({
+      type: "historyState",
+      canUndo: true,
+      canRedo: false,
+    });
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
       type: "createActor",
       name: "Robot",
     });
@@ -589,6 +622,25 @@ describe("Studio extension wiring", () => {
       }),
     ).not.toThrow();
     expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(afterCreateActor);
+  });
+
+  it("keeps portable .agorix wrapping when undoing and redoing a scene edit", async () => {
+    const path = "/p/history.agorix";
+    await openFile(path, serializeAgorixProject(parseStored(stored([]))));
+    const schema = "agorix/studio-protocol/v1";
+    workbenchPanel()?.receive({ schema, type: "updateStage", backdropId: "asset:space.trailhead" });
+    await flushWorkbench();
+    const edited = JSON.parse(new TextDecoder().decode(files.get(path)));
+    expect(edited.project.metadata.stage.backdropId).toBe("asset:space.trailhead");
+    workbenchPanel()?.receive({ schema, type: "historyCommand", command: "undo" });
+    await flushWorkbench();
+    const undone = JSON.parse(new TextDecoder().decode(files.get(path)));
+    expect(undone.project).toBeDefined();
+    expect(undone.project.metadata.stage?.backdropId).not.toBe("asset:space.trailhead");
+    workbenchPanel()?.receive({ schema, type: "historyCommand", command: "redo" });
+    await flushWorkbench();
+    const redone = JSON.parse(new TextDecoder().decode(files.get(path)));
+    expect(redone.project.metadata.stage.backdropId).toBe("asset:space.trailhead");
   });
 
   it("reveals the Ori Workbench when a project is opened", async () => {

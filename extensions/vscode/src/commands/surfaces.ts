@@ -22,6 +22,7 @@ import type { SyncHub } from "../sync/syncHub.js";
 import type { RuntimeEvent } from "@agorix/runtime";
 
 export interface StudioSurfaceCommandPort {
+  historyState(): { canUndo: boolean; canRedo: boolean };
   readonly context: vscode.ExtensionContext;
   readonly hub: SyncHub;
   requireProject(): OpenProject | undefined;
@@ -72,6 +73,7 @@ export function createStudioSurfaceCommandHandlers(
       return;
     }
     const hostPort: HostPort = {
+      historyState: port.historyState,
       ...(port.runStageEvent === undefined ? {} : { runStageEvent: port.runStageEvent }),
       getProgram: port.getProgram,
       getMetadata: port.getMetadata,

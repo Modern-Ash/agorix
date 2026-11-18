@@ -130,6 +130,7 @@ const MAX_ACTOR_SIZE = 400;
 export type UiMessage =
   | { readonly schema: Schema; readonly type: "ready" }
   | { readonly schema: Schema; readonly type: "openCode" }
+  | { readonly schema: Schema; readonly type: "historyCommand"; readonly command: "undo" | "redo" }
   | {
       readonly schema: Schema;
       readonly type: "intent";
@@ -520,6 +521,12 @@ export type HostMessage =
     }
   | { readonly schema: Schema; readonly type: "agreements"; readonly agreements: AgentAgreements }
   | { readonly schema: Schema; readonly type: "ambientHint"; readonly hint?: AmbientHintView }
+  | {
+      readonly schema: Schema;
+      readonly type: "historyState";
+      readonly canUndo: boolean;
+      readonly canRedo: boolean;
+    }
   | ({ readonly schema: Schema; readonly type: "help" } & HelpView)
   | {
       readonly schema: Schema;
@@ -2235,6 +2242,10 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
       return { schema, type: "ready" };
     case "openCode":
       return { schema, type: "openCode" };
+    case "historyCommand":
+      return value["command"] === "undo" || value["command"] === "redo"
+        ? { schema, type: "historyCommand", command: value["command"] }
+        : undefined;
     case "intent": {
       const intent = parseIntent(value["intent"]);
       if (intent === undefined) return undefined;
@@ -2580,6 +2591,10 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
       return (value["value"] === "comfortable" || value["value"] === "compact") &&
         (value["reason"] === "auto" || value["reason"] === "setting")
         ? { schema, type: "density", value: value["value"], reason: value["reason"] }
+        : undefined;
+    case "historyState":
+      return typeof value["canUndo"] === "boolean" && typeof value["canRedo"] === "boolean"
+        ? { schema, type: "historyState", canUndo: value["canUndo"], canRedo: value["canRedo"] }
         : undefined;
     default:
       return parseAgentMessageFromHost(value, schema);

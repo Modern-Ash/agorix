@@ -40,6 +40,7 @@ import type { RuntimeEvent } from "@agorix/runtime";
 import type { StudioExecutionViewState } from "../studioCore.js";
 
 export interface HostPort {
+  historyState(): { canUndo: boolean; canRedo: boolean };
   runStageEvent?(event: RuntimeEvent): StudioExecutionViewState | undefined;
   getProgram(): ProjectProgram | undefined;
   getMetadata(): ProjectMetadata | undefined;
