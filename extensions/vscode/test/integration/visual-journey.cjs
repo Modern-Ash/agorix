@@ -715,7 +715,7 @@ async function main() {
     const commandInput = page.locator(".quick-input-widget:visible input").first();
     await commandInput.fill(">Agorix Studio: Build Proposal");
     await page.waitForFunction(() => {
-      const widget = [...document.querySelectorAll(".quick-input-widget")].find(
+      const widget = [...globalThis.document.querySelectorAll(".quick-input-widget")].find(
         (element) => element.getBoundingClientRect().height > 0,
       );
       const first = [...(widget?.querySelectorAll(".monaco-list-row") ?? [])].find(
