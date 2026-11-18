@@ -156,6 +156,7 @@ describe("studio-protocol", () => {
       "motion_bounce_on_edge",
       "control_wait",
       "looks_change_size",
+      "procedures_call",
     ]) {
       expect(
         parseUiMessage({

@@ -85,6 +85,44 @@ describe("interaction-core", () => {
     expect(intentToChange({ type: "revealNode", nodeId: "n" }, newId)).toBeUndefined();
   });
 
+  it("inserts an existing custom block only into a script that owns it", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [],
+          procedures: [{ id: "proc:wave", name: "Wave", body: [{ type: "turn", degrees: 90 }] }],
+        },
+        { id: "other", trigger: { type: "onStart" }, statements: [] },
+      ],
+    }).workspace;
+    const change = intentToChange(
+      { type: "insertBlock", blockType: "procedures_call", to: { container: script, index: 0 } },
+      newId,
+      workspace,
+    );
+    expect(change).toMatchObject({
+      type: "addBlock",
+      block: { fields: { procedureId: "proc:wave" } },
+    });
+    expect(applyWorkspaceChange(workspace, change!).program.scripts[0]?.statements).toEqual([
+      { type: "callProcedure", procedureId: "proc:wave" },
+    ]);
+    expect(
+      intentToChange(
+        {
+          type: "insertBlock",
+          blockType: "procedures_call",
+          to: { container: { kind: "script", scriptIndex: 1 }, index: 0 },
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
+
   it("edits an existing numeric field through a canonical change and refuses unknown fields", () => {
     const workspace = createStarterWorkspace();
     const inserted = applyWorkspaceChange(workspace, {

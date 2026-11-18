@@ -61,6 +61,73 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("adds and retargets a visual custom-block call without crossing script ownership", async () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [],
+          procedures: [
+            { id: "proc:wave", name: "Wave", body: [{ type: "turn", degrees: 90 }] },
+            { id: "proc:step", name: "Step", body: [{ type: "move", steps: 2 }] },
+          ],
+        },
+        { id: "other", trigger: { type: "onStart" }, statements: [] },
+      ],
+    } as ProjectProgram;
+    const { host, get } = setup(program);
+    const send = async (intent: unknown) => {
+      const message = parseUiMessage({
+        schema,
+        type: "intent",
+        intent,
+        baseHash: programSemanticHash(get()!),
+      });
+      expect(message).toBeDefined();
+      return host.handle(message!);
+    };
+    const added = await send({
+      type: "insertBlock",
+      blockType: "procedures_call",
+      to: { container: script, index: 0 },
+    });
+    expect(added.some((message) => message.type === "workspace")).toBe(true);
+    expect(get()?.scripts[0]?.statements[0]).toEqual({
+      type: "callProcedure",
+      procedureId: "proc:wave",
+    });
+    const changed = await send({
+      type: "setTextField",
+      location: { container: script, index: 0 },
+      field: "procedureId",
+      value: "proc:step",
+    });
+    expect(changed.some((message) => message.type === "workspace")).toBe(true);
+    expect(get()?.scripts[0]?.statements[0]).toEqual({
+      type: "callProcedure",
+      procedureId: "proc:step",
+    });
+    const before = JSON.stringify(get());
+    for (const intent of [
+      {
+        type: "setTextField",
+        location: { container: script, index: 0 },
+        field: "procedureId",
+        value: "proc:missing",
+      },
+      {
+        type: "insertBlock",
+        blockType: "procedures_call",
+        to: { container: { kind: "script", scriptIndex: 1 }, index: 0 },
+      },
+    ]) {
+      expect((await send(intent))[0]).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+      expect(JSON.stringify(get())).toBe(before);
+    }
+  });
+
   it("commits a nested math function from the visual arithmetic protocol", async () => {
     const program = {
       schema: "agorix/program/v1",

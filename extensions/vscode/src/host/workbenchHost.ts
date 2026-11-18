@@ -482,6 +482,16 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         }
         let assetMetadata: ProjectMetadata | undefined;
         if (intent.type === "setTextField") {
+          if (
+            intent.field === "procedureId" &&
+            !program.scripts[intent.location.container.scriptIndex]?.procedures?.some(
+              (procedure) => procedure.id === intent.value,
+            )
+          ) {
+            return [
+              { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+            ];
+          }
           if (intent.field === "actorId") {
             const metadata = port.getMetadata();
             if (
@@ -576,6 +586,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               intent.type === "setListVisible" ||
               intent.type === "setListInitialItems" ||
               (intent.type === "insertBlock" && intent.blockType.startsWith("lists_")) ||
+              (intent.type === "insertBlock" && intent.blockType === "procedures_call") ||
               intent.type === "setExpressionNumber" ||
               intent.type === "setNumericInput" ||
               intent.type === "setArithmeticOperandSource" ||

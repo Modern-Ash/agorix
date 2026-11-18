@@ -292,6 +292,15 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "sound_change_volume", fields: { delta: -10 } }),
   },
   {
+    type: "procedures_call",
+    label: "Call custom block",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "call custom block",
+    studioOnly: true,
+    createDefaultBlock: (id) => ({ id, type: "procedures_call", fields: { procedureId: "" } }),
+  },
+  {
     type: "control_repeat",
     label: "Repeat [N] times",
     section: "Repeat & Decide",

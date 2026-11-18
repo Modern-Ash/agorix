@@ -455,6 +455,10 @@ describe("studio-ui", () => {
     expect(palette).toContain("remainder after division");
     expect(palette).toContain("math function");
     expect(palette).not.toContain("list length");
+    expect(palette).not.toContain("call custom block");
+    expect(
+      renderToStaticMarkup(<Palette copy={copyFor("en")} onAdd={() => undefined} hasProcedures />),
+    ).toContain("call custom block");
     const withLists = renderToStaticMarkup(
       <Palette onAdd={() => undefined} hasLists hasVariables hasActors />,
     );
@@ -471,6 +475,29 @@ describe("studio-ui", () => {
     expect(canvas.match(/role="group"[^>]*tabindex="0"/g)).toHaveLength(1);
     expect(canvas).toContain("aria-keyshortcuts");
     expect(canvas).not.toContain("style=");
+  });
+
+  it("shows imported custom calls with a named procedure selector", () => {
+    const { workspace } = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc:wave" }],
+          procedures: [
+            { id: "proc:wave", name: "Wave", body: [{ type: "turn", degrees: 90 }] },
+            { id: "proc:step", name: "Step", body: [{ type: "move", steps: 2 }] },
+          ],
+        },
+      ],
+    });
+    const html = renderToStaticMarkup(
+      <Canvas workspace={workspace} copy={copyFor("en")} onIntent={() => undefined} />,
+    );
+    expect(html).toContain("Call custom block");
+    expect(html).toContain('<option value="proc:wave" selected="">Wave</option>');
+    expect(html).toContain('<option value="proc:step">Step</option>');
   });
 
   it("localizes the Studio palette chrome", () => {
