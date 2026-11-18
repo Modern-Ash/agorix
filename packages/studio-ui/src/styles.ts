@@ -89,6 +89,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .list-management-actions label { flex: 1 1 100%; }
 .list-management-actions input { width: 100%; box-sizing: border-box; }
 .procedure-tools { border-top: 1px solid var(--vscode-panel-border); padding-top: 8px; }
+.procedure-navigator { border-top: 1px solid var(--vscode-panel-border); padding-top: 8px; }
+.procedure-navigator ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.procedure-navigator li button { width: 100%; text-align: left; display: grid; gap: 2px; }
+.procedure-navigator li small { color: var(--vscode-descriptionForeground); }
 .procedure-tools summary { cursor: pointer; font-weight: 600; }
 .procedure-tools form, .procedure-tools li { display: grid; gap: 6px; margin-top: 8px; }
 .procedure-tools label { display: grid; gap: 3px; }

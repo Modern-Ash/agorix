@@ -60,6 +60,72 @@ beforeEach(() => {
   root = createRoot(host);
 });
 
+it("opens a custom block from another actor's script through the project navigator", () => {
+  let listener: ((message: HostMessage) => void) | undefined;
+  const bridge: HostBridge = {
+    post: () => undefined,
+    subscribe: (next) => {
+      listener = next;
+      return () => undefined;
+    },
+  };
+  act(() => root.render(<Workbench bridge={bridge} />));
+  const workspace = programToWorkspace({
+    schema: "agorix/program/v1",
+    scripts: [
+      { id: "first", trigger: { type: "onStart" }, statements: [{ type: "move", steps: 1 }] },
+      {
+        id: "second",
+        trigger: { type: "onStart" },
+        statements: [{ type: "callProcedure", procedureId: "proc:wave" }],
+        procedures: [{ id: "proc:wave", name: "Wave", body: [{ type: "turn", degrees: 90 }] }],
+      },
+    ],
+  }).workspace;
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "workspace",
+      workspace,
+      programHash: "sha:test",
+    }),
+  );
+  act(() =>
+    listener?.({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "actors",
+      selectedActorId: "actor:first",
+      actors: [
+        {
+          id: "actor:first",
+          name: "First",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scriptIds: ["first"],
+        },
+        {
+          id: "actor:second",
+          name: "Second",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scriptIds: ["second"],
+        },
+      ],
+    }),
+  );
+  expect(host.querySelector(".procedure-tools summary")?.textContent).toContain("0");
+  act(() => host.querySelector<HTMLButtonElement>(".procedure-navigator button")!.click());
+  expect(host.querySelector(".actor-tree .selected")?.textContent).toContain("Second");
+  expect(host.querySelector(".procedure-heading")?.textContent).toContain("Wave");
+  expect(host.querySelector(".procedure-tools summary")?.textContent).toContain("1");
+});
+
 it("offers visual costume choices while preserving an explicit actor edit", () => {
   const onPatch = vi.fn();
   act(() =>

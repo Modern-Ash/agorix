@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
 import { Palette } from "./Palette.js";
-import { ProcedureTools } from "./ProcedureTools.js";
+import { ProcedureNavigator, ProcedureTools } from "./ProcedureTools.js";
 import { SceneLibrary } from "./SceneLibrary.js";
 import {
   ActorInspector,
@@ -43,6 +43,13 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("hides the project custom block navigator when no script defines one", () => {
+    expect(
+      renderToStaticMarkup(
+        <ProcedureNavigator workspace={workspace} copy={copyFor("en")} onOpen={() => undefined} />,
+      ),
+    ).toBe("");
+  });
   it("renders a custom block body as a visual canvas with its own canonical slots", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",
