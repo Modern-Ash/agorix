@@ -569,6 +569,50 @@ describe("workbenchHost", () => {
     expect(setup().host.snapshot()[0]).toMatchObject({ findings: [] });
   });
 
+  it("sends shared-write and budget estimates without running the program", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "first",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: { type: "numericLiteral", value: 1 },
+            },
+            { type: "repeat", count: 1000, body: [{ type: "move", steps: 1 }] },
+          ],
+        },
+        {
+          id: "second",
+          trigger: { type: "greenFlag" },
+          statements: [
+            {
+              type: "changeVariable",
+              variableId: "score",
+              delta: { type: "numericLiteral", value: 1 },
+            },
+          ],
+        },
+      ],
+    } as ProjectProgram;
+    const { host } = setup(program);
+    expect(host.snapshot()[0]).toMatchObject({
+      type: "workspace",
+      findings: [
+        {
+          kind: "shared-variable",
+          nodeId: "scripts[0]/statements[0]",
+          relatedNodeId: "scripts[1]/statements[0]",
+        },
+        { kind: "performance-budget", nodeId: "scripts[0]/statements[1]" },
+      ],
+    });
+  });
+
   it("persists learner-editable mission specs as metadata", async () => {
     const { host, labels, metadata } = setup();
     const out = await host.handle({

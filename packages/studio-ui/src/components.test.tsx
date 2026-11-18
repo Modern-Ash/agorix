@@ -56,6 +56,24 @@ describe("studio-ui", () => {
     expect(markup).toContain("condition is always false");
     expect(markup).toContain("Inspect block");
     expect(markup).toContain("Ask Ori about these findings");
+    const shared = renderToStaticMarkup(
+      <ProgramFindingsPanel
+        copy={copy}
+        findings={[
+          {
+            kind: "shared-variable",
+            nodeId: "scripts[0]/statements[0]",
+            relatedNodeId: "scripts[1]/statements[0]",
+          },
+          { kind: "performance-budget", nodeId: "scripts[0]/statements[1]" },
+        ]}
+        onInspect={() => undefined}
+        onAskOri={() => undefined}
+      />,
+    );
+    expect(shared).toContain("same variable");
+    expect(shared).toContain("Inspect other block");
+    expect(shared).toContain("block budget");
     expect(
       renderToStaticMarkup(
         <ProgramFindingsPanel

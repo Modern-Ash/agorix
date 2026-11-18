@@ -95,7 +95,7 @@ The runtime list watcher is visible in the installed VSIX at both sizes:
 | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | ![List watcher at 900](./assets/studio-vsix-list-watchers-900.png) | ![List watcher at 1440](./assets/studio-vsix-list-watchers-1440.png) |
 
-Before Play, a compact review card can point to a possible tight loop and focus its visual block. Ori's local explanation uses only the number and kinds of findings; the learner still runs the program to verify what happened.
+Before Play, compact review cards can point to a possible tight loop, two scripts changing the same variable, list or actor position on one event, or a conservative estimate above the runtime statement budget. Each card focuses the relevant visual block; shared-write cards can focus both blocks. Ori's local explanation uses only the number and kinds of findings; the learner still runs the program to verify what happened.
 
 ![Pre-play finding in the installed VSIX at 900 × 700](./assets/studio-vsix-findings-900.png)
 

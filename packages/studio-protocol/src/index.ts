@@ -2671,14 +2671,32 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
       for (const finding of (rawFindings ?? []) as unknown[]) {
         if (
           !isObject(finding) ||
-          (finding["kind"] !== "loop-never-exits" && finding["kind"] !== "loop-without-wait") ||
+          ![
+            "loop-never-exits",
+            "loop-without-wait",
+            "shared-variable",
+            "shared-list",
+            "shared-position",
+            "performance-budget",
+          ].includes(finding["kind"] as string) ||
           typeof finding["nodeId"] !== "string" ||
           !/^scripts\[\d+\]\/(?:statements|procedures\[\d+\]\/body)\[\d+\](?:\/(?:body|then|else)\[\d+\])*$/.test(
             finding["nodeId"],
-          )
+          ) ||
+          (finding["relatedNodeId"] !== undefined &&
+            (typeof finding["relatedNodeId"] !== "string" ||
+              !/^scripts\[\d+\]\/(?:statements|procedures\[\d+\]\/body)\[\d+\](?:\/(?:body|then|else)\[\d+\])*$/.test(
+                finding["relatedNodeId"],
+              )))
         )
           return undefined;
-        findings.push({ kind: finding["kind"], nodeId: finding["nodeId"] });
+        findings.push({
+          kind: finding["kind"] as ProgramFinding["kind"],
+          nodeId: finding["nodeId"],
+          ...(finding["relatedNodeId"] === undefined
+            ? {}
+            : { relatedNodeId: finding["relatedNodeId"] as string }),
+        });
       }
       return workspace !== undefined && typeof hash === "string" && HASH_PATTERN.test(hash)
         ? {

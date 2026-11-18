@@ -465,11 +465,24 @@ export function ProgramFindingsPanel({
             <strong>
               {finding.kind === "loop-never-exits"
                 ? copy.findingNeverExits
-                : copy.findingWithoutWait}
+                : finding.kind === "loop-without-wait"
+                  ? copy.findingWithoutWait
+                  : finding.kind === "shared-variable"
+                    ? copy.findingSharedVariable
+                    : finding.kind === "shared-list"
+                      ? copy.findingSharedList
+                      : finding.kind === "shared-position"
+                        ? copy.findingSharedPosition
+                        : copy.findingPerformance}
             </strong>
             <button type="button" onClick={() => onInspect(finding.nodeId)}>
               {finding.nodeId.includes("/procedures[") ? copy.findingOpenCode : copy.findingInspect}
             </button>
+            {finding.relatedNodeId !== undefined && (
+              <button type="button" onClick={() => onInspect(finding.relatedNodeId!)}>
+                {copy.findingInspectOther}
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -2449,6 +2462,8 @@ export function Workbench({
               ? copy.findingOriSummary(
                   findings.filter((finding) => finding.kind === "loop-never-exits").length,
                   findings.filter((finding) => finding.kind === "loop-without-wait").length,
+                  findings.filter((finding) => finding.kind.startsWith("shared-")).length,
+                  findings.filter((finding) => finding.kind === "performance-budget").length,
                 )
               : undefined
           }

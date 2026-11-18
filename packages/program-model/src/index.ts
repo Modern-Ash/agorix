@@ -53,8 +53,17 @@ export type {
 } from "./schema.js";
 export { SCHEMA_VERSION } from "./schema.js";
 export { procedureIdentifiers } from "./procedures.js";
-export { analyzeProgramLoops } from "./staticAnalysis.js";
-export type { ProgramFinding, ProgramFindingKind } from "./staticAnalysis.js";
+export {
+  analyzeProgramLoops,
+  analyzeProgramSharedWrites,
+  analyzeProgramBudget,
+  analyzeProgramBeforePlay,
+} from "./staticAnalysis.js";
+export type {
+  ProgramFinding,
+  ProgramFindingKind,
+  ProgramAnalysisOptions,
+} from "./staticAnalysis.js";
 export type {
   ProjectActor,
   ProjectAsset,
