@@ -1247,13 +1247,33 @@ describe("studio-protocol", () => {
     expect(parseUiMessage({ ...request, baseHash: "stale" })).toBeUndefined();
   });
 
-  it("accepts only bounded embedded art imports", () => {
+  it("accepts only bounded embedded art and PCM WAV imports", () => {
     const source = `data:image/png;base64,${btoa("\x89PNG\r\n\x1a\nimage")}`;
+    const wav =
+      "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACAAA==";
     expect(
       parseUiMessage({ schema, type: "importAsset", kind: "costume", name: " Nova ", source }),
     ).toEqual({ schema, type: "importAsset", kind: "costume", name: "Nova", source });
     expect(
       parseUiMessage({ schema, type: "importAsset", kind: "sound", name: "Nova", source }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "importAsset", kind: "sound", name: "Bell", source: wav }),
+    ).toEqual({
+      schema,
+      type: "importAsset",
+      kind: "sound",
+      name: "Bell",
+      source: wav,
+    });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "importAsset",
+        kind: "sound",
+        name: "Bad",
+        source: "https://example.com/bell.wav",
+      }),
     ).toBeUndefined();
     expect(
       parseUiMessage({

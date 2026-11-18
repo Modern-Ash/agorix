@@ -36,6 +36,7 @@ import {
   NUMERIC_LITERAL_MIN,
   NUMERIC_LITERAL_MAX,
   validEmbeddedImageSource,
+  validEmbeddedSoundSource,
   type ProgramList,
   type ProgramVariable,
 } from "@agorix/program-model";
@@ -199,7 +200,7 @@ export type UiMessage =
   | {
       readonly schema: Schema;
       readonly type: "importAsset";
-      readonly kind: "costume" | "backdrop";
+      readonly kind: "costume" | "backdrop" | "sound";
       readonly name: string;
       readonly source: string;
     }
@@ -990,7 +991,9 @@ function parseAsset(value: unknown): AssetView | undefined {
             "builtin:space.nebula",
           ].includes(source) ||
           ADVANCED_SOUNDS.some((sound) => sound.source === source))) ||
-      validEmbeddedImageSource(source)
+      (value["kind"] === "sound"
+        ? validEmbeddedSoundSource(source)
+        : validEmbeddedImageSource(source))
     )
   )
     return undefined;
@@ -2541,11 +2544,16 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
           }
         : undefined;
     case "importAsset":
-      return (value["kind"] === "costume" || value["kind"] === "backdrop") &&
+      return (value["kind"] === "costume" ||
+        value["kind"] === "backdrop" ||
+        value["kind"] === "sound") &&
         typeof value["name"] === "string" &&
+        typeof value["source"] === "string" &&
         value["name"].trim().length > 0 &&
         value["name"].trim().length <= 80 &&
-        validEmbeddedImageSource(value["source"])
+        (value["kind"] === "sound"
+          ? validEmbeddedSoundSource(value["source"])
+          : validEmbeddedImageSource(value["source"]))
         ? {
             schema,
             type: "importAsset",

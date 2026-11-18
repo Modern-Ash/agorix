@@ -137,6 +137,54 @@ export function validEmbeddedImageSource(value: unknown): value is string {
   }
 }
 
+/** Bounded, self-contained PCM WAV; no remote fetch or scriptable media. */
+export function validEmbeddedSoundSource(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = /^data:audio\/wav;base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!match || match[1]!.length > 82_000) return false;
+  try {
+    const bytes = atob(match[1]!);
+    if (bytes.length < 44 || bytes.length >= 60 * 1024) return false;
+    if (bytes.slice(0, 4) !== "RIFF" || bytes.slice(8, 12) !== "WAVE") return false;
+    const view = new DataView(Uint8Array.from(bytes, (byte) => byte.charCodeAt(0)).buffer);
+    if (view.getUint32(4, true) !== bytes.length - 8) return false;
+    let byteRate = 0;
+    let dataSize = 0;
+    for (let offset = 12; offset + 8 <= bytes.length;) {
+      const size = view.getUint32(offset + 4, true);
+      const end = offset + 8 + size;
+      if (end > bytes.length) return false;
+      const chunk = bytes.slice(offset, offset + 4);
+      if (chunk === "fmt ") {
+        if (size < 16 || view.getUint16(offset + 8, true) !== 1) return false;
+        const channels = view.getUint16(offset + 10, true);
+        const rate = view.getUint32(offset + 12, true);
+        const encodedByteRate = view.getUint32(offset + 16, true);
+        const blockAlign = view.getUint16(offset + 20, true);
+        const depth = view.getUint16(offset + 22, true);
+        if (
+          (channels !== 1 && channels !== 2) ||
+          rate < 8000 ||
+          rate > 48000 ||
+          (depth !== 8 && depth !== 16) ||
+          blockAlign !== channels * (depth / 8) ||
+          encodedByteRate !== rate * channels * (depth / 8)
+        )
+          return false;
+        byteRate = encodedByteRate;
+      }
+      if (chunk === "data") {
+        if (size === 0) return false;
+        dataSize = size;
+      }
+      offset = end + (size % 2);
+    }
+    return byteRate > 0 && dataSize > 0 && dataSize / byteRate <= 5;
+  } catch {
+    return false;
+  }
+}
+
 function stableId(value: unknown, path: string): string {
   const id = nonEmptyString(value, path);
   if (!STABLE_ID_PATTERN.test(id)) {
@@ -203,9 +251,13 @@ function validateAsset(input: unknown, path: string, state: CreativeValidationSt
     name: nonEmptyString(input.name, `${path}.name`),
     source:
       typeof input.source === "string" && input.source.startsWith("data:")
-        ? kind !== "sound" && validEmbeddedImageSource(input.source)
+        ? (
+            kind === "sound"
+              ? validEmbeddedSoundSource(input.source)
+              : validEmbeddedImageSource(input.source)
+          )
           ? input.source
-          : fail(`${path}.source`, "expected bounded PNG/WebP image data", input.source)
+          : fail(`${path}.source`, "expected bounded embedded media", input.source)
         : nonEmptyString(input.source, `${path}.source`),
     ...(input.tags === undefined
       ? {}

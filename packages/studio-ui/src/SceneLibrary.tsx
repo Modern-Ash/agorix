@@ -7,7 +7,7 @@ import {
 import type { StudioUiCopy } from "./i18n.js";
 import { imageForAsset, imageForId } from "./visualArt.js";
 import { useEffect, useRef, useState } from "react";
-import { validEmbeddedImageSource } from "@agorix/program-model";
+import { validEmbeddedImageSource, validEmbeddedSoundSource } from "@agorix/program-model";
 import { canPreviewSound, playSoundPreview } from "./soundPreview.js";
 import { fillImageRegion, transformImagePixels } from "./imageTransforms.js";
 import { KIDS_GALLERY_CATEGORIES, type KidsGalleryCategory } from "@agorix/stage";
@@ -46,7 +46,11 @@ export function SceneLibrary({
     trigger: "greenFlag" | "onMessage" | "onKeyPressed" | "onActorClicked",
     detail?: string,
   ) => void;
-  readonly onImportAsset?: (kind: "costume" | "backdrop", name: string, source: string) => void;
+  readonly onImportAsset?: (
+    kind: "costume" | "backdrop" | "sound",
+    name: string,
+    source: string,
+  ) => void;
   readonly onUpdateAsset?: (assetId: string, name: string, source: string) => void;
   readonly characterGalleryRequest?: number;
 }) {
@@ -66,6 +70,8 @@ export function SceneLibrary({
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [pendingActorDelete, setPendingActorDelete] = useState<string>();
   const [soundPreviewError, setSoundPreviewError] = useState(false);
+  const [soundName, setSoundName] = useState("");
+  const [soundImportError, setSoundImportError] = useState(false);
   const [editingAssetId, setEditingAssetId] = useState<string>();
   const [pendingAsset, setPendingAsset] = useState<
     | { mode: "create"; kind: "costume" | "backdrop"; knownIds: readonly string[] }
@@ -619,6 +625,49 @@ export function SceneLibrary({
       <section aria-label={copy.sceneSounds} hidden={activeSection !== "sounds"}>
         <h3>{copy.sceneSounds}</h3>
         <p className="scene-sound-hint">{copy.sceneSoundHint}</p>
+        {onImportAsset === undefined ? null : (
+          <div className="scene-sound-import">
+            <input
+              aria-label={copy.sceneSoundName}
+              maxLength={80}
+              value={soundName}
+              onChange={(event) => setSoundName(event.target.value)}
+            />
+            <label>
+              {copy.sceneImportSound}
+              <input
+                type="file"
+                accept="audio/wav,.wav"
+                onChange={(event) => {
+                  const input = event.currentTarget;
+                  const file = input.files?.[0];
+                  if (!file || file.size >= 60 * 1024) {
+                    setSoundImportError(true);
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const source = reader.result;
+                    if (!validEmbeddedSoundSource(source)) {
+                      setSoundImportError(true);
+                      return;
+                    }
+                    onImportAsset(
+                      "sound",
+                      soundName.trim() || `Sound ${sounds.length + 1}`,
+                      source,
+                    );
+                    setSoundImportError(false);
+                    input.value = "";
+                  };
+                  reader.onerror = () => setSoundImportError(true);
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </label>
+            {soundImportError ? <p role="status">{copy.sceneInvalidSound}</p> : null}
+          </div>
+        )}
         {sounds.length === 0 ? <p>{copy.sceneNoSounds}</p> : null}
         <div className="scene-library-grid scene-sounds">
           {sounds.map((asset) => (

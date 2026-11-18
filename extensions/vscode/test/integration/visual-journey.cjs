@@ -1,6 +1,7 @@
 // Runs a visible learner journey against an installed VSIX in an isolated VS Code profile.
 // VSCODE_EXECUTABLE=/usr/share/code/code node test/integration/visual-journey.cjs
 const fs = require("node:fs");
+const { Buffer } = require("node:buffer");
 const os = require("node:os");
 const path = require("node:path");
 const cp = require("node:child_process");
@@ -773,11 +774,81 @@ async function main() {
     }
     assert.match(runStatus, /completed/, "Run must complete after sound selection");
     console.log("Ran the canonical program with the selected sound");
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
+    await webview.locator(".scene-section-tabs button").filter({ hasText: "Sounds" }).click();
+    await webview.getByLabel("Sound name").fill("My bell");
+    const soundInput = webview.locator('.scene-sound-import input[type="file"]');
+    const beforeInvalidSound = fs.readFileSync(project, "utf8");
+    await soundInput.setInputFiles({
+      name: "bad.wav",
+      mimeType: "audio/wav",
+      buffer: Buffer.from("not a WAV"),
+    });
+    await webview.locator('.scene-sound-import [role="status"]').waitFor();
+    assert.equal(fs.readFileSync(project, "utf8"), beforeInvalidSound);
+    const wav = Buffer.alloc(8044);
+    wav.write("RIFF", 0);
+    wav.writeUInt32LE(wav.length - 8, 4);
+    wav.write("WAVEfmt ", 8);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(8000, 24);
+    wav.writeUInt32LE(8000, 28);
+    wav.writeUInt16LE(1, 32);
+    wav.writeUInt16LE(8, 34);
+    wav.write("data", 36);
+    wav.writeUInt32LE(8000, 40);
+    wav.fill(128, 44);
+    await soundInput.setInputFiles({
+      name: "bell.wav",
+      mimeType: "audio/wav",
+      buffer: wav,
+    });
+    let withSound;
+    try {
+      ({ value: withSound } = await waitForProject((envelope) =>
+        envelope.project?.metadata?.assets?.some((asset) => asset.name === "My bell"),
+      ));
+    } catch (error) {
+      const status = await webview.locator('.scene-sound-import [role="status"]').allTextContents();
+      const assets = JSON.parse(fs.readFileSync(project, "utf8")).project.metadata.assets;
+      throw new Error(
+        `Sound import did not persist; status=${JSON.stringify(status)}; assets=${JSON.stringify(assets.map((asset) => asset.name))}`,
+        { cause: error },
+      );
+    }
+    const importedSound = withSound.project.metadata.assets.find(
+      (asset) => asset.name === "My bell",
+    );
+    const previewBell = webview.getByRole("button", { name: "Preview sound: My bell" });
+    await previewBell.waitFor();
+    assert.equal(await previewBell.isEnabled(), true);
+    await previewBell.click();
+    await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
+    await webview
+      .locator('.studio-program .block[data-tone="sound"] .block-asset-field select')
+      .last()
+      .selectOption(importedSound.id);
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts?.some((script) =>
+        script.statements.some(
+          (statement) => statement.type === "playSound" && statement.soundId === importedSound.id,
+        ),
+      ),
+    );
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
+    await webview.locator(".stage-sounds strong").filter({ hasText: "My bell" }).waitFor();
+    console.log("Imported a bounded WAV and selected it on the visual sound block");
     const watcher = webview.locator('.stage-list-watcher[data-list-id="inventory"]');
     assert.deepEqual(await watcher.locator("li").allTextContents(), ["2", "5"]);
     const saved = JSON.parse(fs.readFileSync(project, "utf8"));
     if (!saved.project?.metadata?.assets?.some((asset) => asset.name === "My painted star")) {
       throw new Error("Painted costume was not persisted");
+    }
+    if (!saved.project?.metadata?.assets?.some((asset) => asset.name === "My bell")) {
+      throw new Error("Imported sound was not persisted");
     }
     const initial = JSON.parse(fs.readFileSync(fixture, "utf8"));
     const statementCount = (program) =>
@@ -824,6 +895,9 @@ async function main() {
     assert.deepEqual(reopened.metadata.assets, expectedAssets);
     const painted = expectedAssets.find((asset) => asset.name === "My painted star");
     if (!painted) throw new Error("Painted costume missing after Web import");
+    const bell = expectedAssets.find((asset) => asset.name === "My bell");
+    if (!bell?.source.startsWith("data:audio/wav;base64,"))
+      throw new Error("Imported WAV missing after Web import");
     assert.equal(await webPage.getByTestId("stage-sprite").count(), 3);
     await webPage.locator('[data-testid="stage-sprite"][data-costume-id="costume:mika"]').waitFor();
     await webPage
