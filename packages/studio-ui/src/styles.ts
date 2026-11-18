@@ -379,7 +379,7 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-findings header span { min-width: 19px; border-radius: 10px; text-align: center; background: var(--vscode-charts-orange, var(--vscode-focusBorder)); color: var(--vscode-editor-background); font-size: 0.72em; font-weight: 700; }
 .studio-findings p { margin: 5px 0; color: var(--vscode-descriptionForeground); font-size: 0.76em; }
 .studio-findings ul { display: grid; gap: 4px; max-height: 120px; overflow: auto; margin: 6px 0; padding: 0; list-style: none; }
-.studio-findings li { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.78em; }
+.studio-findings li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; font-size: 0.78em; }
 .studio-findings li strong { flex: 1; font-weight: 500; }
 .studio-findings button { min-height: 26px; padding: 2px 6px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; }
 .studio-findings button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }

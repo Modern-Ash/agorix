@@ -7,7 +7,7 @@ import {
 import { intentToChange, type AgentAnchorRef, type AgentVerb } from "@agorix/interaction-core";
 import {
   ProgramValidationError,
-  analyzeProgramLoops,
+  analyzeProgramBeforePlay,
   validateProgram,
   validEmbeddedImageSource,
   validEmbeddedSoundSource,
@@ -25,6 +25,7 @@ import {
   type UiMessage,
   type ValidationIssueView,
 } from "@agorix/studio-protocol";
+import { DEFAULT_EXECUTION_BUDGET } from "@agorix/runtime";
 import {
   missionSpecHash,
   validateProjectMissionSpec,
@@ -330,13 +331,24 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     }
     try {
       const { workspace } = programToWorkspace(program);
+      const metadata = port.getMetadata();
+      const actorByScriptId = Object.fromEntries(
+        metadata === undefined
+          ? []
+          : actorsForMetadata(metadata).items.flatMap((actor) =>
+              (actor.scripts ?? []).map((scriptId) => [scriptId, actor.id] as const),
+            ),
+      );
       return [
         {
           schema,
           type: "workspace",
           workspace,
           programHash: programSemanticHash(program),
-          findings: analyzeProgramLoops(program),
+          findings: analyzeProgramBeforePlay(program, {
+            executionBudget: DEFAULT_EXECUTION_BUDGET,
+            actorByScriptId,
+          }),
         },
         ...actorsMessage(),
         ...sceneMessage(),

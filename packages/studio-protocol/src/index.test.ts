@@ -458,6 +458,20 @@ describe("studio-protocol", () => {
     expect(parseHostMessage(message)).toMatchObject({ workspace });
     const findings = [{ kind: "loop-without-wait", nodeId: "scripts[0]/statements[0]" }];
     expect(parseHostMessage({ ...message, findings })).toMatchObject({ findings });
+    const shared = [
+      {
+        kind: "shared-variable",
+        nodeId: "scripts[0]/statements[0]",
+        relatedNodeId: "scripts[1]/statements[0]",
+      },
+    ];
+    expect(parseHostMessage({ ...message, findings: shared })).toMatchObject({ findings: shared });
+    expect(
+      parseHostMessage({
+        ...message,
+        findings: [{ ...shared[0], relatedNodeId: "<script>" }],
+      }),
+    ).toBeUndefined();
     expect(
       parseHostMessage({
         ...message,
