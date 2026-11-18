@@ -29,6 +29,7 @@ export function SceneLibrary({
   onCreateScript,
   onImportAsset,
   onUpdateAsset,
+  characterGalleryRequest = 0,
 }: {
   readonly copy: StudioUiCopy;
   readonly actors: readonly ActorView[];
@@ -47,6 +48,7 @@ export function SceneLibrary({
   ) => void;
   readonly onImportAsset?: (kind: "costume" | "backdrop", name: string, source: string) => void;
   readonly onUpdateAsset?: (assetId: string, name: string, source: string) => void;
+  readonly characterGalleryRequest?: number;
 }) {
   const drawing = useRef<HTMLCanvasElement>(null);
   const drawingHistory = useRef<ImageData[]>([]);
@@ -81,6 +83,12 @@ export function SceneLibrary({
   >("greenFlag");
   const [scriptMessage, setScriptMessage] = useState("");
   const [scriptKey, setScriptKey] = useState("Space");
+  useEffect(() => {
+    if (characterGalleryRequest === 0) return;
+    setActiveSection("costumes");
+    setAssetSearch("");
+    setAssetCategory("all");
+  }, [characterGalleryRequest]);
   const clearDrawing = () => {
     shapeDraft.current = undefined;
     const canvas = drawing.current;

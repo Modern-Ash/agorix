@@ -1635,6 +1635,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
   });
   it("chooses a validated backdrop visually and disables changes while running", () => {
     const onBackdrop = vi.fn();
+    const onBrowseCharacters = vi.fn();
     const frame = (running: boolean) => ({
       state: {
         sprite: { x: 0, y: 0, heading: 0, radius: 10 },
@@ -1657,6 +1658,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
             showBackdropPicker
             editingDisabled={running}
             onBackdrop={onBackdrop}
+            onBrowseCharacters={onBrowseCharacters}
             assets={[
               {
                 id: "backdrop:forest",
@@ -1690,10 +1692,13 @@ describe("canvas keyboard and screen reader behaviour", () => {
       host.querySelector<HTMLButtonElement>('[aria-label="Choose backdrop: Garden"]')?.click(),
     );
     expect(onBackdrop).toHaveBeenCalledWith("backdrop:garden");
+    act(() => host.querySelector<HTMLButtonElement>(".stage-add-character")?.click());
+    expect(onBrowseCharacters).toHaveBeenCalledOnce();
     renderPicker(true);
     expect(
       host.querySelector<HTMLButtonElement>('[aria-label="Choose backdrop: Garden"]')?.disabled,
     ).toBe(true);
+    expect(host.querySelector<HTMLButtonElement>(".stage-add-character")?.disabled).toBe(true);
   });
 
   it("drops known costumes and backdrops onto their stage targets", () => {
@@ -2725,34 +2730,35 @@ describe("workbench live region and focus after inserting from the palette", () 
   });
   it("filters the visual asset gallery by category and restores all assets", () => {
     const createActor = vi.fn();
+    const assets = [
+      {
+        id: "costume:mika",
+        name: "Mika",
+        kind: "costume" as const,
+        tags: ["gallery", "animals"],
+        source: "builtin:kids-gallery-costume:mika",
+      },
+      {
+        id: "costume:comet",
+        name: "Comet",
+        kind: "costume" as const,
+        tags: ["gallery", "space"],
+        source: "builtin:kids-gallery-costume:comet",
+      },
+      {
+        id: "backdrop:forest",
+        name: "Forest",
+        kind: "backdrop" as const,
+        tags: ["gallery", "nature"],
+        source: "builtin:kids-gallery-backdrop:forest",
+      },
+    ];
     act(() =>
       root.render(
         <SceneLibrary
           copy={copyFor("en")}
           actors={[]}
-          assets={[
-            {
-              id: "costume:mika",
-              name: "Mika",
-              kind: "costume",
-              tags: ["gallery", "animals"],
-              source: "builtin:kids-gallery-costume:mika",
-            },
-            {
-              id: "costume:comet",
-              name: "Comet",
-              kind: "costume",
-              tags: ["gallery", "space"],
-              source: "builtin:kids-gallery-costume:comet",
-            },
-            {
-              id: "backdrop:forest",
-              name: "Forest",
-              kind: "backdrop",
-              tags: ["gallery", "nature"],
-              source: "builtin:kids-gallery-backdrop:forest",
-            },
-          ]}
+          assets={assets}
           selectedActorId={undefined}
           backdropId={undefined}
           onSelectActor={() => undefined}
@@ -2782,10 +2788,23 @@ describe("workbench live region and focus after inserting from the palette", () 
     });
     expect(costumeSection.querySelectorAll(".scene-asset-card")).toHaveLength(0);
     expect(costumeSection.textContent).toContain(copyFor("en").sceneNoMatchingAssets);
-    act(() => {
-      category.value = "all";
-      category.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-    });
+    act(() =>
+      root.render(
+        <SceneLibrary
+          copy={copyFor("en")}
+          actors={[]}
+          assets={assets}
+          selectedActorId={undefined}
+          backdropId={undefined}
+          onSelectActor={() => undefined}
+          onCostume={() => undefined}
+          onBackdrop={() => undefined}
+          onCreateActor={createActor}
+          characterGalleryRequest={1}
+        />,
+      ),
+    );
+    expect(category.value).toBe("all");
     expect(costumeSection.querySelectorAll(".scene-asset-card")).toHaveLength(2);
   });
   it("duplicates a costume into a new editable draft and saves it explicitly", () => {

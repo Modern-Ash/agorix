@@ -444,6 +444,7 @@ export function StagePanel({
   onTransformActor,
   onCostume,
   onBackdrop,
+  onBrowseCharacters,
   showBackdropPicker = false,
   editingDisabled = false,
   onStageEvent,
@@ -461,6 +462,7 @@ export function StagePanel({
   ) => void;
   readonly onCostume?: (actorId: string, costumeId: string) => void;
   readonly onBackdrop?: (backdropId: string) => void;
+  readonly onBrowseCharacters?: () => void;
   readonly showBackdropPicker?: boolean;
   readonly editingDisabled?: boolean;
   readonly onStageEvent?: (
@@ -547,46 +549,58 @@ export function StagePanel({
         </div>
       </header>
       {showBackdropPicker && onBackdrop !== undefined && state !== undefined ? (
-        <details ref={backdropPickerRef} className="stage-backdrop-picker">
-          <summary
-            aria-label={`${copy.sceneSelectBackdrop}: ${assetNames.get(state.backdropId ?? "") ?? copy.actorNoCostume}`}
-          >
-            {backdropImage === undefined ? (
-              <span className="stage-backdrop-preview" aria-hidden="true" />
-            ) : (
-              <img className="stage-backdrop-preview" src={backdropImage} alt="" />
-            )}
-            <span>
-              {copy.sceneBackdrops}:{" "}
-              <strong>{assetNames.get(state.backdropId ?? "") ?? copy.actorNoCostume}</strong>
-            </span>
-          </summary>
-          <div className="stage-backdrop-options" role="group" aria-label={copy.sceneBackdrops}>
-            {backdrops.map((asset) => {
-              const image = imageForAsset(asset);
-              return (
-                <button
-                  key={asset.id}
-                  type="button"
-                  aria-label={`${copy.sceneSelectBackdrop}: ${asset.name}`}
-                  aria-pressed={asset.id === state.backdropId}
-                  disabled={editingDisabled}
-                  onClick={() => {
-                    onBackdrop(asset.id);
-                    if (backdropPickerRef.current) backdropPickerRef.current.open = false;
-                  }}
-                >
-                  {image === undefined ? (
-                    <span className="stage-backdrop-thumb" aria-hidden="true" />
-                  ) : (
-                    <img src={image} alt="" />
-                  )}
-                  <span>{asset.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </details>
+        <div className="stage-scene-actions">
+          <details ref={backdropPickerRef} className="stage-backdrop-picker">
+            <summary
+              aria-label={`${copy.sceneSelectBackdrop}: ${assetNames.get(state.backdropId ?? "") ?? copy.actorNoCostume}`}
+            >
+              {backdropImage === undefined ? (
+                <span className="stage-backdrop-preview" aria-hidden="true" />
+              ) : (
+                <img className="stage-backdrop-preview" src={backdropImage} alt="" />
+              )}
+              <span>
+                {copy.sceneBackdrops}:{" "}
+                <strong>{assetNames.get(state.backdropId ?? "") ?? copy.actorNoCostume}</strong>
+              </span>
+            </summary>
+            <div className="stage-backdrop-options" role="group" aria-label={copy.sceneBackdrops}>
+              {backdrops.map((asset) => {
+                const image = imageForAsset(asset);
+                return (
+                  <button
+                    key={asset.id}
+                    type="button"
+                    aria-label={`${copy.sceneSelectBackdrop}: ${asset.name}`}
+                    aria-pressed={asset.id === state.backdropId}
+                    disabled={editingDisabled}
+                    onClick={() => {
+                      onBackdrop(asset.id);
+                      if (backdropPickerRef.current) backdropPickerRef.current.open = false;
+                    }}
+                  >
+                    {image === undefined ? (
+                      <span className="stage-backdrop-thumb" aria-hidden="true" />
+                    ) : (
+                      <img src={image} alt="" />
+                    )}
+                    <span>{asset.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </details>
+          {onBrowseCharacters === undefined ? null : (
+            <button
+              type="button"
+              className="stage-add-character"
+              disabled={editingDisabled}
+              onClick={onBrowseCharacters}
+            >
+              {copy.sceneCreateActorFromCostume}
+            </button>
+          )}
+        </div>
       ) : null}
       <div
         ref={viewportRef}
@@ -1282,6 +1296,7 @@ export function Workbench({
   const [backdropId, setBackdropId] = useState<string | undefined>();
   const [libraryTab, setLibraryTab] = useState<"blocks" | "scene">("blocks");
   const [workspaceView, setWorkspaceView] = useState<"build" | "scene" | "review">("build");
+  const [characterGalleryRequest, setCharacterGalleryRequest] = useState(0);
   const [toolsOpen, setToolsOpen] = useState(() =>
     typeof window === "undefined" ? true : window.innerWidth > 1100,
   );
@@ -1546,6 +1561,7 @@ export function Workbench({
       assets={assets}
       selectedActorId={selectedActorId}
       backdropId={backdropId}
+      characterGalleryRequest={characterGalleryRequest}
       onSelectActor={(id) => {
         setSelectedActorId(id);
         setSelectedScriptId(undefined);
@@ -1982,6 +1998,9 @@ export function Workbench({
             onTransformActor={(actorId, patch) => updateActor(actorId, patch)}
             onCostume={(actorId, costumeId) => updateActor(actorId, { costumeId })}
             onBackdrop={updateBackdrop}
+            {...(workspaceView === "scene"
+              ? { onBrowseCharacters: () => setCharacterGalleryRequest((request) => request + 1) }
+              : {})}
             showBackdropPicker={workspaceView === "scene"}
             editingDisabled={execution?.status === "running"}
             onStageEvent={(event) =>

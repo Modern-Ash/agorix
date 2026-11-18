@@ -29,7 +29,11 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .stage-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--vscode-panel-border); color: var(--vscode-descriptionForeground); font-size: 0.9em; }
 .stage-panel-header strong { color: var(--vscode-foreground); }
 .stage-panel-header div { display: grid; justify-items: end; gap: 2px; min-width: 0; }
-.stage-backdrop-picker { position: relative; z-index: 5; border-bottom: 1px solid var(--vscode-panel-border); }
+.stage-scene-actions { display: flex; align-items: stretch; border-bottom: 1px solid var(--vscode-panel-border); }
+.stage-backdrop-picker { position: relative; z-index: 5; flex: 1; min-width: 0; }
+.stage-add-character { flex: 0 0 auto; margin: 5px; padding: 4px 8px; border: 1px solid var(--vscode-focusBorder); border-radius: 5px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); cursor: pointer; }
+.stage-add-character:disabled { opacity: 0.55; cursor: not-allowed; }
+.stage-add-character:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .stage-backdrop-picker summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px; cursor: pointer; list-style: none; }
 .stage-backdrop-picker summary::-webkit-details-marker { display: none; }
 .stage-backdrop-picker summary::after { content: "⌄"; margin-left: auto; color: var(--vscode-descriptionForeground); }
