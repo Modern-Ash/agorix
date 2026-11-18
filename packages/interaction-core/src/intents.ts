@@ -129,6 +129,24 @@ export type DropTarget =
  * handled by the host, never a gesture.
  */
 export type Intent =
+  | {
+      readonly type: "createProcedure";
+      readonly scriptIndex: number;
+      readonly name: string;
+      readonly count: number;
+    }
+  | {
+      readonly type: "renameProcedure";
+      readonly scriptIndex: number;
+      readonly procedureId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: "deleteProcedure";
+      readonly scriptIndex: number;
+      readonly procedureId: string;
+      readonly inlineCalls: boolean;
+    }
   | { readonly type: "insertBlock"; readonly blockType: BlockType; readonly to: InsertionPoint }
   | { readonly type: "moveBlock"; readonly from: StatementLocation; readonly to: InsertionPoint }
   | { readonly type: "deleteBlock"; readonly location: StatementLocation }

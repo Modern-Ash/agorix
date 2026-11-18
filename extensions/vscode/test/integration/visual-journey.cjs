@@ -99,7 +99,11 @@ async function main() {
   fs.mkdirSync(userDir, { recursive: true });
   fs.writeFileSync(
     path.join(userDir, "settings.json"),
-    JSON.stringify({ "agorixStudio.agent.endpoint": `http://127.0.0.1:${boundaryPort}` }),
+    JSON.stringify({
+      "agorixStudio.agent.endpoint": `http://127.0.0.1:${boundaryPort}`,
+      "workbench.startupEditor": "none",
+      "workbench.welcomePage.walkthroughs.openOnInstall": false,
+    }),
   );
   fs.writeFileSync(
     path.join(userDir, "keybindings.json"),
@@ -165,12 +169,16 @@ async function main() {
     await page.bringToFront();
     await page.setViewportSize({ width: 900, height: 700 });
     const onboarding = page.getByRole("dialog", { name: "Welcome to Visual Studio Code" });
-    await onboarding.waitFor({ timeout: 10000 }).catch(() => undefined);
-    if (await onboarding.isVisible()) {
-      await onboarding.getByText("Continue without Signing In").click();
-      await onboarding.getByText("Get Started", { exact: true }).click();
-      await onboarding.waitFor({ state: "hidden" });
-    }
+    const dismissOnboarding = async () => {
+      if (!(await onboarding.isVisible())) return;
+      const continueButton = onboarding.getByText("Continue without Signing In");
+      if (await continueButton.isVisible()) await continueButton.click();
+      const startButton = onboarding.getByText("Get Started", { exact: true });
+      if (await startButton.isVisible()) await startButton.click();
+      await onboarding.waitFor({ state: "hidden", timeout: 10000 });
+    };
+    await page.addLocatorHandler(onboarding, dismissOnboarding);
+    await dismissOnboarding();
     await page.waitForTimeout(1000);
     await page.keyboard.press("F1");
     await page.locator(".quick-input-widget:visible input").first().fill(">Reopen Editor With");
@@ -214,6 +222,7 @@ async function main() {
     await componentLauncher.getByRole("button", { name: "Motion" }).click();
     assert.equal(await webview.locator(".studio-tools").isVisible(), true);
     assert.equal(await webview.locator(".studio-tools .palette-section").count(), 1);
+    await dismissOnboarding();
     await webview.locator(".studio-program-heading button").click();
     assert.equal(await webview.locator(".studio-tools").isVisible(), false);
     const beforeFinding = fs.readFileSync(project, "utf8");
@@ -296,6 +305,7 @@ async function main() {
       .getByRole("button", { name: /Remove breakpoint: Move/ })
       .first()
       .click();
+    await dismissOnboarding();
     await webview.locator(".studio-program-heading button").click();
     assert.equal(await webview.locator(".studio-tools").isVisible(), true);
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Evidence" }).click();
@@ -338,6 +348,7 @@ async function main() {
         envelope.project.program.scripts[0].statements.length === 6,
     );
     console.log("Nested and outdented a canonical block with the keyboard");
+    await dismissOnboarding();
     await webview.locator(".studio-program-heading button").click();
     assert.equal(await webview.locator(".studio-tools").isVisible(), true);
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
@@ -686,6 +697,7 @@ async function main() {
       .click();
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
     assert.equal(await webview.locator(".studio-tools").isVisible(), false);
+    await dismissOnboarding();
     await webview.locator(".studio-program-heading button").click();
     const paletteBounds = await webview.locator(".studio-tools").boundingBox();
     const targetBounds = await webview.locator(".studio-program").boundingBox();
@@ -913,6 +925,28 @@ async function main() {
     console.log("Imported a bounded WAV and selected it on the visual sound block");
     const watcher = webview.locator('.stage-list-watcher[data-list-id="inventory"]');
     assert.deepEqual(await watcher.locator("li").allTextContents(), ["2", "5"]);
+    const showProcedureTools = webview
+      .locator(".studio-shell-actions button")
+      .filter({ hasText: "Show tools" });
+    if (await showProcedureTools.isVisible()) await showProcedureTools.click();
+    await webview.locator(".procedure-tools summary").click();
+    await webview.locator('.procedure-tools form input[type="number"]').fill("1");
+    await webview.locator(".procedure-tools form input:not([type])").fill("Bell action");
+    assert.match(await webview.locator(".procedure-preview").innerText(), /Play sound/);
+    await webview.locator(".procedure-tools form button").click();
+    const withProcedure = await waitForProject((envelope) =>
+      envelope.project?.program?.scripts?.some((script) =>
+        script.procedures?.some((procedure) => procedure.name === "Bell action"),
+      ),
+    );
+    assert.ok(
+      withProcedure.value.project.program.scripts.some((script) =>
+        script.statements.some((statement) => statement.type === "callProcedure"),
+      ),
+    );
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
+    console.log("Created and ran a visual custom block from the selected script");
     const saved = JSON.parse(fs.readFileSync(project, "utf8"));
     if (!saved.project?.metadata?.assets?.some((asset) => asset.name === "My painted star")) {
       throw new Error("Painted costume was not persisted");

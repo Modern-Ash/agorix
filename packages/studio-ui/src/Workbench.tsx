@@ -20,6 +20,7 @@ import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
 import { locationKey, toRows } from "./blockView.js";
 import { Palette } from "./Palette.js";
+import { ProcedureTools } from "./ProcedureTools.js";
 import { SceneLibrary, STAGE_BACKDROP_DRAG_TYPE, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { densityAnnouncement } from "./density.js";
 import { advanceDebugSession, type DebugSnapshot } from "./debugSession.js";
@@ -1741,6 +1742,12 @@ export function Workbench({
     selectedScriptId !== undefined && activeScriptIds?.includes(selectedScriptId)
       ? selectedScriptId
       : activeScriptIds?.[0];
+  const activeScriptIndex =
+    activeScriptId === undefined
+      ? 0
+      : (workspace?.scripts.findIndex(
+          (script) => (script.programId ?? script.id) === activeScriptId,
+        ) ?? -1);
 
   const sceneLibrary = () => (
     <SceneLibrary
@@ -2123,6 +2130,15 @@ export function Workbench({
                 </ul>
               )}
             </form>
+            {workspace !== undefined && activeScriptIndex >= 0 ? (
+              <ProcedureTools
+                key={activeScriptIndex}
+                workspace={workspace}
+                scriptIndex={activeScriptIndex}
+                copy={copy}
+                onIntent={post}
+              />
+            ) : null}
             <Palette
               copy={copy}
               onAdd={add}

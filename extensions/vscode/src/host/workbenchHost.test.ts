@@ -61,6 +61,55 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("creates, renames and explicitly inlines a custom block with stale-edit protection", async () => {
+    const { host, get } = setup();
+    const send = async (intent: unknown, baseHash = programSemanticHash(get()!)) => {
+      const message = parseUiMessage({ schema, type: "intent", intent, baseHash });
+      expect(message).toBeDefined();
+      return host.handle(message!);
+    };
+    const staleHash = programSemanticHash(get()!);
+    expect(
+      (await send({ type: "createProcedure", scriptIndex: 0, name: "Wave", count: 2 }))[0]?.type,
+    ).not.toBe("error");
+    const created = get()!;
+    expect(created.scripts[0]?.procedures?.[0]?.name).toBe("Wave");
+    expect(created.scripts[0]?.statements).toEqual([
+      { type: "callProcedure", procedureId: created.scripts[0]!.procedures![0]!.id },
+    ]);
+    expect(
+      (
+        await send(
+          {
+            type: "renameProcedure",
+            scriptIndex: 0,
+            procedureId: created.scripts[0]!.procedures![0]!.id,
+            name: "Again",
+          },
+          staleHash,
+        )
+      )[0],
+    ).toMatchObject({ type: "error", code: "STALE_EDIT" });
+    const id = created.scripts[0]!.procedures![0]!.id;
+    expect(
+      (await send({ type: "renameProcedure", scriptIndex: 0, procedureId: id, name: "Again" }))[0]
+        ?.type,
+    ).not.toBe("error");
+    expect(get()?.scripts[0]?.procedures?.[0]?.name).toBe("Again");
+    const before = JSON.stringify(get());
+    expect(
+      (
+        await send({ type: "deleteProcedure", scriptIndex: 0, procedureId: id, inlineCalls: false })
+      )[0],
+    ).toMatchObject({ type: "error", code: "INVALID_CHANGE" });
+    expect(JSON.stringify(get())).toBe(before);
+    expect(
+      (
+        await send({ type: "deleteProcedure", scriptIndex: 0, procedureId: id, inlineCalls: true })
+      )[0]?.type,
+    ).not.toBe("error");
+    expect(get()).toEqual(base);
+  });
   it("adds and retargets a visual custom-block call without crossing script ownership", async () => {
     const program = {
       schema: "agorix/program/v1",
