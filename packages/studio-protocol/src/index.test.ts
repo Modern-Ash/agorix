@@ -465,7 +465,10 @@ describe("studio-protocol", () => {
       }),
     ).toBeUndefined();
     expect(
-      parseHostMessage({ ...message, findings: [{ kind: "forged", nodeId: findings[0].nodeId }] }),
+      parseHostMessage({
+        ...message,
+        findings: [{ kind: "forged", nodeId: "scripts[0]/statements[0]" }],
+      }),
     ).toBeUndefined();
   });
 
