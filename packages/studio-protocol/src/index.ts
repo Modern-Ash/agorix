@@ -1386,6 +1386,38 @@ function parseIntent(value: unknown): Intent | undefined {
           }
         : undefined;
     }
+    case "setMathFunctionSource": {
+      const location = parseLocation(value["location"]);
+      const input = value["input"];
+      const reporter = value["reporter"];
+      const referenceId = value["referenceId"];
+      if (
+        location === undefined ||
+        (input !== "value" && input !== "delta" && input !== "index") ||
+        !(
+          [
+            "number",
+            "variable",
+            "listLength",
+            "xPosition",
+            "yPosition",
+            "distanceToActor",
+          ] as unknown[]
+        ).includes(reporter)
+      )
+        return undefined;
+      if (reporter === "variable" || reporter === "listLength" || reporter === "distanceToActor") {
+        if (!isSafeId(referenceId)) return undefined;
+      } else if (referenceId !== undefined) return undefined;
+      return {
+        type: "setMathFunctionSource",
+        location,
+        input,
+        reporter: reporter as
+          "number" | "variable" | "listLength" | "xPosition" | "yPosition" | "distanceToActor",
+        ...(referenceId === undefined ? {} : { referenceId: referenceId as string }),
+      };
+    }
     case "setArithmeticOperand": {
       const location = parseLocation(value["location"]);
       const path = value["path"];

@@ -634,6 +634,32 @@ describe("studio-protocol", () => {
         schema,
         type: "intent",
         intent: {
+          type: "setMathFunctionSource",
+          location,
+          input: "value",
+          reporter: "variable",
+          referenceId: "score",
+        },
+      }),
+    ).toMatchObject({ intent: { reporter: "variable", referenceId: "score" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setMathFunctionSource",
+          location,
+          input: "value",
+          reporter: "variable",
+          referenceId: "../bad",
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
           type: "setMathFunction",
           location,
           input: "value",

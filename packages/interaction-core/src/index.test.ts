@@ -1516,6 +1516,43 @@ describe("interaction-core", () => {
         withVariable,
       ),
     ).toBeUndefined();
+    const source = applyWorkspaceChange(
+      inserted,
+      intentToChange(
+        {
+          type: "setMathFunctionSource",
+          location,
+          input: "value",
+          reporter: "variable",
+          referenceId: "score",
+        },
+        newId,
+        inserted,
+      )!,
+    );
+    expect(source.program.scripts[0]?.statements[0]).toMatchObject({
+      value: { type: "mathFunction", value: { type: "variable", variableId: "score" } },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setMathFunctionSource",
+          location,
+          input: "value",
+          reporter: "variable",
+          referenceId: "missing",
+        },
+        newId,
+        inserted,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setMathFunctionSource", location, input: "index", reporter: "number" },
+        newId,
+        inserted,
+      ),
+    ).toBeUndefined();
   });
   it("composes a second arithmetic level and edits its literal without replacing siblings", () => {
     let workspace = applyWorkspaceChange(createStarterWorkspace(), {
