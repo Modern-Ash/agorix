@@ -713,8 +713,23 @@ async function main() {
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
     await page.keyboard.press("F1");
     await page.locator(".quick-input-widget:visible input").first().fill(">Build Proposal");
-    await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
+    const buildCommand = page
+      .locator(".quick-input-widget:visible .monaco-list-row")
+      .filter({ hasText: "Build Proposal" })
+      .first();
+    await buildCommand.waitFor();
+    await buildCommand.click();
+    try {
+      await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
+    } catch (error) {
+      const notifications = await page.locator(".notifications-toasts").allTextContents();
+      const openTabs = await page.locator(".tab").allTextContents();
+      throw new Error(
+        `Ori review did not show Apply; boundary calls=${JSON.stringify(boundaryCalls)}; ` +
+          `notifications=${JSON.stringify(notifications)}; tabs=${JSON.stringify(openTabs)}`,
+        { cause: error },
+      );
+    }
     const { value: afterOri } = await waitForProject(
       (envelope) =>
         envelope.project?.program?.scripts?.[0]?.statements?.length ===
