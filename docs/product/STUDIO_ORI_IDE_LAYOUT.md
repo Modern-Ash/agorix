@@ -65,6 +65,12 @@ costume controls beside the stage and asset library. Selecting another actor
 updates these controls immediately; edits still go through the validated host
 metadata path. Project details contain the secondary mission, actor list and
 asset inventory.
+The selected actor's visual costume control comes first in the Scene inspector.
+Name, coordinates, direction, size and visibility remain in a keyboard-accessible
+Properties disclosure immediately below it, so the costume and asset choices
+stay visible in the first viewport at ordinary VS Code widths.
+At 900 × 700, Scene keeps Run, Step, Pause and Reset in one compact toolbar row
+with status below it, leaving more vertical space for the stage.
 Scene also lists project sounds. Its bundled beacon preview is local audio for
 choosing a sound; it does not execute the canonical program or prove a runtime
 result. Other sound sources remain listed without an unsafe preview path.

@@ -179,6 +179,13 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .actor-costume-grid button { display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 5px 2px; border: 1px solid var(--vscode-panel-border); border-radius: 6px; color: var(--vscode-foreground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
 .actor-costume-grid button[aria-pressed="true"] { border-color: var(--vscode-focusBorder); background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
 .actor-costume-grid button span { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+.studio-scene-editor .actor-costume-picker summary { min-height: 62px; border-color: color-mix(in srgb, var(--vscode-focusBorder), var(--vscode-panel-border) 55%); background: color-mix(in srgb, var(--vscode-focusBorder), var(--vscode-editorWidget-background) 94%); }
+.studio-scene-editor .actor-costume-preview { flex-basis: 54px; height: 54px; }
+.studio-scene-editor .actor-costume-preview img { width: 50px; height: 50px; }
+.actor-properties { min-width: 0; border-top: 1px solid var(--vscode-panel-border); }
+.actor-properties summary { padding: 8px 2px; color: var(--vscode-descriptionForeground); cursor: pointer; }
+.actor-properties summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.actor-properties-fields { display: grid; gap: 8px; padding-top: 4px; }
 @media (min-width: 701px) and (max-width: 1100px) { .actor-costume-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .actor-inspector label { display: grid; gap: 3px; color: var(--vscode-descriptionForeground); font-size: 0.9em; }
 .actor-inspector input, .actor-inspector select { min-height: 26px; box-sizing: border-box; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
@@ -401,6 +408,12 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-play .stage-viewport { min-height: clamp(260px, 36vh, 420px); max-height: none; }
 .studio-play .stage-panel[data-empty="true"] .stage-viewport { min-height: 260px; }
 .workbench[data-workspace-view="scene"] .studio-play .stage-viewport { min-height: clamp(380px, 60vh, 680px); }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .workbench[data-workspace-view="scene"] .studio-play .execution-toolbar { display: grid; gap: 5px; }
+  .workbench[data-workspace-view="scene"] .studio-play .execution-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+  .workbench[data-workspace-view="scene"] .studio-play .execution-actions button { min-width: 0; min-height: 28px; padding: 3px 2px; font-size: 0.8em; }
+  .workbench[data-workspace-view="scene"] .studio-play .execution-readout { font-size: 0.75em; white-space: normal; }
+}
 .studio-program { min-height: 340px; padding: 16px; border: 0; box-sizing: border-box; }
 .studio-program .canvas { min-height: 220px; }
 .studio-program .block { min-height: 38px; box-sizing: border-box; cursor: grab; }
