@@ -1296,6 +1296,7 @@ export function Workbench({
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
   const [backdropId, setBackdropId] = useState<string | undefined>();
   const [libraryTab, setLibraryTab] = useState<"blocks" | "scene">("blocks");
+  const [paletteFocus, setPaletteFocus] = useState<string | undefined>();
   const [workspaceView, setWorkspaceView] = useState<"build" | "scene" | "review">("build");
   const [characterGalleryRequest, setCharacterGalleryRequest] = useState(0);
   const [toolsOpen, setToolsOpen] = useState(() =>
@@ -1648,7 +1649,10 @@ export function Workbench({
             type="button"
             aria-pressed={toolsOpen}
             aria-controls="studio-tools"
-            onClick={() => setToolsOpen((open) => !open)}
+            onClick={() => {
+              setPaletteFocus(undefined);
+              setToolsOpen((open) => !open);
+            }}
           >
             {toolsOpen ? copy.hideTools : copy.showTools}
           </button>
@@ -1948,6 +1952,7 @@ export function Workbench({
               hasLists={(workspace?.lists?.length ?? 0) > 0}
               hasVariables={(workspace?.variables?.length ?? 0) > 0}
               hasActors={(actors?.actors.length ?? 0) > 0}
+              sectionFilter={paletteFocus}
             />
           </div>
         ) : (
@@ -2078,12 +2083,36 @@ export function Workbench({
               aria-expanded={toolsOpen}
               onClick={() => {
                 setLibraryTab("blocks");
+                setPaletteFocus(undefined);
                 setToolsOpen((open) => !open);
               }}
             >
               {toolsOpen ? copy.hideTools : copy.showTools}
             </button>
           </div>
+          <nav className="studio-component-launcher" aria-label={copy.paletteBlocks}>
+            {[
+              [copy.paletteMotion, "motion"],
+              [copy.paletteLooks, "looks"],
+              [copy.paletteControl, "control"],
+              [copy.paletteSensing, "sensing"],
+            ].map(([label, tone]) => (
+              <button
+                key={tone}
+                type="button"
+                data-tone={tone}
+                aria-expanded={toolsOpen && paletteFocus === label}
+                aria-controls="studio-tools"
+                onClick={() => {
+                  setLibraryTab("blocks");
+                  setPaletteFocus(label);
+                  setToolsOpen(true);
+                }}
+              >
+                <span aria-hidden="true">◆</span> {label}
+              </button>
+            ))}
+          </nav>
           {workspace === undefined ? (
             <p>{copy.openProjectToStart}</p>
           ) : (

@@ -14,6 +14,7 @@ import { numericReporterForBlock } from "./numericPalette.js";
 
 function sectionLabel(name: string, copy: StudioUiCopy): string {
   if (name === "Move") return copy.paletteMotion;
+  if (name === "Looks") return copy.paletteLooks;
   if (name === "Repeat & Decide") return copy.paletteControl;
   if (name === "Check") return copy.paletteSensing;
   if (name === "Lists") return copy.lists;
@@ -30,6 +31,7 @@ export function Palette({
   hasLists = false,
   hasVariables = false,
   hasActors = false,
+  sectionFilter,
 }: {
   readonly copy?: StudioUiCopy;
   readonly onAdd: (blockType: BlockType) => void;
@@ -40,6 +42,7 @@ export function Palette({
   readonly hasLists?: boolean;
   readonly hasVariables?: boolean;
   readonly hasActors?: boolean;
+  readonly sectionFilter?: string | undefined;
 }) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
@@ -78,8 +81,8 @@ export function Palette({
                     .includes(normalizedQuery),
             ),
         }))
-        .filter((section) => section.blocks.length > 0),
-    [copy, normalizedQuery, hasLists, hasVariables, hasActors],
+        .filter((section) => section.blocks.length > 0 && (!sectionFilter || section.name === sectionFilter)),
+    [copy, normalizedQuery, hasLists, hasVariables, hasActors, sectionFilter],
   );
   return (
     <nav className="palette" aria-label={copy.paletteBlocks}>
