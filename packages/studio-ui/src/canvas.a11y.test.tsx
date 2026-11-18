@@ -300,6 +300,11 @@ it("keeps the selected actor controls beside the visual scene", () => {
   expect(host.querySelector(".studio-details .actor-inspector")).toBeNull();
   act(() => scene.querySelectorAll<HTMLButtonElement>(".scene-actors button")[1]?.click());
   expect(scene.querySelector(".actor-inspector header strong")?.textContent).toBe("Second");
+  const properties = scene.querySelector<HTMLDetailsElement>(".actor-properties")!;
+  expect(properties.open).toBe(false);
+  expect(scene.querySelector(".actor-costume-picker")).not.toBeNull();
+  act(() => properties.querySelector("summary")?.click());
+  expect(properties.open).toBe(true);
   act(() => scene.querySelector<HTMLInputElement>(".actor-visible input")?.click());
   expect(posted.at(-1)).toMatchObject({
     type: "updateActor",

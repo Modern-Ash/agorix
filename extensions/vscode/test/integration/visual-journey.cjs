@@ -223,7 +223,15 @@ async function main() {
       .filter({ hasText: "Helper" })
       .click();
     const actorInspector = webview.locator(".studio-scene-editor .actor-inspector");
+    const stageViewportBounds = await webview.locator(".studio-play .stage-viewport").boundingBox();
+    if (!stageViewportBounds || stageViewportBounds.y > 390)
+      throw new Error("Scene stage must remain visible in the first 900 px viewport");
     assert.equal(await actorInspector.locator("header strong").innerText(), "Helper");
+    assert.equal(
+      await actorInspector.locator(".actor-properties").evaluate((node) => node.open),
+      false,
+    );
+    assert.equal(await actorInspector.locator(".actor-costume-picker").isVisible(), true);
     const inspectorBounds = await actorInspector.boundingBox();
     if (!inspectorBounds || inspectorBounds.y > 400)
       throw new Error("Selected actor controls must be visible beside Scene in the first viewport");

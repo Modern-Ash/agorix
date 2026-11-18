@@ -1064,56 +1064,6 @@ export function ActorInspector({
           {actor.scriptCount ?? 0} {copy.actorScripts}
         </span>
       </header>
-      <label>
-        {copy.actorName}
-        <input
-          value={actor.name}
-          onChange={(event) => onPatch(actor.id, { name: event.currentTarget.value })}
-        />
-      </label>
-      <div className="actor-grid">
-        <label>
-          x
-          <input
-            type="number"
-            value={actor.x}
-            onChange={(event) => numberPatch("x")(event.currentTarget.value)}
-          />
-        </label>
-        <label>
-          y
-          <input
-            type="number"
-            value={actor.y}
-            onChange={(event) => numberPatch("y")(event.currentTarget.value)}
-          />
-        </label>
-        <label>
-          {copy.actorDirection}
-          <input
-            type="number"
-            value={actor.direction}
-            onChange={(event) => numberPatch("direction")(event.currentTarget.value)}
-          />
-        </label>
-        <label>
-          {copy.actorSize}
-          <input
-            type="number"
-            min="1"
-            value={actor.size}
-            onChange={(event) => numberPatch("size")(event.currentTarget.value)}
-          />
-        </label>
-      </div>
-      <label className="actor-visible">
-        <input
-          type="checkbox"
-          checked={actor.visible}
-          onChange={(event) => onPatch(actor.id, { visible: event.currentTarget.checked })}
-        />
-        {copy.actorVisible}
-      </label>
       <details className="actor-costume-picker">
         <summary aria-label={`${copy.sceneSelectCostume}: ${actor.name}`}>
           <span className="actor-costume-preview" aria-hidden="true">
@@ -1150,7 +1100,62 @@ export function ActorInspector({
           })}
         </div>
       </details>
-      <p className="actor-ref">{actor.id}</p>
+      <details className="actor-properties">
+        <summary>{copy.actorProperties}</summary>
+        <div className="actor-properties-fields">
+          <label>
+            {copy.actorName}
+            <input
+              value={actor.name}
+              onChange={(event) => onPatch(actor.id, { name: event.currentTarget.value })}
+            />
+          </label>
+          <div className="actor-grid">
+            <label>
+              x
+              <input
+                type="number"
+                value={actor.x}
+                onChange={(event) => numberPatch("x")(event.currentTarget.value)}
+              />
+            </label>
+            <label>
+              y
+              <input
+                type="number"
+                value={actor.y}
+                onChange={(event) => numberPatch("y")(event.currentTarget.value)}
+              />
+            </label>
+            <label>
+              {copy.actorDirection}
+              <input
+                type="number"
+                value={actor.direction}
+                onChange={(event) => numberPatch("direction")(event.currentTarget.value)}
+              />
+            </label>
+            <label>
+              {copy.actorSize}
+              <input
+                type="number"
+                min="1"
+                value={actor.size}
+                onChange={(event) => numberPatch("size")(event.currentTarget.value)}
+              />
+            </label>
+          </div>
+          <label className="actor-visible">
+            <input
+              type="checkbox"
+              checked={actor.visible}
+              onChange={(event) => onPatch(actor.id, { visible: event.currentTarget.checked })}
+            />
+            {copy.actorVisible}
+          </label>
+          <p className="actor-ref">{actor.id}</p>
+        </div>
+      </details>
     </section>
   );
 }
