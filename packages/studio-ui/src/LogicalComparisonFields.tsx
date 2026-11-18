@@ -47,7 +47,9 @@ export function LogicalComparisonFields({
                         ? "distanceToActor"
                         : numeric.type === "operator_random_integer"
                           ? "randomInteger"
-                          : "other";
+                          : numeric.type === "operator_math_function"
+                            ? "mathFunction"
+                            : "other";
         const label = operandSide === "left" ? copy.conditionLeft : copy.conditionRight;
         const referenceId =
           source === "variable"
@@ -110,6 +112,7 @@ export function LogicalComparisonFields({
                   <option value="distanceToActor">{copy.distanceToActor}</option>
                 ) : null}
                 <option value="randomInteger">{copy.operatorRandomInteger}</option>
+                <option value="mathFunction">{copy.operatorMathFunction}</option>
                 {source === "other" ? <option value="other">{numeric.type}</option> : null}
               </select>
             </label>
@@ -138,14 +141,44 @@ export function LogicalComparisonFields({
                 </select>
               </label>
             ) : null}
-            {source === "number" || source === "listItem" || source === "randomInteger"
+            {source === "mathFunction" ? (
+              <label>
+                <span>{copy.mathFunction}</span>
+                <select
+                  aria-label={`${copy.condition}: ${side} ${label} ${copy.mathFunction}`}
+                  value={String(numeric.fields?.function ?? "abs")}
+                  onChange={(event) =>
+                    onIntent({
+                      type: "setComparisonMathFunction",
+                      location,
+                      logicalSide: side,
+                      side: operandSide,
+                      function: event.currentTarget.value as "abs" | "round" | "floor" | "ceiling",
+                    })
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <option value="abs">{copy.mathAbs}</option>
+                  <option value="round">{copy.mathRound}</option>
+                  <option value="floor">{copy.mathFloor}</option>
+                  <option value="ceiling">{copy.mathCeiling}</option>
+                </select>
+              </label>
+            ) : null}
+            {source === "number" ||
+            source === "listItem" ||
+            source === "randomInteger" ||
+            source === "mathFunction"
               ? (source === "number"
                   ? (["value"] as const)
                   : source === "listItem"
                     ? (["index"] as const)
-                    : (["min", "max"] as const)
+                    : source === "mathFunction"
+                      ? (["value"] as const)
+                      : (["min", "max"] as const)
                 ).map((field) => {
-                  const literal = field === "value" ? numeric : numeric.inputs?.[field];
+                  const literal =
+                    field === "value" && source === "number" ? numeric : numeric.inputs?.[field];
                   if (
                     literal === undefined ||
                     Array.isArray(literal) ||
@@ -155,7 +188,9 @@ export function LogicalComparisonFields({
                     return null;
                   const fieldLabel =
                     field === "value"
-                      ? label
+                      ? source === "mathFunction"
+                        ? copy.mathValue
+                        : label
                       : field === "index"
                         ? copy.listIndex
                         : field === "min"
@@ -185,7 +220,7 @@ export function LogicalComparisonFields({
                             next !== literal.fields?.value
                           ) {
                             onIntent(
-                              field === "value"
+                              field === "value" && source === "number"
                                 ? {
                                     type: "setLogicalComparisonNumber",
                                     location,

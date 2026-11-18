@@ -6,6 +6,62 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("accepts bounded math function controls in direct and logical comparisons", () => {
+    const location = { container: script, index: 0 };
+    for (const intent of [
+      { type: "setComparisonOperand", location, side: "left", source: "mathFunction" },
+      {
+        type: "setLogicalComparisonSource",
+        location,
+        side: "right",
+        operand: "left",
+        source: "mathFunction",
+      },
+      { type: "setComparisonMathFunction", location, side: "left", function: "round" },
+      {
+        type: "setComparisonMathFunction",
+        location,
+        logicalSide: "right",
+        side: "left",
+        function: "floor",
+      },
+      { type: "setComparisonNestedNumber", location, side: "left", field: "value", value: 3.5 },
+      {
+        type: "setLogicalComparisonNestedNumber",
+        location,
+        side: "right",
+        operand: "left",
+        field: "value",
+        value: 3.5,
+      },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    for (const intent of [
+      { type: "setComparisonMathFunction", location, side: "left", function: "sqrt" },
+      {
+        type: "setComparisonMathFunction",
+        location,
+        logicalSide: "bad",
+        side: "left",
+        function: "abs",
+      },
+      {
+        type: "setComparisonNestedNumber",
+        location,
+        side: "left",
+        field: "value",
+        value: Infinity,
+      },
+      {
+        type: "setComparisonOperand",
+        location,
+        side: "left",
+        source: "mathFunction",
+        referenceId: "score",
+      },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
+  });
   it("accepts visible comparison controls through the VSIX intent boundary", () => {
     const location = { container: script, index: 0 };
     const accepted = [
@@ -54,7 +110,7 @@ describe("studio-protocol", () => {
         source: "number",
         referenceId: "items",
       },
-      { type: "setComparisonNestedNumber", location, side: "left", field: "value", value: 2 },
+      { type: "setComparisonNestedNumber", location, side: "left", field: "unknown", value: 2 },
       { type: "setLogicalActor", location, side: "left", actorId: "../robot" },
       { type: "setLogicalComparisonNumber", location, side: "other", operand: "left", value: 3 },
       {

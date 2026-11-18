@@ -1230,7 +1230,7 @@ function parseIntent(value: unknown): Intent | undefined {
       return location !== undefined &&
         (side === "left" || side === "right" || side === "value") &&
         (operand === "left" || operand === "right") &&
-        (field === "index" || field === "min" || field === "max") &&
+        (field === "index" || field === "min" || field === "max" || field === "value") &&
         isFiniteNumber(value["value"])
         ? {
             type: "setLogicalComparisonNestedNumber",
@@ -1275,9 +1275,30 @@ function parseIntent(value: unknown): Intent | undefined {
       const field = value["field"];
       return location !== undefined &&
         (side === "left" || side === "right") &&
-        (field === "index" || field === "min" || field === "max") &&
+        (field === "index" || field === "min" || field === "max" || field === "value") &&
         isFiniteNumber(value["value"])
         ? { type: "setComparisonNestedNumber", location, side, field, value: value["value"] }
+        : undefined;
+    }
+    case "setComparisonMathFunction": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      const logicalSide = value["logicalSide"];
+      const fn = value["function"];
+      return location !== undefined &&
+        (side === "left" || side === "right") &&
+        (logicalSide === undefined ||
+          logicalSide === "left" ||
+          logicalSide === "right" ||
+          logicalSide === "value") &&
+        (fn === "abs" || fn === "round" || fn === "floor" || fn === "ceiling")
+        ? {
+            type: "setComparisonMathFunction",
+            location,
+            side,
+            function: fn,
+            ...(logicalSide === undefined ? {} : { logicalSide }),
+          }
         : undefined;
     }
     case "setConditionNumber": {

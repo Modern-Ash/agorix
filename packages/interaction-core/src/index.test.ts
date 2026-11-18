@@ -633,6 +633,168 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("composes math functions in direct and logical comparisons without changing other operands", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "greaterThan",
+                left: { type: "numericLiteral", value: 1 },
+                right: { type: "numericLiteral", value: 2 },
+              },
+              then: [],
+            },
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: { type: "booleanLiteral", value: true },
+                right: {
+                  type: "lessThan",
+                  left: { type: "numericLiteral", value: 3 },
+                  right: { type: "numericLiteral", value: 4 },
+                },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const direct = { container: script, index: 0 };
+    const inserted = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        { type: "setComparisonOperand", location: direct, side: "left", source: "mathFunction" },
+        newId,
+        workspace,
+      )!,
+    ).workspace;
+    const changed = applyWorkspaceChange(
+      inserted,
+      intentToChange(
+        { type: "setComparisonMathFunction", location: direct, side: "left", function: "round" },
+        newId,
+        inserted,
+      )!,
+    ).workspace;
+    const value = applyWorkspaceChange(
+      changed,
+      intentToChange(
+        {
+          type: "setComparisonNestedNumber",
+          location: direct,
+          side: "left",
+          field: "value",
+          value: 3.5,
+        },
+        newId,
+        changed,
+      )!,
+    );
+    expect(value.program.scripts[0]?.statements[0]).toMatchObject({
+      condition: {
+        left: { type: "mathFunction", function: "round", value: { value: 3.5 } },
+        right: { value: 2 },
+      },
+    });
+    const logical = { container: script, index: 1 };
+    const nested = applyWorkspaceChange(
+      value.workspace,
+      intentToChange(
+        {
+          type: "setLogicalComparisonSource",
+          location: logical,
+          side: "right",
+          operand: "left",
+          source: "mathFunction",
+        },
+        newId,
+        value.workspace,
+      )!,
+    ).workspace;
+    const fn = applyWorkspaceChange(
+      nested,
+      intentToChange(
+        {
+          type: "setComparisonMathFunction",
+          location: logical,
+          logicalSide: "right",
+          side: "left",
+          function: "floor",
+        },
+        newId,
+        nested,
+      )!,
+    ).workspace;
+    const result = applyWorkspaceChange(
+      fn,
+      intentToChange(
+        {
+          type: "setLogicalComparisonNestedNumber",
+          location: logical,
+          side: "right",
+          operand: "left",
+          field: "value",
+          value: 7.8,
+        },
+        newId,
+        fn,
+      )!,
+    );
+    expect(result.program.scripts[0]?.statements[1]).toMatchObject({
+      condition: {
+        right: {
+          left: { type: "mathFunction", function: "floor", value: { value: 7.8 } },
+          right: { value: 4 },
+        },
+      },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setComparisonMathFunction",
+          location: logical,
+          logicalSide: "value",
+          side: "left",
+          function: "round",
+        },
+        newId,
+        fn,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setComparisonMathFunction",
+          location: direct,
+          side: "left",
+          function: "sqrt",
+        } as never,
+        newId,
+        changed,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setComparisonNestedNumber",
+          location: direct,
+          side: "left",
+          field: "max",
+          value: 2,
+        },
+        newId,
+        changed,
+      ),
+    ).toBeUndefined();
+  });
   it("edits only Boolean literals and actor contact conditions", () => {
     const location = { container: script, index: 0 };
     const initial = applyWorkspaceChange(createStarterWorkspace(), {

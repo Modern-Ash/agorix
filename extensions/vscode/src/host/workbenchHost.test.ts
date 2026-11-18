@@ -61,6 +61,50 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("commits a visual math function inside a comparison through the protocol", async () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "greaterThan",
+                left: { type: "numericLiteral", value: 1 },
+                right: { type: "numericLiteral", value: 2 },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { host, get } = setup(program);
+    const location = { container: script, index: 0 };
+    for (const intent of [
+      { type: "setComparisonOperand", location, side: "left", source: "mathFunction" },
+      { type: "setComparisonMathFunction", location, side: "left", function: "round" },
+      { type: "setComparisonNestedNumber", location, side: "left", field: "value", value: 3.5 },
+    ]) {
+      const message = parseUiMessage({
+        schema,
+        type: "intent",
+        intent,
+        baseHash: programSemanticHash(get()!),
+      });
+      expect(message).toBeDefined();
+      expect((await host.handle(message!))[0]).toMatchObject({ type: "workspace" });
+    }
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      condition: {
+        left: { type: "mathFunction", function: "round", value: { value: 3.5 } },
+        right: { value: 2 },
+      },
+    });
+  });
   it("commits a comparison range edit received through the UI protocol", async () => {
     const program = {
       schema: "agorix/program/v1",

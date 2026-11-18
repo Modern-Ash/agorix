@@ -1076,6 +1076,105 @@ describe("canvas keyboard and screen reader behaviour", () => {
       actorId: "actor:robot",
     });
   });
+  it("edits math functions inside direct and logical visual comparisons", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "greaterThan",
+                left: {
+                  type: "mathFunction",
+                  function: "abs",
+                  value: { type: "numericLiteral", value: -2 },
+                },
+                right: { type: "numericLiteral", value: 0 },
+              },
+              then: [],
+            },
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: { type: "booleanLiteral", value: true },
+                right: {
+                  type: "lessThan",
+                  left: {
+                    type: "mathFunction",
+                    function: "round",
+                    value: { type: "numericLiteral", value: 3.5 },
+                  },
+                  right: { type: "numericLiteral", value: 5 },
+                },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const direct = host.querySelector<HTMLSelectElement>(
+      '.comparison-operand select[aria-label*="Function"]',
+    )!;
+    expect(direct).not.toBeNull();
+    act(() => {
+      direct.value = "floor";
+      direct.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setComparisonMathFunction",
+      side: "left",
+      function: "floor",
+    });
+    const directValue = host.querySelector<HTMLInputElement>(
+      '.comparison-operand input[aria-label*="Number"]',
+    )!;
+    act(() => {
+      directValue.value = "-4.2";
+      directValue.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setComparisonNestedNumber",
+      side: "left",
+      field: "value",
+      value: -4.2,
+    });
+    const logical = host.querySelector<HTMLSelectElement>(
+      '.logical-comparison-fields select[aria-label*="Function"]',
+    )!;
+    expect(logical).not.toBeNull();
+    act(() => {
+      logical.value = "ceiling";
+      logical.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setComparisonMathFunction",
+      logicalSide: "right",
+      side: "left",
+      function: "ceiling",
+    });
+    const logicalValue = host.querySelector<HTMLInputElement>(
+      '.logical-comparison-fields input[aria-label*="Number"]',
+    )!;
+    act(() => {
+      logicalValue.value = "4.2";
+      logicalValue.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalComparisonNestedNumber",
+      side: "right",
+      operand: "left",
+      field: "value",
+      value: 4.2,
+    });
+  });
   it("edits a comparison nested inside a visual logical condition", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",
@@ -1174,6 +1273,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
         "xPosition",
         "distanceToActor",
         "randomInteger",
+        "mathFunction",
       ]),
     );
     act(() => {
@@ -1278,6 +1378,7 @@ describe("canvas keyboard and screen reader behaviour", () => {
       '.comparison-operand select[aria-label="Condition: Left value source"]',
     )!;
     expect(Array.from(left.options).map((option) => option.value)).toContain("variable");
+    expect(Array.from(left.options).map((option) => option.value)).toContain("mathFunction");
     act(() => {
       left.value = "variable";
       left.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
