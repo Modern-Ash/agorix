@@ -42,6 +42,22 @@ async function waitForProject(predicate) {
   throw new Error("The saved project did not reach the expected state");
 }
 
+async function runStudioCommand(page, title) {
+  await page.keyboard.press("F1");
+  const commandInput = page.locator(".quick-input-widget:visible input").first();
+  await commandInput.fill(`>Agorix Studio: ${title}`);
+  await page.waitForFunction((expected) => {
+    const widget = [...globalThis.document.querySelectorAll(".quick-input-widget")].find(
+      (element) => element.getBoundingClientRect().height > 0,
+    );
+    const first = [...(widget?.querySelectorAll(".monaco-list-row") ?? [])].find(
+      (element) => element.getBoundingClientRect().height > 0,
+    );
+    return first?.getAttribute("aria-label") === expected;
+  }, `Agorix Studio: ${title}`);
+  await commandInput.press("Enter");
+}
+
 async function main() {
   const watchdog = setTimeout(() => {
     console.error("Installed VSIX visual journey exceeded four minutes");
@@ -181,9 +197,7 @@ async function main() {
     );
     const beforeOriReview = fs.readFileSync(project, "utf8");
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
-    await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget:visible input").first().fill(">Suggest repeat");
-    await page.keyboard.press("Enter");
+    await runStudioCommand(page, "Suggest repeat");
     await page.getByRole("button", { name: "Reject", exact: true }).click();
     assert.equal(fs.readFileSync(project, "utf8"), beforeOriReview);
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
@@ -711,19 +725,7 @@ async function main() {
     console.log("Ran project and opened evidence");
     const beforeOri = JSON.parse(fs.readFileSync(project, "utf8"));
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
-    await page.keyboard.press("F1");
-    const commandInput = page.locator(".quick-input-widget:visible input").first();
-    await commandInput.fill(">Agorix Studio: Build Proposal");
-    await page.waitForFunction(() => {
-      const widget = [...globalThis.document.querySelectorAll(".quick-input-widget")].find(
-        (element) => element.getBoundingClientRect().height > 0,
-      );
-      const first = [...(widget?.querySelectorAll(".monaco-list-row") ?? [])].find(
-        (element) => element.getBoundingClientRect().height > 0,
-      );
-      return first?.getAttribute("aria-label") === "Agorix Studio: Build Proposal";
-    });
-    await commandInput.press("Enter");
+    await runStudioCommand(page, "Build Proposal");
     try {
       await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
     } catch (error) {
