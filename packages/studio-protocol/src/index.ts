@@ -39,6 +39,7 @@ import {
   validEmbeddedSoundSource,
   type ProgramList,
   type ProgramVariable,
+  type ProgramFinding,
 } from "@agorix/program-model";
 
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
@@ -439,6 +440,7 @@ export type HostMessage =
       readonly type: "workspace";
       readonly workspace: BlockWorkspaceSnapshot;
       readonly programHash: string;
+      readonly findings?: readonly ProgramFinding[];
     }
   | {
       readonly schema: Schema;
@@ -2662,8 +2664,30 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
     case "workspace": {
       const workspace = parseWorkspace(value["workspace"]);
       const hash = value["programHash"];
+      const rawFindings = value["findings"];
+      if (rawFindings !== undefined && (!Array.isArray(rawFindings) || rawFindings.length > 100))
+        return undefined;
+      const findings: ProgramFinding[] = [];
+      for (const finding of (rawFindings ?? []) as unknown[]) {
+        if (
+          !isObject(finding) ||
+          (finding["kind"] !== "loop-never-exits" && finding["kind"] !== "loop-without-wait") ||
+          typeof finding["nodeId"] !== "string" ||
+          !/^scripts\[\d+\]\/(?:statements|procedures\[\d+\]\/body)\[\d+\](?:\/(?:body|then|else)\[\d+\])*$/.test(
+            finding["nodeId"],
+          )
+        )
+          return undefined;
+        findings.push({ kind: finding["kind"], nodeId: finding["nodeId"] });
+      }
       return workspace !== undefined && typeof hash === "string" && HASH_PATTERN.test(hash)
-        ? { schema, type: "workspace", workspace, programHash: hash }
+        ? {
+            schema,
+            type: "workspace",
+            workspace,
+            programHash: hash,
+            ...(rawFindings === undefined ? {} : { findings }),
+          }
         : undefined;
     }
     case "error": {

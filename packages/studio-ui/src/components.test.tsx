@@ -9,6 +9,7 @@ import {
   AssetPanel,
   EventTracePanel,
   VisualDebuggerPanel,
+  ProgramFindingsPanel,
   MissionSpecPanel,
   StagePanel,
   stageDropPosition,
@@ -41,6 +42,41 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("renders bounded pre-play finding cards with inspect and Ori actions", () => {
+    const copy = copyFor("en");
+    const markup = renderToStaticMarkup(
+      <ProgramFindingsPanel
+        copy={copy}
+        findings={[{ kind: "loop-never-exits", nodeId: "scripts[0]/statements[0]" }]}
+        onInspect={() => undefined}
+        onAskOri={() => undefined}
+      />,
+    );
+    expect(markup).toContain("Before you play");
+    expect(markup).toContain("condition is always false");
+    expect(markup).toContain("Inspect block");
+    expect(markup).toContain("Ask Ori about these findings");
+    expect(
+      renderToStaticMarkup(
+        <ProgramFindingsPanel
+          copy={copy}
+          findings={[{ kind: "loop-never-exits", nodeId: "scripts[0]/procedures[0]/body[0]" }]}
+          onInspect={() => undefined}
+          onAskOri={() => undefined}
+        />,
+      ),
+    ).toContain("Open code");
+    expect(
+      renderToStaticMarkup(
+        <ProgramFindingsPanel
+          copy={copy}
+          findings={[]}
+          onInspect={() => undefined}
+          onAskOri={() => undefined}
+        />,
+      ),
+    ).toBe("");
+  });
   it("shows a block breakpoint and a closed-choice runtime value history", () => {
     const blockId = workspace.scripts[0]!.statements[0]!.id;
     const canvas = renderToStaticMarkup(

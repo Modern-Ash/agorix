@@ -545,6 +545,30 @@ describe("workbenchHost", () => {
     expect(await setup(null).host.handle({ schema, type: "ready" })).toEqual([]);
   });
 
+  it("sends pure loop findings with the canonical workspace snapshot", () => {
+    const program = {
+      ...base,
+      scripts: [
+        {
+          ...base.scripts[0]!,
+          statements: [
+            {
+              type: "repeatUntil",
+              condition: { type: "booleanLiteral", value: false },
+              body: [{ type: "move", steps: 1 }],
+            },
+          ],
+        },
+      ],
+    } as ProjectProgram;
+    const { host } = setup(program);
+    expect(host.snapshot()[0]).toMatchObject({
+      type: "workspace",
+      findings: [{ kind: "loop-never-exits", nodeId: "scripts[0]/statements[0]" }],
+    });
+    expect(setup().host.snapshot()[0]).toMatchObject({ findings: [] });
+  });
+
   it("persists learner-editable mission specs as metadata", async () => {
     const { host, labels, metadata } = setup();
     const out = await host.handle({

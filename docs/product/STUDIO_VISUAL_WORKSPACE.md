@@ -95,6 +95,10 @@ The runtime list watcher is visible in the installed VSIX at both sizes:
 | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | ![List watcher at 900](./assets/studio-vsix-list-watchers-900.png) | ![List watcher at 1440](./assets/studio-vsix-list-watchers-1440.png) |
 
+Before Play, a compact review card can point to a possible tight loop and focus its visual block. Ori's local explanation uses only the number and kinds of findings; the learner still runs the program to verify what happened.
+
+![Pre-play finding in the installed VSIX at 900 × 700](./assets/studio-vsix-findings-900.png)
+
 The real-window check exposed three issues now fixed: the custom editor had scripts disabled, the webview CSP blocked catalog images, and the host message parser rejected advanced canonical blocks so Program appeared empty. The 900 px Build view keeps the program, stage and Ori visible together; the palette opens over the stage so it cannot block program drop targets. On initial command-line file opening, VS Code still selects its text editor; **Reopen Editor With → Agorix Workbench** opens the visual editor. The extension declares Agorix Workbench as the default custom editor in its manifest, but automatic selection on command-line opening remains unverified.
 
 The installed-extension suite in `extensions/vscode/test/integration/index.cjs` now opens a project with two actors, two costumes, a backdrop, a visible variable and a condition containing a repeat. Against a packaged VSIX in a clean VS Code profile, it checks the code projection, deterministic execution frames and evidence, a read-only Ori explanation, a proposal diff, explicit rejection with unchanged project bytes, and explicit acceptance with the canonical project saved. The Inspector's flat tree now supports VS Code's reveal contract, which this run exposed.
