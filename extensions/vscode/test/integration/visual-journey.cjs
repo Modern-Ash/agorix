@@ -42,22 +42,6 @@ async function waitForProject(predicate) {
   throw new Error("The saved project did not reach the expected state");
 }
 
-async function runStudioCommand(page, title) {
-  await page.keyboard.press("F1");
-  const commandInput = page.locator(".quick-input-widget:visible input").first();
-  await commandInput.fill(`>Agorix Studio: ${title}`);
-  await page.waitForFunction((expected) => {
-    const widget = [...globalThis.document.querySelectorAll(".quick-input-widget")].find(
-      (element) => element.getBoundingClientRect().height > 0,
-    );
-    const first = [...(widget?.querySelectorAll(".monaco-list-row") ?? [])].find(
-      (element) => element.getBoundingClientRect().height > 0,
-    );
-    return first?.getAttribute("aria-label") === expected;
-  }, `Agorix Studio: ${title}`);
-  await commandInput.press("Enter");
-}
-
 async function main() {
   const watchdog = setTimeout(() => {
     console.error("Installed VSIX visual journey exceeded four minutes");
@@ -115,6 +99,13 @@ async function main() {
   fs.writeFileSync(
     path.join(userDir, "settings.json"),
     JSON.stringify({ "agorixStudio.agent.endpoint": `http://127.0.0.1:${boundaryPort}` }),
+  );
+  fs.writeFileSync(
+    path.join(userDir, "keybindings.json"),
+    JSON.stringify([
+      { key: "ctrl+alt+shift+r", command: "agorixStudio.suggestRepeat" },
+      { key: "ctrl+alt+shift+b", command: "agorixStudio.companionBuild" },
+    ]),
   );
   const install = cp.spawnSync(cli, [...cliArgs, ...profile, "--install-extension", vsix], {
     env,
@@ -197,7 +188,7 @@ async function main() {
     );
     const beforeOriReview = fs.readFileSync(project, "utf8");
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
-    await runStudioCommand(page, "Suggest repeat");
+    await page.keyboard.press("Control+Alt+Shift+R");
     await page.getByRole("button", { name: "Reject", exact: true }).click();
     assert.equal(fs.readFileSync(project, "utf8"), beforeOriReview);
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
@@ -398,9 +389,8 @@ async function main() {
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Costumes" })
       .waitFor();
-    const costumeGallery = webview
-      .locator(".studio-scene-editor section:not([hidden])")
-      .filter({ has: webview.locator(".scene-library-grid") });
+    const costumeGallery = webview.locator('.studio-scene-editor section[aria-label="Costumes"]');
+    await costumeGallery.locator(".scene-asset-card").nth(11).waitFor();
     const galleryCount = await costumeGallery.locator(".scene-asset-card").count();
     if (galleryCount < 12) {
       const sectionState = await webview
@@ -725,7 +715,7 @@ async function main() {
     console.log("Ran project and opened evidence");
     const beforeOri = JSON.parse(fs.readFileSync(project, "utf8"));
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
-    await runStudioCommand(page, "Build Proposal");
+    await page.keyboard.press("Control+Alt+Shift+B");
     try {
       await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
     } catch (error) {
