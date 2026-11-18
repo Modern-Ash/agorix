@@ -535,6 +535,18 @@ describe("canvas keyboard and screen reader behaviour", () => {
       input.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
     });
     expect(intents.at(-1)).toMatchObject({ type: "setMathFunction", value: 4.5 });
+    const sourceSelect = host.querySelectorAll<HTMLSelectElement>(
+      ".math-function-fields select",
+    )[1]!;
+    act(() => {
+      sourceSelect.value = "variable";
+      sourceSelect.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setMathFunctionSource",
+      reporter: "variable",
+      referenceId: "score",
+    });
   });
   it("shows visual asset choices on costume blocks and posts an explicit selection", () => {
     const workspace = applyWorkspaceChange(initial, {

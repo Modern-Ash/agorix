@@ -811,6 +811,120 @@ export function Canvas({
                           <option value="ceiling">{copy.mathCeiling}</option>
                         </select>
                       </label>
+                      <label>
+                        <span>{copy.numericSource}</span>
+                        <select
+                          aria-label={`${label}: ${operandLabel} ${copy.mathValue} ${copy.numericSource}`}
+                          value={
+                            operand.inputs?.value?.type === "literal_number"
+                              ? "number"
+                              : operand.inputs?.value?.type === "variables_value"
+                                ? "variable"
+                                : operand.inputs?.value?.type === "lists_length"
+                                  ? "listLength"
+                                  : operand.inputs?.value?.type === "sensing_x_position"
+                                    ? "xPosition"
+                                    : operand.inputs?.value?.type === "sensing_y_position"
+                                      ? "yPosition"
+                                      : operand.inputs?.value?.type === "sensing_distance_to_actor"
+                                        ? "distanceToActor"
+                                        : "other"
+                          }
+                          onChange={(event) => {
+                            const next = event.currentTarget.value as
+                              | "number"
+                              | "variable"
+                              | "listLength"
+                              | "xPosition"
+                              | "yPosition"
+                              | "distanceToActor";
+                            const referenceId =
+                              next === "variable"
+                                ? workspace.variables?.[0]?.id
+                                : next === "listLength"
+                                  ? workspace.lists?.[0]?.id
+                                  : next === "distanceToActor"
+                                    ? actors[0]?.id
+                                    : undefined;
+                            onIntent({
+                              type: "setMathFunctionSource",
+                              location: block.location,
+                              input,
+                              reporter: next,
+                              ...(referenceId === undefined ? {} : { referenceId }),
+                            });
+                          }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <option value="number">{copy.numericLiteral}</option>
+                          {(workspace.variables?.length ?? 0) > 0 ? (
+                            <option value="variable">{copy.variableValue}</option>
+                          ) : null}
+                          {(workspace.lists?.length ?? 0) > 0 ? (
+                            <option value="listLength">{copy.listLength}</option>
+                          ) : null}
+                          <option value="xPosition">{copy.positionX}</option>
+                          <option value="yPosition">{copy.positionY}</option>
+                          {actors.length > 0 ? (
+                            <option value="distanceToActor">{copy.distanceToActor}</option>
+                          ) : null}
+                          {operand.inputs?.value?.type !== "literal_number" &&
+                          ![
+                            "variables_value",
+                            "lists_length",
+                            "sensing_x_position",
+                            "sensing_y_position",
+                            "sensing_distance_to_actor",
+                          ].includes(operand.inputs?.value?.type ?? "") ? (
+                            <option value="other">{operand.inputs?.value?.type}</option>
+                          ) : null}
+                        </select>
+                      </label>
+                      {(
+                        operand.inputs?.value?.type === "variables_value"
+                          ? workspace.variables
+                          : operand.inputs?.value?.type === "lists_length"
+                            ? workspace.lists
+                            : operand.inputs?.value?.type === "sensing_distance_to_actor"
+                              ? actors
+                              : undefined
+                      ) ? (
+                        <select
+                          aria-label={`${label}: ${operandLabel} ${copy.mathValue} ${copy.numericReference}`}
+                          value={String(
+                            operand.inputs?.value?.fields?.variableId ??
+                              operand.inputs?.value?.fields?.listId ??
+                              operand.inputs?.value?.fields?.actorId ??
+                              "",
+                          )}
+                          onChange={(event) =>
+                            onIntent({
+                              type: "setMathFunctionSource",
+                              location: block.location,
+                              input,
+                              reporter:
+                                operand.inputs?.value?.type === "variables_value"
+                                  ? "variable"
+                                  : operand.inputs?.value?.type === "lists_length"
+                                    ? "listLength"
+                                    : "distanceToActor",
+                              referenceId: event.currentTarget.value,
+                            })
+                          }
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          {(operand.inputs?.value?.type === "variables_value"
+                            ? workspace.variables
+                            : operand.inputs?.value?.type === "lists_length"
+                              ? workspace.lists
+                              : actors
+                          )?.map((choice) => (
+                            <option key={choice.id} value={choice.id}>
+                              {choice.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
                       {operand.inputs?.value?.type === "literal_number" ? (
                         <label>
                           <span>{copy.mathValue}</span>
