@@ -1172,6 +1172,76 @@ function parseIntent(value: unknown): Intent | undefined {
         ? { type: "setLogicalBoolean", location, side, value: value["value"] }
         : undefined;
     }
+    case "setLogicalActor": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      return location !== undefined &&
+        (side === "left" || side === "right" || side === "value") &&
+        isSafeId(value["actorId"])
+        ? { type: "setLogicalActor", location, side, actorId: value["actorId"] }
+        : undefined;
+    }
+    case "setLogicalComparisonNumber": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      const operand = value["operand"];
+      return location !== undefined &&
+        (side === "left" || side === "right" || side === "value") &&
+        (operand === "left" || operand === "right") &&
+        isFiniteNumber(value["value"])
+        ? { type: "setLogicalComparisonNumber", location, side, operand, value: value["value"] }
+        : undefined;
+    }
+    case "setLogicalComparisonSource": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      const operand = value["operand"];
+      const source = value["source"];
+      const referenceId = value["referenceId"];
+      if (
+        location === undefined ||
+        (side !== "left" && side !== "right" && side !== "value") ||
+        (operand !== "left" && operand !== "right") ||
+        !(STUDIO_COMPARISON_OPERAND_SOURCES as readonly unknown[]).includes(source)
+      )
+        return undefined;
+      if (
+        source === "variable" ||
+        source === "listLength" ||
+        source === "listItem" ||
+        source === "distanceToActor"
+      ) {
+        if (!isSafeId(referenceId)) return undefined;
+      } else if (referenceId !== undefined) return undefined;
+      return {
+        type: "setLogicalComparisonSource",
+        location,
+        side,
+        operand,
+        source: source as (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number],
+        ...(referenceId === undefined ? {} : { referenceId: referenceId as string }),
+      };
+    }
+    case "setLogicalComparisonNestedNumber": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      const operand = value["operand"];
+      const field = value["field"];
+      return location !== undefined &&
+        (side === "left" || side === "right" || side === "value") &&
+        (operand === "left" || operand === "right") &&
+        (field === "index" || field === "min" || field === "max") &&
+        isFiniteNumber(value["value"])
+        ? {
+            type: "setLogicalComparisonNestedNumber",
+            location,
+            side,
+            operand,
+            field,
+            value: value["value"],
+          }
+        : undefined;
+    }
     case "setComparisonOperand": {
       const location = parseLocation(value["location"]);
       const side = value["side"];
@@ -1183,7 +1253,12 @@ function parseIntent(value: unknown): Intent | undefined {
         !(STUDIO_COMPARISON_OPERAND_SOURCES as readonly unknown[]).includes(source)
       )
         return undefined;
-      if (source === "variable" || source === "listLength") {
+      if (
+        source === "variable" ||
+        source === "listLength" ||
+        source === "listItem" ||
+        source === "distanceToActor"
+      ) {
         if (!isSafeId(referenceId)) return undefined;
       } else if (referenceId !== undefined) return undefined;
       return {
@@ -1193,6 +1268,17 @@ function parseIntent(value: unknown): Intent | undefined {
         source: source as (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number],
         ...(typeof referenceId === "string" ? { referenceId } : {}),
       };
+    }
+    case "setComparisonNestedNumber": {
+      const location = parseLocation(value["location"]);
+      const side = value["side"];
+      const field = value["field"];
+      return location !== undefined &&
+        (side === "left" || side === "right") &&
+        (field === "index" || field === "min" || field === "max") &&
+        isFiniteNumber(value["value"])
+        ? { type: "setComparisonNestedNumber", location, side, field, value: value["value"] }
+        : undefined;
     }
     case "setConditionNumber": {
       const location = parseLocation(value["location"]);

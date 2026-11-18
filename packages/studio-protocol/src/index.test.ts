@@ -6,6 +6,77 @@ import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } f
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-protocol", () => {
+  it("accepts visible comparison controls through the VSIX intent boundary", () => {
+    const location = { container: script, index: 0 };
+    const accepted = [
+      {
+        type: "setComparisonOperand",
+        location,
+        side: "left",
+        source: "listItem",
+        referenceId: "items",
+      },
+      {
+        type: "setComparisonOperand",
+        location,
+        side: "right",
+        source: "distanceToActor",
+        referenceId: "actor:robot",
+      },
+      { type: "setComparisonNestedNumber", location, side: "left", field: "index", value: 2 },
+      { type: "setLogicalActor", location, side: "value", actorId: "actor:robot" },
+      { type: "setLogicalComparisonNumber", location, side: "left", operand: "right", value: 3 },
+      {
+        type: "setLogicalComparisonSource",
+        location,
+        side: "right",
+        operand: "left",
+        source: "listItem",
+        referenceId: "items",
+      },
+      {
+        type: "setLogicalComparisonNestedNumber",
+        location,
+        side: "left",
+        operand: "right",
+        field: "max",
+        value: 8,
+      },
+    ];
+    for (const intent of accepted)
+      expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    const rejected = [
+      { type: "setComparisonOperand", location, side: "left", source: "listItem" },
+      {
+        type: "setComparisonOperand",
+        location,
+        side: "left",
+        source: "number",
+        referenceId: "items",
+      },
+      { type: "setComparisonNestedNumber", location, side: "left", field: "value", value: 2 },
+      { type: "setLogicalActor", location, side: "left", actorId: "../robot" },
+      { type: "setLogicalComparisonNumber", location, side: "other", operand: "left", value: 3 },
+      {
+        type: "setLogicalComparisonSource",
+        location,
+        side: "right",
+        operand: "left",
+        source: "variable",
+        referenceId: "../bad",
+      },
+      {
+        type: "setLogicalComparisonNestedNumber",
+        location,
+        side: "left",
+        operand: "right",
+        field: "max",
+        value: Infinity,
+      },
+    ];
+    for (const intent of rejected)
+      expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
+  });
   it("opens the code projection through an explicit workspace message", () => {
     expect(parseUiMessage({ schema, type: "openCode" })).toEqual({ schema, type: "openCode" });
     expect(parseUiMessage({ schema, type: "historyCommand", command: "undo" })).toEqual({

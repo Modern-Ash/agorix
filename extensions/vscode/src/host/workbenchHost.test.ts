@@ -3,7 +3,7 @@ import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import type { ProjectProgram } from "@agorix/program-model";
 import type { ProjectMetadata } from "@agorix/persistence";
 import { programSemanticHash } from "@agorix/proposals";
-import { STUDIO_PROTOCOL_VERSION as schema } from "@agorix/studio-protocol";
+import { STUDIO_PROTOCOL_VERSION as schema, parseUiMessage } from "@agorix/studio-protocol";
 import { DEFAULT_AGREEMENTS } from "@agorix/agent-workflow";
 import { createStudioSignal } from "@agorix/learning-decision-plane";
 import { createWorkbenchHost, type HostPort } from "./workbenchHost.js";
@@ -61,6 +61,95 @@ function setup(initial: ProjectProgram | null = base) {
 }
 
 describe("workbenchHost", () => {
+  it("commits a comparison range edit received through the UI protocol", async () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "greaterThan",
+                left: {
+                  type: "randomInteger",
+                  min: { type: "numericLiteral", value: 1 },
+                  max: { type: "numericLiteral", value: 5 },
+                },
+                right: { type: "numericLiteral", value: 3 },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { host, get } = setup(program);
+    const message = parseUiMessage({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setComparisonNestedNumber",
+        location: { container: script, index: 0 },
+        side: "left",
+        field: "max",
+        value: 9,
+      },
+      baseHash: programSemanticHash(program),
+    });
+    expect(message).toBeDefined();
+    const response = await host.handle(message!);
+    expect(response[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      condition: { left: { type: "randomInteger", max: { value: 9 } } },
+    });
+  });
+  it("commits a logical comparison edit received through the UI protocol", async () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: {
+                  type: "greaterThan",
+                  left: { type: "numericLiteral", value: 1 },
+                  right: { type: "numericLiteral", value: 2 },
+                },
+                right: { type: "booleanLiteral", value: true },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { host, get } = setup(program);
+    const message = parseUiMessage({
+      schema,
+      type: "intent",
+      intent: {
+        type: "setLogicalComparisonNumber",
+        location: { container: script, index: 0 },
+        side: "left",
+        operand: "right",
+        value: 4,
+      },
+      baseHash: programSemanticHash(program),
+    });
+    expect(message).toBeDefined();
+    expect((await host.handle(message!))[0]).toMatchObject({ type: "workspace" });
+    expect(get()?.scripts[0]?.statements[0]).toMatchObject({
+      condition: { type: "and", left: { type: "greaterThan", right: { value: 4 } } },
+    });
+  });
   it("commits a two-level arithmetic edit and refuses a stale nested value", async () => {
     const { host, get } = setup();
     await host.handle({
