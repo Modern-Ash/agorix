@@ -812,8 +812,7 @@ async function main() {
     console.log("Visual cross-surface journey passed");
   } finally {
     boundary.closeAllConnections();
-    await new Promise((resolve) => boundary.close(resolve));
-    await webBrowser?.close();
+    boundary.close();
     if (webChild !== undefined) {
       try {
         process.kill(-webChild.pid, "SIGTERM");
@@ -821,18 +820,24 @@ async function main() {
         /* already exited */
       }
     }
-    await browser?.close();
     try {
       process.kill(-child.pid, "SIGTERM");
     } catch {
       /* already exited */
     }
+    await Promise.race([Promise.allSettled([webBrowser?.close(), browser?.close()]), pause(2_000)]);
     await pause(800);
   }
 }
 main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(() => fs.rmSync(scratch, { recursive: true, force: true }));
+  .then(
+    () => 0,
+    (error) => {
+      console.error(error);
+      return 1;
+    },
+  )
+  .then((code) => {
+    fs.rmSync(scratch, { recursive: true, force: true });
+    process.exit(code);
+  });
