@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
+import { ADVANCED_SOUNDS } from "@agorix/curriculum";
 import { ProjectStore, type BrowserStorageAdapter, type StoredProject } from "@agorix/persistence";
 import { createProgramProposal } from "@agorix/proposals";
 import {
@@ -15,6 +16,7 @@ import {
   proofTraceFromEvidence,
   createProposalEvidenceInspector,
   createStudioStarterProject,
+  studioAssetCatalog,
   createStoredProjectWithProgram,
   createValidationReport,
   formatInspectorReport,
@@ -171,6 +173,15 @@ describe("Agorix Studio first slice", () => {
       locale: "es",
     });
     expect(blank.program.scripts[0]?.statements).toEqual([]);
+    const bundledSoundIds = ADVANCED_SOUNDS.map((sound) => sound.id);
+    expect(
+      blank.metadata.assets?.filter((asset) => asset.kind === "sound").map((asset) => asset.id),
+    ).toEqual(bundledSoundIds);
+    expect(
+      studioAssetCatalog()
+        .filter((asset) => asset.kind === "sound")
+        .map((asset) => asset.id),
+    ).toEqual(bundledSoundIds);
     expect(firstMission.metadata.locale).toBe("en");
     expect(openStoredProject(firstMission).projection.code).toContain("whenGreenFlagClicked");
     expect(createExecutionEvidence(firstMission).previewFrames.length).toBeGreaterThan(0);

@@ -165,9 +165,9 @@ async function main() {
     }
     await page.waitForTimeout(1000);
     await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget input").first().fill(">Reopen Editor With");
+    await page.locator(".quick-input-widget:visible input").first().fill(">Reopen Editor With");
     await page.getByText("View: Reopen Editor With...", { exact: true }).click();
-    await page.locator(".quick-input-widget input").first().fill("Agorix Workbench");
+    await page.locator(".quick-input-widget:visible input").first().fill("Agorix Workbench");
     await page.keyboard.press("Enter");
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
     const webview = page.frameLocator("iframe.webview.ready").frameLocator("iframe#active-frame");
@@ -180,8 +180,9 @@ async function main() {
       /Inventory/,
     );
     const beforeOriReview = fs.readFileSync(project, "utf8");
+    await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
     await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget input").first().fill(">Suggest repeat");
+    await page.locator(".quick-input-widget:visible input").first().fill(">Suggest repeat");
     await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Reject", exact: true }).click();
     assert.equal(fs.readFileSync(project, "utf8"), beforeOriReview);
@@ -269,8 +270,7 @@ async function main() {
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Scene" }).click();
     const backdropPicker = webview.locator(".stage-panel .stage-backdrop-picker");
     await backdropPicker.locator("summary").click();
-    if ((await backdropPicker.locator(".stage-backdrop-options button").count()) < 9)
-      throw new Error("Stage must expose the bundled visual backdrop gallery");
+    await backdropPicker.locator(".stage-backdrop-options button").nth(8).waitFor();
     await backdropPicker.getByRole("button", { name: "Choose backdrop: Forest" }).click();
     await waitForProject(
       (envelope) => envelope.project?.metadata?.stage?.backdropId === "backdrop:forest",
@@ -299,6 +299,17 @@ async function main() {
       await webview.locator(".studio-scene-editor section[aria-label='Sounds']").isVisible(),
       true,
     );
+    const soundCards = webview.locator(
+      ".studio-scene-editor section[aria-label='Sounds'] .scene-sound-card",
+    );
+    await soundCards.nth(2).waitFor();
+    assert.equal(await soundCards.count(), 3);
+    for (const name of ["Beacon Ping", "Chime", "Drum"]) {
+      const preview = soundCards
+        .filter({ hasText: name })
+        .getByRole("button", { name: `Preview sound: ${name}` });
+      assert.equal(await preview.isEnabled(), true);
+    }
     await webview
       .locator(".studio-scene-editor .scene-section-tabs button")
       .filter({ hasText: "Actors" })
@@ -689,11 +700,36 @@ async function main() {
     }
     if (after <= before) throw new Error(`Block drag did not insert: ${before} → ${after}`);
     console.log("Dragged a block into the canonical program");
-    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    const showSoundTools = webview
+      .locator(".studio-shell-actions button")
+      .filter({ hasText: "Show tools" });
+    if (await showSoundTools.isVisible()) await showSoundTools.click();
+    await webview.locator('.palette button[aria-label="play sound"]').click();
     await webview
-      .locator(".execution-readout")
-      .filter({ hasText: "completed" })
-      .waitFor({ timeout: 10000 });
+      .locator('.studio-program .block[data-tone="sound"] .block-asset-field select')
+      .last()
+      .selectOption("asset:sound.chime");
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts?.some((script) =>
+        script.statements.some(
+          (statement) =>
+            statement.type === "playSound" && statement.soundId === "asset:sound.chime",
+        ),
+      ),
+    );
+    console.log("Selected a bundled sound directly on its visual block");
+    const hideSoundTools = webview
+      .locator(".studio-shell-actions button")
+      .filter({ hasText: "Hide tools" });
+    if (await hideSoundTools.isVisible()) await hideSoundTools.click();
+    await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
+    let runStatus = "";
+    for (let attempt = 0; attempt < 50; attempt++) {
+      runStatus = (await webview.locator(".execution-readout").textContent()) ?? "";
+      if (runStatus.includes("completed")) break;
+      await pause(200);
+    }
+    assert.match(runStatus, /completed/, "Run must complete after sound selection");
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Evidence" }).click();
     await webview.locator(".studio-evidence").waitFor();
     const traceCount = (await webview.locator(".event-trace header span").textContent())?.split(
@@ -702,8 +738,9 @@ async function main() {
     if (!traceCount || Number(traceCount) < 1) throw new Error("Run produced no event trace");
     console.log("Ran project and opened evidence");
     const beforeOri = JSON.parse(fs.readFileSync(project, "utf8"));
+    await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
     await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget input").first().fill(">Build Proposal");
+    await page.locator(".quick-input-widget:visible input").first().fill(">Build Proposal");
     await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Apply", exact: true }).click({ timeout: 15000 });
     const { value: afterOri } = await waitForProject(

@@ -12,6 +12,7 @@
   "dependencies": {
     "@agorix/agent-workflow": "workspace:*",
     "@agorix/block-editor": "workspace:*",
+    "@agorix/curriculum": "workspace:*",
     "@agorix/interaction-core": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/stage": "workspace:*",

@@ -154,6 +154,24 @@
           "kind": "backdrop",
           "name": "Trailhead",
           "source": "builtin:space.trailhead"
+        },
+        {
+          "id": "asset:sound.beacon",
+          "kind": "sound",
+          "name": "Beacon Ping",
+          "source": "builtin:sound.beacon"
+        },
+        {
+          "id": "asset:sound.chime",
+          "kind": "sound",
+          "name": "Chime",
+          "source": "builtin:sound.chime"
+        },
+        {
+          "id": "asset:sound.drum",
+          "kind": "sound",
+          "name": "Drum",
+          "source": "builtin:sound.drum"
         }
       ]
     }

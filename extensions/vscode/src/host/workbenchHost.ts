@@ -35,7 +35,7 @@ import type { AgentAgreements } from "@agorix/agent-workflow";
 import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-plane";
 import type { SyncState } from "../sync/syncHub.js";
 import { defaultProjectActor, defaultProjectStage, studioAssetCatalog } from "../studioCore.js";
-import { getLocalizedFirstMission } from "@agorix/curriculum";
+import { ADVANCED_SOUNDS, getLocalizedFirstMission } from "@agorix/curriculum";
 import type { RuntimeEvent } from "@agorix/runtime";
 import type { StudioExecutionViewState } from "../studioCore.js";
 
@@ -129,8 +129,8 @@ function assetsForMetadata(metadata: ProjectMetadata): readonly AssetView[] {
       "builtin:costume.spark",
       "builtin:space.trailhead",
       "builtin:space.nebula",
-      "builtin:sound.beacon",
     ].includes(asset.source) ||
+    ADVANCED_SOUNDS.some((sound) => sound.source === asset.source) ||
     validEmbeddedImageSource(asset.source)
       ? { source: asset.source }
       : {}),

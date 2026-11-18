@@ -513,6 +513,9 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../block-editor
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../curriculum
       '@agorix/interaction-core':
         specifier: workspace:*
         version: link:../interaction-core
@@ -528,6 +531,9 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../block-editor
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../curriculum
       '@agorix/interaction-core':
         specifier: workspace:*
         version: link:../interaction-core
