@@ -22,7 +22,6 @@ interface CreateProjectCommandOptions {
 }
 
 export interface StudioProjectCommandPort {
-  getCurrentProjectionId(): string;
   setCurrentProject(project: OpenProject): void;
   resetProjectSessionState(): void;
   refreshStudioViews(): void;
@@ -31,7 +30,6 @@ export interface StudioProjectCommandPort {
   updateStudioContext(): void;
   afterProjectOpened?(): void | Promise<void>;
   requireProject(): OpenProject | undefined;
-  openProjection(id: string): Promise<void>;
 }
 
 export interface StudioProjectCommandHandlers {
@@ -74,7 +72,6 @@ export function createStudioProjectCommandHandlers(
     port.refreshStudioViews();
     port.refreshCompanionViews();
     port.updateStudioContext();
-    await port.openProjection(port.getCurrentProjectionId());
     if (options.revealSurfaces !== false) await port.afterProjectOpened?.();
   };
 
@@ -99,7 +96,6 @@ export function createStudioProjectCommandHandlers(
     port.refreshExecutionViews();
     port.refreshCompanionViews();
     port.updateStudioContext();
-    await port.openProjection(port.getCurrentProjectionId());
     await port.afterProjectOpened?.();
     void vscode.window.showInformationMessage(t("Created Agorix project: {0}", picked.uri.fsPath));
     return picked.uri;

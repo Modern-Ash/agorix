@@ -31,6 +31,7 @@ const actionProviders: unknown[] = [];
 const revealed: unknown[] = [];
 const executedTasks: unknown[] = [];
 const commandCalls: unknown[][] = [];
+const openedDocuments: string[] = [];
 const secrets = new Map<string, string>();
 const webviewPanels: Array<{
   readonly messages: unknown[];
@@ -288,6 +289,7 @@ vi.mock("vscode", () => {
         return { dispose() {} };
       },
       openTextDocument: async (target: { content?: string; toString?: () => string }) => {
+        openedDocuments.push(target.toString?.() ?? "");
         if ("content" in target && target.content !== undefined) {
           return { uri: uri(`untitled:${target.content.length}`), content: target.content };
         }
@@ -386,6 +388,7 @@ describe("Studio extension wiring", () => {
     revealed.length = 0;
     executedTasks.length = 0;
     commandCalls.length = 0;
+    openedDocuments.length = 0;
     secrets.clear();
     webviewPanels.length = 0;
     choice = undefined;
@@ -648,6 +651,7 @@ describe("Studio extension wiring", () => {
   it("reveals the Ori Workbench when a project is opened", async () => {
     await openFile("/p/reveal.json", stored([]));
     expect(workbenchPanel()?.html).toContain("Agorix Workbench");
+    expect(openedDocuments).toEqual([]);
     expect(webviewPanels.some((panel) => panel.html.includes("Mundo Agorix"))).toBe(false);
     expect(commandCalls).toContainEqual(["workbench.action.closeSidebar"]);
     expect(commandCalls).toContainEqual(["workbench.action.closePanel"]);
@@ -682,6 +686,8 @@ describe("Studio extension wiring", () => {
     expect(envelope.project.metadata.locale).toBe("en");
     expect(envelope.project.program.scripts[0].statements).toEqual([]);
     expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", true]);
+    expect(workbenchPanel()?.html).toContain("Agorix Workbench");
+    expect(openedDocuments).toEqual([]);
     expect(shown.at(-1)).toContain("Created Agorix project");
 
     const run = await handlers.get("agorixStudio.run")!();
