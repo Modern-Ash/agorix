@@ -404,7 +404,6 @@ export function activate(context: vscode.ExtensionContext): void {
     await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
   };
   const projectCommands = createStudioProjectCommandHandlers({
-    getCurrentProjectionId: () => session.currentProjectionId,
     setCurrentProject: (project) => {
       session.current = project;
     },
@@ -415,7 +414,6 @@ export function activate(context: vscode.ExtensionContext): void {
     updateStudioContext,
     afterProjectOpened: revealProjectSurfaces,
     requireProject,
-    openProjection: projectionCommands.openProjection,
   });
   const projectEditorProvider: vscode.CustomTextEditorProvider = {
     resolveCustomTextEditor: async (document, webviewPanel) => {
