@@ -206,6 +206,15 @@ vi.mock("vscode", () => {
       },
       executeCommand: async (...args: unknown[]) => {
         commandCalls.push(args);
+        if (args[0] === "vscode.openWith") {
+          const editor = customEditors.get(String(args[2]));
+          if (editor !== undefined) {
+            await editor.resolveCustomTextEditor(
+              { uri: args[1] as { fsPath: string } },
+              createMockWebviewPanel(),
+            );
+          }
+        }
         if (args[0] === "agorixStudio.undoProposal" || args[0] === "agorixStudio.redoProposal") {
           return handlers.get(args[0])?.();
         }
@@ -686,6 +695,11 @@ describe("Studio extension wiring", () => {
     expect(envelope.project.metadata.locale).toBe("en");
     expect(envelope.project.program.scripts[0].statements).toEqual([]);
     expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", true]);
+    expect(commandCalls).toContainEqual([
+      "vscode.openWith",
+      { fsPath: "/workspace/my-first-mission.agorix" },
+      "agorixStudio.projectEditor",
+    ]);
     expect(workbenchPanel()?.html).toContain("Agorix Workbench");
     expect(openedDocuments).toEqual([]);
     expect(shown.at(-1)).toContain("Created Agorix project");
@@ -711,6 +725,12 @@ describe("Studio extension wiring", () => {
   it("reports an invalid project file instead of crashing", async () => {
     await openFile("/p/bad.json", "{ not json");
     expect(shown[0]).toContain("could not open this project");
+  });
+
+  it("does not open the visual editor for an invalid portable project", async () => {
+    await openFile("/p/bad.agorix", "{ not json");
+    expect(shown[0]).toContain("could not open this project");
+    expect(commandCalls.some(([command]) => command === "vscode.openWith")).toBe(false);
   });
 
   it("prints the execution inspector for an opened project", async () => {
@@ -937,6 +957,12 @@ describe("Studio extension wiring", () => {
       exportedAt: "2026-01-02T00:00:00.000Z",
     });
     await openFile("/p/a.agorix", portable);
+    expect(commandCalls).toContainEqual([
+      "vscode.openWith",
+      { fsPath: "/p/a.agorix" },
+      "agorixStudio.projectEditor",
+    ]);
+    expect(workbenchPanel()?.html).toContain("Agorix Workbench");
     savePicked = { fsPath: "/p/exported.agorix" };
 
     await handlers.get("agorixStudio.exportAgorix")!();

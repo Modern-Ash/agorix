@@ -397,8 +397,12 @@ export function activate(context: vscode.ExtensionContext): void {
         events: session.agentEvents,
       }),
   });
-  const revealProjectSurfaces = async (): Promise<void> => {
-    await surfaceCommands.openWorkbench();
+  const revealProjectSurfaces = async (uri: vscode.Uri): Promise<void> => {
+    if (uri.fsPath.toLowerCase().endsWith(".agorix")) {
+      await vscode.commands.executeCommand("vscode.openWith", uri, "agorixStudio.projectEditor");
+    } else {
+      await surfaceCommands.openWorkbench();
+    }
     await vscode.commands.executeCommand("workbench.action.closeSidebar");
     await vscode.commands.executeCommand("workbench.action.closePanel");
     await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
