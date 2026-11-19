@@ -1433,6 +1433,7 @@ export function Workbench({
   const [oriOpen, setOriOpen] = useState(true);
   const [oriWidth, setOriWidth] = useState<number | undefined>();
   const workbenchRef = useRef<HTMLDivElement>(null);
+  const paletteOpenerRef = useRef<HTMLButtonElement | null>(null);
   const oriDockRef = useRef<HTMLDivElement>(null);
   const oriResizeStart = useRef<{ x: number; width: number } | undefined>(undefined);
   const oriWidthLimit = () => {
@@ -1455,6 +1456,11 @@ export function Workbench({
     window.addEventListener("resize", fitDock);
     return () => window.removeEventListener("resize", fitDock);
   }, [toolsOpen]);
+  useEffect(() => {
+    if (toolsOpen && paletteFocus && workspaceView === "build") {
+      workbenchRef.current?.querySelector<HTMLInputElement>(".palette-search input")?.focus();
+    }
+  }, [toolsOpen, paletteFocus, workspaceView]);
   const [selectedExpression, setSelectedExpression] = useState<BlockType | undefined>();
   const [selectedNumeric, setSelectedNumeric] = useState<BlockType | undefined>();
   const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
@@ -1869,7 +1875,21 @@ export function Workbench({
           </button>
         </div>
       </header>
-      <aside id="studio-tools" className="studio-tools" aria-label={copy.toolsTitle}>
+      <aside
+        id="studio-tools"
+        className="studio-tools"
+        aria-label={copy.toolsTitle}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || !toolsOpen || window.innerWidth > 1100) return;
+          event.preventDefault();
+          setToolsOpen(false);
+          setPaletteFocus(undefined);
+          (
+            paletteOpenerRef.current ??
+            workbenchRef.current?.querySelector<HTMLButtonElement>(".studio-program-heading button")
+          )?.focus();
+        }}
+      >
         <div className="library-tabs" role="group" aria-label={copy.libraryScene}>
           <button
             type="button"
@@ -2333,7 +2353,8 @@ export function Workbench({
                 data-tone={tone}
                 aria-expanded={toolsOpen && paletteFocus === label}
                 aria-controls="studio-tools"
-                onClick={() => {
+                onClick={(event) => {
+                  paletteOpenerRef.current = event.currentTarget;
                   setLibraryTab("blocks");
                   setPaletteFocus(label);
                   setToolsOpen(true);
