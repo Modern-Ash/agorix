@@ -423,7 +423,14 @@ async function main() {
     );
     const addedScriptId = withNewScript.project.program.scripts.at(-1).id;
     await webview.locator(".studio-editor-tabs button").filter({ hasText: "Build" }).click();
-    const newScriptHeading = webview.locator(".script-heading").last();
+    // The project file can persist before the webview renders its new workspace snapshot.
+    // Target the new script itself, rather than whichever heading happens to be last.
+    const newScriptHeading = webview.locator(".script-heading").filter({ hasText: /Script 3:/ });
+    console.log(
+      "Visible script headings:",
+      await webview.locator(".script-heading").allTextContents(),
+    );
+    await newScriptHeading.getByRole("button", { name: "Delete script" }).waitFor();
     const deleteScript = newScriptHeading.getByRole("button", { name: "Delete script" });
     await deleteScript.click();
     assert.equal(JSON.parse(fs.readFileSync(project, "utf8")).project.program.scripts.length, 3);

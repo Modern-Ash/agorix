@@ -1584,15 +1584,18 @@ function parseIntent(value: unknown): Intent | undefined {
         isFiniteNumber(value["value"]) &&
         (path === undefined ||
           (Array.isArray(path) &&
-            path.length === 1 &&
-            ["left", "right", "min", "max"].includes(path[0])))
+            path.length >= 1 &&
+            path.length <= 3 &&
+            path.every((side) => ["left", "right", "min", "max", "value"].includes(side))))
         ? {
             type: "setArithmeticOperand",
             location,
             input: value["input"],
             side: value["side"] as "left" | "right" | "min" | "max" | "value",
             value: value["value"],
-            ...(path === undefined ? {} : { path: path as ("left" | "right" | "min" | "max")[] }),
+            ...(path === undefined
+              ? {}
+              : { path: path as ("left" | "right" | "min" | "max" | "value")[] }),
           }
         : undefined;
     }
