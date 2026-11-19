@@ -2420,6 +2420,117 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("composes numeric sources inside a nested math function through canonical paths", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "mathFunction",
+                  function: "abs",
+                  value: { type: "numericLiteral", value: 2 },
+                },
+                right: { type: "numericLiteral", value: 5 },
+              },
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const location = { container: script, index: 0 };
+    const variable = intentToChange(
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "value",
+        reporter: "variable",
+        referenceId: "score",
+      },
+      newId,
+      workspace,
+    );
+    expect(
+      applyWorkspaceChange(workspace, variable!).program.scripts[0]?.statements[0],
+    ).toMatchObject({
+      value: {
+        left: { type: "mathFunction", value: { type: "variable", variableId: "score" } },
+        right: { type: "numericLiteral", value: 5 },
+      },
+    });
+    const nested = intentToChange(
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "value",
+        reporter: "mathFunction",
+      },
+      newId,
+      workspace,
+    );
+    const withNested = applyWorkspaceChange(workspace, nested!);
+    const functionEdit = intentToChange(
+      {
+        type: "setArithmeticMathFunction",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "value",
+        function: "round",
+      },
+      newId,
+      withNested.workspace,
+    );
+    expect(
+      applyWorkspaceChange(withNested.workspace, functionEdit!).program.scripts[0]?.statements[0],
+    ).toMatchObject({
+      value: {
+        left: { value: { type: "mathFunction", function: "round" } },
+        right: { type: "numericLiteral", value: 5 },
+      },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "value",
+          reporter: "variable",
+          referenceId: "missing",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          path: ["right"],
+          side: "value",
+          reporter: "number",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("edits a math function nested in arithmetic without replacing its sibling", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

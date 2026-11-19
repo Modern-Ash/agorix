@@ -1305,6 +1305,21 @@ describe("canvas keyboard and screen reader behaviour", () => {
       side: "value",
       value: 3.5,
     });
+    const valueSource = host.querySelector<HTMLSelectElement>(
+      '.numeric-nested-socket select[aria-label*="value source"]',
+    )!;
+    expect(valueSource).not.toBeNull();
+    act(() => {
+      valueSource.value = "variable";
+      valueSource.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      path: ["left"],
+      side: "value",
+      reporter: "variable",
+      referenceId: "score",
+    });
   });
   it("edits nested random integer bounds from the visual canvas", () => {
     const workspace = programToWorkspace({

@@ -1679,7 +1679,11 @@ function parseIntent(value: unknown): Intent | undefined {
       if (
         location === undefined ||
         (input !== "value" && input !== "delta" && input !== "index") ||
-        (side !== "left" && side !== "right" && side !== "min" && side !== "max") ||
+        (side !== "left" &&
+          side !== "right" &&
+          side !== "min" &&
+          side !== "max" &&
+          side !== "value") ||
         (path !== undefined &&
           (!Array.isArray(path) ||
             path.length < 1 ||
@@ -1732,7 +1736,11 @@ function parseIntent(value: unknown): Intent | undefined {
       const fn = value["function"];
       return location !== undefined &&
         (input === "value" || input === "delta" || input === "index") &&
-        (side === "left" || side === "right" || side === "min" || side === "max") &&
+        (side === "left" ||
+          side === "right" ||
+          side === "min" ||
+          side === "max" ||
+          side === "value") &&
         (path === undefined ||
           (Array.isArray(path) &&
             path.length >= 1 &&
