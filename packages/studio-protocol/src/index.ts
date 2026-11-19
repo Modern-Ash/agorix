@@ -1603,12 +1603,17 @@ function parseIntent(value: unknown): Intent | undefined {
       const location = parseLocation(value["location"]);
       const input = value["input"];
       const side = value["side"];
+      const path = value["path"];
       const reporter = value["reporter"];
       const referenceId = value["referenceId"];
       if (
         location === undefined ||
         (input !== "value" && input !== "delta" && input !== "index") ||
         (side !== "left" && side !== "right" && side !== "min" && side !== "max") ||
+        (path !== undefined &&
+          (!Array.isArray(path) ||
+            path.length !== 1 ||
+            !["left", "right", "min", "max"].includes(path[0]))) ||
         (reporter !== "number" &&
           reporter !== "variable" &&
           reporter !== "listLength" &&
@@ -1633,6 +1638,7 @@ function parseIntent(value: unknown): Intent | undefined {
         location,
         input,
         side,
+        ...(path === undefined ? {} : { path: path as ("left" | "right" | "min" | "max")[] }),
         reporter,
         ...(typeof referenceId === "string" ? { referenceId } : {}),
       };

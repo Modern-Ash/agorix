@@ -928,6 +928,21 @@ describe("canvas keyboard and screen reader behaviour", () => {
       side: "right",
       value: 6,
     });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="Left value left"]',
+    );
+    expect(source).not.toBeNull();
+    act(() => {
+      source!.value = "subtract";
+      source!.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      input: "value",
+      path: ["left"],
+      side: "left",
+      reporter: "subtract",
+    });
   });
   it("exposes a third arithmetic level for explicit numeric editing", () => {
     const workspace = programToWorkspace({

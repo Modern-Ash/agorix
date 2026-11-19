@@ -1286,6 +1286,50 @@ export function Canvas({
                                           <span>
                                             {getBlockDefinition(nested.type)?.label ?? nested.type}
                                           </span>
+                                          {nestedSide === "value" ? null : (
+                                            <select
+                                              aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide} ${copy.numericSource}`}
+                                              value={
+                                                nested.type === "operator_random_integer"
+                                                  ? "randomInteger"
+                                                  : nested.type.replace("operator_", "")
+                                              }
+                                              onChange={(event) =>
+                                                onIntent({
+                                                  type: "setArithmeticOperandSource",
+                                                  location: block.location,
+                                                  input,
+                                                  path: [side],
+                                                  side: nestedSide,
+                                                  reporter: event.currentTarget.value as
+                                                    | "number"
+                                                    | "add"
+                                                    | "subtract"
+                                                    | "multiply"
+                                                    | "divide"
+                                                    | "modulo"
+                                                    | "random"
+                                                    | "randomInteger",
+                                                })
+                                              }
+                                              onKeyDown={(event) => event.stopPropagation()}
+                                            >
+                                              <option value="number">{copy.numericLiteral}</option>
+                                              <option value="add">{copy.operatorAdd}</option>
+                                              <option value="subtract">
+                                                {copy.operatorSubtract}
+                                              </option>
+                                              <option value="multiply">
+                                                {copy.operatorMultiply}
+                                              </option>
+                                              <option value="divide">{copy.operatorDivide}</option>
+                                              <option value="modulo">{copy.operatorModulo}</option>
+                                              <option value="random">{copy.operatorRandom}</option>
+                                              <option value="randomInteger">
+                                                {copy.operatorRandomInteger}
+                                              </option>
+                                            </select>
+                                          )}
                                           {deepSides.map((deepSide) => {
                                             const deep = nested.inputs?.[deepSide];
                                             if (
@@ -1353,6 +1397,46 @@ export function Canvas({
                                                   ? copy.rangeMin
                                                   : copy.rangeMax}
                                         </span>
+                                        {nestedSide === "value" ? null : (
+                                          <select
+                                            aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide} ${copy.numericSource}`}
+                                            value="number"
+                                            onChange={(event) =>
+                                              onIntent({
+                                                type: "setArithmeticOperandSource",
+                                                location: block.location,
+                                                input,
+                                                path: [side],
+                                                side: nestedSide,
+                                                reporter: event.currentTarget.value as
+                                                  | "number"
+                                                  | "add"
+                                                  | "subtract"
+                                                  | "multiply"
+                                                  | "divide"
+                                                  | "modulo"
+                                                  | "random"
+                                                  | "randomInteger",
+                                              })
+                                            }
+                                            onKeyDown={(event) => event.stopPropagation()}
+                                          >
+                                            <option value="number">{copy.numericLiteral}</option>
+                                            <option value="add">{copy.operatorAdd}</option>
+                                            <option value="subtract">
+                                              {copy.operatorSubtract}
+                                            </option>
+                                            <option value="multiply">
+                                              {copy.operatorMultiply}
+                                            </option>
+                                            <option value="divide">{copy.operatorDivide}</option>
+                                            <option value="modulo">{copy.operatorModulo}</option>
+                                            <option value="random">{copy.operatorRandom}</option>
+                                            <option value="randomInteger">
+                                              {copy.operatorRandomInteger}
+                                            </option>
+                                          </select>
+                                        )}
                                         <input
                                           key={`${pos}:${input}:${side}:${nestedSide}:${value}`}
                                           type="number"

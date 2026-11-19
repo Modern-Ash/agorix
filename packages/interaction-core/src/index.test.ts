@@ -1874,6 +1874,38 @@ describe("interaction-core", () => {
         right: { value: 1 },
       },
     });
+    const deeper = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "left",
+          reporter: "subtract",
+        },
+        newId,
+        workspace,
+      )!,
+    );
+    expect(deeper.program.scripts[0]?.statements[0]).toMatchObject({
+      value: { left: { left: { type: "subtract" }, right: { value: 1 } } },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          path: ["right"],
+          side: "left",
+          reporter: "subtract",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
     expect(
       intentToChange(
         {
