@@ -79,7 +79,7 @@ export function ProcedureTools({
           <input
             value={name}
             maxLength={20}
-            pattern="[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}"
+            pattern="[\p{L}\p{N}][\p{L}\p{N} _\-]{0,19}"
             onChange={(event) => setName(event.currentTarget.value)}
           />
         </label>

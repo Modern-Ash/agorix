@@ -33,6 +33,9 @@ import {
 } from "@agorix/interaction-core";
 import {
   LIST_MAX_ITEMS,
+  PROCEDURES_MAX_PER_SCRIPT,
+  PROCEDURE_BODY_MAX,
+  PROCEDURE_NAME_MAX_LENGTH,
   NUMERIC_LITERAL_MIN,
   NUMERIC_LITERAL_MAX,
   validEmbeddedImageSource,
@@ -1941,11 +1944,34 @@ function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
       return undefined;
     }
     const programId = raw["programId"];
+    const rawProcedures = raw["procedures"];
+    if (
+      rawProcedures !== undefined &&
+      (!Array.isArray(rawProcedures) || rawProcedures.length > PROCEDURES_MAX_PER_SCRIPT)
+    )
+      return undefined;
+    const procedures: NonNullable<BlockScript["procedures"]>[number][] = [];
+    for (const item of (rawProcedures ?? []) as unknown[]) {
+      if (
+        !isObject(item) ||
+        !isSafeId(item["id"]) ||
+        typeof item["name"] !== "string" ||
+        item["name"].length < 1 ||
+        item["name"].length > PROCEDURE_NAME_MAX_LENGTH ||
+        !/^[\p{L}\p{N}][\p{L}\p{N} _-]*$/u.test(item["name"])
+      )
+        return undefined;
+      const body = parseBlockList(item["body"], 0, budget);
+      if (body === undefined || body.length < 1 || body.length > PROCEDURE_BODY_MAX)
+        return undefined;
+      procedures.push({ id: item["id"], name: item["name"], body });
+    }
     scripts.push({
       id: raw["id"],
       ...(typeof programId === "string" ? { programId } : {}),
       trigger,
       statements,
+      ...(rawProcedures === undefined ? {} : { procedures }),
     });
   }
   return {

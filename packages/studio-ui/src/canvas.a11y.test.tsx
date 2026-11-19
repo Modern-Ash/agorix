@@ -120,7 +120,11 @@ it("opens a custom block from another actor's script through the project navigat
     }),
   );
   expect(host.querySelector(".procedure-tools summary")?.textContent).toContain("0");
+  act(() => host.querySelectorAll<HTMLButtonElement>(".studio-editor-tabs button")[1]!.click());
+  expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(true);
   act(() => host.querySelector<HTMLButtonElement>(".procedure-navigator button")!.click());
+  expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(false);
+  expect(host.querySelector(".workbench")?.getAttribute("data-tools-open")).toBe("false");
   expect(host.querySelector(".actor-tree .selected")?.textContent).toContain("Second");
   expect(host.querySelector(".procedure-heading")?.textContent).toContain("Wave");
   expect(host.querySelector(".procedure-tools summary")?.textContent).toContain("1");

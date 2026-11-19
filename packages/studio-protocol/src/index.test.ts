@@ -1766,6 +1766,66 @@ describe("studio-protocol", () => {
       workspace,
       programHash: "abc123",
     });
+    const withProcedure = {
+      ...workspace,
+      scripts: [
+        {
+          ...workspace.scripts[0],
+          procedures: [
+            {
+              id: "proc:wave",
+              name: "Wave",
+              body: [{ id: "block:move", type: "motion_move", fields: { steps: 3 } }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(
+      parseHostMessage({
+        schema,
+        type: "workspace",
+        workspace: withProcedure,
+        programHash: "abc123",
+      }),
+    ).toMatchObject({ workspace: withProcedure });
+    const withInvalidProcedure = (procedure: unknown) =>
+      parseHostMessage({
+        schema,
+        type: "workspace",
+        workspace: {
+          ...workspace,
+          scripts: [{ ...workspace.scripts[0], procedures: [procedure] }],
+        },
+        programHash: "abc123",
+      });
+    expect(withInvalidProcedure({ id: "proc:empty", name: "Empty", body: [] })).toBeUndefined();
+    expect(
+      withInvalidProcedure({ id: "proc:bad", name: "Bad", body: [{ id: "bad", type: "unknown" }] }),
+    ).toBeUndefined();
+    expect(
+      withInvalidProcedure({
+        id: "proc:name",
+        name: "<script>",
+        body: withProcedure.scripts[0]!.procedures[0]!.body,
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "workspace",
+        workspace: {
+          ...workspace,
+          scripts: [
+            {
+              ...workspace.scripts[0],
+              procedures: Array(21).fill(withProcedure.scripts[0]!.procedures[0]),
+            },
+          ],
+        },
+        programHash: "abc123",
+      }),
+    ).toBeUndefined();
     const bad = (w: unknown, h = "abc") =>
       parseHostMessage({ schema, type: "workspace", workspace: w, programHash: h });
     expect(
