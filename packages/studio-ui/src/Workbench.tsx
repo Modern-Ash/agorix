@@ -19,7 +19,7 @@ import {
 import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
 import { locationKey, toRows } from "./blockView.js";
-import { Palette } from "./Palette.js";
+import { Palette, paletteCategories } from "./Palette.js";
 import { ProcedureNavigator, ProcedureTools } from "./ProcedureTools.js";
 import { SceneLibrary, STAGE_BACKDROP_DRAG_TYPE, STAGE_COSTUME_DRAG_TYPE } from "./SceneLibrary.js";
 import { densityAnnouncement } from "./density.js";
@@ -2326,12 +2326,7 @@ export function Workbench({
             </button>
           </div>
           <nav className="studio-component-launcher" aria-label={copy.paletteBlocks}>
-            {[
-              [copy.paletteMotion, "motion"],
-              [copy.paletteLooks, "looks"],
-              [copy.paletteControl, "control"],
-              [copy.paletteSensing, "sensing"],
-            ].map(([label, tone]) => (
+            {paletteCategories(copy, (workspace?.lists?.length ?? 0) > 0).map(({ label, tone }) => (
               <button
                 key={tone}
                 type="button"

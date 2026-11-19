@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
-import { Palette, matchesPaletteBlockSearch } from "./Palette.js";
+import { Palette, matchesPaletteBlockSearch, paletteCategories } from "./Palette.js";
 import { ProcedureNavigator, ProcedureTools } from "./ProcedureTools.js";
 import { SceneLibrary } from "./SceneLibrary.js";
 import {
@@ -389,6 +389,10 @@ describe("studio-ui", () => {
     expect(html).toContain("ESPACIO AVANZADO");
     expect(html).toContain("Agorix Studio");
     expect(html).toContain('class="studio-program"');
+    expect(html).toContain('class="studio-component-launcher"');
+    for (const category of ["Eventos", "Sonido", "Operadores", "Variables"]) {
+      expect(html).toContain(` ${category}</button>`);
+    }
     expect(html).toContain('class="studio-evidence"');
     expect(html).toContain('class="ori-header"');
     expect(html).toContain('class="studio-tools"');
@@ -580,6 +584,23 @@ describe("studio-ui", () => {
     expect(matchesPaletteBlockSearch("move", block, "Movimiento", copy)).toBe(true);
     expect(matchesPaletteBlockSearch("apariencia", block, "Movimiento", copy)).toBe(false);
     expect(matchesPaletteBlockSearch("sénsór", block, "Movimiento", copy)).toBe(false);
+  });
+
+  it("exposes every available visual category in the compact launcher", () => {
+    expect(paletteCategories(copyFor("es"), false).map(({ label }) => label)).toEqual([
+      "Eventos",
+      "Movimiento",
+      "Apariencia",
+      "Sonido",
+      "Control",
+      "Sensores",
+      "Operadores",
+      "Variables",
+    ]);
+    expect(paletteCategories(copyFor("es"), true).at(-1)?.label).toBe("Listas");
+    expect(paletteCategories(copyFor("en"), false).some(({ label }) => label === "Lists")).toBe(
+      false,
+    );
   });
 
   it("renders multi-actor stage frames and marks the selected actor", () => {

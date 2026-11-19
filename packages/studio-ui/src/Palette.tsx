@@ -13,12 +13,30 @@ import { visualBlock, visualLabel } from "./visualBlocks.js";
 import { numericReporterForBlock } from "./numericPalette.js";
 
 function sectionLabel(name: string, copy: StudioUiCopy): string {
+  if (name === "Start") return copy.paletteEvents;
   if (name === "Move") return copy.paletteMotion;
   if (name === "Looks") return copy.paletteLooks;
+  if (name === "Sound") return copy.paletteSound;
   if (name === "Repeat & Decide") return copy.paletteControl;
   if (name === "Check") return copy.paletteSensing;
+  if (name === "Operators") return copy.paletteOperators;
+  if (name === "Variables") return copy.variables;
   if (name === "Lists") return copy.lists;
   return name;
+}
+
+export function paletteCategories(copy: StudioUiCopy, hasLists: boolean) {
+  return [
+    { label: copy.paletteEvents, tone: "events" },
+    { label: copy.paletteMotion, tone: "motion" },
+    { label: copy.paletteLooks, tone: "looks" },
+    { label: copy.paletteSound, tone: "sound" },
+    { label: copy.paletteControl, tone: "control" },
+    { label: copy.paletteSensing, tone: "sensing" },
+    { label: copy.paletteOperators, tone: "operators" },
+    { label: copy.variables, tone: "variables" },
+    ...(hasLists ? [{ label: copy.lists, tone: "lists" }] : []),
+  ];
 }
 
 function searchText(value: string): string {
