@@ -1571,6 +1571,9 @@ export function Canvas({
                           condition={operand}
                           path={[side]}
                           location={block.location}
+                          workspace={workspace}
+                          pos={pos}
+                          isTabbable={isTabbable}
                           actors={actors}
                           copy={copy}
                           onIntent={onIntent}

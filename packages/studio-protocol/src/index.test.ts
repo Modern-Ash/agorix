@@ -60,6 +60,22 @@ describe("studio-protocol", () => {
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
   });
+  it("validates nested logical comparison routes", () => {
+    const location = { container: script, index: 0 };
+    const intent = {
+      type: "setLogicalComparisonNumber",
+      location,
+      path: ["right"],
+      side: "value",
+      operand: "left",
+      value: 7,
+    };
+    expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    for (const path of [["bad"], Array(21).fill("right"), "right"])
+      expect(
+        parseUiMessage({ schema, type: "intent", intent: { ...intent, path } }),
+      ).toBeUndefined();
+  });
   it("accepts bounded math function controls in direct and logical comparisons", () => {
     const location = { container: script, index: 0 };
     for (const intent of [

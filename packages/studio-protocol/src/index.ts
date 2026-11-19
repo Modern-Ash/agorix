@@ -1269,17 +1269,30 @@ function parseIntent(value: unknown): Intent | undefined {
     case "setLogicalComparisonNumber": {
       const location = parseLocation(value["location"]);
       const side = value["side"];
+      const path = value["path"];
       const operand = value["operand"];
       return location !== undefined &&
         (side === "left" || side === "right" || side === "value") &&
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every((entry) => entry === "left" || entry === "right" || entry === "value"))) &&
         (operand === "left" || operand === "right") &&
         isFiniteNumber(value["value"])
-        ? { type: "setLogicalComparisonNumber", location, side, operand, value: value["value"] }
+        ? {
+            type: "setLogicalComparisonNumber",
+            location,
+            side,
+            operand,
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "value")[] }),
+            value: value["value"],
+          }
         : undefined;
     }
     case "setLogicalComparisonSource": {
       const location = parseLocation(value["location"]);
       const side = value["side"];
+      const path = value["path"];
       const operand = value["operand"];
       const source = value["source"];
       const referenceId = value["referenceId"];
@@ -1287,6 +1300,12 @@ function parseIntent(value: unknown): Intent | undefined {
         location === undefined ||
         (side !== "left" && side !== "right" && side !== "value") ||
         (operand !== "left" && operand !== "right") ||
+        !(
+          path === undefined ||
+          (Array.isArray(path) &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every((entry) => entry === "left" || entry === "right" || entry === "value"))
+        ) ||
         !(STUDIO_COMPARISON_OPERAND_SOURCES as readonly unknown[]).includes(source)
       )
         return undefined;
@@ -1303,6 +1322,7 @@ function parseIntent(value: unknown): Intent | undefined {
         location,
         side,
         operand,
+        ...(path === undefined ? {} : { path: path as ("left" | "right" | "value")[] }),
         source: source as (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number],
         ...(referenceId === undefined ? {} : { referenceId: referenceId as string }),
       };
@@ -1310,10 +1330,15 @@ function parseIntent(value: unknown): Intent | undefined {
     case "setLogicalComparisonNestedNumber": {
       const location = parseLocation(value["location"]);
       const side = value["side"];
+      const path = value["path"];
       const operand = value["operand"];
       const field = value["field"];
       return location !== undefined &&
         (side === "left" || side === "right" || side === "value") &&
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every((entry) => entry === "left" || entry === "right" || entry === "value"))) &&
         (operand === "left" || operand === "right") &&
         (field === "index" || field === "min" || field === "max" || field === "value") &&
         isFiniteNumber(value["value"])
@@ -1322,6 +1347,7 @@ function parseIntent(value: unknown): Intent | undefined {
             location,
             side,
             operand,
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "value")[] }),
             field,
             value: value["value"],
           }
@@ -1369,6 +1395,7 @@ function parseIntent(value: unknown): Intent | undefined {
       const location = parseLocation(value["location"]);
       const side = value["side"];
       const logicalSide = value["logicalSide"];
+      const path = value["path"];
       const fn = value["function"];
       return location !== undefined &&
         (side === "left" || side === "right") &&
@@ -1376,6 +1403,11 @@ function parseIntent(value: unknown): Intent | undefined {
           logicalSide === "left" ||
           logicalSide === "right" ||
           logicalSide === "value") &&
+        (path === undefined ||
+          (logicalSide !== undefined &&
+            Array.isArray(path) &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every((entry) => entry === "left" || entry === "right" || entry === "value"))) &&
         (fn === "abs" || fn === "round" || fn === "floor" || fn === "ceiling")
         ? {
             type: "setComparisonMathFunction",
@@ -1383,6 +1415,7 @@ function parseIntent(value: unknown): Intent | undefined {
             side,
             function: fn,
             ...(logicalSide === undefined ? {} : { logicalSide }),
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "value")[] }),
           }
         : undefined;
     }

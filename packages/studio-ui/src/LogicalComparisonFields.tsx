@@ -7,6 +7,7 @@ import type { StudioUiCopy } from "./i18n.js";
 export function LogicalComparisonFields({
   comparison,
   side,
+  path,
   location,
   workspace,
   actors,
@@ -17,6 +18,7 @@ export function LogicalComparisonFields({
 }: {
   readonly comparison: BlockNode;
   readonly side: "left" | "right" | "value";
+  readonly path?: readonly ("left" | "right" | "value")[];
   readonly location: StatementLocation;
   readonly workspace: BlockWorkspaceSnapshot;
   readonly actors: readonly ActorView[];
@@ -65,6 +67,7 @@ export function LogicalComparisonFields({
             type: "setLogicalComparisonSource",
             location,
             side,
+            ...(path === undefined ? {} : { path }),
             operand: operandSide,
             source: next,
             ...(reference === undefined ? {} : { referenceId: reference }),
@@ -152,6 +155,7 @@ export function LogicalComparisonFields({
                       type: "setComparisonMathFunction",
                       location,
                       logicalSide: side,
+                      ...(path === undefined ? {} : { path }),
                       side: operandSide,
                       function: event.currentTarget.value as "abs" | "round" | "floor" | "ceiling",
                     })
@@ -200,7 +204,7 @@ export function LogicalComparisonFields({
                     <label key={field}>
                       <span>{fieldLabel}</span>
                       <input
-                        key={`${pos}:${side}:${operandSide}:${field}:${literal.fields.value}`}
+                        key={`${pos}:${path?.join(".") ?? ""}:${side}:${operandSide}:${field}:${literal.fields.value}`}
                         type="number"
                         tabIndex={isTabbable ? 0 : -1}
                         aria-label={`${copy.condition}: ${side} ${fieldLabel}`}
@@ -225,6 +229,7 @@ export function LogicalComparisonFields({
                                     type: "setLogicalComparisonNumber",
                                     location,
                                     side,
+                                    ...(path === undefined ? {} : { path }),
                                     operand: operandSide,
                                     value: next,
                                   }
@@ -232,6 +237,7 @@ export function LogicalComparisonFields({
                                     type: "setLogicalComparisonNestedNumber",
                                     location,
                                     side,
+                                    ...(path === undefined ? {} : { path }),
                                     operand: operandSide,
                                     field,
                                     value: next,

@@ -1571,6 +1571,52 @@ describe("canvas keyboard and screen reader behaviour", () => {
       value: 7,
     });
   });
+  it("shows editable comparison numbers inside nested logical sockets", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: { type: "booleanLiteral", value: true },
+                right: {
+                  type: "not",
+                  value: {
+                    type: "lessThan",
+                    left: { type: "numericLiteral", value: 2 },
+                    right: { type: "numericLiteral", value: 10 },
+                  },
+                },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const number = host.querySelector<HTMLInputElement>(
+      '.nested-logical-fields .logical-comparison-fields input[aria-label="Condition: value Left value"]',
+    )!;
+    expect(number.value).toBe("2");
+    act(() => {
+      number.value = "7";
+      number.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalComparisonNumber",
+      path: ["right"],
+      side: "value",
+      operand: "left",
+      value: 7,
+    });
+  });
   it("offers variables, lists, sensors and random ranges inside a logical comparison", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

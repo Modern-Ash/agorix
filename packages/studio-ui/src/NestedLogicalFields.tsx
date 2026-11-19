@@ -1,9 +1,15 @@
 import type { DragEvent } from "react";
-import { getBlockDefinition, type BlockNode, type StatementLocation } from "@agorix/block-editor";
+import {
+  getBlockDefinition,
+  type BlockNode,
+  type BlockWorkspaceSnapshot,
+  type StatementLocation,
+} from "@agorix/block-editor";
 import { STUDIO_LOGICAL_OPERAND_TYPES, type Intent } from "@agorix/interaction-core";
 import { MAX_NESTING_DEPTH } from "@agorix/program-model";
 import type { ActorView } from "@agorix/studio-protocol";
 import { parseDragPayload } from "./drag.js";
+import { LogicalComparisonFields } from "./LogicalComparisonFields.js";
 import type { StudioUiCopy } from "./i18n.js";
 
 type Side = "left" | "right" | "value";
@@ -12,7 +18,10 @@ export function NestedLogicalFields({
   condition,
   path,
   location,
+  workspace,
   actors,
+  pos,
+  isTabbable,
   copy,
   onIntent,
 }: {
@@ -20,6 +29,9 @@ export function NestedLogicalFields({
   /** Path from the root condition to this logical operator. */
   readonly path: readonly Side[];
   readonly location: StatementLocation;
+  readonly workspace: BlockWorkspaceSnapshot;
+  readonly pos: string;
+  readonly isTabbable: boolean;
   readonly actors: readonly ActorView[];
   readonly copy: StudioUiCopy;
   readonly onIntent: (intent: Intent) => void;
@@ -144,6 +156,28 @@ export function NestedLogicalFields({
                 </select>
               </label>
             ) : null}
+            {(
+              [
+                "operator_less_than",
+                "operator_greater_than",
+                "operator_less_or_equal",
+                "operator_greater_or_equal",
+                "operator_equals",
+              ] as readonly string[]
+            ).includes(operand.type) ? (
+              <LogicalComparisonFields
+                comparison={operand}
+                side={side}
+                path={path}
+                location={location}
+                workspace={workspace}
+                actors={actors}
+                copy={copy}
+                onIntent={onIntent}
+                pos={pos}
+                isTabbable={isTabbable}
+              />
+            ) : null}
             {nested ? (
               <details open={path.length < 2}>
                 <summary>{getBlockDefinition(operand.type)?.label ?? operand.type}</summary>
@@ -151,6 +185,9 @@ export function NestedLogicalFields({
                   condition={operand}
                   path={[...path, side]}
                   location={location}
+                  workspace={workspace}
+                  pos={pos}
+                  isTabbable={isTabbable}
                   actors={actors}
                   copy={copy}
                   onIntent={onIntent}
