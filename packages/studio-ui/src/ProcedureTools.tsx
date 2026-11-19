@@ -3,6 +3,43 @@ import { getBlockDefinition, type BlockWorkspaceSnapshot } from "@agorix/block-e
 import type { Intent } from "@agorix/interaction-core";
 import type { StudioUiCopy } from "./i18n.js";
 
+export function ProcedureNavigator({
+  workspace,
+  copy,
+  onOpen,
+}: {
+  readonly workspace: BlockWorkspaceSnapshot;
+  readonly copy: StudioUiCopy;
+  readonly onOpen: (scriptId: string, procedureId: string) => void;
+}) {
+  const definitions = workspace.scripts.flatMap((script, scriptIndex) =>
+    (script.procedures ?? []).map((procedure) => ({
+      scriptId: script.programId ?? script.id,
+      scriptIndex,
+      procedure,
+    })),
+  );
+  if (definitions.length === 0) return null;
+  return (
+    <section className="procedure-navigator" aria-label={copy.customBlocks}>
+      <strong>{copy.customBlocks}</strong>
+      <ul>
+        {definitions.map(({ scriptId, scriptIndex, procedure }) => (
+          <li key={`${scriptId}:${procedure.id}`}>
+            <button type="button" onClick={() => onOpen(scriptId, procedure.id)}>
+              <span>{procedure.name}</span>
+              <small>
+                {copy.canvasScript} {scriptIndex + 1} · {procedure.body.length}{" "}
+                {copy.customBlockSteps}
+              </small>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function ProcedureTools({
   workspace,
   scriptIndex,
