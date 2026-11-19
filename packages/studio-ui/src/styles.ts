@@ -402,6 +402,11 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-component-launcher button[data-tone="looks"] { --block-accent: var(--vscode-charts-purple, var(--vscode-focusBorder)); }
 .studio-component-launcher button[data-tone="control"] { --block-accent: var(--vscode-charts-orange, var(--vscode-focusBorder)); }
 .studio-component-launcher button[data-tone="sensing"] { --block-accent: var(--vscode-charts-green, var(--vscode-focusBorder)); }
+.studio-component-launcher button[data-tone="events"] { --block-accent: var(--vscode-charts-yellow, var(--vscode-focusBorder)); }
+.studio-component-launcher button[data-tone="sound"] { --block-accent: var(--vscode-charts-purple, var(--vscode-focusBorder)); }
+.studio-component-launcher button[data-tone="operators"] { --block-accent: var(--vscode-charts-green, var(--vscode-focusBorder)); }
+.studio-component-launcher button[data-tone="variables"] { --block-accent: var(--vscode-charts-orange, var(--vscode-focusBorder)); }
+.studio-component-launcher button[data-tone="lists"] { --block-accent: var(--vscode-charts-red, var(--vscode-focusBorder)); }
 .studio-component-launcher button[aria-expanded="true"] { outline: 2px solid var(--block-accent); outline-offset: -2px; }
 .studio-component-launcher button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .studio-main { grid-column: 2; display: grid; align-content: start; gap: 0; min-width: 0; min-height: calc(100vh - 58px); border-right: 1px solid var(--vscode-panel-border); }
