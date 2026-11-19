@@ -1030,6 +1030,93 @@ describe("canvas keyboard and screen reader behaviour", () => {
       reporter: "multiply",
     });
   });
+  it("edits nested variable and list reporters through visible source and reference controls", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [
+        { id: "score", name: "Score", initialValue: 0, visible: true },
+        { id: "energy", name: "Energy", initialValue: 0, visible: true },
+      ],
+      lists: [{ id: "inventory", name: "Inventory", initialItems: [1], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: { type: "variable", variableId: "score" },
+                  right: { type: "numericLiteral", value: 2 },
+                },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, {
+      onIntent: (intent) => intents.push(intent),
+      actors: [
+        {
+          id: "actor:friend",
+          name: "Friend",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scriptIds: [],
+        },
+      ],
+    });
+    const reference = host.querySelector<HTMLSelectElement>(
+      '.numeric-nested-socket select[aria-label*="declaration"]',
+    )!;
+    expect(reference).not.toBeNull();
+    act(() => {
+      reference.value = "energy";
+      reference.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      path: ["left"],
+      side: "left",
+      reporter: "variable",
+      referenceId: "energy",
+    });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.numeric-nested-socket select[aria-label*="source"]',
+    )!;
+    act(() => {
+      source.value = "listLength";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      path: ["left"],
+      side: "left",
+      reporter: "listLength",
+      referenceId: "inventory",
+    });
+    act(() => {
+      source.value = "distanceToActor";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      path: ["left"],
+      side: "left",
+      reporter: "distanceToActor",
+      referenceId: "actor:friend",
+    });
+  });
   it("reveals and edits a fourth arithmetic level through a disclosure", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

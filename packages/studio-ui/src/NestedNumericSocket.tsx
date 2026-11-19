@@ -1,17 +1,41 @@
 import type { DragEvent } from "react";
-import { getBlockDefinition, type BlockNode, type StatementLocation } from "@agorix/block-editor";
+import {
+  getBlockDefinition,
+  type BlockNode,
+  type BlockWorkspaceSnapshot,
+  type StatementLocation,
+} from "@agorix/block-editor";
 import { type Intent } from "@agorix/interaction-core";
 import { MAX_NESTING_DEPTH } from "@agorix/program-model";
+import type { ActorView } from "@agorix/studio-protocol";
 import { parseDragPayload } from "./drag.js";
 import type { StudioUiCopy } from "./i18n.js";
 import { numericReporterForBlock } from "./numericPalette.js";
 
 type Side = "left" | "right" | "min" | "max" | "value";
 type NestedSource =
-  "number" | "add" | "subtract" | "multiply" | "divide" | "modulo" | "random" | "randomInteger";
+  | "number"
+  | "variable"
+  | "listLength"
+  | "xPosition"
+  | "yPosition"
+  | "distanceToActor"
+  | "add"
+  | "subtract"
+  | "multiply"
+  | "divide"
+  | "modulo"
+  | "random"
+  | "randomInteger"
+  | "mathFunction";
 
 const SOURCES: readonly NestedSource[] = [
   "number",
+  "variable",
+  "listLength",
+  "xPosition",
+  "yPosition",
+  "distanceToActor",
   "add",
   "subtract",
   "multiply",
@@ -19,6 +43,7 @@ const SOURCES: readonly NestedSource[] = [
   "modulo",
   "random",
   "randomInteger",
+  "mathFunction",
 ];
 
 function operandSides(node: BlockNode): readonly Side[] {
@@ -48,6 +73,8 @@ export function NestedNumericSocket({
   operandLabel,
   rootSideLabel,
   copy,
+  workspace,
+  actors,
   onIntent,
 }: {
   readonly node: BlockNode | undefined;
@@ -60,6 +87,8 @@ export function NestedNumericSocket({
   readonly operandLabel: string;
   readonly rootSideLabel: string;
   readonly copy: StudioUiCopy;
+  readonly workspace: BlockWorkspaceSnapshot;
+  readonly actors: readonly ActorView[];
   readonly onIntent: (intent: Intent) => void;
 }) {
   if (node === undefined) return null;
@@ -69,7 +98,7 @@ export function NestedNumericSocket({
   const canEdit = path.length < MAX_NESTING_DEPTH;
   const canReplace = canEdit && side !== "value";
   const ariaPath = `${label}: ${operandLabel} ${[rootSideLabel, ...path.slice(1), side].join(" ")}`;
-  const choose = (reporter: NestedSource) => {
+  const choose = (reporter: NestedSource, referenceId?: string) => {
     if (!canReplace) return;
     onIntent({
       type: "setArithmeticOperandSource",
@@ -78,6 +107,7 @@ export function NestedNumericSocket({
       path,
       side,
       reporter,
+      ...(referenceId === undefined ? {} : { referenceId }),
     });
   };
   const onDrop = (event: DragEvent<HTMLElement>) => {
@@ -87,19 +117,61 @@ export function NestedNumericSocket({
     if (payload?.kind !== "palette") return;
     const reporter = numericReporterForBlock(payload.blockType);
     if (reporter !== undefined && SOURCES.includes(reporter as NestedSource))
-      choose(reporter as NestedSource);
+      choose(
+        reporter as NestedSource,
+        reporter === "variable"
+          ? workspace.variables?.[0]?.id
+          : reporter === "listLength"
+            ? workspace.lists?.[0]?.id
+            : reporter === "distanceToActor"
+              ? actors[0]?.id
+              : undefined,
+      );
   };
   const children = operandSides(node);
+  const referenceChoices =
+    selectedSource === "variable"
+      ? workspace.variables
+      : selectedSource === "listLength"
+        ? workspace.lists
+        : selectedSource === "distanceToActor"
+          ? actors
+          : undefined;
+  const selectedReference =
+    selectedSource === "variable"
+      ? node.fields?.variableId
+      : selectedSource === "listLength"
+        ? node.fields?.listId
+        : node.fields?.actorId;
   const content = (
     <>
       {canReplace ? (
         <select
           aria-label={`${ariaPath} ${copy.numericSource}`}
           value={selectedSource}
-          onChange={(event) => choose(event.currentTarget.value as NestedSource)}
+          onChange={(event) => {
+            const next = event.currentTarget.value as NestedSource;
+            choose(
+              next,
+              next === "variable"
+                ? workspace.variables?.[0]?.id
+                : next === "listLength"
+                  ? workspace.lists?.[0]?.id
+                  : next === "distanceToActor"
+                    ? actors[0]?.id
+                    : undefined,
+            );
+          }}
           onKeyDown={(event) => event.stopPropagation()}
         >
           <option value="number">{copy.numericLiteral}</option>
+          {workspace.variables?.length ? (
+            <option value="variable">{copy.variableValue}</option>
+          ) : null}
+          {workspace.lists?.length ? <option value="listLength">{copy.listLength}</option> : null}
+          <option value="xPosition">{copy.positionX}</option>
+          <option value="yPosition">{copy.positionY}</option>
+          {actors.length ? <option value="distanceToActor">{copy.distanceToActor}</option> : null}
           <option value="add">{copy.operatorAdd}</option>
           <option value="subtract">{copy.operatorSubtract}</option>
           <option value="multiply">{copy.operatorMultiply}</option>
@@ -107,9 +179,34 @@ export function NestedNumericSocket({
           <option value="modulo">{copy.operatorModulo}</option>
           <option value="random">{copy.operatorRandom}</option>
           <option value="randomInteger">{copy.operatorRandomInteger}</option>
+          <option value="mathFunction">{copy.operatorMathFunction}</option>
           {selectedSource === "other" ? (
             <option value="other">{getBlockDefinition(node.type)?.label ?? node.type}</option>
           ) : null}
+        </select>
+      ) : null}
+      {referenceChoices !== undefined && canReplace ? (
+        <select
+          aria-label={`${ariaPath} ${copy.numericReference}`}
+          value={String(selectedReference ?? "")}
+          onChange={(event) =>
+            choose(
+              selectedSource as "variable" | "listLength" | "distanceToActor",
+              event.currentTarget.value,
+            )
+          }
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          {referenceChoices.some((choice) => choice.id === selectedReference) ? null : (
+            <option value={String(selectedReference ?? "")}>
+              {String(selectedReference ?? "")}
+            </option>
+          )}
+          {referenceChoices.map((choice) => (
+            <option key={choice.id} value={choice.id}>
+              {choice.name}
+            </option>
+          ))}
         </select>
       ) : null}
       {node.type === "literal_number" && typeof node.fields?.value === "number" && canEdit ? (
@@ -147,6 +244,8 @@ export function NestedNumericSocket({
               operandLabel={operandLabel}
               rootSideLabel={rootSideLabel}
               copy={copy}
+              workspace={workspace}
+              actors={actors}
               onIntent={onIntent}
             />
           ))}
