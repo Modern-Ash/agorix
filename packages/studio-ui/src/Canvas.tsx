@@ -1264,6 +1264,48 @@ export function Canvas({
                                       : (["left", "right"] as const)
                                   ).map((nestedSide) => {
                                     const nested = part?.inputs?.[nestedSide];
+                                    const placeNested = (blockType: BlockType) => {
+                                      if (nestedSide === "value") return;
+                                      const reporter = numericReporterForBlock(blockType);
+                                      if (
+                                        reporter === undefined ||
+                                        !(
+                                          [
+                                            "number",
+                                            "add",
+                                            "subtract",
+                                            "multiply",
+                                            "divide",
+                                            "modulo",
+                                            "random",
+                                            "randomInteger",
+                                          ] as readonly string[]
+                                        ).includes(reporter)
+                                      )
+                                        return;
+                                      onIntent({
+                                        type: "setArithmeticOperandSource",
+                                        location: block.location,
+                                        input,
+                                        path: [side],
+                                        side: nestedSide,
+                                        reporter: reporter as Extract<
+                                          Intent,
+                                          { type: "setArithmeticOperandSource" }
+                                        >["reporter"],
+                                      });
+                                    };
+                                    const nestedDrop = {
+                                      onDragOver: (event: DragEvent<HTMLElement>) =>
+                                        event.preventDefault(),
+                                      onDrop: (event: DragEvent<HTMLElement>) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        const source = readSource(event);
+                                        if (source?.kind === "palette")
+                                          placeNested(source.blockType);
+                                      },
+                                    };
                                     if (
                                       nested !== undefined &&
                                       [
@@ -1282,7 +1324,11 @@ export function Canvas({
                                           ? (["min", "max"] as const)
                                           : (["left", "right"] as const);
                                       return (
-                                        <span key={nestedSide} className="block-field">
+                                        <span
+                                          key={nestedSide}
+                                          className="block-field numeric-nested-socket"
+                                          {...nestedDrop}
+                                        >
                                           <span>
                                             {getBlockDefinition(nested.type)?.label ?? nested.type}
                                           </span>
@@ -1385,7 +1431,11 @@ export function Canvas({
                                       return null;
                                     const value = nested.fields.value;
                                     return (
-                                      <label key={nestedSide} className="block-field">
+                                      <label
+                                        key={nestedSide}
+                                        className="block-field numeric-nested-socket"
+                                        {...nestedDrop}
+                                      >
                                         <span>
                                           {nestedSide === "value"
                                             ? copy.mathValue
