@@ -1179,6 +1179,21 @@ describe("canvas keyboard and screen reader behaviour", () => {
       side: "index",
       value: 2,
     });
+    const indexSource = host.querySelector<HTMLSelectElement>(
+      '.numeric-nested-socket select[aria-label*="index source"]',
+    )!;
+    expect(indexSource).not.toBeNull();
+    act(() => {
+      indexSource.value = "variable";
+      indexSource.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      path: ["left", "left"],
+      side: "index",
+      reporter: "variable",
+      referenceId: "score",
+    });
     const fn = host.querySelector<HTMLSelectElement>(
       '.numeric-nested-socket select[aria-label*="Function"]',
     )!;

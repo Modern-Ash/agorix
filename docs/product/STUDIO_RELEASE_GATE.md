@@ -12,6 +12,25 @@
 > component breadth. A learner seeing text rows or missing costume controls is
 > an open product gap even when the shared program and runtime tests pass.
 
+## Issue closure status (2026-11-19)
+
+The completed implementation issues are closed: #1649–#1652 (visual assets,
+blocks, stage and component coverage) and #1619–#1621 plus #1623 (Ori contract,
+adapter, contextual help and proposal review). Merged PRs #1770–#1778 extend
+nested visual editing without reopening those completed tickets.
+
+| Open issue | Remaining acceptance evidence                                                                                                                               |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #1694      | Observe an advanced learner locating Scene, Blocks, Code, Run and Ori without instructions; record usability findings at 900 × 700 and 1440 × 900.          |
+| #1653      | Educator and advanced-learner review of visual comprehension and Ori's proposal boundary. Automated installed-VSIX and Web ↔ Studio ↔ Web checks are green. |
+| #1648      | Parent visual-parity decision after #1694 and #1653, including remaining procedure parameters.                                                              |
+| #1622      | Human pedagogical session recorded in `docs/pedagogy/ORI_STUDIO_PEDAGOGICAL_REVIEW.md`, plus independent review.                                            |
+| #1618      | Parent Ori integration decision after #1622.                                                                                                                |
+
+Do not close a parent or release gate merely because a linked implementation PR
+merged. Record the human evidence, resolve findings, then close each satisfied
+issue with the merge or review evidence linked in its final comment.
+
 ## Visual IDE readiness (#1653)
 
 Semantic compatibility and visual usability are separate release decisions. The

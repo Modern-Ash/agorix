@@ -99,7 +99,7 @@ export function NestedNumericSocket({
   const selectedSource =
     source !== undefined && SOURCES.includes(source as NestedSource) ? source : "other";
   const canEdit = path.length < MAX_NESTING_DEPTH;
-  const canReplace = canEdit && side !== "index";
+  const canReplace = canEdit;
   const ariaPath = `${label}: ${operandLabel} ${[rootSideLabel, ...path.slice(1), side].join(" ")}`;
   const choose = (reporter: NestedSource, referenceId?: string) => {
     if (!canReplace) return;
