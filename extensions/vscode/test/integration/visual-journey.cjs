@@ -279,6 +279,19 @@ async function main() {
       ),
     );
     await webview
+      .locator('.nested-logical-socket select[aria-label*="source"]')
+      .first()
+      .selectOption("literal_boolean");
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) =>
+          statement.type === "if" &&
+          statement.condition?.type === "and" &&
+          statement.condition.right?.type === "not" &&
+          statement.condition.right.value?.type === "booleanLiteral",
+      ),
+    );
+    await webview
       .locator('.nested-logical-socket select[aria-label*="Boolean value"]')
       .selectOption("false");
     await waitForProject((envelope) =>
@@ -300,6 +313,16 @@ async function main() {
           statement.condition?.type === "and" &&
           statement.condition.right?.type === "not" &&
           statement.condition.right.value?.value === true,
+      ),
+    );
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) =>
+          statement.type === "if" &&
+          statement.condition?.type === "and" &&
+          statement.condition.right?.type === "not" &&
+          statement.condition.right.value?.type === "touchingGoal",
       ),
     );
     await webview.getByRole("button", { name: "Undo change" }).click();
