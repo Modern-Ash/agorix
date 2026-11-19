@@ -33,6 +33,9 @@ for (const name of Object.getOwnPropertyNames(dom.window)) {
 Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
 Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+// React's legacy input polyfill calls these browser-only hooks after a focused input blurs.
+Object.defineProperty(dom.window.HTMLElement.prototype, "attachEvent", { value: () => undefined });
+Object.defineProperty(dom.window.HTMLElement.prototype, "detachEvent", { value: () => undefined });
 
 const program = {
   schema: "agorix/program/v1",
@@ -3475,6 +3478,26 @@ describe("workbench live region and focus after inserting from the palette", () 
     act(() => build.click());
     expect(host.querySelector<HTMLElement>(".studio-program")?.hidden).toBe(false);
     expect(host.querySelector<HTMLElement>(".studio-evidence")?.hidden).toBe(true);
+  });
+
+  it("moves keyboard focus into a compact category and returns it on Escape", () => {
+    const bridge: HostBridge = { post: () => undefined, subscribe: () => () => undefined };
+    act(() => root.render(<Workbench bridge={bridge} locale="es" />));
+    const opener = host.querySelector<HTMLButtonElement>(
+      '.studio-component-launcher button[data-tone="operators"]',
+    )!;
+    act(() => opener.click());
+    const search = host.querySelector<HTMLInputElement>(".palette-search input")!;
+    expect(document.activeElement).toBe(search);
+    expect(host.querySelector<HTMLElement>(".workbench")?.dataset.toolsOpen).toBe("true");
+    act(() =>
+      search.dispatchEvent(
+        new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      ),
+    );
+    expect(host.querySelector<HTMLElement>(".workbench")?.dataset.toolsOpen).toBe("false");
+    expect(document.activeElement).toBe(opener);
+    expect(opener.getAttribute("aria-expanded")).toBe("false");
   });
   it("resizes Ori by keyboard within editor-safe bounds and restores the default", () => {
     const bridge: HostBridge = { post: () => undefined, subscribe: () => () => undefined };
