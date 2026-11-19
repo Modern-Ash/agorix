@@ -800,6 +800,45 @@ describe("studio-protocol", () => {
       parseUiMessage({
         schema,
         type: "intent",
+        intent: {
+          type: "setLogicalOperand",
+          location,
+          path: ["right"],
+          side: "value",
+          blockType: "operator_not",
+        },
+      }),
+    ).toMatchObject({ intent: { path: ["right"], blockType: "operator_not" } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setLogicalOperand",
+          location,
+          path: ["middle"],
+          side: "value",
+          blockType: "operator_not",
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setLogicalBoolean",
+          location,
+          path: ["right", "value"],
+          side: "left",
+          value: false,
+        },
+      }),
+    ).toMatchObject({ intent: { path: ["right", "value"], value: false } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
         intent: { type: "setLogicalBoolean", location, side: "value", value: false },
       }),
     ).toMatchObject({ intent: { value: false } });

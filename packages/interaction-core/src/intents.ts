@@ -44,6 +44,9 @@ export const STUDIO_LOGICAL_OPERAND_TYPES = [
   "operator_less_or_equal",
   "operator_greater_or_equal",
   "operator_equals",
+  "operator_and",
+  "operator_or",
+  "operator_not",
 ] as const satisfies readonly BlockType[];
 
 export const STUDIO_COMPARISON_BLOCK_TYPES = [
@@ -213,6 +216,7 @@ export type Intent =
       readonly type: "setLogicalOperand";
       readonly location: StatementLocation;
       readonly side: "left" | "right" | "value";
+      readonly path?: readonly ("left" | "right" | "value")[];
       readonly blockType: (typeof STUDIO_LOGICAL_OPERAND_TYPES)[number];
       readonly actorId?: string;
     }
@@ -220,12 +224,14 @@ export type Intent =
       readonly type: "setLogicalActor";
       readonly location: StatementLocation;
       readonly side: "left" | "right" | "value";
+      readonly path?: readonly ("left" | "right" | "value")[];
       readonly actorId: string;
     }
   | {
       readonly type: "setLogicalBoolean";
       readonly location: StatementLocation;
       readonly side: "left" | "right" | "value";
+      readonly path?: readonly ("left" | "right" | "value")[];
       readonly value: boolean;
     }
   | {
@@ -1208,7 +1214,22 @@ export function intentToChange(
     case "setLogicalActor": {
       if (workspace === undefined) return undefined;
       const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
-      const condition = block?.inputs?.condition;
+      const rootCondition = block?.inputs?.condition;
+      if (rootCondition === undefined || Array.isArray(rootCondition)) return undefined;
+      const path = intent.path ?? [];
+      if (path.length > MAX_NESTING_DEPTH) return undefined;
+      let condition: BlockNode | undefined = rootCondition;
+      const parents: { condition: BlockNode; side: string }[] = [];
+      for (const side of path) {
+        if (
+          condition === undefined ||
+          !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
+          (condition.type === "operator_not" ? side !== "value" : side === "value")
+        )
+          return undefined;
+        parents.push({ condition, side });
+        condition = condition.inputs?.[side as "left" | "right" | "value"];
+      }
       if (
         (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
         condition === undefined ||
@@ -1263,6 +1284,14 @@ export function intentToChange(
                   : { actorId: intent.actorId }),
               },
             };
+      const nextCondition = { ...condition, inputs: { ...condition.inputs, [intent.side]: next } };
+      const nextRoot = parents.reduceRight<BlockNode>(
+        (child, parent) => ({
+          ...parent.condition,
+          inputs: { ...parent.condition.inputs, [parent.side]: child },
+        }),
+        nextCondition,
+      );
       return {
         type: "editBlock",
         location: intent.location,
@@ -1270,7 +1299,7 @@ export function intentToChange(
           ...block,
           inputs: {
             ...block.inputs,
-            condition: { ...condition, inputs: { ...condition.inputs, [intent.side]: next } },
+            condition: nextRoot,
           },
         },
       };

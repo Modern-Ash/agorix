@@ -250,6 +250,70 @@ async function main() {
       JSON.parse(beforeFinding).project.program,
     );
     console.log("Reviewed a pre-play loop finding and Ori's counts-only explanation");
+    await webview.locator('.palette button[aria-label="if condition then"]').click();
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some((statement) => statement.type === "if"),
+    );
+    await componentLauncher.getByRole("button", { name: "Operators" }).click();
+    await webview.locator('.palette button[aria-label="and"]').click();
+    await webview.locator(".expression-socket").last().click();
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) => statement.type === "if" && statement.condition?.type === "and",
+      ),
+    );
+    await webview
+      .locator('.logical-fields select[aria-label="Condition: right source"]')
+      .selectOption("operator_not");
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) =>
+          statement.type === "if" &&
+          statement.condition?.type === "and" &&
+          statement.condition.right?.type === "not",
+      ),
+    );
+    await webview
+      .locator('.nested-logical-socket select[aria-label*="Boolean value"]')
+      .selectOption("false");
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) =>
+          statement.type === "if" &&
+          statement.condition?.type === "and" &&
+          statement.condition.right?.type === "not" &&
+          statement.condition.right.value?.type === "booleanLiteral" &&
+          statement.condition.right.value.value === false,
+      ),
+    );
+    console.log("Composed a nested visual Boolean condition in the packaged VSIX");
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) =>
+          statement.type === "if" &&
+          statement.condition?.type === "and" &&
+          statement.condition.right?.type === "not" &&
+          statement.condition.right.value?.value === true,
+      ),
+    );
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) =>
+          statement.type === "if" &&
+          statement.condition?.type === "and" &&
+          statement.condition.right?.type !== "not",
+      ),
+    );
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project.program.scripts[0].statements.some(
+        (statement) => statement.type === "if" && statement.condition?.type !== "and",
+      ),
+    );
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) => envelope.project.program.scripts[0].statements.length === 6);
     const resize = webview.locator(".studio-ori-resize");
     const resizeBounds = await resize.boundingBox();
     if (!resizeBounds) throw new Error("Ori resize handle is not visible");
