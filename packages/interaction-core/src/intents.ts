@@ -318,7 +318,7 @@ export type Intent =
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max" | "value";
       readonly value: number;
-      readonly path?: readonly ("left" | "right" | "min" | "max")[];
+      readonly path?: readonly ("left" | "right" | "min" | "max" | "value")[];
     }
   | {
       readonly type: "setArithmeticOperandSource";
@@ -859,33 +859,25 @@ export function intentToChange(
       };
       if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
       const rootExpression = block.inputs?.[intent.input];
-      if (
-        intent.path !== undefined &&
-        (intent.path.length !== 1 || rootExpression === undefined || Array.isArray(rootExpression))
-      )
-        return undefined;
-      const parentSide = intent.path?.[0];
-      if (
-        parentSide !== undefined &&
-        rootExpression !== undefined &&
-        !Array.isArray(rootExpression)
-      ) {
-        const rootRange =
-          rootExpression.type === "operator_random" ||
-          rootExpression.type === "operator_random_integer";
-        if (
-          rootRange
-            ? parentSide !== "min" && parentSide !== "max"
-            : parentSide !== "left" && parentSide !== "right"
-        )
-          return undefined;
+      if (rootExpression === undefined || Array.isArray(rootExpression)) return undefined;
+      const path = intent.path ?? [];
+      if (path.length > 3) return undefined;
+      let expression: typeof rootExpression | undefined = rootExpression;
+      const parents: { expression: typeof rootExpression; side: string }[] = [];
+      for (const side of path) {
+        if (expression === undefined || Array.isArray(expression)) return undefined;
+        const allowed: readonly string[] =
+          expression.type === "operator_math_function"
+            ? ["value"]
+            : expression.type === "operator_random" || expression.type === "operator_random_integer"
+              ? ["min", "max"]
+              : ["left", "right"];
+        if (!allowed.includes(side)) return undefined;
+        parents.push({ expression, side });
+        const child: typeof rootExpression | readonly (typeof rootExpression)[] | undefined =
+          expression.inputs?.[side];
+        expression = child === undefined || Array.isArray(child) ? undefined : child;
       }
-      const expression =
-        parentSide === undefined
-          ? rootExpression
-          : rootExpression !== undefined && !Array.isArray(rootExpression)
-            ? rootExpression.inputs?.[parentSide]
-            : undefined;
       if (
         expression === undefined ||
         Array.isArray(expression) ||
@@ -921,13 +913,13 @@ export function intentToChange(
           [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
         },
       };
-      const nextRoot =
-        parentSide === undefined
-          ? nextExpression
-          : {
-              ...rootExpression,
-              inputs: { ...rootExpression?.inputs, [parentSide]: nextExpression },
-            };
+      const nextRoot = parents.reduceRight<typeof rootExpression>(
+        (child, parent) => ({
+          ...parent.expression,
+          inputs: { ...parent.expression.inputs, [parent.side]: child },
+        }),
+        nextExpression,
+      );
       return {
         type: "editBlock",
         location: intent.location,

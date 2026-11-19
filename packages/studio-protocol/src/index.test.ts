@@ -1036,6 +1036,20 @@ describe("studio-protocol", () => {
           value: 6,
         },
       }),
+    ).toMatchObject({ intent: { path: ["left", "right"], value: 6 } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left", "right", "left", "right"],
+          side: "left",
+          value: 6,
+        },
+      }),
     ).toBeUndefined();
     expect(
       parseUiMessage({ schema, type: "intent", intent: { ...nested, referenceId: "../bad" } }),

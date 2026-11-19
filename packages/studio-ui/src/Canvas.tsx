@@ -1265,6 +1265,76 @@ export function Canvas({
                                   ).map((nestedSide) => {
                                     const nested = part?.inputs?.[nestedSide];
                                     if (
+                                      nested !== undefined &&
+                                      [
+                                        "operator_add",
+                                        "operator_subtract",
+                                        "operator_multiply",
+                                        "operator_divide",
+                                        "operator_modulo",
+                                        "operator_random",
+                                        "operator_random_integer",
+                                      ].includes(nested.type)
+                                    ) {
+                                      const deepSides =
+                                        nested.type === "operator_random" ||
+                                        nested.type === "operator_random_integer"
+                                          ? (["min", "max"] as const)
+                                          : (["left", "right"] as const);
+                                      return (
+                                        <span key={nestedSide} className="block-field">
+                                          <span>
+                                            {getBlockDefinition(nested.type)?.label ?? nested.type}
+                                          </span>
+                                          {deepSides.map((deepSide) => {
+                                            const deep = nested.inputs?.[deepSide];
+                                            if (
+                                              deep?.type !== "literal_number" ||
+                                              typeof deep.fields?.value !== "number"
+                                            )
+                                              return null;
+                                            const value = deep.fields.value;
+                                            return (
+                                              <label key={deepSide} className="block-field">
+                                                <span>{deepSide}</span>
+                                                <input
+                                                  key={`${pos}:${input}:${side}:${nestedSide}:${deepSide}:${value}`}
+                                                  type="number"
+                                                  aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide} ${deepSide}`}
+                                                  defaultValue={value}
+                                                  draggable={false}
+                                                  onDragStart={(event) => event.stopPropagation()}
+                                                  onKeyDown={(event) => {
+                                                    event.stopPropagation();
+                                                    if (event.key === "Enter")
+                                                      event.currentTarget.blur();
+                                                  }}
+                                                  onBlur={(event) => {
+                                                    const raw = event.currentTarget.value.trim();
+                                                    const next = Number(raw);
+                                                    if (
+                                                      raw !== "" &&
+                                                      Number.isFinite(next) &&
+                                                      next !== value
+                                                    )
+                                                      onIntent({
+                                                        type: "setArithmeticOperand",
+                                                        location: block.location,
+                                                        input,
+                                                        path: [side, nestedSide],
+                                                        side: deepSide,
+                                                        value: next,
+                                                      });
+                                                    event.currentTarget.value = String(value);
+                                                  }}
+                                                />
+                                              </label>
+                                            );
+                                          })}
+                                        </span>
+                                      );
+                                    }
+                                    if (
                                       nested?.type !== "literal_number" ||
                                       typeof nested.fields?.value !== "number"
                                     )

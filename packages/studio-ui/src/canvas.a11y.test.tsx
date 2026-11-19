@@ -929,6 +929,54 @@ describe("canvas keyboard and screen reader behaviour", () => {
       value: 6,
     });
   });
+  it("exposes a third arithmetic level for explicit numeric editing", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: {
+                    type: "subtract",
+                    left: { type: "numericLiteral", value: 8 },
+                    right: { type: "numericLiteral", value: 2 },
+                  },
+                  right: { type: "numericLiteral", value: 3 },
+                },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const deep = host.querySelector<HTMLInputElement>(
+      '.numeric-socket input[aria-label*="Left value left left"]',
+    );
+    expect(deep).not.toBeNull();
+    act(() => {
+      deep!.value = "9";
+      deep!.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperand",
+      input: "value",
+      path: ["left", "left"],
+      side: "left",
+      value: 9,
+    });
+  });
   it("edits a math function nested in a visual arithmetic block", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

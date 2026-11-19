@@ -1630,6 +1630,69 @@ describe("interaction-core", () => {
       ),
     ).toBeDefined();
   });
+  it("edits a third nested arithmetic literal and rejects an invalid path", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: {
+                    type: "subtract",
+                    left: { type: "numericLiteral", value: 8 },
+                    right: { type: "numericLiteral", value: 2 },
+                  },
+                  right: { type: "numericLiteral", value: 3 },
+                },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const edit = intentToChange(
+      {
+        type: "setArithmeticOperand",
+        location,
+        input: "value",
+        path: ["left", "left"],
+        side: "right",
+        value: 5,
+      },
+      newId,
+      workspace,
+    );
+    expect(edit).toBeDefined();
+    const changed = applyWorkspaceChange(workspace, edit!);
+    expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+      value: { left: { left: { right: { value: 5 } } } },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["right", "left"],
+          side: "left",
+          value: 5,
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("creates and edits a math function through a canonical numeric socket", () => {
     const workspace = applyWorkspaceChange(createStarterWorkspace(), {
       type: "addBlock",
