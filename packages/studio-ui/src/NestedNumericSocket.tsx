@@ -12,11 +12,12 @@ import { parseDragPayload } from "./drag.js";
 import type { StudioUiCopy } from "./i18n.js";
 import { numericReporterForBlock } from "./numericPalette.js";
 
-type Side = "left" | "right" | "min" | "max" | "value";
+type Side = "left" | "right" | "min" | "max" | "value" | "index";
 type NestedSource =
   | "number"
   | "variable"
   | "listLength"
+  | "listItem"
   | "xPosition"
   | "yPosition"
   | "distanceToActor"
@@ -33,6 +34,7 @@ const SOURCES: readonly NestedSource[] = [
   "number",
   "variable",
   "listLength",
+  "listItem",
   "xPosition",
   "yPosition",
   "distanceToActor",
@@ -47,6 +49,7 @@ const SOURCES: readonly NestedSource[] = [
 ];
 
 function operandSides(node: BlockNode): readonly Side[] {
+  if (node.type === "lists_item") return ["index"];
   if (node.type === "operator_random" || node.type === "operator_random_integer")
     return ["min", "max"];
   if (node.type === "operator_math_function") return ["value"];
@@ -96,7 +99,7 @@ export function NestedNumericSocket({
   const selectedSource =
     source !== undefined && SOURCES.includes(source as NestedSource) ? source : "other";
   const canEdit = path.length < MAX_NESTING_DEPTH;
-  const canReplace = canEdit && side !== "value";
+  const canReplace = canEdit && side !== "value" && side !== "index";
   const ariaPath = `${label}: ${operandLabel} ${[rootSideLabel, ...path.slice(1), side].join(" ")}`;
   const choose = (reporter: NestedSource, referenceId?: string) => {
     if (!canReplace) return;
@@ -121,7 +124,7 @@ export function NestedNumericSocket({
         reporter as NestedSource,
         reporter === "variable"
           ? workspace.variables?.[0]?.id
-          : reporter === "listLength"
+          : reporter === "listLength" || reporter === "listItem"
             ? workspace.lists?.[0]?.id
             : reporter === "distanceToActor"
               ? actors[0]?.id
@@ -132,7 +135,7 @@ export function NestedNumericSocket({
   const referenceChoices =
     selectedSource === "variable"
       ? workspace.variables
-      : selectedSource === "listLength"
+      : selectedSource === "listLength" || selectedSource === "listItem"
         ? workspace.lists
         : selectedSource === "distanceToActor"
           ? actors
@@ -140,7 +143,7 @@ export function NestedNumericSocket({
   const selectedReference =
     selectedSource === "variable"
       ? node.fields?.variableId
-      : selectedSource === "listLength"
+      : selectedSource === "listLength" || selectedSource === "listItem"
         ? node.fields?.listId
         : node.fields?.actorId;
   const content = (
@@ -155,7 +158,7 @@ export function NestedNumericSocket({
               next,
               next === "variable"
                 ? workspace.variables?.[0]?.id
-                : next === "listLength"
+                : next === "listLength" || next === "listItem"
                   ? workspace.lists?.[0]?.id
                   : next === "distanceToActor"
                     ? actors[0]?.id
@@ -169,6 +172,7 @@ export function NestedNumericSocket({
             <option value="variable">{copy.variableValue}</option>
           ) : null}
           {workspace.lists?.length ? <option value="listLength">{copy.listLength}</option> : null}
+          {workspace.lists?.length ? <option value="listItem">{copy.listItem}</option> : null}
           <option value="xPosition">{copy.positionX}</option>
           <option value="yPosition">{copy.positionY}</option>
           {actors.length ? <option value="distanceToActor">{copy.distanceToActor}</option> : null}
@@ -191,7 +195,7 @@ export function NestedNumericSocket({
           value={String(selectedReference ?? "")}
           onChange={(event) =>
             choose(
-              selectedSource as "variable" | "listLength" | "distanceToActor",
+              selectedSource as "variable" | "listLength" | "listItem" | "distanceToActor",
               event.currentTarget.value,
             )
           }
@@ -207,6 +211,28 @@ export function NestedNumericSocket({
               {choice.name}
             </option>
           ))}
+        </select>
+      ) : null}
+      {node.type === "operator_math_function" && canReplace ? (
+        <select
+          aria-label={`${ariaPath} ${copy.mathFunction}`}
+          value={String(node.fields?.function ?? "abs")}
+          onChange={(event) =>
+            onIntent({
+              type: "setArithmeticMathFunction",
+              location,
+              input,
+              path,
+              side,
+              function: event.currentTarget.value as "abs" | "round" | "floor" | "ceiling",
+            })
+          }
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <option value="abs">{copy.mathAbs}</option>
+          <option value="round">{copy.mathRound}</option>
+          <option value="floor">{copy.mathFloor}</option>
+          <option value="ceiling">{copy.mathCeiling}</option>
         </select>
       ) : null}
       {node.type === "literal_number" && typeof node.fields?.value === "number" && canEdit ? (

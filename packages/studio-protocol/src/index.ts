@@ -1648,22 +1648,24 @@ function parseIntent(value: unknown): Intent | undefined {
       const path = value["path"];
       return location !== undefined &&
         (value["input"] === "value" || value["input"] === "delta" || value["input"] === "index") &&
-        (["left", "right", "min", "max", "value"] as unknown[]).includes(value["side"]) &&
+        (["left", "right", "min", "max", "value", "index"] as unknown[]).includes(value["side"]) &&
         isFiniteNumber(value["value"]) &&
         (path === undefined ||
           (Array.isArray(path) &&
             path.length >= 1 &&
             path.length <= MAX_NESTING_DEPTH &&
-            path.every((side) => ["left", "right", "min", "max", "value"].includes(side))))
+            path.every((side) => ["left", "right", "min", "max", "value", "index"].includes(side))))
         ? {
             type: "setArithmeticOperand",
             location,
             input: value["input"],
-            side: value["side"] as "left" | "right" | "min" | "max" | "value",
+            side: value["side"] as "left" | "right" | "min" | "max" | "value" | "index",
             value: value["value"],
             ...(path === undefined
               ? {}
-              : { path: path as ("left" | "right" | "min" | "max" | "value")[] }),
+              : {
+                  path: path as ("left" | "right" | "min" | "max" | "value" | "index")[],
+                }),
           }
         : undefined;
     }
@@ -1682,10 +1684,13 @@ function parseIntent(value: unknown): Intent | undefined {
           (!Array.isArray(path) ||
             path.length < 1 ||
             path.length > MAX_NESTING_DEPTH ||
-            !path.every((side) => ["left", "right", "min", "max", "value"].includes(side)))) ||
+            !path.every((side) =>
+              ["left", "right", "min", "max", "value", "index"].includes(side),
+            ))) ||
         (reporter !== "number" &&
           reporter !== "variable" &&
           reporter !== "listLength" &&
+          reporter !== "listItem" &&
           reporter !== "xPosition" &&
           reporter !== "yPosition" &&
           reporter !== "distanceToActor" &&
@@ -1699,7 +1704,12 @@ function parseIntent(value: unknown): Intent | undefined {
           reporter !== "mathFunction")
       )
         return undefined;
-      if (reporter === "variable" || reporter === "listLength" || reporter === "distanceToActor") {
+      if (
+        reporter === "variable" ||
+        reporter === "listLength" ||
+        reporter === "listItem" ||
+        reporter === "distanceToActor"
+      ) {
         if (!isSafeId(referenceId)) return undefined;
       } else if (referenceId !== undefined) return undefined;
       return {
@@ -1709,7 +1719,7 @@ function parseIntent(value: unknown): Intent | undefined {
         side,
         ...(path === undefined
           ? {}
-          : { path: path as ("left" | "right" | "min" | "max" | "value")[] }),
+          : { path: path as ("left" | "right" | "min" | "max" | "value" | "index")[] }),
         reporter,
         ...(typeof referenceId === "string" ? { referenceId } : {}),
       };
@@ -1718,12 +1728,37 @@ function parseIntent(value: unknown): Intent | undefined {
       const location = parseLocation(value["location"]);
       const input = value["input"];
       const side = value["side"];
+      const path = value["path"];
       const fn = value["function"];
       return location !== undefined &&
         (input === "value" || input === "delta" || input === "index") &&
         (side === "left" || side === "right" || side === "min" || side === "max") &&
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length >= 1 &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every(
+              (step) =>
+                step === "left" ||
+                step === "right" ||
+                step === "min" ||
+                step === "max" ||
+                step === "value" ||
+                step === "index",
+            ))) &&
         (fn === "abs" || fn === "round" || fn === "floor" || fn === "ceiling")
-        ? { type: "setArithmeticMathFunction", location, input, side, function: fn }
+        ? {
+            type: "setArithmeticMathFunction",
+            location,
+            input,
+            side,
+            function: fn,
+            ...(path === undefined
+              ? {}
+              : {
+                  path: path as ("left" | "right" | "min" | "max" | "value" | "index")[],
+                }),
+          }
         : undefined;
     }
     case "setNumericField": {

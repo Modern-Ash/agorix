@@ -1106,6 +1106,17 @@ describe("canvas keyboard and screen reader behaviour", () => {
       referenceId: "inventory",
     });
     act(() => {
+      source.value = "listItem";
+      source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      path: ["left"],
+      side: "left",
+      reporter: "listItem",
+      referenceId: "inventory",
+    });
+    act(() => {
       source.value = "distanceToActor";
       source.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
     });
@@ -1115,6 +1126,72 @@ describe("canvas keyboard and screen reader behaviour", () => {
       side: "left",
       reporter: "distanceToActor",
       referenceId: "actor:friend",
+    });
+  });
+  it("shows list index and math function controls inside nested arithmetic", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      lists: [{ id: "items", name: "Items", initialItems: [3, 4], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: {
+                    type: "listItem",
+                    listId: "items",
+                    index: { type: "numericLiteral", value: 1 },
+                  },
+                  right: {
+                    type: "mathFunction",
+                    function: "abs",
+                    value: { type: "numericLiteral", value: 2 },
+                  },
+                },
+                right: { type: "numericLiteral", value: 5 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const index = host.querySelector<HTMLInputElement>(
+      '.numeric-nested-socket input[aria-label*="left index"]',
+    )!;
+    expect(index.value).toBe("1");
+    act(() => {
+      index.value = "2";
+      index.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperand",
+      path: ["left", "left"],
+      side: "index",
+      value: 2,
+    });
+    const fn = host.querySelector<HTMLSelectElement>(
+      '.numeric-nested-socket select[aria-label*="Function"]',
+    )!;
+    expect(fn.value).toBe("abs");
+    act(() => {
+      fn.value = "round";
+      fn.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticMathFunction",
+      path: ["left"],
+      side: "right",
+      function: "round",
     });
   });
   it("reveals and edits a fourth arithmetic level through a disclosure", () => {
