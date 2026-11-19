@@ -929,6 +929,23 @@ async function main() {
       .locator(".studio-shell-actions button")
       .filter({ hasText: "Show tools" });
     if (await showProcedureTools.isVisible()) await showProcedureTools.click();
+    const narrowLayout = await webview.locator(".workbench").evaluate((shell) => ({
+      shell: shell.getBoundingClientRect().width,
+      main: shell.querySelector(".studio-main")?.getBoundingClientRect().width ?? 0,
+      program: shell.querySelector(".studio-program")?.getBoundingClientRect().width ?? 0,
+    }));
+    if (narrowLayout.main < Math.min(420, narrowLayout.shell * 0.55) || narrowLayout.program < 280)
+      throw new Error(
+        `Tools drawer left the central editor too narrow: ${JSON.stringify(narrowLayout)}`,
+      );
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const wideLayout = await webview.locator(".workbench").evaluate((shell) => ({
+      main: shell.querySelector(".studio-main")?.getBoundingClientRect().width ?? 0,
+      program: shell.querySelector(".studio-program")?.getBoundingClientRect().width ?? 0,
+    }));
+    if (wideLayout.main < 420 || wideLayout.program < 280)
+      throw new Error(`Wide editor layout lost the central canvas: ${JSON.stringify(wideLayout)}`);
+    await page.setViewportSize({ width: 900, height: 700 });
     await webview.locator(".procedure-tools summary").click();
     await webview.locator('.procedure-tools form input[type="number"]').fill("1");
     await webview.locator(".procedure-tools form input:not([type])").fill("Bell action");

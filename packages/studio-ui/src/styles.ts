@@ -2,6 +2,7 @@
 export const WORKBENCH_CSS = `
 :root { color-scheme: light dark; }
 body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
+#root { container-type: inline-size; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .workbench { display: grid; grid-template-columns: minmax(160px, 220px) 1fr minmax(220px, 300px); gap: 12px; padding: 12px; }
 .workbench[data-density="compact"] { grid-template-columns: minmax(140px, 180px) 1fr minmax(200px, 260px); gap: 8px; padding: 8px; font-size: 0.95em; }
@@ -532,5 +533,25 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 @media (min-width: 761px) and (max-width: 1100px) { .workbench[data-workspace-view="build"] .studio-program .block { gap: 4px; padding: 5px 6px; } .workbench[data-workspace-view="build"] .studio-program .block::before { flex-basis: 14px; } .workbench[data-workspace-view="build"] .studio-program .block .label { flex: 0 1 auto; min-width: 40px; } .workbench[data-workspace-view="build"] .studio-program .block-field { flex-basis: 58px; } .workbench[data-workspace-view="build"] .studio-program .block-field input { width: 56px; } .workbench[data-workspace-view="build"] .studio-program .block button { flex-basis: 24px; min-width: 24px; } .workbench[data-workspace-view="build"] .studio-program .block button.block-ori { flex-basis: 30px; min-width: 30px; } }
 @media (max-width: 760px) { .workbench, .workbench[data-density="compact"], .workbench[data-tools-open="false"], .workbench[data-ori-open="false"] { grid-template-columns: minmax(0, 1fr); } .studio-tools, .studio-main, .studio-ori-dock, .workbench[data-tools-open="false"] .studio-main, .workbench[data-tools-open="false"] .studio-ori-dock { grid-column: 1; } .studio-tools { position: static; max-height: 230px; } .studio-tools .palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; } .studio-tools .palette-search { grid-column: 1 / -1; } .studio-ori-dock { position: static; height: auto; max-height: 420px; } .studio-ori-resize { display: none; } }
 @media (max-width: 700px) { .studio-banner { align-items: center; } .studio-banner p { display: none; } .studio-shell-actions { width: 100%; margin-left: 0; } .studio-shell-actions button { flex: 1; } .workbench[data-workspace-view="scene"] .studio-main { grid-template-columns: minmax(0, 1fr); } .workbench[data-workspace-view="scene"] .studio-play, .studio-scene-editor { grid-column: 1; } .studio-scene-editor { max-height: none; border-left: 0; border-top: 1px solid var(--vscode-panel-border); } }
+/* VS Code's editor group can be much narrower than its window. Size the shell from the webview. */
+@container (min-width: 761px) and (max-width: 1100px) {
+  .workbench, .workbench[data-density="compact"], .workbench[data-tools-open="false"] { --ori-width: 210px; grid-template-columns: minmax(0, 1fr) var(--ori-width); }
+  .workbench[data-ori-open="false"], .workbench[data-ori-open="false"][data-tools-open="false"] { grid-template-columns: minmax(0, 1fr); }
+  .workbench .studio-main { grid-column: 1; }
+  .workbench .studio-ori-dock, .workbench[data-tools-open="false"] .studio-ori-dock { grid-column: 2; }
+  .workbench .studio-tools { position: fixed; z-index: 10; top: 96px; right: var(--ori-width); width: 220px; height: calc(100vh - 96px); box-sizing: border-box; box-shadow: -8px 0 22px #0004; }
+  .workbench[data-ori-open="false"] .studio-tools { right: 0; }
+}
+@container (max-width: 760px) {
+  .workbench, .workbench[data-density="compact"], .workbench[data-tools-open="false"], .workbench[data-ori-open="false"] { grid-template-columns: minmax(0, 1fr); }
+  .workbench .studio-main, .workbench .studio-ori-dock { grid-column: 1; }
+  .workbench .studio-tools { position: fixed; z-index: 10; top: 96px; left: 0; right: auto; width: min(280px, 92vw); height: calc(100vh - 96px); max-height: none; box-sizing: border-box; box-shadow: 8px 0 22px #0004; }
+  .workbench .studio-ori-dock { position: static; height: auto; max-height: 420px; }
+  .workbench .studio-ori-resize { display: none; }
+  .workbench[data-workspace-view="build"] .studio-main, .workbench[data-workspace-view="scene"] .studio-main { grid-template-columns: minmax(0, 1fr); }
+  .workbench[data-workspace-view="build"] .studio-program, .workbench[data-workspace-view="build"] .studio-play, .workbench[data-workspace-view="scene"] .studio-play, .workbench .studio-scene-editor { grid-column: 1; grid-row: auto; }
+  .workbench[data-workspace-view="build"] .studio-program { min-height: 220px; max-height: none; }
+  .workbench .studio-scene-editor { max-height: none; border-left: 0; border-top: 1px solid var(--vscode-panel-border); }
+}
 @media (prefers-reduced-motion: reduce) { .slot, .stage-goal, .stage-sprite { transition: none; } }
 `;
