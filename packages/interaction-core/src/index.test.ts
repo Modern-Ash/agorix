@@ -1369,6 +1369,77 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("edits a comparison inside nested logic without changing sibling conditions", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: { type: "booleanLiteral", value: true },
+                right: {
+                  type: "not",
+                  value: {
+                    type: "lessThan",
+                    left: { type: "numericLiteral", value: 2 },
+                    right: { type: "numericLiteral", value: 10 },
+                  },
+                },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const edit = intentToChange(
+      {
+        type: "setLogicalComparisonNumber",
+        location,
+        path: ["right"],
+        side: "value",
+        operand: "left",
+        value: 7,
+      },
+      newId,
+      workspace,
+    );
+    expect(applyWorkspaceChange(workspace, edit!).program.scripts[0]?.statements[0]).toMatchObject({
+      condition: {
+        type: "and",
+        left: { type: "booleanLiteral", value: true },
+        right: {
+          type: "not",
+          value: {
+            type: "lessThan",
+            left: { type: "numericLiteral", value: 7 },
+            right: { type: "numericLiteral", value: 10 },
+          },
+        },
+      },
+    });
+    for (const path of [["left"], ["value"], Array(21).fill("right")])
+      expect(
+        intentToChange(
+          {
+            type: "setLogicalComparisonNumber",
+            location,
+            path: path as ("left" | "right" | "value")[],
+            side: "value",
+            operand: "left",
+            value: 7,
+          },
+          newId,
+          workspace,
+        ),
+      ).toBeUndefined();
+  });
   it("creates named variables and edits only valid numeric variable inputs", () => {
     const empty = createStarterWorkspace();
     const added = intentToChange({ type: "addVariable", name: "energy" }, newId, empty);

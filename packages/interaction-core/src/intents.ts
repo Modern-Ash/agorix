@@ -69,6 +69,48 @@ export const STUDIO_COMPARISON_OPERAND_SOURCES = [
   "mathFunction",
 ] as const;
 
+type LogicalSide = "left" | "right" | "value";
+
+function logicalComparisonAt(root: BlockNode, path: readonly LogicalSide[], side: LogicalSide) {
+  if (path.length > MAX_NESTING_DEPTH) return undefined;
+  let parent: BlockNode = root;
+  const ancestors: { node: BlockNode; side: LogicalSide }[] = [];
+  for (const step of path) {
+    if (!isLogicalSide(parent, step)) return undefined;
+    const child = parent.inputs?.[step];
+    if (child === undefined || Array.isArray(child)) return undefined;
+    ancestors.push({ node: parent, side: step });
+    parent = child;
+  }
+  if (!isLogicalSide(parent, side)) return undefined;
+  const comparison = parent.inputs?.[side];
+  if (
+    comparison === undefined ||
+    Array.isArray(comparison) ||
+    !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(comparison.type)
+  )
+    return undefined;
+  return {
+    comparison,
+    replace(next: BlockNode): BlockNode {
+      const updated = { ...parent, inputs: { ...parent.inputs, [side]: next } };
+      return ancestors.reduceRight<BlockNode>(
+        (child, ancestor) => ({
+          ...ancestor.node,
+          inputs: { ...ancestor.node.inputs, [ancestor.side]: child },
+        }),
+        updated,
+      );
+    },
+  };
+}
+
+function isLogicalSide(node: BlockNode, side: LogicalSide): boolean {
+  return node.type === "operator_not"
+    ? side === "value"
+    : (node.type === "operator_and" || node.type === "operator_or") && side !== "value";
+}
+
 function statementsAt(
   workspace: BlockWorkspaceSnapshot,
   container: StatementContainerPath,
@@ -200,6 +242,7 @@ export type Intent =
       readonly location: StatementLocation;
       readonly side: "left" | "right";
       readonly logicalSide?: "left" | "right" | "value";
+      readonly path?: readonly ("left" | "right" | "value")[];
       readonly function: MathFunction;
     }
   | {
@@ -237,6 +280,7 @@ export type Intent =
   | {
       readonly type: "setLogicalComparisonNumber";
       readonly location: StatementLocation;
+      readonly path?: readonly ("left" | "right" | "value")[];
       readonly side: "left" | "right" | "value";
       readonly operand: "left" | "right";
       readonly value: number;
@@ -244,6 +288,7 @@ export type Intent =
   | {
       readonly type: "setLogicalComparisonSource";
       readonly location: StatementLocation;
+      readonly path?: readonly ("left" | "right" | "value")[];
       readonly side: "left" | "right" | "value";
       readonly operand: "left" | "right";
       readonly source: (typeof STUDIO_COMPARISON_OPERAND_SOURCES)[number];
@@ -252,6 +297,7 @@ export type Intent =
   | {
       readonly type: "setLogicalComparisonNestedNumber";
       readonly location: StatementLocation;
+      readonly path?: readonly ("left" | "right" | "value")[];
       readonly side: "left" | "right" | "value";
       readonly operand: "left" | "right";
       readonly field: "index" | "min" | "max" | "value";
@@ -1311,18 +1357,12 @@ export function intentToChange(
       if (
         (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
         condition === undefined ||
-        Array.isArray(condition) ||
-        !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
-        (condition.type === "operator_not" ? intent.side !== "value" : intent.side === "value")
+        Array.isArray(condition)
       )
         return undefined;
-      const comparison = condition.inputs?.[intent.side];
-      if (
-        comparison === undefined ||
-        Array.isArray(comparison) ||
-        !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(comparison.type)
-      )
-        return undefined;
+      const target = logicalComparisonAt(condition, intent.path ?? [], intent.side);
+      if (target === undefined) return undefined;
+      const { comparison } = target;
       const current = comparison.inputs?.[intent.operand];
       if (
         current === undefined ||
@@ -1338,22 +1378,16 @@ export function intentToChange(
           ...block,
           inputs: {
             ...block.inputs,
-            condition: {
-              ...condition,
+            condition: target.replace({
+              ...comparison,
               inputs: {
-                ...condition.inputs,
-                [intent.side]: {
-                  ...comparison,
-                  inputs: {
-                    ...comparison.inputs,
-                    [intent.operand]: {
-                      ...current,
-                      fields: { ...current.fields, value: intent.value },
-                    },
-                  },
+                ...comparison.inputs,
+                [intent.operand]: {
+                  ...current,
+                  fields: { ...current.fields, value: intent.value },
                 },
               },
-            },
+            }),
           },
         },
       };
@@ -1370,18 +1404,12 @@ export function intentToChange(
       if (
         (block?.type !== "control_if" && block?.type !== "control_repeat_until") ||
         condition === undefined ||
-        Array.isArray(condition) ||
-        !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
-        (condition.type === "operator_not" ? intent.side !== "value" : intent.side === "value")
+        Array.isArray(condition)
       )
         return undefined;
-      const comparison = condition.inputs?.[intent.side];
-      if (
-        comparison === undefined ||
-        Array.isArray(comparison) ||
-        !(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(comparison.type)
-      )
-        return undefined;
+      const target = logicalComparisonAt(condition, intent.path ?? [], intent.side);
+      if (target === undefined) return undefined;
+      const { comparison } = target;
       const current = comparison.inputs?.[intent.operand];
       if (current === undefined || Array.isArray(current)) return undefined;
       let next: BlockNode;
@@ -1484,16 +1512,10 @@ export function intentToChange(
           ...block,
           inputs: {
             ...block.inputs,
-            condition: {
-              ...condition,
-              inputs: {
-                ...condition.inputs,
-                [intent.side]: {
-                  ...comparison,
-                  inputs: { ...comparison.inputs, [intent.operand]: next },
-                },
-              },
-            },
+            condition: target.replace({
+              ...comparison,
+              inputs: { ...comparison.inputs, [intent.operand]: next },
+            }),
           },
         },
       };
@@ -1606,20 +1628,13 @@ export function intentToChange(
         Array.isArray(condition)
       )
         return undefined;
-      let comparison: BlockNode;
-      if (intent.logicalSide === undefined) comparison = condition;
-      else {
-        if (
-          !["operator_and", "operator_or", "operator_not"].includes(condition.type) ||
-          (condition.type === "operator_not"
-            ? intent.logicalSide !== "value"
-            : intent.logicalSide === "value")
-        )
-          return undefined;
-        const nested = condition.inputs?.[intent.logicalSide];
-        if (nested === undefined || Array.isArray(nested)) return undefined;
-        comparison = nested;
-      }
+      if (intent.logicalSide === undefined && intent.path !== undefined) return undefined;
+      const target =
+        intent.logicalSide === undefined
+          ? undefined
+          : logicalComparisonAt(condition, intent.path ?? [], intent.logicalSide);
+      if (intent.logicalSide !== undefined && target === undefined) return undefined;
+      const comparison = target?.comparison ?? condition;
       if (!(STUDIO_COMPARISON_BLOCK_TYPES as readonly string[]).includes(comparison.type))
         return undefined;
       const operand = comparison.inputs?.[intent.side];
@@ -1643,13 +1658,7 @@ export function intentToChange(
           ...block,
           inputs: {
             ...block.inputs,
-            condition:
-              intent.logicalSide === undefined
-                ? nextComparison
-                : {
-                    ...condition,
-                    inputs: { ...condition.inputs, [intent.logicalSide]: nextComparison },
-                  },
+            condition: target === undefined ? nextComparison : target.replace(nextComparison),
           },
         },
       };
