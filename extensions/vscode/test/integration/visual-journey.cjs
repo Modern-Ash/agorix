@@ -944,9 +944,24 @@ async function main() {
         script.statements.some((statement) => statement.type === "callProcedure"),
       ),
     );
+    await webview.locator(".procedure-navigator button").filter({ hasText: "Bell action" }).click();
+    await webview.locator(".procedure-heading").filter({ hasText: "Bell action" }).waitFor();
+    await webview.locator(".studio-shell-actions button").filter({ hasText: "Show tools" }).click();
+    await webview.locator('.palette button[aria-label="move steps"]').click();
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts?.some((script) =>
+        script.procedures?.some(
+          (procedure) =>
+            procedure.name === "Bell action" &&
+            procedure.body.length === 2 &&
+            procedure.body[1]?.type === "move",
+        ),
+      ),
+    );
+    await webview.getByRole("button", { name: "Back to script" }).click();
     await webview.locator(".execution-toolbar button").filter({ hasText: "Play" }).click();
     await webview.locator(".execution-readout").filter({ hasText: "completed" }).waitFor();
-    console.log("Created and ran a visual custom block from the selected script");
+    console.log("Created, reopened and edited a custom block on the visual canvas");
     const saved = JSON.parse(fs.readFileSync(project, "utf8"));
     if (!saved.project?.metadata?.assets?.some((asset) => asset.name === "My painted star")) {
       throw new Error("Painted costume was not persisted");

@@ -2154,6 +2154,9 @@ export function Workbench({
                   if (owner !== undefined) setSelectedActorId(owner.id);
                   setSelectedScriptId(scriptId);
                   setSelectedProcedureId(procedureId);
+                  setWorkspaceView("build");
+                  setLibraryTab("blocks");
+                  if (window.innerWidth <= 1100) setToolsOpen(false);
                 }}
               />
             )}
