@@ -1015,6 +1015,76 @@ describe("canvas keyboard and screen reader behaviour", () => {
       side: "left",
       value: 9,
     });
+    const source = host.querySelector<HTMLSelectElement>(
+      '.numeric-socket select[aria-label*="Left value left left"]',
+    );
+    expect(source).not.toBeNull();
+    act(() => {
+      source!.value = "multiply";
+      source!.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      path: ["left", "left"],
+      side: "left",
+      reporter: "multiply",
+    });
+  });
+  it("reveals and edits a fourth arithmetic level through a disclosure", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: {
+                    type: "subtract",
+                    left: {
+                      type: "add",
+                      left: { type: "numericLiteral", value: 8 },
+                      right: { type: "numericLiteral", value: 2 },
+                    },
+                    right: { type: "numericLiteral", value: 3 },
+                  },
+                  right: { type: "numericLiteral", value: 4 },
+                },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const deep = host.querySelector<HTMLDetailsElement>(".numeric-nested-socket details")!;
+    expect(deep).not.toBeNull();
+    act(() => {
+      deep.open = true;
+    });
+    const field = host.querySelector<HTMLInputElement>(
+      '.numeric-socket input[aria-label*="Left value left left left"]',
+    )!;
+    expect(field).not.toBeNull();
+    act(() => {
+      field.value = "9";
+      field.dispatchEvent(new dom.window.FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperand",
+      path: ["left", "left", "left"],
+      side: "left",
+      value: 9,
+    });
   });
   it("edits a math function nested in a visual arithmetic block", () => {
     const workspace = programToWorkspace({

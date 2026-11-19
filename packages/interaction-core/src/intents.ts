@@ -9,6 +9,7 @@ import {
 } from "@agorix/block-editor";
 import {
   LIST_MAX_ITEMS,
+  MAX_NESTING_DEPTH,
   NUMERIC_LITERAL_MIN,
   NUMERIC_LITERAL_MAX,
   type MathFunction,
@@ -325,7 +326,7 @@ export type Intent =
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max";
-      readonly path?: readonly ("left" | "right" | "min" | "max")[];
+      readonly path?: readonly ("left" | "right" | "min" | "max" | "value")[];
       readonly reporter:
         | "number"
         | "variable"
@@ -862,7 +863,7 @@ export function intentToChange(
       const rootExpression = block.inputs?.[intent.input];
       if (rootExpression === undefined || Array.isArray(rootExpression)) return undefined;
       const path = intent.path ?? [];
-      if (path.length > 3) return undefined;
+      if (path.length > MAX_NESTING_DEPTH) return undefined;
       let expression: typeof rootExpression | undefined = rootExpression;
       const parents: { expression: typeof rootExpression; side: string }[] = [];
       for (const side of path) {
@@ -948,18 +949,22 @@ export function intentToChange(
       if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
       const rootExpression = block.inputs?.[intent.input];
       if (rootExpression === undefined || Array.isArray(rootExpression)) return undefined;
-      if (intent.path !== undefined && intent.path.length !== 1) return undefined;
-      const parentSide = intent.path?.[0];
-      if (parentSide !== undefined) {
-        const allowed =
-          rootExpression.type === "operator_random" ||
-          rootExpression.type === "operator_random_integer"
-            ? ["min", "max"]
-            : ["left", "right"];
-        if (!allowed.includes(parentSide)) return undefined;
+      const path = intent.path ?? [];
+      if (path.length > MAX_NESTING_DEPTH) return undefined;
+      let expression: BlockNode | undefined = rootExpression;
+      const parents: { expression: BlockNode; side: string }[] = [];
+      for (const side of path) {
+        if (expression === undefined) return undefined;
+        const allowed: readonly string[] =
+          expression.type === "operator_math_function"
+            ? ["value"]
+            : expression.type === "operator_random" || expression.type === "operator_random_integer"
+              ? ["min", "max"]
+              : ["left", "right"];
+        if (!allowed.includes(side)) return undefined;
+        parents.push({ expression, side });
+        expression = expression.inputs?.[side as "left" | "right" | "min" | "max" | "value"];
       }
-      const expression =
-        parentSide === undefined ? rootExpression : rootExpression.inputs?.[parentSide];
       if (
         expression === undefined ||
         Array.isArray(expression) ||
@@ -1074,13 +1079,13 @@ export function intentToChange(
         ...expression,
         inputs: { ...expression.inputs, [intent.side]: replacement },
       };
-      const nextRoot =
-        parentSide === undefined
-          ? nextExpression
-          : {
-              ...rootExpression,
-              inputs: { ...rootExpression.inputs, [parentSide]: nextExpression },
-            };
+      const nextRoot = parents.reduceRight<BlockNode>(
+        (child, parent) => ({
+          ...parent.expression,
+          inputs: { ...parent.expression.inputs, [parent.side]: child },
+        }),
+        nextExpression,
+      );
       return {
         type: "editBlock",
         location: intent.location,

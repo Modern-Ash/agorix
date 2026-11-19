@@ -20,6 +20,7 @@ import { visualBlock, visualLabel } from "./visualBlocks.js";
 import { imageForId } from "./visualArt.js";
 import { LogicalComparisonFields } from "./LogicalComparisonFields.js";
 import { numericReporterForBlock } from "./numericPalette.js";
+import { NestedNumericSocket } from "./NestedNumericSocket.js";
 
 const DRAG_TYPE = "application/x-agorix-drag";
 
@@ -1262,264 +1263,21 @@ export function Canvas({
                                     : source === "random" || source === "randomInteger"
                                       ? (["min", "max"] as const)
                                       : (["left", "right"] as const)
-                                  ).map((nestedSide) => {
-                                    const nested = part?.inputs?.[nestedSide];
-                                    const placeNested = (blockType: BlockType) => {
-                                      if (nestedSide === "value") return;
-                                      const reporter = numericReporterForBlock(blockType);
-                                      if (
-                                        reporter === undefined ||
-                                        !(
-                                          [
-                                            "number",
-                                            "add",
-                                            "subtract",
-                                            "multiply",
-                                            "divide",
-                                            "modulo",
-                                            "random",
-                                            "randomInteger",
-                                          ] as readonly string[]
-                                        ).includes(reporter)
-                                      )
-                                        return;
-                                      onIntent({
-                                        type: "setArithmeticOperandSource",
-                                        location: block.location,
-                                        input,
-                                        path: [side],
-                                        side: nestedSide,
-                                        reporter: reporter as Extract<
-                                          Intent,
-                                          { type: "setArithmeticOperandSource" }
-                                        >["reporter"],
-                                      });
-                                    };
-                                    const nestedDrop = {
-                                      onDragOver: (event: DragEvent<HTMLElement>) =>
-                                        event.preventDefault(),
-                                      onDrop: (event: DragEvent<HTMLElement>) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        const source = readSource(event);
-                                        if (source?.kind === "palette")
-                                          placeNested(source.blockType);
-                                      },
-                                    };
-                                    if (
-                                      nested !== undefined &&
-                                      [
-                                        "operator_add",
-                                        "operator_subtract",
-                                        "operator_multiply",
-                                        "operator_divide",
-                                        "operator_modulo",
-                                        "operator_random",
-                                        "operator_random_integer",
-                                      ].includes(nested.type)
-                                    ) {
-                                      const deepSides =
-                                        nested.type === "operator_random" ||
-                                        nested.type === "operator_random_integer"
-                                          ? (["min", "max"] as const)
-                                          : (["left", "right"] as const);
-                                      return (
-                                        <span
-                                          key={nestedSide}
-                                          className="block-field numeric-nested-socket"
-                                          {...nestedDrop}
-                                        >
-                                          <span>
-                                            {getBlockDefinition(nested.type)?.label ?? nested.type}
-                                          </span>
-                                          {nestedSide === "value" ? null : (
-                                            <select
-                                              aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide} ${copy.numericSource}`}
-                                              value={
-                                                nested.type === "operator_random_integer"
-                                                  ? "randomInteger"
-                                                  : nested.type.replace("operator_", "")
-                                              }
-                                              onChange={(event) =>
-                                                onIntent({
-                                                  type: "setArithmeticOperandSource",
-                                                  location: block.location,
-                                                  input,
-                                                  path: [side],
-                                                  side: nestedSide,
-                                                  reporter: event.currentTarget.value as
-                                                    | "number"
-                                                    | "add"
-                                                    | "subtract"
-                                                    | "multiply"
-                                                    | "divide"
-                                                    | "modulo"
-                                                    | "random"
-                                                    | "randomInteger",
-                                                })
-                                              }
-                                              onKeyDown={(event) => event.stopPropagation()}
-                                            >
-                                              <option value="number">{copy.numericLiteral}</option>
-                                              <option value="add">{copy.operatorAdd}</option>
-                                              <option value="subtract">
-                                                {copy.operatorSubtract}
-                                              </option>
-                                              <option value="multiply">
-                                                {copy.operatorMultiply}
-                                              </option>
-                                              <option value="divide">{copy.operatorDivide}</option>
-                                              <option value="modulo">{copy.operatorModulo}</option>
-                                              <option value="random">{copy.operatorRandom}</option>
-                                              <option value="randomInteger">
-                                                {copy.operatorRandomInteger}
-                                              </option>
-                                            </select>
-                                          )}
-                                          {deepSides.map((deepSide) => {
-                                            const deep = nested.inputs?.[deepSide];
-                                            if (
-                                              deep?.type !== "literal_number" ||
-                                              typeof deep.fields?.value !== "number"
-                                            )
-                                              return null;
-                                            const value = deep.fields.value;
-                                            return (
-                                              <label key={deepSide} className="block-field">
-                                                <span>{deepSide}</span>
-                                                <input
-                                                  key={`${pos}:${input}:${side}:${nestedSide}:${deepSide}:${value}`}
-                                                  type="number"
-                                                  aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide} ${deepSide}`}
-                                                  defaultValue={value}
-                                                  draggable={false}
-                                                  onDragStart={(event) => event.stopPropagation()}
-                                                  onKeyDown={(event) => {
-                                                    event.stopPropagation();
-                                                    if (event.key === "Enter")
-                                                      event.currentTarget.blur();
-                                                  }}
-                                                  onBlur={(event) => {
-                                                    const raw = event.currentTarget.value.trim();
-                                                    const next = Number(raw);
-                                                    if (
-                                                      raw !== "" &&
-                                                      Number.isFinite(next) &&
-                                                      next !== value
-                                                    )
-                                                      onIntent({
-                                                        type: "setArithmeticOperand",
-                                                        location: block.location,
-                                                        input,
-                                                        path: [side, nestedSide],
-                                                        side: deepSide,
-                                                        value: next,
-                                                      });
-                                                    event.currentTarget.value = String(value);
-                                                  }}
-                                                />
-                                              </label>
-                                            );
-                                          })}
-                                        </span>
-                                      );
-                                    }
-                                    if (
-                                      nested?.type !== "literal_number" ||
-                                      typeof nested.fields?.value !== "number"
-                                    )
-                                      return null;
-                                    const value = nested.fields.value;
-                                    return (
-                                      <label
-                                        key={nestedSide}
-                                        className="block-field numeric-nested-socket"
-                                        {...nestedDrop}
-                                      >
-                                        <span>
-                                          {nestedSide === "value"
-                                            ? copy.mathValue
-                                            : nestedSide === "left"
-                                              ? copy.conditionLeft
-                                              : nestedSide === "right"
-                                                ? copy.conditionRight
-                                                : nestedSide === "min"
-                                                  ? copy.rangeMin
-                                                  : copy.rangeMax}
-                                        </span>
-                                        {nestedSide === "value" ? null : (
-                                          <select
-                                            aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide} ${copy.numericSource}`}
-                                            value="number"
-                                            onChange={(event) =>
-                                              onIntent({
-                                                type: "setArithmeticOperandSource",
-                                                location: block.location,
-                                                input,
-                                                path: [side],
-                                                side: nestedSide,
-                                                reporter: event.currentTarget.value as
-                                                  | "number"
-                                                  | "add"
-                                                  | "subtract"
-                                                  | "multiply"
-                                                  | "divide"
-                                                  | "modulo"
-                                                  | "random"
-                                                  | "randomInteger",
-                                              })
-                                            }
-                                            onKeyDown={(event) => event.stopPropagation()}
-                                          >
-                                            <option value="number">{copy.numericLiteral}</option>
-                                            <option value="add">{copy.operatorAdd}</option>
-                                            <option value="subtract">
-                                              {copy.operatorSubtract}
-                                            </option>
-                                            <option value="multiply">
-                                              {copy.operatorMultiply}
-                                            </option>
-                                            <option value="divide">{copy.operatorDivide}</option>
-                                            <option value="modulo">{copy.operatorModulo}</option>
-                                            <option value="random">{copy.operatorRandom}</option>
-                                            <option value="randomInteger">
-                                              {copy.operatorRandomInteger}
-                                            </option>
-                                          </select>
-                                        )}
-                                        <input
-                                          key={`${pos}:${input}:${side}:${nestedSide}:${value}`}
-                                          type="number"
-                                          aria-label={`${label}: ${operandLabel} ${sideLabel} ${nestedSide}`}
-                                          defaultValue={value}
-                                          draggable={false}
-                                          onDragStart={(event) => event.stopPropagation()}
-                                          onKeyDown={(event) => {
-                                            event.stopPropagation();
-                                            if (event.key === "Enter") event.currentTarget.blur();
-                                          }}
-                                          onBlur={(event) => {
-                                            const raw = event.currentTarget.value.trim();
-                                            const next = Number(raw);
-                                            if (
-                                              raw !== "" &&
-                                              Number.isFinite(next) &&
-                                              next !== value
-                                            )
-                                              onIntent({
-                                                type: "setArithmeticOperand",
-                                                location: block.location,
-                                                input,
-                                                path: [side],
-                                                side: nestedSide,
-                                                value: next,
-                                              });
-                                            event.currentTarget.value = String(value);
-                                          }}
-                                        />
-                                      </label>
-                                    );
-                                  })
+                                  ).map((nestedSide) => (
+                                    <NestedNumericSocket
+                                      key={nestedSide}
+                                      node={part?.inputs?.[nestedSide]}
+                                      side={nestedSide}
+                                      path={[side]}
+                                      location={block.location}
+                                      input={input}
+                                      label={label}
+                                      operandLabel={operandLabel}
+                                      rootSideLabel={sideLabel}
+                                      copy={copy}
+                                      onIntent={onIntent}
+                                    />
+                                  ))
                                 : null}
                             </span>
                           );

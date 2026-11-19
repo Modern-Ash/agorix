@@ -1678,6 +1678,53 @@ describe("interaction-core", () => {
     expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
       value: { left: { left: { right: { value: 5 } } } },
     });
+    const source = intentToChange(
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left", "left"],
+        side: "left",
+        reporter: "multiply",
+      },
+      newId,
+      workspace,
+    );
+    expect(source).toBeDefined();
+    const deeper = applyWorkspaceChange(workspace, source!);
+    expect(deeper.program.scripts[0]?.statements[0]).toMatchObject({
+      value: { left: { left: { left: { type: "multiply" } } } },
+    });
+    const deepLiteral = intentToChange(
+      {
+        type: "setArithmeticOperand",
+        location,
+        input: "value",
+        path: ["left", "left", "left"],
+        side: "right",
+        value: 7,
+      },
+      newId,
+      deeper.workspace,
+    );
+    expect(deepLiteral).toBeDefined();
+    expect(
+      applyWorkspaceChange(deeper.workspace, deepLiteral!).program.scripts[0]?.statements[0],
+    ).toMatchObject({ value: { left: { left: { left: { right: { value: 7 } } } } } });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          path: ["right", "left"],
+          side: "left",
+          reporter: "multiply",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
     expect(
       intentToChange(
         {
