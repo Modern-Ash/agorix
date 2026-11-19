@@ -305,6 +305,7 @@ async function main() {
       ),
     );
     console.log("Composed a nested visual Boolean condition in the packaged VSIX");
+    await webview.locator(".studio-shell-actions button").filter({ hasText: "Hide tools" }).click();
     await webview.getByRole("button", { name: "Undo change" }).click();
     await waitForProject((envelope) =>
       envelope.project.program.scripts[0].statements.some(
