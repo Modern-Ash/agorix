@@ -752,7 +752,40 @@ async function main() {
         ),
     );
     console.log("Dragged a visual reporter into a nested arithmetic socket");
+    await webview
+      .locator('.numeric-socket select[aria-label*="Left value left left"]')
+      .first()
+      .selectOption("add");
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "add" &&
+            statement.value.left?.type === "multiply" &&
+            statement.value.left.left?.type === "subtract" &&
+            statement.value.left.left.left?.type === "add",
+        ),
+    );
+    const deepExpression = webview.locator(".numeric-nested-socket details").first();
+    await deepExpression.locator("summary").click();
+    await deepExpression.getByRole("spinbutton").first().waitFor();
+    console.log("Composed and revealed a fourth visual arithmetic level");
     await webview.locator(".studio-shell-actions button").filter({ hasText: "Hide tools" }).click();
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "add" &&
+            statement.value.left?.type === "multiply" &&
+            statement.value.left.left?.type === "subtract" &&
+            statement.value.left.left.left?.type === "numericLiteral",
+        ),
+    );
     await webview.getByRole("button", { name: "Undo change" }).click();
     await waitForProject((envelope) =>
       envelope.project?.program?.scripts

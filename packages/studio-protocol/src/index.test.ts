@@ -958,6 +958,13 @@ describe("studio-protocol", () => {
     ).toMatchObject({ intent: { path: ["left"], side: "right", reporter: "subtract" } });
     expect(
       parseUiMessage({ schema, type: "intent", intent: { ...nested, path: ["left", "right"] } }),
+    ).toMatchObject({ intent: { path: ["left", "right"] } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: { ...nested, path: Array.from({ length: 21 }, () => "left") },
+      }),
     ).toBeUndefined();
     expect(
       parseUiMessage({
@@ -1062,6 +1069,20 @@ describe("studio-protocol", () => {
           location,
           input: "value",
           path: ["left", "right", "left", "right"],
+          side: "left",
+          value: 6,
+        },
+      }),
+    ).toMatchObject({ intent: { path: ["left", "right", "left", "right"] } });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: Array.from({ length: 21 }, () => "left"),
           side: "left",
           value: 6,
         },

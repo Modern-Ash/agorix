@@ -33,6 +33,7 @@ import {
 } from "@agorix/interaction-core";
 import {
   LIST_MAX_ITEMS,
+  MAX_NESTING_DEPTH,
   PROCEDURES_MAX_PER_SCRIPT,
   PROCEDURE_BODY_MAX,
   PROCEDURE_NAME_MAX_LENGTH,
@@ -1585,7 +1586,7 @@ function parseIntent(value: unknown): Intent | undefined {
         (path === undefined ||
           (Array.isArray(path) &&
             path.length >= 1 &&
-            path.length <= 3 &&
+            path.length <= MAX_NESTING_DEPTH &&
             path.every((side) => ["left", "right", "min", "max", "value"].includes(side))))
         ? {
             type: "setArithmeticOperand",
@@ -1612,8 +1613,9 @@ function parseIntent(value: unknown): Intent | undefined {
         (side !== "left" && side !== "right" && side !== "min" && side !== "max") ||
         (path !== undefined &&
           (!Array.isArray(path) ||
-            path.length !== 1 ||
-            !["left", "right", "min", "max"].includes(path[0]))) ||
+            path.length < 1 ||
+            path.length > MAX_NESTING_DEPTH ||
+            !path.every((side) => ["left", "right", "min", "max", "value"].includes(side)))) ||
         (reporter !== "number" &&
           reporter !== "variable" &&
           reporter !== "listLength" &&
@@ -1638,7 +1640,9 @@ function parseIntent(value: unknown): Intent | undefined {
         location,
         input,
         side,
-        ...(path === undefined ? {} : { path: path as ("left" | "right" | "min" | "max")[] }),
+        ...(path === undefined
+          ? {}
+          : { path: path as ("left" | "right" | "min" | "max" | "value")[] }),
         reporter,
         ...(typeof referenceId === "string" ? { referenceId } : {}),
       };
