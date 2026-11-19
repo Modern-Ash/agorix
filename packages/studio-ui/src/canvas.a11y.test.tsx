@@ -1317,6 +1317,65 @@ describe("canvas keyboard and screen reader behaviour", () => {
       value: false,
     });
   });
+  it("edits and drops Boolean blocks inside a nested logical condition", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: { type: "touchingGoal" },
+                right: { type: "not", value: { type: "booleanLiteral", value: true } },
+              },
+              then: [{ type: "move", steps: 1 }],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const intents: Intent[] = [];
+    render(workspace, { onIntent: (intent) => intents.push(intent) });
+    const nested = host.querySelector<HTMLElement>(".nested-logical-socket")!;
+    expect(nested).not.toBeNull();
+    const boolean = nested.querySelectorAll<HTMLSelectElement>("select")[1]!;
+    act(() => {
+      boolean.value = "false";
+      boolean.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    });
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalBoolean",
+      path: ["right"],
+      side: "value",
+      value: false,
+    });
+    const dropBlock = (blockType: string) => {
+      const drop = new dom.window.MouseEvent("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(drop, "dataTransfer", {
+        value: {
+          getData: (kind: string) =>
+            kind === "application/x-agorix-drag"
+              ? JSON.stringify({ kind: "palette", blockType })
+              : "",
+        },
+      });
+      act(() => nested.dispatchEvent(drop));
+    };
+    dropBlock("operator_or");
+    expect(intents.at(-1)).toMatchObject({
+      type: "setLogicalOperand",
+      path: ["right"],
+      side: "value",
+      blockType: "operator_or",
+    });
+    const count = intents.length;
+    dropBlock("motion_move");
+    expect(intents).toHaveLength(count);
+  });
   it("offers actor contact inside logical operands with an actor picker", () => {
     const workspace = applyWorkspaceChange(initial, {
       type: "addBlock",

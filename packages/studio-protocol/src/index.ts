@@ -1202,34 +1202,68 @@ function parseIntent(value: unknown): Intent | undefined {
     case "setLogicalOperand": {
       const location = parseLocation(value["location"]);
       const side = value["side"];
+      const path = value["path"];
       const blockType = value["blockType"];
+      const actorId = value["actorId"];
       return location !== undefined &&
         (side === "left" || side === "right" || side === "value") &&
-        (STUDIO_LOGICAL_OPERAND_TYPES as readonly unknown[]).includes(blockType)
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length >= 1 &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every((entry) => ["left", "right", "value"].includes(entry)))) &&
+        (STUDIO_LOGICAL_OPERAND_TYPES as readonly unknown[]).includes(blockType) &&
+        (actorId === undefined || (blockType === "sensing_touching_actor" && isSafeId(actorId)))
         ? {
             type: "setLogicalOperand",
             location,
             side,
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "value")[] }),
             blockType: blockType as (typeof STUDIO_LOGICAL_OPERAND_TYPES)[number],
+            ...(actorId === undefined ? {} : { actorId: actorId as string }),
           }
         : undefined;
     }
     case "setLogicalBoolean": {
       const location = parseLocation(value["location"]);
       const side = value["side"];
+      const path = value["path"];
       return location !== undefined &&
         (side === "left" || side === "right" || side === "value") &&
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length >= 1 &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every((entry) => ["left", "right", "value"].includes(entry)))) &&
         typeof value["value"] === "boolean"
-        ? { type: "setLogicalBoolean", location, side, value: value["value"] }
+        ? {
+            type: "setLogicalBoolean",
+            location,
+            side,
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "value")[] }),
+            value: value["value"],
+          }
         : undefined;
     }
     case "setLogicalActor": {
       const location = parseLocation(value["location"]);
       const side = value["side"];
+      const path = value["path"];
       return location !== undefined &&
         (side === "left" || side === "right" || side === "value") &&
+        (path === undefined ||
+          (Array.isArray(path) &&
+            path.length >= 1 &&
+            path.length <= MAX_NESTING_DEPTH &&
+            path.every((entry) => ["left", "right", "value"].includes(entry)))) &&
         isSafeId(value["actorId"])
-        ? { type: "setLogicalActor", location, side, actorId: value["actorId"] }
+        ? {
+            type: "setLogicalActor",
+            location,
+            side,
+            ...(path === undefined ? {} : { path: path as ("left" | "right" | "value")[] }),
+            actorId: value["actorId"],
+          }
         : undefined;
     }
     case "setLogicalComparisonNumber": {

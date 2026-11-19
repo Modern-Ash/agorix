@@ -955,6 +955,86 @@ describe("interaction-core", () => {
     }
   });
 
+  it("composes nested logical operators and rejects invalid paths", () => {
+    const location = { container: script, index: 0 };
+    const base = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: { type: "touchingGoal" },
+                right: { type: "booleanLiteral", value: true },
+              },
+              then: [{ type: "move", steps: 1 }],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const nested = applyWorkspaceChange(
+      base,
+      intentToChange(
+        { type: "setLogicalOperand", location, side: "right", blockType: "operator_not" },
+        newId,
+        base,
+      )!,
+    ).workspace;
+    const boolean = applyWorkspaceChange(
+      nested,
+      intentToChange(
+        {
+          type: "setLogicalOperand",
+          location,
+          path: ["right"],
+          side: "value",
+          blockType: "literal_boolean",
+        },
+        newId,
+        nested,
+      )!,
+    ).workspace;
+    const changed = applyWorkspaceChange(
+      boolean,
+      intentToChange(
+        { type: "setLogicalBoolean", location, path: ["right"], side: "value", value: false },
+        newId,
+        boolean,
+      )!,
+    );
+    expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+      condition: {
+        type: "and",
+        right: { type: "not", value: { type: "booleanLiteral", value: false } },
+      },
+    });
+    expect(
+      intentToChange(
+        { type: "setLogicalBoolean", location, path: ["left"], side: "value", value: false },
+        newId,
+        changed.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setLogicalOperand",
+          location,
+          path: ["right"],
+          side: "right",
+          blockType: "operator_or",
+        },
+        newId,
+        changed.workspace,
+      ),
+    ).toBeUndefined();
+  });
+
   it("selects an actor inside a logical condition and rejects unsafe or mismatched edits", () => {
     const location = { container: script, index: 0 };
     const initial = applyWorkspaceChange(createStarterWorkspace(), {

@@ -459,6 +459,10 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-program .numeric-nested-children { display: grid; gap: 4px; margin: 4px 0 0 8px; padding-left: 7px; border-left: 2px solid var(--vscode-panel-border); }
 .studio-program .numeric-nested-socket details > summary { cursor: pointer; color: var(--vscode-foreground); }
 .studio-program .numeric-nested-socket details[open] > summary { margin-bottom: 4px; }
+.studio-program .nested-logical-fields { display: grid; gap: 5px; margin: 4px 0 0 7px; padding-left: 7px; border-left: 2px solid var(--vscode-panel-border); }
+.studio-program .nested-logical-socket { border: 1px dashed var(--vscode-panel-border); border-radius: 4px; padding: 4px; }
+.studio-program .nested-logical-socket:hover, .studio-program .nested-logical-socket:focus-within { border-color: var(--vscode-focusBorder); }
+.studio-program .nested-logical-socket details > summary { cursor: pointer; }
 .studio-program .math-function-fields { display: grid; gap: 4px; margin-top: 4px; min-width: 0; }
 .studio-program .math-function-fields input { width: 100%; min-width: 0; }
 .studio-program .condition-detail { flex-basis: 128px; }

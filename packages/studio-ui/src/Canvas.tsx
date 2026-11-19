@@ -19,6 +19,7 @@ import { copyFor, type StudioUiCopy } from "./i18n.js";
 import { visualBlock, visualLabel } from "./visualBlocks.js";
 import { imageForId } from "./visualArt.js";
 import { LogicalComparisonFields } from "./LogicalComparisonFields.js";
+import { NestedLogicalFields } from "./NestedLogicalFields.js";
 import { numericReporterForBlock } from "./numericPalette.js";
 import { NestedNumericSocket } from "./NestedNumericSocket.js";
 
@@ -1563,6 +1564,16 @@ export function Canvas({
                           onIntent={onIntent}
                           pos={pos}
                           isTabbable={isTabbable}
+                        />
+                      ) : null}
+                      {["operator_and", "operator_or", "operator_not"].includes(operand.type) ? (
+                        <NestedLogicalFields
+                          condition={operand}
+                          path={[side]}
+                          location={block.location}
+                          actors={actors}
+                          copy={copy}
+                          onIntent={onIntent}
                         />
                       ) : null}
                     </span>
