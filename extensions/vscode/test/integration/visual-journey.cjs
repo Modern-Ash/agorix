@@ -250,7 +250,10 @@ async function main() {
       JSON.parse(beforeFinding).project.program,
     );
     console.log("Reviewed a pre-play loop finding and Ori's counts-only explanation");
-    await webview.locator('.palette button[aria-label="if condition then"]').click();
+    const ifTool = webview.locator('.palette button[aria-label="if condition then"]');
+    if (!(await ifTool.isVisible()))
+      await componentLauncher.getByRole("button", { name: "Control" }).click();
+    await ifTool.click();
     await waitForProject((envelope) =>
       envelope.project.program.scripts[0].statements.some((statement) => statement.type === "if"),
     );
