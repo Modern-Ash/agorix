@@ -369,20 +369,21 @@ export type Intent =
       readonly type: "setArithmeticOperand";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
-      readonly side: "left" | "right" | "min" | "max" | "value";
+      readonly side: "left" | "right" | "min" | "max" | "value" | "index";
       readonly value: number;
-      readonly path?: readonly ("left" | "right" | "min" | "max" | "value")[];
+      readonly path?: readonly ("left" | "right" | "min" | "max" | "value" | "index")[];
     }
   | {
       readonly type: "setArithmeticOperandSource";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max";
-      readonly path?: readonly ("left" | "right" | "min" | "max" | "value")[];
+      readonly path?: readonly ("left" | "right" | "min" | "max" | "value" | "index")[];
       readonly reporter:
         | "number"
         | "variable"
         | "listLength"
+        | "listItem"
         | "xPosition"
         | "yPosition"
         | "distanceToActor"
@@ -401,6 +402,7 @@ export type Intent =
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max";
+      readonly path?: readonly ("left" | "right" | "min" | "max" | "value" | "index")[];
       readonly function: MathFunction;
     }
   | { readonly type: "askAgent"; readonly verb: AgentVerb; readonly about: AgentAnchorRef }
@@ -923,9 +925,12 @@ export function intentToChange(
         const allowed: readonly string[] =
           expression.type === "operator_math_function"
             ? ["value"]
-            : expression.type === "operator_random" || expression.type === "operator_random_integer"
-              ? ["min", "max"]
-              : ["left", "right"];
+            : expression.type === "lists_item"
+              ? ["index"]
+              : expression.type === "operator_random" ||
+                  expression.type === "operator_random_integer"
+                ? ["min", "max"]
+                : ["left", "right"];
         if (!allowed.includes(side)) return undefined;
         parents.push({ expression, side });
         const child: typeof rootExpression | readonly (typeof rootExpression)[] | undefined =
@@ -944,6 +949,7 @@ export function intentToChange(
           "operator_random",
           "operator_random_integer",
           "operator_math_function",
+          "lists_item",
         ].includes(expression.type)
       )
         return undefined;
@@ -952,9 +958,11 @@ export function intentToChange(
       if (
         expression.type === "operator_math_function"
           ? intent.side !== "value"
-          : range
-            ? intent.side !== "min" && intent.side !== "max"
-            : intent.side !== "left" && intent.side !== "right"
+          : expression.type === "lists_item"
+            ? intent.side !== "index"
+            : range
+              ? intent.side !== "min" && intent.side !== "max"
+              : intent.side !== "left" && intent.side !== "right"
       )
         return undefined;
       const operand = expression.inputs?.[intent.side];
@@ -1063,6 +1071,17 @@ export function intentToChange(
             fields: { listId: intent.referenceId },
           };
           break;
+        case "listItem":
+          if (!workspace.lists?.some((item) => item.id === intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "lists_item",
+            fields: { listId: intent.referenceId },
+            inputs: {
+              index: { id: `${current.id}:index`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
+          break;
         case "xPosition":
           replacement = { id: current.id, type: "sensing_x_position" };
           break;
@@ -1161,9 +1180,29 @@ export function intentToChange(
       };
       if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
       const root = block.inputs?.[intent.input];
+      if (root === undefined || Array.isArray(root)) return undefined;
+      const path = intent.path ?? [];
+      if (path.length > MAX_NESTING_DEPTH) return undefined;
+      let expression: BlockNode | undefined = root;
+      const parents: { expression: BlockNode; side: string }[] = [];
+      for (const side of path) {
+        if (expression === undefined) return undefined;
+        const allowed: readonly string[] =
+          expression.type === "operator_math_function"
+            ? ["value"]
+            : expression.type === "operator_random" || expression.type === "operator_random_integer"
+              ? ["min", "max"]
+              : expression.type === "lists_item"
+                ? ["index"]
+                : ["left", "right"];
+        if (!allowed.includes(side)) return undefined;
+        parents.push({ expression, side });
+        expression =
+          expression.inputs?.[side as "left" | "right" | "min" | "max" | "value" | "index"];
+      }
       if (
-        root === undefined ||
-        Array.isArray(root) ||
+        expression === undefined ||
+        Array.isArray(expression) ||
         ![
           "operator_add",
           "operator_subtract",
@@ -1172,42 +1211,42 @@ export function intentToChange(
           "operator_modulo",
           "operator_random",
           "operator_random_integer",
-        ].includes(root.type)
+        ].includes(expression.type)
       )
         return undefined;
-      const range = root.type === "operator_random" || root.type === "operator_random_integer";
+      const range =
+        expression.type === "operator_random" || expression.type === "operator_random_integer";
       if (
         range
           ? intent.side !== "min" && intent.side !== "max"
           : intent.side !== "left" && intent.side !== "right"
       )
         return undefined;
-      const operand = root.inputs?.[intent.side];
+      const operand = expression.inputs?.[intent.side];
       if (
         operand === undefined ||
         Array.isArray(operand) ||
         operand.type !== "operator_math_function"
       )
         return undefined;
+      const nextExpression = {
+        ...expression,
+        inputs: {
+          ...expression.inputs,
+          [intent.side]: { ...operand, fields: { ...operand.fields, function: intent.function } },
+        },
+      };
+      const nextRoot = parents.reduceRight<BlockNode>(
+        (child, parent) => ({
+          ...parent.expression,
+          inputs: { ...parent.expression.inputs, [parent.side]: child },
+        }),
+        nextExpression,
+      );
       return {
         type: "editBlock",
         location: intent.location,
-        block: {
-          ...block,
-          inputs: {
-            ...block.inputs,
-            [intent.input]: {
-              ...root,
-              inputs: {
-                ...root.inputs,
-                [intent.side]: {
-                  ...operand,
-                  fields: { ...operand.fields, function: intent.function },
-                },
-              },
-            },
-          },
-        },
+        block: { ...block, inputs: { ...block.inputs, [intent.input]: nextRoot } },
       };
     }
     case "replaceCondition": {

@@ -2286,6 +2286,140 @@ describe("interaction-core", () => {
       ),
     ).toBeUndefined();
   });
+  it("edits nested list index and math function without changing sibling operands", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "Score", initialValue: 0, visible: true }],
+      lists: [{ id: "items", name: "Items", initialItems: [3, 4], visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: {
+                    type: "listItem",
+                    listId: "items",
+                    index: { type: "numericLiteral", value: 1 },
+                  },
+                  right: {
+                    type: "mathFunction",
+                    function: "abs",
+                    value: { type: "numericLiteral", value: 2 },
+                  },
+                },
+                right: { type: "numericLiteral", value: 5 },
+              },
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const location = { container: script, index: 0 };
+    const inserted = intentToChange(
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "right",
+        reporter: "listItem",
+        referenceId: "items",
+      },
+      newId,
+      workspace,
+    );
+    expect(
+      applyWorkspaceChange(workspace, inserted!).program.scripts[0]?.statements[0],
+    ).toMatchObject({
+      value: { left: { right: { type: "listItem", listId: "items", index: { value: 1 } } } },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "right",
+          reporter: "listItem",
+          referenceId: "missing",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    const index = intentToChange(
+      {
+        type: "setArithmeticOperand",
+        location,
+        input: "value",
+        path: ["left", "left"],
+        side: "index",
+        value: 2,
+      },
+      newId,
+      workspace,
+    );
+    const changed = applyWorkspaceChange(workspace, index!);
+    const fn = intentToChange(
+      {
+        type: "setArithmeticMathFunction",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "right",
+        function: "round",
+      },
+      newId,
+      changed.workspace,
+    );
+    expect(
+      applyWorkspaceChange(changed.workspace, fn!).program.scripts[0]?.statements[0],
+    ).toMatchObject({
+      value: {
+        left: {
+          left: { type: "listItem", index: { value: 2 } },
+          right: { type: "mathFunction", function: "round", value: { value: 2 } },
+        },
+        right: { type: "numericLiteral", value: 5 },
+      },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperand",
+          location,
+          input: "value",
+          path: ["left", "right"],
+          side: "index",
+          value: 2,
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticMathFunction",
+          location,
+          input: "value",
+          path: ["right"],
+          side: "left",
+          function: "round",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("edits a math function nested in arithmetic without replacing its sibling", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

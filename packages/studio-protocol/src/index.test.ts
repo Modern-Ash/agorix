@@ -76,6 +76,65 @@ describe("studio-protocol", () => {
         parseUiMessage({ schema, type: "intent", intent: { ...intent, path } }),
       ).toBeUndefined();
   });
+  it("validates nested list and math controls at the VSIX boundary", () => {
+    const location = { container: script, index: 0 };
+    for (const intent of [
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "right",
+        reporter: "listItem",
+        referenceId: "items",
+      },
+      {
+        type: "setArithmeticOperand",
+        location,
+        input: "value",
+        path: ["left", "right"],
+        side: "index",
+        value: 2,
+      },
+      {
+        type: "setArithmeticMathFunction",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "right",
+        function: "round",
+      },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    for (const intent of [
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "right",
+        reporter: "listItem",
+        referenceId: "",
+      },
+      {
+        type: "setArithmeticOperand",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "index",
+        value: Infinity,
+      },
+      {
+        type: "setArithmeticMathFunction",
+        location,
+        input: "value",
+        path: ["wrong"],
+        side: "right",
+        function: "round",
+      },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
+  });
   it("accepts bounded math function controls in direct and logical comparisons", () => {
     const location = { container: script, index: 0 };
     for (const intent of [
