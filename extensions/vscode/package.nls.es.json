@@ -6,6 +6,7 @@
   "container.title": "Agorix Studio",
   "command.createProject.title": "Crear proyecto nuevo",
   "command.openProject.title": "Abrir proyecto",
+  "command.openVisualEditor.title": "Abrir en el Workbench de Agorix",
   "command.exportAgorix.title": "Exportar proyecto .agorix portable",
   "command.exportEducatorEvidence.title": "Exportar evidencia para educadores",
   "command.signIn.title": "Iniciar sesión con token de cuenta",

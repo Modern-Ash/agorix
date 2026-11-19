@@ -507,6 +507,7 @@ export function activate(context: vscode.ExtensionContext): void {
       ...registerStudioCommands(output, {
         createProject: projectCommands.createProject,
         openProject: (target) => projectCommands.openProject(target),
+        openVisualEditor: (target) => projectCommands.openVisualEditor(target),
         exportAgorixProject: projectCommands.exportAgorixProject,
         exportEducatorEvidence: evidenceExportCommands.exportEducatorEvidence,
         checkAgentHealth: accountCommands.checkAgentHealth,

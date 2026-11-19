@@ -34,6 +34,7 @@ export interface StudioProjectCommandPort {
 
 export interface StudioProjectCommandHandlers {
   openProject(target?: unknown, options?: { revealSurfaces?: boolean }): Promise<void>;
+  openVisualEditor(target?: unknown): Promise<void>;
   createProject(target?: unknown): Promise<vscode.Uri | undefined>;
   exportAgorixProject(): Promise<vscode.Uri | undefined>;
 }
@@ -41,6 +42,17 @@ export interface StudioProjectCommandHandlers {
 export function createStudioProjectCommandHandlers(
   port: StudioProjectCommandPort,
 ): StudioProjectCommandHandlers {
+  const openVisualEditor = async (target?: unknown): Promise<void> => {
+    const uri = isUriLike(target) ? target : vscode.window.activeTextEditor?.document.uri;
+    if (uri?.scheme !== "file" || !uri.fsPath.toLowerCase().endsWith(".agorix")) return;
+    const originalTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+    const replaceTextTab =
+      originalTab?.input instanceof vscode.TabInputText &&
+      originalTab.input.uri.toString() === uri.toString() &&
+      !originalTab.isDirty;
+    if (replaceTextTab && !(await vscode.window.tabGroups.close(originalTab, true))) return;
+    await vscode.commands.executeCommand("vscode.openWith", uri, "agorixStudio.projectEditor");
+  };
   const openProject = async (
     target?: unknown,
     options: { revealSurfaces?: boolean } = {},
@@ -120,7 +132,7 @@ export function createStudioProjectCommandHandlers(
     return uri;
   };
 
-  return { openProject, createProject, exportAgorixProject };
+  return { openProject, openVisualEditor, createProject, exportAgorixProject };
 }
 
 async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOptions | undefined> {

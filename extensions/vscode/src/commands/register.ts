@@ -6,6 +6,7 @@ type CommandBody = (...args: unknown[]) => unknown | Promise<unknown>;
 export interface StudioCommandHandlers {
   readonly createProject: CommandBody;
   readonly openProject: CommandBody;
+  readonly openVisualEditor: CommandBody;
   readonly exportAgorixProject: CommandBody;
   readonly exportEducatorEvidence: CommandBody;
   readonly checkAgentHealth: CommandBody;
@@ -56,6 +57,11 @@ export function registerStudioCommands(
   }> = [
     { id: "agorixStudio.createProject", label: "Create Project", body: handlers.createProject },
     { id: "agorixStudio.openProject", label: "Open Project", body: handlers.openProject },
+    {
+      id: "agorixStudio.openVisualEditor",
+      label: "Open Visual Workbench",
+      body: handlers.openVisualEditor,
+    },
     {
       id: "agorixStudio.exportAgorix",
       label: "Export Agorix Project",

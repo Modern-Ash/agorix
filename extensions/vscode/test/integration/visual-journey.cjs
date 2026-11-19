@@ -180,11 +180,14 @@ async function main() {
     await page.addLocatorHandler(onboarding, dismissOnboarding);
     await dismissOnboarding();
     await page.waitForTimeout(1000);
-    await page.keyboard.press("F1");
-    await page.locator(".quick-input-widget:visible input").first().fill(">Reopen Editor With");
-    await page.getByText("View: Reopen Editor With...", { exact: true }).click();
-    await page.locator(".quick-input-widget:visible input").first().fill("Agorix Workbench");
-    await page.keyboard.press("Enter");
+    const openVisual = page.getByRole("button", { name: "Open in Agorix Workbench" });
+    await openVisual.waitFor({ timeout: 10000 });
+    await openVisual.click();
+    assert.equal(
+      await page.locator(".tab").filter({ hasText: "visual.agorix" }).count(),
+      1,
+      "Opening the visual Workbench must replace the clean text tab",
+    );
     await page.locator(".tab").filter({ hasText: "visual.agorix" }).first().click();
     const webview = page.frameLocator("iframe.webview.ready").frameLocator("iframe#active-frame");
     const workbench = webview.locator(".workbench");
@@ -214,6 +217,8 @@ async function main() {
       stageBounds.x <= programBounds.x ||
       oriBounds.x <= stageBounds.x
     ) {
+      console.error("Workspace bounds", { programBounds, stageBounds, oriBounds });
+      console.error("Tabs", await page.locator(".tab").allTextContents());
       throw new Error("Build must show program, stage and Ori side by side in the first viewport");
     }
     assert.equal(await webview.locator(".studio-tools").isVisible(), false);
@@ -1005,11 +1010,23 @@ async function main() {
         { cause: error },
       );
     }
-    const { value: afterOri } = await waitForProject(
-      (envelope) =>
-        envelope.project?.program?.scripts?.[0]?.statements?.length ===
-        beforeOri.project.program.scripts[0].statements.length + 1,
-    );
+    let afterOri;
+    try {
+      ({ value: afterOri } = await waitForProject(
+        (envelope) =>
+          envelope.project?.program?.scripts?.[0]?.statements?.length ===
+          beforeOri.project.program.scripts[0].statements.length + 1,
+      ));
+    } catch (error) {
+      console.error("Ori apply state", {
+        before: beforeOri.project.program.scripts[0].statements.length,
+        after: JSON.parse(fs.readFileSync(project, "utf8")).project.program.scripts[0].statements
+          .length,
+        notifications: await page.locator(".notifications-toasts").allTextContents(),
+        tabs: await page.locator(".tab").allTextContents(),
+      });
+      throw error;
+    }
     assert.deepEqual(afterOri.project.program.scripts[0].statements.at(-1), {
       type: "turn",
       degrees: 90,

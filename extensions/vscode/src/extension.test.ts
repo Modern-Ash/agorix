@@ -48,6 +48,10 @@ let quickPick: Record<string, unknown> | undefined;
 let quickPicks: Array<Record<string, unknown> | undefined> = [];
 let inputBox: string | undefined;
 let serverUrl = "";
+let activeEditorUri: { fsPath: string; scheme: string } | undefined;
+let activeTab: unknown;
+const closedTabs: unknown[] = [];
+let closeTabResult = true;
 
 function createMockWebviewPanel() {
   let receive: ((message: unknown) => void) | undefined;
@@ -106,6 +110,9 @@ vi.mock("vscode", () => {
     static joinPath(base: { fsPath: string }, ...paths: string[]) {
       return uri([base.fsPath.replace(/\/$/, ""), ...paths].join("/"));
     }
+  }
+  class TabInputText {
+    constructor(public uri: { fsPath: string; scheme: string; toString(): string }) {}
   }
   class TreeItem {
     description?: string | boolean;
@@ -175,6 +182,7 @@ vi.mock("vscode", () => {
   }
   return {
     Uri,
+    TabInputText,
     TreeItem,
     ThemeColor,
     Disposable: {
@@ -228,6 +236,20 @@ vi.mock("vscode", () => {
     },
     window: {
       visibleTextEditors: [],
+      tabGroups: {
+        activeTabGroup: {
+          get activeTab() {
+            return activeTab;
+          },
+        },
+        close: async (tab: unknown) => {
+          closedTabs.push(tab);
+          return closeTabResult;
+        },
+      },
+      get activeTextEditor() {
+        return activeEditorUri === undefined ? undefined : { document: { uri: activeEditorUri } };
+      },
       showOpenDialog: async () => (picked === undefined ? undefined : [picked]),
       showSaveDialog: async () => savePicked,
       showInputBox: async () => inputBox,
@@ -407,6 +429,10 @@ describe("Studio extension wiring", () => {
     savePicked = undefined;
     inputBox = undefined;
     serverUrl = "";
+    activeEditorUri = undefined;
+    activeTab = undefined;
+    closedTabs.length = 0;
+    closeTabResult = true;
     failRegistration = false;
     picked = undefined;
     vi.stubGlobal("fetch", undefined);
@@ -436,6 +462,7 @@ describe("Studio extension wiring", () => {
         "agorixStudio.clearAgentCredential",
         "agorixStudio.setAgentCredential",
         "agorixStudio.openProject",
+        "agorixStudio.openVisualEditor",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
         "agorixStudio.openWorkbench",
@@ -508,6 +535,57 @@ describe("Studio extension wiring", () => {
     expect(commandCalls).toContainEqual(["workbench.action.closePanel"]);
     expect(commandCalls).toContainEqual(["workbench.action.closeAuxiliaryBar"]);
     expect(webviewPanels.some((item) => item.html.includes("Mundo Agorix"))).toBe(false);
+  });
+
+  it("offers a direct visual editor action for an active portable file", async () => {
+    const { Uri, TabInputText } = await import("vscode");
+    const uri = Uri.file("/p/direct.agorix");
+    files.set(
+      uri.fsPath,
+      new TextEncoder().encode(
+        serializeAgorixProject(parseStored(stored([])), {
+          exportedAt: "2026-01-02T00:00:00.000Z",
+        }),
+      ),
+    );
+    activeEditorUri = uri;
+    activeTab = { input: new TabInputText(uri), isDirty: false };
+
+    await handlers.get("agorixStudio.openVisualEditor")!();
+
+    expect(commandCalls).toContainEqual(["vscode.openWith", uri, "agorixStudio.projectEditor"]);
+    expect(workbenchPanel()?.html).toContain("Agorix Workbench");
+    expect(closedTabs).toEqual([activeTab]);
+  });
+
+  it("preserves a dirty text tab while opening the visual editor", async () => {
+    const { Uri, TabInputText } = await import("vscode");
+    const uri = Uri.file("/p/dirty.agorix");
+    activeEditorUri = uri;
+    activeTab = { input: new TabInputText(uri), isDirty: true };
+    await handlers.get("agorixStudio.openVisualEditor")!();
+    expect(commandCalls).toContainEqual(["vscode.openWith", uri, "agorixStudio.projectEditor"]);
+    expect(closedTabs).toEqual([]);
+  });
+
+  it("keeps the text editor when its tab cannot be closed", async () => {
+    const { Uri, TabInputText } = await import("vscode");
+    const uri = Uri.file("/p/locked.agorix");
+    activeEditorUri = uri;
+    activeTab = { input: new TabInputText(uri), isDirty: false };
+    closeTabResult = false;
+    await handlers.get("agorixStudio.openVisualEditor")!();
+    expect(closedTabs).toEqual([activeTab]);
+    expect(commandCalls.some(([command]) => command === "vscode.openWith")).toBe(false);
+  });
+
+  it("does not open nonportable or nonlocal files in the visual editor", async () => {
+    const { Uri } = await import("vscode");
+    activeEditorUri = Uri.file("/p/readme.json");
+    await handlers.get("agorixStudio.openVisualEditor")!();
+    activeEditorUri = Uri.parse("untitled:/draft.agorix");
+    await handlers.get("agorixStudio.openVisualEditor")!();
+    expect(commandCalls.some(([command]) => command === "vscode.openWith")).toBe(false);
   });
 
   it("asks to open a project before evidence or suggestions", async () => {
