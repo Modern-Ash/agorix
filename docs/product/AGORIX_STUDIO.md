@@ -140,6 +140,8 @@ Workbench palette entries are derived from the shared toolbox. Entries that are
 not valid direct script insertions explain why they are disabled instead of
 allowing a doomed edit.
 
+The Workbench sizes its tools drawer, central editor and Ori dock from the available editor-group width, which can be narrower than the VS Code window. In a narrow group the palette overlays the editor when opened instead of taking a permanent grid column; the canvas retains enough width for visible blocks and the stage. The installed VSIX journey checks this with tools and Ori both open at 900 × 700.
+
 ## Boundaries
 
 - The accepted canonical program is the only program authority.
