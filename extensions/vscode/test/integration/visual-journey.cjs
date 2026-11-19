@@ -723,7 +723,59 @@ async function main() {
           (statement) => statement.type === "setVariable" && statement.value?.type === "add",
         ),
     );
+    await webview
+      .locator(".numeric-socket .comparison-fields > .block-field select")
+      .first()
+      .selectOption("multiply");
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "add" &&
+            statement.value.left?.type === "multiply",
+        ),
+    );
+    await webview
+      .locator('.palette button[aria-label="subtract numbers"]')
+      .dragTo(webview.locator(".numeric-nested-socket").first());
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "add" &&
+            statement.value.left?.type === "multiply" &&
+            statement.value.left.left?.type === "subtract",
+        ),
+    );
+    console.log("Dragged a visual reporter into a nested arithmetic socket");
     await webview.locator(".studio-shell-actions button").filter({ hasText: "Hide tools" }).click();
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "add" &&
+            statement.value.left?.type === "multiply" &&
+            statement.value.left.left?.type === "numericLiteral",
+        ),
+    );
+    await webview.getByRole("button", { name: "Undo change" }).click();
+    await waitForProject((envelope) =>
+      envelope.project?.program?.scripts
+        ?.find((script) => script.id === "main")
+        ?.statements?.some(
+          (statement) =>
+            statement.type === "setVariable" &&
+            statement.value?.type === "add" &&
+            statement.value.left?.type === "numericLiteral",
+        ),
+    );
     await webview.getByRole("button", { name: "Undo change" }).click();
     await waitForProject((envelope) =>
       envelope.project?.program?.scripts

@@ -454,6 +454,8 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .studio-program .numeric-socket select { width: 100%; min-height: 28px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); }
 .studio-program .numeric-socket:has(.numeric-place) { border-color: var(--vscode-focusBorder); }
 .studio-program .numeric-place { width: 100%; margin-top: 4px; min-height: 24px; border: 1px dashed var(--vscode-focusBorder); border-radius: 3px; background: transparent; color: var(--vscode-foreground); cursor: pointer; }
+.studio-program .numeric-nested-socket { border: 1px dashed var(--vscode-panel-border); border-radius: 4px; padding: 3px; }
+.studio-program .numeric-nested-socket:hover, .studio-program .numeric-nested-socket:focus-within { border-color: var(--vscode-focusBorder); }
 .studio-program .math-function-fields { display: grid; gap: 4px; margin-top: 4px; min-width: 0; }
 .studio-program .math-function-fields input { width: 100%; min-width: 0; }
 .studio-program .condition-detail { flex-basis: 128px; }

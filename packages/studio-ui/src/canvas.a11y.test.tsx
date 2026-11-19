@@ -943,6 +943,30 @@ describe("canvas keyboard and screen reader behaviour", () => {
       side: "left",
       reporter: "subtract",
     });
+    const nestedSocket = host.querySelector<HTMLElement>(".numeric-nested-socket")!;
+    const dropBlock = (blockType: string) => {
+      const event = new dom.window.MouseEvent("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "dataTransfer", {
+        value: {
+          getData: (kind: string) =>
+            kind === "application/x-agorix-drag"
+              ? JSON.stringify({ kind: "palette", blockType })
+              : "",
+        },
+      });
+      act(() => nestedSocket.dispatchEvent(event));
+    };
+    dropBlock("operator_multiply");
+    expect(intents.at(-1)).toMatchObject({
+      type: "setArithmeticOperandSource",
+      input: "value",
+      path: ["left"],
+      side: "left",
+      reporter: "multiply",
+    });
+    const count = intents.length;
+    dropBlock("motion_move");
+    expect(intents).toHaveLength(count);
   });
   it("exposes a third arithmetic level for explicit numeric editing", () => {
     const workspace = programToWorkspace({
