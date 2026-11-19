@@ -1683,7 +1683,8 @@ function parseIntent(value: unknown): Intent | undefined {
           side !== "right" &&
           side !== "min" &&
           side !== "max" &&
-          side !== "value") ||
+          side !== "value" &&
+          side !== "index") ||
         (path !== undefined &&
           (!Array.isArray(path) ||
             path.length < 1 ||
@@ -1740,7 +1741,8 @@ function parseIntent(value: unknown): Intent | undefined {
           side === "right" ||
           side === "min" ||
           side === "max" ||
-          side === "value") &&
+          side === "value" ||
+          side === "index") &&
         (path === undefined ||
           (Array.isArray(path) &&
             path.length >= 1 &&

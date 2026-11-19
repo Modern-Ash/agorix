@@ -178,6 +178,49 @@ describe("studio-protocol", () => {
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
   });
+  it("validates list-item index source composition at the VSIX boundary", () => {
+    const location = { container: script, index: 0 };
+    for (const intent of [
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "index",
+        reporter: "variable",
+        referenceId: "score",
+      },
+      {
+        type: "setArithmeticMathFunction",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "index",
+        function: "round",
+      },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
+    for (const intent of [
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "index",
+        reporter: "variable",
+        referenceId: "",
+      },
+      {
+        type: "setArithmeticMathFunction",
+        location,
+        input: "value",
+        path: ["bad"],
+        side: "index",
+        function: "round",
+      },
+    ])
+      expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
+  });
   it("accepts bounded math function controls in direct and logical comparisons", () => {
     const location = { container: script, index: 0 };
     for (const intent of [

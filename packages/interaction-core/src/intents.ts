@@ -377,7 +377,7 @@ export type Intent =
       readonly type: "setArithmeticOperandSource";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
-      readonly side: "left" | "right" | "min" | "max" | "value";
+      readonly side: "left" | "right" | "min" | "max" | "value" | "index";
       readonly path?: readonly ("left" | "right" | "min" | "max" | "value" | "index")[];
       readonly reporter:
         | "number"
@@ -401,7 +401,7 @@ export type Intent =
       readonly type: "setArithmeticMathFunction";
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
-      readonly side: "left" | "right" | "min" | "max" | "value";
+      readonly side: "left" | "right" | "min" | "max" | "value" | "index";
       readonly path?: readonly ("left" | "right" | "min" | "max" | "value" | "index")[];
       readonly function: MathFunction;
     }
@@ -1040,6 +1040,7 @@ export function intentToChange(
           "operator_random",
           "operator_random_integer",
           "operator_math_function",
+          "lists_item",
         ].includes(expression.type)
       )
         return undefined;
@@ -1048,9 +1049,11 @@ export function intentToChange(
       if (
         expression.type === "operator_math_function"
           ? intent.side !== "value"
-          : range
-            ? intent.side !== "min" && intent.side !== "max"
-            : intent.side !== "left" && intent.side !== "right"
+          : expression.type === "lists_item"
+            ? intent.side !== "index"
+            : range
+              ? intent.side !== "min" && intent.side !== "max"
+              : intent.side !== "left" && intent.side !== "right"
       )
         return undefined;
       const current = expression.inputs?.[intent.side];
@@ -1218,6 +1221,7 @@ export function intentToChange(
           "operator_random",
           "operator_random_integer",
           "operator_math_function",
+          "lists_item",
         ].includes(expression.type)
       )
         return undefined;
@@ -1226,9 +1230,11 @@ export function intentToChange(
       if (
         expression.type === "operator_math_function"
           ? intent.side !== "value"
-          : range
-            ? intent.side !== "min" && intent.side !== "max"
-            : intent.side !== "left" && intent.side !== "right"
+          : expression.type === "lists_item"
+            ? intent.side !== "index"
+            : range
+              ? intent.side !== "min" && intent.side !== "max"
+              : intent.side !== "left" && intent.side !== "right"
       )
         return undefined;
       const operand = expression.inputs?.[intent.side];
