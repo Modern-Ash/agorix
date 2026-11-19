@@ -943,18 +943,28 @@ async function main() {
         ),
     );
     await webview.locator(".studio-shell-actions button").filter({ hasText: "Hide tools" }).click();
-    for (let edit = 0; edit < 3; edit += 1)
+    // Selection and numeric edits can create different undo counts across VS Code hosts.
+    // Stop as soon as the original canonical value is restored.
+    let restored = false;
+    for (let edit = 0; edit < 5 && !restored; edit += 1) {
       await webview.getByRole("button", { name: "Undo change" }).click();
-    await waitForProject((envelope) =>
-      envelope.project?.program?.scripts
-        ?.find((script) => script.id === "main")
-        ?.statements?.some(
-          (statement) =>
-            statement.type === "setVariable" &&
-            statement.value?.type === "numericLiteral" &&
-            statement.value.value === 1,
-        ),
-    );
+      try {
+        await waitForProject((envelope) =>
+          envelope.project?.program?.scripts
+            ?.find((script) => script.id === "main")
+            ?.statements?.some(
+              (statement) =>
+                statement.type === "setVariable" &&
+                statement.value?.type === "numericLiteral" &&
+                statement.value.value === 1,
+            ),
+        );
+        restored = true;
+      } catch {
+        // One more explicit undo may be needed for the preceding field edit.
+      }
+    }
+    assert(restored, "Undo did not restore the original canonical numeric value");
     console.log("Selected, configured and undid a visual math function");
     await webview.locator(".studio-shell-actions button").filter({ hasText: "Show tools" }).click();
     const move = webview
