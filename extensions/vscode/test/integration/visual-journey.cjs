@@ -257,7 +257,9 @@ async function main() {
     await waitForProject((envelope) =>
       envelope.project.program.scripts[0].statements.some((statement) => statement.type === "if"),
     );
-    await componentLauncher.getByRole("button", { name: "Operators" }).click();
+    const allTools = webview.locator(".studio-program-heading button");
+    if ((await allTools.getAttribute("aria-expanded")) === "true") await allTools.click();
+    await allTools.click();
     await webview.locator('.palette button[aria-label="and"]').click();
     await webview.locator(".expression-socket").last().click();
     await waitForProject((envelope) =>
