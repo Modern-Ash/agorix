@@ -947,6 +947,22 @@ describe("studio-protocol", () => {
       parseUiMessage({
         schema,
         type: "intent",
+        intent: {
+          ...nested,
+          path: ["left"],
+          side: "right",
+          reporter: "subtract",
+          referenceId: undefined,
+        },
+      }),
+    ).toMatchObject({ intent: { path: ["left"], side: "right", reporter: "subtract" } });
+    expect(
+      parseUiMessage({ schema, type: "intent", intent: { ...nested, path: ["left", "right"] } }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
         intent: { ...nested, reporter: "multiply", referenceId: undefined },
       }),
     ).toMatchObject({ intent: { reporter: "multiply" } });

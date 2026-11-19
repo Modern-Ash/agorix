@@ -325,6 +325,7 @@ export type Intent =
       readonly location: StatementLocation;
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max";
+      readonly path?: readonly ("left" | "right" | "min" | "max")[];
       readonly reporter:
         | "number"
         | "variable"
@@ -945,7 +946,20 @@ export function intentToChange(
         lists_replace_at: ["index", "value"],
       };
       if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
-      const expression = block.inputs?.[intent.input];
+      const rootExpression = block.inputs?.[intent.input];
+      if (rootExpression === undefined || Array.isArray(rootExpression)) return undefined;
+      if (intent.path !== undefined && intent.path.length !== 1) return undefined;
+      const parentSide = intent.path?.[0];
+      if (parentSide !== undefined) {
+        const allowed =
+          rootExpression.type === "operator_random" ||
+          rootExpression.type === "operator_random_integer"
+            ? ["min", "max"]
+            : ["left", "right"];
+        if (!allowed.includes(parentSide)) return undefined;
+      }
+      const expression =
+        parentSide === undefined ? rootExpression : rootExpression.inputs?.[parentSide];
       if (
         expression === undefined ||
         Array.isArray(expression) ||
@@ -1056,19 +1070,21 @@ export function intentToChange(
           };
           break;
       }
+      const nextExpression = {
+        ...expression,
+        inputs: { ...expression.inputs, [intent.side]: replacement },
+      };
+      const nextRoot =
+        parentSide === undefined
+          ? nextExpression
+          : {
+              ...rootExpression,
+              inputs: { ...rootExpression.inputs, [parentSide]: nextExpression },
+            };
       return {
         type: "editBlock",
         location: intent.location,
-        block: {
-          ...block,
-          inputs: {
-            ...block.inputs,
-            [intent.input]: {
-              ...expression,
-              inputs: { ...expression.inputs, [intent.side]: replacement },
-            },
-          },
-        },
+        block: { ...block, inputs: { ...block.inputs, [intent.input]: nextRoot } },
       };
     }
     case "setArithmeticMathFunction": {
