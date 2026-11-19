@@ -2217,6 +2217,75 @@ describe("interaction-core", () => {
       value: { type: "add", left: { type: "random", min: { value: 0 }, max: { value: 10 } } },
     });
   });
+  it("validates references before changing a nested numeric reporter", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [
+        { id: "score", name: "Score", initialValue: 0, visible: true },
+        { id: "energy", name: "Energy", initialValue: 0, visible: true },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "add",
+                left: {
+                  type: "multiply",
+                  left: { type: "numericLiteral", value: 2 },
+                  right: { type: "numericLiteral", value: 3 },
+                },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    } as never).workspace;
+    const location = { container: script, index: 0 };
+    const valid = intentToChange(
+      {
+        type: "setArithmeticOperandSource",
+        location,
+        input: "value",
+        path: ["left"],
+        side: "left",
+        reporter: "variable",
+        referenceId: "energy",
+      },
+      newId,
+      workspace,
+    );
+    expect(applyWorkspaceChange(workspace, valid!).program.scripts[0]?.statements[0]).toMatchObject(
+      {
+        value: {
+          left: {
+            left: { type: "variable", variableId: "energy" },
+            right: { type: "numericLiteral", value: 3 },
+          },
+        },
+      },
+    );
+    expect(
+      intentToChange(
+        {
+          type: "setArithmeticOperandSource",
+          location,
+          input: "value",
+          path: ["left"],
+          side: "left",
+          reporter: "variable",
+          referenceId: "missing",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("edits a math function nested in arithmetic without replacing its sibling", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

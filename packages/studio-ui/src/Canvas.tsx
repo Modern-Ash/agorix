@@ -1276,6 +1276,8 @@ export function Canvas({
                                       operandLabel={operandLabel}
                                       rootSideLabel={sideLabel}
                                       copy={copy}
+                                      workspace={workspace}
+                                      actors={actors}
                                       onIntent={onIntent}
                                     />
                                   ))
