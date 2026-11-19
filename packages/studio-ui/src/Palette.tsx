@@ -21,6 +21,30 @@ function sectionLabel(name: string, copy: StudioUiCopy): string {
   return name;
 }
 
+function searchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+export function matchesPaletteBlockSearch(
+  query: string,
+  block: { readonly type: string; readonly label: string; readonly accessibleName: string },
+  section: string,
+  copy: StudioUiCopy,
+): boolean {
+  const needle = searchText(query.trim());
+  if (!needle) return true;
+  const labels: Readonly<Record<string, string>> = copy.blockLabels;
+  const accessibleNames: Readonly<Record<string, string>> = copy.blockAccessibleNames;
+  return searchText(
+    [block.label, block.accessibleName, labels[block.type], accessibleNames[block.type], section]
+      .filter(Boolean)
+      .join(" "),
+  ).includes(needle);
+}
+
 export function Palette({
   copy = copyFor("en"),
   onAdd,
@@ -47,7 +71,6 @@ export function Palette({
   readonly sectionFilter?: string | undefined;
 }) {
   const [query, setQuery] = useState("");
-  const normalizedQuery = query.trim().toLowerCase();
   const sections = useMemo(
     () =>
       [
@@ -77,18 +100,14 @@ export function Palette({
                 numericReporterForBlock(block.type) !== undefined,
             )
             .filter((block) =>
-              normalizedQuery.length === 0
-                ? true
-                : `${block.label} ${block.accessibleName} ${section.name}`
-                    .toLowerCase()
-                    .includes(normalizedQuery),
+              matchesPaletteBlockSearch(query, block, sectionLabel(section.name, copy), copy),
             ),
         }))
         .filter(
           (section) =>
             section.blocks.length > 0 && (!sectionFilter || section.name === sectionFilter),
         ),
-    [copy, normalizedQuery, hasLists, hasVariables, hasActors, hasProcedures, sectionFilter],
+    [copy, query, hasLists, hasVariables, hasActors, hasProcedures, sectionFilter],
   );
   return (
     <nav className="palette" aria-label={copy.paletteBlocks}>
@@ -100,6 +119,7 @@ export function Palette({
           onChange={(event) => setQuery(event.currentTarget.value)}
         />
       </label>
+      {sections.length === 0 && query.trim() ? <p role="status">{copy.paletteNoMatches}</p> : null}
       {sections.map((section) => (
         <section key={section.name} className="palette-section">
           <h2>{section.name}</h2>

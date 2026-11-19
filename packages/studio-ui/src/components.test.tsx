@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
-import { Palette } from "./Palette.js";
+import { Palette, matchesPaletteBlockSearch } from "./Palette.js";
 import { ProcedureNavigator, ProcedureTools } from "./ProcedureTools.js";
 import { SceneLibrary } from "./SceneLibrary.js";
 import {
@@ -570,6 +570,16 @@ describe("studio-ui", () => {
     expect(palette).toContain("Movimiento");
     expect(palette).toContain("Sensores");
     expect(palette).toContain('aria-pressed="false"');
+  });
+
+  it("finds blocks by visible Spanish labels and ignores accents", () => {
+    const copy = copyFor("es");
+    const block = { type: "motion_move", label: "Move steps", accessibleName: "move steps" };
+    expect(matchesPaletteBlockSearch("mover", block, "Movimiento", copy)).toBe(true);
+    expect(matchesPaletteBlockSearch("movimiento", block, "Movimiento", copy)).toBe(true);
+    expect(matchesPaletteBlockSearch("move", block, "Movimiento", copy)).toBe(true);
+    expect(matchesPaletteBlockSearch("apariencia", block, "Movimiento", copy)).toBe(false);
+    expect(matchesPaletteBlockSearch("sénsór", block, "Movimiento", copy)).toBe(false);
   });
 
   it("renders multi-actor stage frames and marks the selected actor", () => {
