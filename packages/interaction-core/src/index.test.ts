@@ -21,6 +21,82 @@ let n = 0;
 const newId = () => `block:t_${(n += 1)}`;
 
 describe("interaction-core", () => {
+  it("changes a call argument source through a canonical workspace edit", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 2, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc:count",
+              args: [{ type: "numericLiteral", value: 3 }],
+            },
+          ],
+          procedures: [
+            {
+              id: "proc:count",
+              name: "Count",
+              parameters: [{ id: "param:times", name: "Times" }],
+              body: [{ type: "move", steps: 1 }],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const edit = intentToChange(
+      {
+        type: "setProcedureArgumentSource",
+        location,
+        argumentIndex: 0,
+        reporter: "variable",
+        referenceId: "n",
+      },
+      newId,
+      workspace,
+    );
+    expect(applyWorkspaceChange(workspace, edit!).program.scripts[0]?.statements[0]).toMatchObject({
+      type: "callProcedure",
+      args: [{ type: "variable", variableId: "n" }],
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setProcedureArgumentSource",
+          location,
+          argumentIndex: 0,
+          reporter: "variable",
+          referenceId: "missing",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setProcedureArgumentSource",
+          location,
+          argumentIndex: 0,
+          reporter: "parameter",
+          referenceId: "param:times",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setProcedureArgumentSource", location, argumentIndex: 1, reporter: "number" },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("places a declared parameter only inside its own custom block body", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

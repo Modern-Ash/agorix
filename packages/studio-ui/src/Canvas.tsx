@@ -2011,8 +2011,126 @@ export function Canvas({
                   ?.parameters?.map((parameter, argumentIndex) => {
                     const argument = block.args?.[argumentIndex];
                     return (
-                      <label key={parameter.id}>
+                      <div className="block-field" key={parameter.id}>
                         <span>{parameter.name}</span>
+                        <select
+                          aria-label={`${copy.customBlockArguments}: ${parameter.name} ${copy.numericSource}`}
+                          value={
+                            argument?.type === "literal_number"
+                              ? "number"
+                              : argument?.type === "variables_value"
+                                ? "variable"
+                                : argument?.type === "parameter_value"
+                                  ? "parameter"
+                                  : argument?.type === "lists_length"
+                                    ? "listLength"
+                                    : argument?.type === "sensing_x_position"
+                                      ? "xPosition"
+                                      : argument?.type === "sensing_y_position"
+                                        ? "yPosition"
+                                        : "other"
+                          }
+                          onChange={(event) => {
+                            const reporter = event.currentTarget.value as
+                              | "number"
+                              | "variable"
+                              | "parameter"
+                              | "listLength"
+                              | "xPosition"
+                              | "yPosition";
+                            const referenceId =
+                              reporter === "variable"
+                                ? workspace.variables?.[0]?.id
+                                : reporter === "listLength"
+                                  ? workspace.lists?.[0]?.id
+                                  : reporter === "parameter" &&
+                                      block.location.container.kind === "procedure"
+                                    ? workspace.scripts[block.location.container.scriptIndex]
+                                        ?.procedures?.[block.location.container.procedureIndex]
+                                        ?.parameters?.[0]?.id
+                                    : undefined;
+                            onIntent({
+                              type: "setProcedureArgumentSource",
+                              location: block.location,
+                              argumentIndex,
+                              reporter,
+                              ...(referenceId === undefined ? {} : { referenceId }),
+                            });
+                          }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <option value="number">{copy.numericLiteral}</option>
+                          {(workspace.variables?.length ?? 0) > 0 ? (
+                            <option value="variable">{copy.variableValue}</option>
+                          ) : null}
+                          {(workspace.lists?.length ?? 0) > 0 ? (
+                            <option value="listLength">{copy.listLength}</option>
+                          ) : null}
+                          {block.location.container.kind === "procedure" &&
+                          (workspace.scripts[block.location.container.scriptIndex]?.procedures?.[
+                            block.location.container.procedureIndex
+                          ]?.parameters?.length ?? 0) > 0 ? (
+                            <option value="parameter">{copy.customBlockParameter}</option>
+                          ) : null}
+                          <option value="xPosition">{copy.positionX}</option>
+                          <option value="yPosition">{copy.positionY}</option>
+                          {argument !== undefined &&
+                          ![
+                            "literal_number",
+                            "variables_value",
+                            "parameter_value",
+                            "lists_length",
+                            "sensing_x_position",
+                            "sensing_y_position",
+                          ].includes(argument.type) ? (
+                            <option value="other">
+                              {getBlockDefinition(argument.type)?.label ?? argument.type}
+                            </option>
+                          ) : null}
+                        </select>
+                        {argument?.type === "variables_value" ||
+                        argument?.type === "lists_length" ||
+                        argument?.type === "parameter_value" ? (
+                          <select
+                            aria-label={`${copy.customBlockArguments}: ${parameter.name} ${copy.numericReference}`}
+                            value={String(
+                              argument.fields?.variableId ??
+                                argument.fields?.listId ??
+                                argument.fields?.parameterId ??
+                                "",
+                            )}
+                            onChange={(event) =>
+                              onIntent({
+                                type: "setProcedureArgumentSource",
+                                location: block.location,
+                                argumentIndex,
+                                reporter:
+                                  argument.type === "variables_value"
+                                    ? "variable"
+                                    : argument.type === "lists_length"
+                                      ? "listLength"
+                                      : "parameter",
+                                referenceId: event.currentTarget.value,
+                              })
+                            }
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            {(argument.type === "variables_value"
+                              ? (workspace.variables ?? [])
+                              : argument.type === "lists_length"
+                                ? (workspace.lists ?? [])
+                                : block.location.container.kind === "procedure"
+                                  ? (workspace.scripts[block.location.container.scriptIndex]
+                                      ?.procedures?.[block.location.container.procedureIndex]
+                                      ?.parameters ?? [])
+                                  : []
+                            ).map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
                         {argument?.type === "literal_number" ? (
                           <input
                             type="number"
@@ -2040,10 +2158,21 @@ export function Canvas({
                               event.currentTarget.value = String(argument.fields?.value ?? 0);
                             }}
                           />
-                        ) : (
-                          <span>{argument?.type ?? "?"}</span>
-                        )}
-                      </label>
+                        ) : argument === undefined ||
+                          ![
+                            "variables_value",
+                            "parameter_value",
+                            "lists_length",
+                            "sensing_x_position",
+                            "sensing_y_position",
+                          ].includes(argument.type) ? (
+                          <span>
+                            {argument === undefined
+                              ? "?"
+                              : (getBlockDefinition(argument.type)?.label ?? argument.type)}
+                          </span>
+                        ) : null}
+                      </div>
                     );
                   })}
               </div>

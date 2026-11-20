@@ -186,6 +186,34 @@ describe("workbenchHost", () => {
       type: "callProcedure",
       args: [{ value: 7 }],
     });
+    expect(
+      (
+        await send({
+          type: "setProcedureArgumentSource",
+          location,
+          argumentIndex: 0,
+          reporter: "xPosition",
+        })
+      )[0]?.type,
+    ).not.toBe("error");
+    expect(get()!.scripts[0]!.statements.at(-1)).toMatchObject({
+      type: "callProcedure",
+      args: [{ type: "xPosition" }],
+    });
+    expect(
+      (
+        await send({
+          type: "setProcedureArgumentSource",
+          location,
+          argumentIndex: 0,
+          reporter: "number",
+        })
+      )[0]?.type,
+    ).not.toBe("error");
+    expect(get()!.scripts[0]!.statements.at(-1)).toMatchObject({
+      type: "callProcedure",
+      args: [{ type: "numericLiteral", value: 0 }],
+    });
     const before = JSON.stringify(get());
     expect(
       await send({ type: "setProcedureArgument", location, argumentIndex: 1, value: 9 }),

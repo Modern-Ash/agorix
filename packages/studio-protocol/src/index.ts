@@ -1191,6 +1191,28 @@ function parseIntent(value: unknown): Intent | undefined {
         ? { type: "setProcedureArgument", location, argumentIndex, value: argumentValue }
         : undefined;
     }
+    case "setProcedureArgumentSource": {
+      const location = parseLocation(value["location"]);
+      const argumentIndex = value["argumentIndex"];
+      const reporter = value["reporter"];
+      const referenceId = value["referenceId"];
+      return location !== undefined &&
+        isIndex(argumentIndex) &&
+        argumentIndex < PROCEDURE_PARAMETERS_MAX &&
+        ["number", "variable", "parameter", "listLength", "xPosition", "yPosition"].includes(
+          String(reporter),
+        ) &&
+        (referenceId === undefined || isSafeId(referenceId))
+        ? {
+            type: "setProcedureArgumentSource",
+            location,
+            argumentIndex,
+            reporter: reporter as
+              "number" | "variable" | "parameter" | "listLength" | "xPosition" | "yPosition",
+            ...(referenceId === undefined ? {} : { referenceId }),
+          }
+        : undefined;
+    }
     case "deleteProcedure": {
       const scriptIndex = value["scriptIndex"];
       const procedureId = value["procedureId"];
