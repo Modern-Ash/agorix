@@ -36,6 +36,7 @@
     "onCustomEditor:agorixStudio.projectEditor",
     "onCommand:agorixStudio.createProject",
     "onCommand:agorixStudio.openProject",
+    "onCommand:agorixStudio.openVisualEditor",
     "onCommand:agorixStudio.exportAgorix",
     "onCommand:agorixStudio.exportEducatorEvidence",
     "onCommand:agorixStudio.signIn",
@@ -246,6 +247,12 @@
         "title": "%command.openProject.title%",
         "category": "%category%",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "agorixStudio.openVisualEditor",
+        "title": "%command.openVisualEditor.title%",
+        "category": "%category%",
+        "icon": "$(layout)"
       },
       {
         "command": "agorixStudio.exportAgorix",
@@ -652,6 +659,11 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "agorixStudio.openVisualEditor",
+          "when": "resourceScheme == file && resourceExtname == .agorix && activeCustomEditorId != agorixStudio.projectEditor",
+          "group": "navigation@0"
+        },
         {
           "command": "agorixStudio.run",
           "when": "resourceScheme == agorix-studio && agorixStudio.executionStatus != running",

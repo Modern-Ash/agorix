@@ -4,6 +4,7 @@
   "command.createProject.title": "Create New Project",
   "category": "Agorix Studio",
   "command.openProject.title": "Open Project",
+  "command.openVisualEditor.title": "Open in Agorix Workbench",
   "command.exportAgorix.title": "Export Portable .agorix Project",
   "command.exportEducatorEvidence.title": "Export Educator Evidence",
   "command.signIn.title": "Sign In With Account Token",
