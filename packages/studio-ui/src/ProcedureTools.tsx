@@ -151,6 +151,57 @@ export function ProcedureTools({
               <span>
                 {procedure.body.length} {copy.customBlockSteps}
               </span>
+              <ul aria-label={`${procedure.name}: ${copy.customBlockArguments}`}>
+                {(procedure.parameters ?? []).map((parameter) => (
+                  <li key={parameter.id}>
+                    <span>{parameter.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`${copy.customBlockRemoveParameter}: ${parameter.name}`}
+                      onClick={() =>
+                        onIntent({
+                          type: "removeProcedureParameter",
+                          scriptIndex,
+                          procedureId: procedure.id,
+                          parameterId: parameter.id,
+                        })
+                      }
+                    >
+                      {copy.customBlockRemoveParameter}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {(procedure.parameters?.length ?? 0) >= 4 ? null : (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const input = event.currentTarget.elements.namedItem(
+                      "parameterName",
+                    ) as HTMLInputElement | null;
+                    const next = input?.value.trim();
+                    if (next)
+                      onIntent({
+                        type: "addProcedureParameter",
+                        scriptIndex,
+                        procedureId: procedure.id,
+                        name: next,
+                      });
+                    if (input) input.value = "";
+                  }}
+                >
+                  <label>
+                    {copy.customBlockParameter}
+                    <input
+                      name="parameterName"
+                      required
+                      maxLength={20}
+                      pattern="[\p{L}\p{N}][\p{L}\p{N} _\-]{0,19}"
+                    />
+                  </label>
+                  <button type="submit">{copy.customBlockAddParameter}</button>
+                </form>
+              )}
               {onEditBody === undefined ? null : (
                 <button
                   type="button"

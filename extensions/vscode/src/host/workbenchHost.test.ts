@@ -159,6 +159,39 @@ describe("workbenchHost", () => {
     ).not.toBe("error");
     expect(get()).toEqual(base);
   });
+  it("edits custom block arguments through the validated host boundary", async () => {
+    const { host, get } = setup();
+    const send = async (intent: unknown) =>
+      host.handle(
+        parseUiMessage({ schema, type: "intent", intent, baseHash: programSemanticHash(get()!) })!,
+      );
+    await send({ type: "createProcedure", scriptIndex: 0, name: "Wave", count: 1 });
+    const procedureId = get()!.scripts[0]!.procedures![0]!.id;
+    expect(
+      (await send({ type: "addProcedureParameter", scriptIndex: 0, procedureId, name: "Times" }))[0]
+        ?.type,
+    ).not.toBe("error");
+    expect(get()!.scripts[0]!.statements.at(-1)).toMatchObject({
+      type: "callProcedure",
+      args: [{ value: 0 }],
+    });
+    const location = {
+      container: { kind: "script", scriptIndex: 0 },
+      index: get()!.scripts[0]!.statements.length - 1,
+    };
+    expect(
+      (await send({ type: "setProcedureArgument", location, argumentIndex: 0, value: 7 }))[0]?.type,
+    ).not.toBe("error");
+    expect(get()!.scripts[0]!.statements.at(-1)).toMatchObject({
+      type: "callProcedure",
+      args: [{ value: 7 }],
+    });
+    const before = JSON.stringify(get());
+    expect(
+      await send({ type: "setProcedureArgument", location, argumentIndex: 1, value: 9 }),
+    ).toEqual([]);
+    expect(JSON.stringify(get())).toBe(before);
+  });
   it("adds and retargets a visual custom-block call without crossing script ownership", async () => {
     const program = {
       schema: "agorix/program/v1",

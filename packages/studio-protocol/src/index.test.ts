@@ -51,12 +51,32 @@ describe("studio-protocol", () => {
       { type: "createProcedure", scriptIndex: 0, name: "Wave", count: 2 },
       { type: "renameProcedure", scriptIndex: 0, procedureId: "proc:wave", name: "Wave again" },
       { type: "deleteProcedure", scriptIndex: 0, procedureId: "proc:wave", inlineCalls: true },
+      { type: "addProcedureParameter", scriptIndex: 0, procedureId: "proc:wave", name: "Steps" },
+      {
+        type: "removeProcedureParameter",
+        scriptIndex: 0,
+        procedureId: "proc:wave",
+        parameterId: "param:steps",
+      },
+      {
+        type: "setProcedureArgument",
+        location: { container: script, index: 0 },
+        argumentIndex: 0,
+        value: 3,
+      },
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
     for (const intent of [
       { type: "createProcedure", scriptIndex: 0, name: "!", count: 2 },
       { type: "createProcedure", scriptIndex: 0, name: "Wave", count: 21 },
       { type: "deleteProcedure", scriptIndex: 0, procedureId: "proc:wave" },
+      { type: "addProcedureParameter", scriptIndex: 0, procedureId: "proc:wave", name: "!" },
+      {
+        type: "setProcedureArgument",
+        location: { container: script, index: 0 },
+        argumentIndex: 5,
+        value: 3,
+      },
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
   });

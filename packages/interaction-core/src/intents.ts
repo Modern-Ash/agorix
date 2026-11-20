@@ -191,6 +191,24 @@ export type Intent =
       readonly name: string;
     }
   | {
+      readonly type: "addProcedureParameter";
+      readonly scriptIndex: number;
+      readonly procedureId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: "removeProcedureParameter";
+      readonly scriptIndex: number;
+      readonly procedureId: string;
+      readonly parameterId: string;
+    }
+  | {
+      readonly type: "setProcedureArgument";
+      readonly location: StatementLocation;
+      readonly argumentIndex: number;
+      readonly value: number;
+    }
+  | {
       readonly type: "deleteProcedure";
       readonly scriptIndex: number;
       readonly procedureId: string;
@@ -334,6 +352,7 @@ export type Intent =
       readonly reporter:
         | "number"
         | "variable"
+        | "parameter"
         | "listLength"
         | "listItem"
         | "xPosition"
@@ -474,14 +493,27 @@ export function intentToChange(
     case "insertBlock": {
       const block = createDefaultBlock(intent.blockType, newBlockId());
       if (intent.blockType === "procedures_call") {
-        const procedureId =
-          workspace?.scripts[intent.to.container.scriptIndex]?.procedures?.[0]?.id;
-        if (procedureId === undefined) return undefined;
+        const procedure = workspace?.scripts[intent.to.container.scriptIndex]?.procedures?.[0];
+        if (procedure === undefined) return undefined;
         return {
           type: "addBlock",
           container: intent.to.container,
           index: intent.to.index,
-          block: { ...block, fields: { procedureId } },
+          block: {
+            ...block,
+            fields: { procedureId: procedure.id },
+            ...(procedure.parameters?.length
+              ? {
+                  inputs: {
+                    args: procedure.parameters.map(() => ({
+                      id: newBlockId(),
+                      type: "literal_number" as const,
+                      fields: { value: 0 },
+                    })),
+                  },
+                }
+              : {}),
+          },
         };
       }
       if (intent.blockType.startsWith("lists_")) {
@@ -628,6 +660,33 @@ export function intentToChange(
         return undefined;
       return { type: "editListInitialItems", listId: intent.listId, items: intent.items };
     }
+    case "setProcedureArgument": {
+      if (
+        workspace === undefined ||
+        !Number.isInteger(intent.argumentIndex) ||
+        intent.argumentIndex < 0 ||
+        !Number.isFinite(intent.value)
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const args = block?.inputs?.args;
+      if (
+        block?.type !== "procedures_call" ||
+        !Array.isArray(args) ||
+        args[intent.argumentIndex]?.type !== "literal_number"
+      )
+        return undefined;
+      const nextArgs = args.map((arg, index) =>
+        index === intent.argumentIndex
+          ? { ...arg, fields: { ...arg.fields, value: intent.value } }
+          : arg,
+      );
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: { ...block, inputs: { ...block.inputs, args: nextArgs } },
+      };
+    }
     case "setExpressionNumber": {
       if (workspace === undefined || !Number.isFinite(intent.value)) return undefined;
       const { container, index } = intent.location;
@@ -686,6 +745,21 @@ export function intentToChange(
             fields: { variableId: intent.referenceId },
           };
           break;
+        case "parameter": {
+          if (
+            container.kind !== "procedure" ||
+            !workspace.scripts[container.scriptIndex]?.procedures?.[
+              container.procedureIndex
+            ]?.parameters?.some((parameter) => parameter.id === intent.referenceId)
+          )
+            return undefined;
+          replacement = {
+            id: current.id,
+            type: "parameter_value",
+            fields: { parameterId: intent.referenceId },
+          };
+          break;
+        }
         case "listLength":
           if (!workspace.lists?.some((list) => list.id === intent.referenceId)) return undefined;
           replacement = {
@@ -1848,6 +1922,36 @@ export function intentToChange(
       const block = statementsAt(workspace, container)?.[index];
       if (block === undefined || typeof block.fields?.[intent.field] !== typeof intent.value)
         return undefined;
+      if (
+        intent.type === "setTextField" &&
+        intent.field === "procedureId" &&
+        block.type === "procedures_call"
+      ) {
+        const procedure = workspace.scripts[container.scriptIndex]?.procedures?.find(
+          (item) => item.id === intent.value,
+        );
+        if (procedure === undefined) return undefined;
+        return {
+          type: "editBlock",
+          location: intent.location,
+          block: {
+            ...block,
+            fields: { ...block.fields, procedureId: intent.value },
+            ...(procedure.parameters?.length
+              ? {
+                  inputs: {
+                    ...block.inputs,
+                    args: procedure.parameters.map(() => ({
+                      id: newBlockId(),
+                      type: "literal_number" as const,
+                      fields: { value: 0 },
+                    })),
+                  },
+                }
+              : { inputs: {} }),
+          },
+        };
+      }
       return {
         type: "editBlock",
         location: intent.location,

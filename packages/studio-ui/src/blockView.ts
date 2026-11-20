@@ -19,6 +19,7 @@ export interface RenderBlock {
   readonly value?: BlockNode;
   readonly delta?: BlockNode;
   readonly index?: BlockNode;
+  readonly args?: readonly BlockNode[];
 }
 
 export type RenderRow =
@@ -70,6 +71,7 @@ function pushList(
         ...(node.inputs?.value === undefined ? {} : { value: node.inputs.value }),
         ...(node.inputs?.delta === undefined ? {} : { delta: node.inputs.delta }),
         ...(node.inputs?.index === undefined ? {} : { index: node.inputs.index }),
+        ...(node.inputs?.args === undefined ? {} : { args: node.inputs.args }),
       },
     });
     const childPath = [...path, index];

@@ -1160,6 +1160,37 @@ function parseIntent(value: unknown): Intent | undefined {
         ? { type: "renameProcedure", scriptIndex, procedureId, name }
         : undefined;
     }
+    case "addProcedureParameter": {
+      const scriptIndex = value["scriptIndex"];
+      const procedureId = value["procedureId"];
+      const name = value["name"];
+      return isIndex(scriptIndex) &&
+        isSafeId(procedureId) &&
+        typeof name === "string" &&
+        /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u.test(name)
+        ? { type: "addProcedureParameter", scriptIndex, procedureId, name }
+        : undefined;
+    }
+    case "removeProcedureParameter": {
+      const scriptIndex = value["scriptIndex"];
+      const procedureId = value["procedureId"];
+      const parameterId = value["parameterId"];
+      return isIndex(scriptIndex) && isSafeId(procedureId) && isSafeId(parameterId)
+        ? { type: "removeProcedureParameter", scriptIndex, procedureId, parameterId }
+        : undefined;
+    }
+    case "setProcedureArgument": {
+      const location = parseLocation(value["location"]);
+      const argumentIndex = value["argumentIndex"];
+      const argumentValue = value["value"];
+      return location !== undefined &&
+        isIndex(argumentIndex) &&
+        argumentIndex < PROCEDURE_PARAMETERS_MAX &&
+        typeof argumentValue === "number" &&
+        Number.isFinite(argumentValue)
+        ? { type: "setProcedureArgument", location, argumentIndex, value: argumentValue }
+        : undefined;
+    }
     case "deleteProcedure": {
       const scriptIndex = value["scriptIndex"];
       const procedureId = value["procedureId"];
