@@ -133,18 +133,18 @@ flowchart LR
 
 ## Agorix Studio
 
-**Agorix Studio** is the progressive desktop experience delivered as a VS Code extension.
+**Agorix Studio** is the visual IDE for advanced learners, delivered as a VS Code extension.
 
 It should feel like a real modern IDE experience adapted for learning, not Scratch embedded inside VS Code.
 
-Install and developer instructions (VSIX packaging, F5 launch, Extension Host tests, supported VS Code range): [extensions/vscode/README.md](extensions/vscode/README.md).
+See the [Studio visual guide, screenshots and short video](extensions/vscode/README.md#see-studio), plus VSIX installation and developer instructions.
 
 Its first-class surfaces include:
 
-- Mission / Project explorer;
-- textual code editor;
-- World Preview;
-- educational Execution Inspector;
+- visual block editor and component palette;
+- interactive stage with actors, costumes, backdrops and sounds;
+- code projection one click away;
+- deterministic run and evidence views;
 - AI proposal diff review;
 - Learning Companion integrated with code and runtime evidence.
 

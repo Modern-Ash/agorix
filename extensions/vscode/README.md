@@ -1,6 +1,27 @@
 # Agorix Studio VS Code extension
 
-Agorix Studio is the progressive VS Code surface for Agorix projects. It reuses shared `packages/*` contracts instead of creating a second programming model.
+Agorix Studio is the visual IDE for advanced Agorix learners. The main workspace brings the program, stage, assets, runtime evidence and Ori together in VS Code. It shares the canonical project and deterministic runtime with Agorix Web.
+
+## See Studio
+
+These images come from an installed VSIX at 900 × 700. The [visual verification notes](../../docs/product/STUDIO_VISUAL_WORKSPACE.md) also include 1440 × 900 captures and explain the fixture and installed-extension journey.
+
+| Build and run                                                                                                                                                                                   | Scene and costumes                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Agorix Studio Build view: visual blocks, stage and Ori](../../docs/product/assets/studio-vsix-component-launcher-900.png)](../../docs/product/assets/studio-vsix-component-launcher-900.png) | [![Agorix Studio Scene view with actors and stage](../../docs/product/assets/studio-vsix-scene-focus-900.png)](../../docs/product/assets/studio-vsix-scene-focus-900.png) |
+
+| Costume gallery                                                                                                                                                               | Ori dock                                                                                                                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Visual costume gallery in the installed VSIX](../../docs/product/assets/studio-vsix-costume-picker-900.png)](../../docs/product/assets/studio-vsix-costume-picker-900.png) | [![Ori dock beside the stage and program](../../docs/product/assets/studio-vsix-ori-resized-900.png)](../../docs/product/assets/studio-vsix-ori-resized-900.png) |
+
+[Watch the 20-second visual tour (MP4)](../../docs/product/assets/studio-visual-tour.mp4). It is a montage of verified VSIX screenshots; the [installed VSIX journey](../../docs/product/STUDIO_VISUAL_WORKSPACE.md#packaged-vsix-verification) records the actual interactions and checks. A narrated interaction recording is still to be produced.
+
+### First project
+
+1. Open or create a portable `.agorix` project and choose **Open in Agorix Workbench** if VS Code initially shows the file as text.
+2. Use **Build** to add and connect visual blocks; use **Scene** to choose actors, costumes, backdrops and sounds. **Code** remains one click away.
+3. Run or step through the project, then inspect the stage and **Evidence**. The shared runtime decides what happened.
+4. Ask **Ori** for an explanation or proposal. Review the visible change and choose whether to accept it; the project runs without Ori.
 
 The extension keeps VS Code API imports inside `extensions/vscode` adapters. `src/extension.ts` wires activation, while `src/host/`, `src/commands/` and `src/store/` hold webview hosts, command registration and session state; project semantics, projection mapping, execution evidence and proposal review remain in pure modules with deterministic tests.
 
