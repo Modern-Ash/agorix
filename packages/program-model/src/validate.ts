@@ -24,6 +24,7 @@ import {
   PROCEDURES_MAX_PER_SCRIPT,
   PROCEDURE_BODY_MAX,
   PROCEDURE_NAME_MAX_LENGTH,
+  PROCEDURE_PARAMETERS_MAX,
   REPEAT_COUNT_MAX,
   REPEAT_COUNT_MIN,
   SPRITE_SIZE_MAX,
@@ -127,6 +128,8 @@ interface ValidationState {
   listIds: Set<string>;
   /** Custom blocks of the script being validated. */
   procedureIds: Set<string>;
+  procedureParameters: Map<string, readonly string[]>;
+  activeParameterIds: Set<string>;
 }
 
 function countNode(state: ValidationState, path: string): void {
@@ -297,6 +300,16 @@ function validateExpression(input: unknown, path: string, state: ValidationState
         type: "variable",
         variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
       };
+    case "parameter": {
+      if (typeof input.parameterId !== "string" || !state.activeParameterIds.has(input.parameterId))
+        fail(
+          "INVALID_REFERENCE",
+          `${path}.parameterId`,
+          "expected a parameter of the current custom block",
+          input.parameterId,
+        );
+      return { type: "parameter", parameterId: input.parameterId };
+    }
     case "add":
     case "subtract":
     case "multiply":
@@ -542,7 +555,23 @@ function validateStatement(
           input.procedureId,
         );
       }
-      return { type: "callProcedure", procedureId: input.procedureId };
+      const parameterIds = state.procedureParameters.get(input.procedureId) ?? [];
+      const rawArgs = input.args === undefined ? [] : input.args;
+      if (!Array.isArray(rawArgs) || rawArgs.length !== parameterIds.length)
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.args`,
+          `expected ${parameterIds.length} arguments`,
+          input.args,
+        );
+      const args = rawArgs.map((arg, index) =>
+        validateExpression(arg, `${path}.args[${index}]`, state),
+      );
+      return {
+        type: "callProcedure",
+        procedureId: input.procedureId,
+        ...(input.args === undefined ? {} : { args }),
+      };
     }
     case "repeatUntil": {
       const nextDepth = depth + 1;
@@ -700,7 +729,37 @@ function validateProcedure(input: unknown, path: string, state: ValidationState)
   }
   recordId(state, input.id, `${path}.id`);
   state.procedureIds.add(input.id);
-  return { id: input.id, name: input.name, body: [] };
+  let parameters: { id: string; name: string }[] | undefined;
+  if (input.parameters !== undefined) {
+    if (!Array.isArray(input.parameters) || input.parameters.length > PROCEDURE_PARAMETERS_MAX)
+      fail(
+        "PROGRAM_TOO_LARGE",
+        `${path}.parameters`,
+        `expected at most ${PROCEDURE_PARAMETERS_MAX} parameters`,
+        input.parameters,
+      );
+    const names = new Set<string>();
+    parameters = input.parameters.map((raw, index) => {
+      const parameterPath = `${path}.parameters[${index}]`;
+      if (!isPlainObject(raw)) fail("INVALID_FIELD_TYPE", parameterPath, "expected an object", raw);
+      if (typeof raw.id !== "string" || raw.id.length === 0)
+        fail("MISSING_FIELD", `${parameterPath}.id`, "expected a non-empty string", raw.id);
+      if (typeof raw.name !== "string" || !PROCEDURE_NAME.test(raw.name))
+        fail("INVALID_FIELD_TYPE", `${parameterPath}.name`, "invalid parameter name", raw.name);
+      if (names.has(raw.name.toLowerCase()))
+        fail("DUPLICATE_ID", `${parameterPath}.name`, "duplicate parameter name", raw.name);
+      names.add(raw.name.toLowerCase());
+      recordId(state, raw.id, `${parameterPath}.id`);
+      return { id: raw.id, name: raw.name };
+    });
+  }
+  state.procedureParameters.set(input.id, parameters?.map((parameter) => parameter.id) ?? []);
+  return {
+    id: input.id,
+    name: input.name,
+    ...(parameters === undefined ? {} : { parameters }),
+    body: [],
+  };
 }
 
 function validateScript(input: unknown, path: string, state: ValidationState): Script {
@@ -713,6 +772,8 @@ function validateScript(input: unknown, path: string, state: ValidationState): S
   }
   recordId(state, input.id, `${path}.id`);
   state.procedureIds = new Set();
+  state.procedureParameters = new Map();
+  state.activeParameterIds = new Set();
   let procedures: Procedure[] | undefined;
   if (input.procedures !== undefined) {
     if (!Array.isArray(input.procedures)) {
@@ -732,7 +793,9 @@ function validateScript(input: unknown, path: string, state: ValidationState): S
     procedures = headers.map((header, index) => {
       const raw = (input.procedures as Record<string, unknown>[])[index]!;
       const bodyPath = `${path}.procedures[${index}].body`;
+      state.activeParameterIds = new Set(header.parameters?.map((parameter) => parameter.id));
       const body = validateStatementArray(raw.body, bodyPath, state, 2);
+      state.activeParameterIds = new Set();
       if (body.length < 1 || body.length > PROCEDURE_BODY_MAX) {
         fail(
           "PROGRAM_TOO_LARGE",
@@ -780,6 +843,8 @@ export function validateProgram(input: unknown): ProjectProgram {
     variableIds: new Set(),
     listIds: new Set(),
     procedureIds: new Set(),
+    procedureParameters: new Map(),
+    activeParameterIds: new Set(),
   };
   const variables =
     input.variables === undefined

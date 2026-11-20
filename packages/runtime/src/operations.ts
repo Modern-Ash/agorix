@@ -61,6 +61,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "booleanLiteral",
   "numericLiteral",
   "variable",
+  "parameter",
   "add",
   "subtract",
   "multiply",
@@ -166,6 +167,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
     case "booleanLiteral":
     case "numericLiteral":
     case "variable":
+    case "parameter":
     case "listLength":
       return;
   }
@@ -190,6 +192,10 @@ function assertStatementsAllowed(statements: readonly Statement[], path: string)
       if (statement.else !== undefined) {
         assertStatementsAllowed(statement.else, `${statementPath}.else`);
       }
+    } else if (statement.type === "callProcedure") {
+      statement.args?.forEach((arg, index) =>
+        assertExpressionAllowed(arg, `${statementPath}.args[${index}]`),
+      );
     } else if (statement.type === "setVariable") {
       assertExpressionAllowed(statement.value, `${statementPath}.value`);
     } else if (statement.type === "changeVariable") {

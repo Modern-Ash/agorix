@@ -905,6 +905,41 @@ describe("glide block", () => {
 });
 
 describe("custom block workspace", () => {
+  it("preserves parameter declarations, references and call arguments", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc-1",
+              args: [{ type: "numericLiteral", value: 4 }],
+            },
+          ],
+          procedures: [
+            {
+              id: "proc-1",
+              name: "Contar",
+              parameters: [{ id: "amount", name: "Cantidad" }],
+              body: [
+                {
+                  type: "changeVariable",
+                  variableId: "n",
+                  delta: { type: "parameter", parameterId: "amount" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(workspaceToProgram(workspace).program).toEqual(program);
+  });
   it("round-trips procedures and calls through blocks", () => {
     const program = {
       schema: "agorix/program/v1",

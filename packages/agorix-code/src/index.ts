@@ -28,6 +28,7 @@ interface Writer {
   variableLabels: ReadonlyMap<string, string>;
   listLabels: ReadonlyMap<string, string>;
   procedureNames?: ReadonlyMap<string, string>;
+  parameterNames?: ReadonlyMap<string, string> | undefined;
 }
 
 export function projectAgorixCode(program: ProjectProgram): LanguageProjectionResult {
@@ -81,10 +82,20 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     procedures.forEach((procedure, procedureIndex) => {
       const procedureId = scriptId + "/procedures[" + procedureIndex + "]";
       const start = writer.text.length;
-      writer.text += "define " + procedure.name + "\n";
+      writer.parameterNames = new Map(
+        procedure.parameters?.map((parameter) => [parameter.id, parameter.name]) ?? [],
+      );
+      writer.text +=
+        "define " +
+        procedure.name +
+        (procedure.parameters?.length
+          ? " (" + procedure.parameters.map((parameter) => parameter.name).join(", ") + ")"
+          : "") +
+        "\n";
       procedure.body.forEach((statement, index) =>
         writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
       );
+      writer.parameterNames = undefined;
       addRange(writer, procedureId, start, writer.text.length);
     });
     writeMapped(writer, scriptId, triggerText(script.trigger));
@@ -171,7 +182,17 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + "call " + (writer.procedureNames?.get(statement.procedureId) ?? "?") + "\n",
+        indent +
+          "call " +
+          (writer.procedureNames?.get(statement.procedureId) ?? "?") +
+          (statement.args?.length
+            ? " (" +
+              statement.args
+                .map((arg, index) => expressionText(writer, arg, nodeId + "/args[" + index + "]"))
+                .join(", ") +
+              ")"
+            : "") +
+          "\n",
       );
       return;
     case "bounceOnEdge":
@@ -390,6 +411,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return formatNumber(expression.value);
     case "variable":
       return variableName(writer, expression.variableId);
+    case "parameter":
+      return writer.parameterNames?.get(expression.parameterId) ?? "parameter";
     case "add":
       return (
         "(" +
