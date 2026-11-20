@@ -78,6 +78,7 @@ export function NestedNumericSocket({
   copy,
   workspace,
   actors,
+  argumentIndex,
   onIntent,
 }: {
   readonly node: BlockNode | undefined;
@@ -92,9 +93,18 @@ export function NestedNumericSocket({
   readonly copy: StudioUiCopy;
   readonly workspace: BlockWorkspaceSnapshot;
   readonly actors: readonly ActorView[];
+  /** Set when the expression is an argument of a custom block call. */
+  readonly argumentIndex?: number | undefined;
   readonly onIntent: (intent: Intent) => void;
 }) {
   if (node === undefined) return null;
+  const emit = (intent: Intent) => {
+    const next: Record<string, unknown> = { ...intent };
+    // An empty path means the call argument itself is the parent; the protocol omits it.
+    if (Array.isArray(next["path"]) && next["path"].length === 0) delete next["path"];
+    if (argumentIndex !== undefined) next["argumentIndex"] = argumentIndex;
+    onIntent(next as unknown as Intent);
+  };
   const source = numericReporterForBlock(node.type);
   const selectedSource =
     source !== undefined && SOURCES.includes(source as NestedSource) ? source : "other";
@@ -103,7 +113,7 @@ export function NestedNumericSocket({
   const ariaPath = `${label}: ${operandLabel} ${[rootSideLabel, ...path.slice(1), side].join(" ")}`;
   const choose = (reporter: NestedSource, referenceId?: string) => {
     if (!canReplace) return;
-    onIntent({
+    emit({
       type: "setArithmeticOperandSource",
       location,
       input,
@@ -218,7 +228,7 @@ export function NestedNumericSocket({
           aria-label={`${ariaPath} ${copy.mathFunction}`}
           value={String(node.fields?.function ?? "abs")}
           onChange={(event) =>
-            onIntent({
+            emit({
               type: "setArithmeticMathFunction",
               location,
               input,
@@ -251,7 +261,7 @@ export function NestedNumericSocket({
             const raw = event.currentTarget.value.trim();
             const next = Number(raw);
             if (raw !== "" && Number.isFinite(next) && next !== node.fields?.value)
-              onIntent({ type: "setArithmeticOperand", location, input, path, side, value: next });
+              emit({ type: "setArithmeticOperand", location, input, path, side, value: next });
             event.currentTarget.value = String(node.fields?.value);
           }}
         />
@@ -272,6 +282,7 @@ export function NestedNumericSocket({
               copy={copy}
               workspace={workspace}
               actors={actors}
+              argumentIndex={argumentIndex}
               onIntent={onIntent}
             />
           ))}

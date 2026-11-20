@@ -213,7 +213,17 @@ export type Intent =
       readonly location: StatementLocation;
       readonly argumentIndex: number;
       readonly reporter:
-        "number" | "variable" | "parameter" | "listLength" | "xPosition" | "yPosition";
+        | "number"
+        | "variable"
+        | "parameter"
+        | "listLength"
+        | "xPosition"
+        | "yPosition"
+        | "add"
+        | "subtract"
+        | "multiply"
+        | "divide"
+        | "modulo";
       readonly referenceId?: string;
     }
   | {
@@ -395,6 +405,8 @@ export type Intent =
   | {
       readonly type: "setArithmeticOperand";
       readonly location: StatementLocation;
+      /** Edits that argument of a custom block call instead of `input`. */
+      readonly argumentIndex?: number;
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max" | "value" | "index";
       readonly value: number;
@@ -403,6 +415,8 @@ export type Intent =
   | {
       readonly type: "setArithmeticOperandSource";
       readonly location: StatementLocation;
+      /** Edits that argument of a custom block call instead of `input`. */
+      readonly argumentIndex?: number;
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max" | "value" | "index";
       readonly path?: readonly ("left" | "right" | "min" | "max" | "value" | "index")[];
@@ -427,6 +441,8 @@ export type Intent =
   | {
       readonly type: "setArithmeticMathFunction";
       readonly location: StatementLocation;
+      /** Edits that argument of a custom block call instead of `input`. */
+      readonly argumentIndex?: number;
       readonly input: "value" | "delta" | "index";
       readonly side: "left" | "right" | "min" | "max" | "value" | "index";
       readonly path?: readonly ("left" | "right" | "min" | "max" | "value" | "index")[];
@@ -492,6 +508,50 @@ export function resolveDrop(source: DragSource, target: DropTarget): Intent | un
  * Maps block-mutating intents to the existing canonical workspace change. Non-mutating intents
  * return undefined. The caller (host) applies the change and handles BlockEditorAdapterError.
  */
+/**
+ * The root expression an arithmetic edit starts from: the named input of a supported statement, or,
+ * when `argumentIndex` is set, that argument of a custom block call (`input` is then ignored).
+ */
+function arithmeticRootOf(
+  block: BlockNode | undefined,
+  input: string,
+  argumentIndex: number | undefined,
+  supported: Readonly<Record<string, readonly string[]>>,
+): BlockNode | undefined {
+  if (block === undefined) return undefined;
+  if (argumentIndex !== undefined) {
+    const args = block.inputs?.args;
+    if (
+      block.type !== "procedures_call" ||
+      !Number.isInteger(argumentIndex) ||
+      argumentIndex < 0 ||
+      !Array.isArray(args)
+    )
+      return undefined;
+    return args[argumentIndex];
+  }
+  if (!supported[block.type]?.includes(input)) return undefined;
+  const root = block.inputs?.[input as "value"];
+  return root === undefined || Array.isArray(root) ? undefined : root;
+}
+
+function withArithmeticRoot(
+  block: BlockNode,
+  input: string,
+  argumentIndex: number | undefined,
+  root: BlockNode,
+): BlockNode {
+  if (argumentIndex === undefined) return { ...block, inputs: { ...block.inputs, [input]: root } };
+  const args = block.inputs?.args;
+  return {
+    ...block,
+    inputs: {
+      ...block.inputs,
+      args: Array.isArray(args) ? args.map((arg, i) => (i === argumentIndex ? root : arg)) : [],
+    },
+  };
+}
+
 export function intentToChange(
   intent: Intent,
   newBlockId: () => string,
@@ -752,6 +812,20 @@ export function intentToChange(
           break;
         case "yPosition":
           replacement = { id: current.id, type: "sensing_y_position" };
+          break;
+        case "add":
+        case "subtract":
+        case "multiply":
+        case "divide":
+        case "modulo":
+          replacement = {
+            id: current.id,
+            type: `operator_${intent.reporter}`,
+            inputs: {
+              left: { id: `${current.id}:left`, type: "literal_number", fields: { value: 0 } },
+              right: { id: `${current.id}:right`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
           break;
       }
       return {
@@ -1066,9 +1140,8 @@ export function intentToChange(
         lists_insert_at: ["index", "value"],
         lists_replace_at: ["index", "value"],
       };
-      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
-      const rootExpression = block.inputs?.[intent.input];
-      if (rootExpression === undefined || Array.isArray(rootExpression)) return undefined;
+      const rootExpression = arithmeticRootOf(block, intent.input, intent.argumentIndex, supported);
+      if (block === undefined || rootExpression === undefined) return undefined;
       const path = intent.path ?? [];
       if (path.length > MAX_NESTING_DEPTH) return undefined;
       let expression: typeof rootExpression | undefined = rootExpression;
@@ -1138,13 +1211,7 @@ export function intentToChange(
       return {
         type: "editBlock",
         location: intent.location,
-        block: {
-          ...block,
-          inputs: {
-            ...block.inputs,
-            [intent.input]: nextRoot,
-          },
-        },
+        block: withArithmeticRoot(block, intent.input, intent.argumentIndex, nextRoot),
       };
     }
     case "setArithmeticOperandSource": {
@@ -1159,9 +1226,8 @@ export function intentToChange(
         lists_insert_at: ["index", "value"],
         lists_replace_at: ["index", "value"],
       };
-      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
-      const rootExpression = block.inputs?.[intent.input];
-      if (rootExpression === undefined || Array.isArray(rootExpression)) return undefined;
+      const rootExpression = arithmeticRootOf(block, intent.input, intent.argumentIndex, supported);
+      if (block === undefined || rootExpression === undefined) return undefined;
       const path = intent.path ?? [];
       if (path.length > MAX_NESTING_DEPTH) return undefined;
       let expression: BlockNode | undefined = rootExpression;
@@ -1322,7 +1388,7 @@ export function intentToChange(
       return {
         type: "editBlock",
         location: intent.location,
-        block: { ...block, inputs: { ...block.inputs, [intent.input]: nextRoot } },
+        block: withArithmeticRoot(block, intent.input, intent.argumentIndex, nextRoot),
       };
     }
     case "setArithmeticMathFunction": {
@@ -1340,9 +1406,8 @@ export function intentToChange(
         lists_insert_at: ["index", "value"],
         lists_replace_at: ["index", "value"],
       };
-      if (block === undefined || !supported[block.type]?.includes(intent.input)) return undefined;
-      const root = block.inputs?.[intent.input];
-      if (root === undefined || Array.isArray(root)) return undefined;
+      const root = arithmeticRootOf(block, intent.input, intent.argumentIndex, supported);
+      if (block === undefined || root === undefined) return undefined;
       const path = intent.path ?? [];
       if (path.length > MAX_NESTING_DEPTH) return undefined;
       let expression: BlockNode | undefined = root;
@@ -1414,7 +1479,7 @@ export function intentToChange(
       return {
         type: "editBlock",
         location: intent.location,
-        block: { ...block, inputs: { ...block.inputs, [intent.input]: nextRoot } },
+        block: withArithmeticRoot(block, intent.input, intent.argumentIndex, nextRoot),
       };
     }
     case "replaceCondition": {

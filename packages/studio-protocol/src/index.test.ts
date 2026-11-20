@@ -71,6 +71,36 @@ describe("studio-protocol", () => {
         reporter: "variable",
         referenceId: "n",
       },
+      {
+        type: "setProcedureArgumentSource",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        reporter: "add",
+      },
+      {
+        type: "setArithmeticOperand",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        input: "value",
+        side: "left",
+        value: 4,
+      },
+      {
+        type: "setArithmeticOperandSource",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        input: "value",
+        side: "right",
+        reporter: "number",
+      },
+      {
+        type: "setArithmeticMathFunction",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        input: "value",
+        side: "left",
+        function: "abs",
+      },
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
     for (const intent of [
@@ -89,6 +119,22 @@ describe("studio-protocol", () => {
         location: { container: script, index: 0 },
         argumentIndex: 4,
         reporter: "number",
+      },
+      {
+        type: "setArithmeticOperand",
+        location: { container: script, index: 0 },
+        argumentIndex: 4,
+        input: "value",
+        side: "left",
+        value: 4,
+      },
+      {
+        type: "setArithmeticOperand",
+        location: { container: script, index: 0 },
+        argumentIndex: -1,
+        input: "value",
+        side: "left",
+        value: 4,
       },
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();
