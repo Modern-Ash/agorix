@@ -1211,8 +1211,17 @@ function parseIntent(value: unknown): Intent | undefined {
           "multiply",
           "divide",
           "modulo",
+          "random",
+          "randomInteger",
+          "mathFunction",
+          "listItem",
         ].includes(String(reporter)) &&
-        (referenceId === undefined || isSafeId(referenceId))
+        (reporter === "variable" ||
+        reporter === "parameter" ||
+        reporter === "listLength" ||
+        reporter === "listItem"
+          ? isSafeId(referenceId)
+          : referenceId === undefined)
         ? {
             type: "setProcedureArgumentSource",
             location,
@@ -1221,8 +1230,19 @@ function parseIntent(value: unknown): Intent | undefined {
               Intent,
               { type: "setProcedureArgumentSource" }
             >["reporter"],
-            ...(referenceId === undefined ? {} : { referenceId }),
+            ...(typeof referenceId === "string" ? { referenceId } : {}),
           }
+        : undefined;
+    }
+    case "setProcedureArgumentMathFunction": {
+      const location = parseLocation(value["location"]);
+      const argumentIndex = value["argumentIndex"];
+      const fn = value["function"];
+      return location !== undefined &&
+        isIndex(argumentIndex) &&
+        argumentIndex < PROCEDURE_PARAMETERS_MAX &&
+        (fn === "abs" || fn === "round" || fn === "floor" || fn === "ceiling")
+        ? { type: "setProcedureArgumentMathFunction", location, argumentIndex, function: fn }
         : undefined;
     }
     case "deleteProcedure": {
