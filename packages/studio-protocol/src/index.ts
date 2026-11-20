@@ -37,6 +37,7 @@ import {
   PROCEDURES_MAX_PER_SCRIPT,
   PROCEDURE_BODY_MAX,
   PROCEDURE_NAME_MAX_LENGTH,
+  PROCEDURE_PARAMETERS_MAX,
   NUMERIC_LITERAL_MIN,
   NUMERIC_LITERAL_MAX,
   validEmbeddedImageSource,
@@ -649,6 +650,7 @@ const BLOCK_TYPES = [
   "sensing_touching_stage_edge",
   "literal_boolean",
   "literal_number",
+  "parameter_value",
   "operator_less_than",
   "operator_greater_than",
   "operator_equals",
@@ -1926,6 +1928,7 @@ function parseBlock(
       right?: BlockNode;
       value?: BlockNode;
       delta?: BlockNode;
+      args?: BlockNode[];
     };
   } = { id, type: type as BlockType };
   const fields = value["fields"];
@@ -1956,6 +1959,7 @@ function parseBlock(
       right?: BlockNode;
       value?: BlockNode;
       delta?: BlockNode;
+      args?: BlockNode[];
     } = {};
     for (const key of ["body", "then", "else"] as const) {
       if (inputs[key] !== undefined) {
@@ -1965,6 +1969,11 @@ function parseBlock(
         }
         parsed[key] = blocks;
       }
+    }
+    if (inputs["args"] !== undefined) {
+      const args = parseBlockList(inputs["args"], depth + 1, budget);
+      if (args === undefined || args.length > PROCEDURE_PARAMETERS_MAX) return undefined;
+      parsed.args = args;
     }
     if (inputs["condition"] !== undefined) {
       const condition = parseBlock(inputs["condition"], depth + 1, budget);
@@ -2089,7 +2098,30 @@ function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
       const body = parseBlockList(item["body"], 0, budget);
       if (body === undefined || body.length < 1 || body.length > PROCEDURE_BODY_MAX)
         return undefined;
-      procedures.push({ id: item["id"], name: item["name"], body });
+      const rawParameters = item["parameters"];
+      if (
+        rawParameters !== undefined &&
+        (!Array.isArray(rawParameters) || rawParameters.length > PROCEDURE_PARAMETERS_MAX)
+      )
+        return undefined;
+      const parameters: { id: string; name: string }[] = [];
+      for (const parameter of (rawParameters ?? []) as unknown[]) {
+        if (
+          !isObject(parameter) ||
+          !isSafeId(parameter["id"]) ||
+          typeof parameter["name"] !== "string" ||
+          parameter["name"].length < 1 ||
+          parameter["name"].length > PROCEDURE_NAME_MAX_LENGTH
+        )
+          return undefined;
+        parameters.push({ id: parameter["id"], name: parameter["name"] });
+      }
+      procedures.push({
+        id: item["id"],
+        name: item["name"],
+        ...(rawParameters === undefined ? {} : { parameters }),
+        body,
+      });
     }
     scripts.push({
       id: raw["id"],

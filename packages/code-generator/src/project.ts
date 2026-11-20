@@ -78,6 +78,7 @@ interface ProjectionContext {
   readonly variableLabels: ReadonlyMap<string, string>;
   /** Custom-block identifiers of the script being projected. */
   procedureNames?: ReadonlyMap<string, string>;
+  parameterNames?: ReadonlyMap<string, string> | undefined;
 }
 
 function safeIdentifier(value: string, fallback: string): string {
@@ -170,6 +171,8 @@ function formatExpression(
       return formatNumber(expression.value);
     case "variable":
       return formatVariableName(context, expression.variableId, nodeId);
+    case "parameter":
+      return context.parameterNames?.get(expression.parameterId) ?? "arg";
     case "add":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} + ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "subtract":
@@ -284,7 +287,7 @@ function projectStatement(
     case "callProcedure":
       write(
         writer,
-        `${pad}${context.procedureNames?.get(statement.procedureId) ?? "my_block"}();\n`,
+        `${pad}${context.procedureNames?.get(statement.procedureId) ?? "my_block"}(${(statement.args ?? []).map((arg, index) => formatExpression(arg, `${nodeId}/args[${index}]`, context)).join(", ")});\n`,
       );
       return;
     case "bounceOnEdge":
@@ -445,8 +448,16 @@ function projectProcedure(
 ): void {
   const path = `scripts[${scriptIndex}]/procedures[${procedureIndex}]`;
   const start = writer.offset;
-  write(writer, `function ${identifier}() {\n`);
+  const previousParameters = context.parameterNames;
+  context.parameterNames = new Map(
+    procedure.parameters?.map((parameter, index) => [parameter.id, `arg${index + 1}`]) ?? [],
+  );
+  write(
+    writer,
+    `function ${identifier}(${[...(context.parameterNames?.values() ?? [])].join(", ")}) {\n`,
+  );
   projectStatements(procedure.body, path, "body", 1, writer, context);
+  context.parameterNames = previousParameters;
   write(writer, "}\n\n");
   writer.mapping[path] = { start, end: writer.offset };
 }

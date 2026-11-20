@@ -125,6 +125,8 @@ export function editProgramProcedure(program: ProjectProgram, edit: ProcedureEdi
       (item) => item.id !== edit.procedureId && containsCall(item.body, edit.procedureId),
     );
   if (inUse && !edit.inlineCalls) throw new RangeError("custom block is in use");
+  if (inUse && (procedure.parameters?.length ?? 0) > 0)
+    throw new RangeError("parameterized custom block cannot be inlined by this editor");
   if (edit.inlineCalls && containsCall(procedure.body, edit.procedureId))
     throw new RangeError("recursive custom block cannot be inlined");
   return validateProgram({

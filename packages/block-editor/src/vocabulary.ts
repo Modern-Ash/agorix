@@ -779,6 +779,15 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "literal_number", fields: { value: 0 } }),
   },
   {
+    type: "parameter_value",
+    label: "parameter",
+    section: "Operators",
+    placement: "expression",
+    studioOnly: true,
+    accessibleName: "custom block parameter",
+    createDefaultBlock: (id) => ({ id, type: "parameter_value", fields: { parameterId: "" } }),
+  },
+  {
     type: "literal_boolean",
     label: "true/false",
     section: "Operators",

@@ -63,6 +63,12 @@ export interface VariableExpression {
   readonly variableId: string;
 }
 
+/** Numeric value passed to the current custom block call. */
+export interface ParameterExpression {
+  readonly type: "parameter";
+  readonly parameterId: string;
+}
+
 export interface AddExpression {
   readonly type: "add";
   readonly left: Expression;
@@ -185,6 +191,7 @@ export type Expression =
   | BooleanLiteralExpression
   | NumericLiteralExpression
   | VariableExpression
+  | ParameterExpression
   | AddExpression
   | SubtractExpression
   | MultiplyExpression
@@ -384,6 +391,8 @@ export interface RepeatUntilStatement {
 export interface CallProcedureStatement {
   readonly type: "callProcedure";
   readonly procedureId: string;
+  /** Absent for parameter-free custom blocks written by earlier editors. */
+  readonly args?: readonly Expression[];
 }
 
 export interface IfStatement {
@@ -484,6 +493,8 @@ export interface ProgramList {
 export interface Procedure {
   readonly id: string;
   readonly name: string;
+  /** Ordered numeric inputs; absent for parameter-free custom blocks. */
+  readonly parameters?: readonly { readonly id: string; readonly name: string }[];
   readonly body: readonly Statement[];
 }
 

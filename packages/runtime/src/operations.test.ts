@@ -109,6 +109,7 @@ describe("runtime operation allowlist", () => {
       "not",
       "numericLiteral",
       "or",
+      "parameter",
       "random",
       "randomInteger",
       "subtract",

@@ -77,7 +77,8 @@ export type BlockType =
   | "lists_item"
   | "lists_length"
   | "literal_boolean"
-  | "literal_number";
+  | "literal_number"
+  | "parameter_value";
 
 export interface BlockNode {
   readonly id: string;
@@ -95,6 +96,7 @@ export interface BlockNode {
     readonly max?: BlockNode;
     readonly delta?: BlockNode;
     readonly index?: BlockNode;
+    readonly args?: readonly BlockNode[];
   };
 }
 
@@ -102,6 +104,7 @@ export interface BlockNode {
 export interface BlockProcedure {
   readonly id: string;
   readonly name: string;
+  readonly parameters?: readonly { readonly id: string; readonly name: string }[];
   readonly body: readonly BlockNode[];
 }
 
@@ -295,6 +298,8 @@ function expressionFromBlock(
       return { type: "numericLiteral", value: numberField(block, "value", path) };
     case "variables_value":
       return { type: "variable", variableId: stringField(block, "variableId", path) };
+    case "parameter_value":
+      return { type: "parameter", parameterId: stringField(block, "parameterId", path) };
     case "lists_item":
       return {
         type: "listItem",
@@ -447,7 +452,22 @@ function statementFromBlock(
         seconds: numberField(block, "seconds", path),
       };
     case "procedures_call":
-      return { type: "callProcedure", procedureId: stringField(block, "procedureId", path) };
+      return {
+        type: "callProcedure",
+        procedureId: stringField(block, "procedureId", path),
+        ...(block.inputs?.args === undefined
+          ? {}
+          : {
+              args: block.inputs.args.map((arg, index) =>
+                expressionFromBlock(
+                  arg,
+                  `${nodeId}/args[${index}]`,
+                  `${path}.inputs.args[${index}]`,
+                  mapping,
+                ),
+              ),
+            }),
+      };
     case "motion_bounce_on_edge":
       return { type: "bounceOnEdge" };
     case "looks_say":
@@ -642,6 +662,8 @@ function expressionToBlock(
       return { id, type: "literal_number", fields: { value: expression.value } };
     case "variable":
       return { id, type: "variables_value", fields: { variableId: expression.variableId } };
+    case "parameter":
+      return { id, type: "parameter_value", fields: { parameterId: expression.parameterId } };
     case "listItem":
       return {
         id,
@@ -760,7 +782,20 @@ function statementToBlock(
     case "goToLayer":
       return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
     case "callProcedure":
-      return { id, type: "procedures_call", fields: { procedureId: statement.procedureId } };
+      return {
+        id,
+        type: "procedures_call",
+        fields: { procedureId: statement.procedureId },
+        ...(statement.args === undefined
+          ? {}
+          : {
+              inputs: {
+                args: statement.args.map((arg, index) =>
+                  expressionToBlock(arg, `${nodeId}/args[${index}]`, mapping),
+                ),
+              },
+            }),
+      };
     case "bounceOnEdge":
       return { id, type: "motion_bounce_on_edge" };
     case "say":
@@ -898,6 +933,7 @@ function scriptFromBlocks(
           procedures: script.procedures.map((procedure, procedureIndex) => ({
             id: procedure.id,
             name: procedure.name,
+            ...(procedure.parameters === undefined ? {} : { parameters: procedure.parameters }),
             body: statementsFromBlocks(
               ensureBlockArray(
                 procedure.body,
@@ -989,6 +1025,7 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
               procedures: script.procedures.map((procedure, procedureIndex) => ({
                 id: procedure.id,
                 name: procedure.name,
+                ...(procedure.parameters === undefined ? {} : { parameters: procedure.parameters }),
                 body: statementsToBlocks(
                   procedure.body,
                   `${scriptId}/procedures[${procedureIndex}]/body`,

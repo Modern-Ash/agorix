@@ -160,6 +160,7 @@ interface MutableRunState {
   script?: Script;
   scriptIndex: number;
   callDepth: number;
+  readonly parameterFrames: Map<string, number>[];
   /** Short machine notes (capped), e.g. a list read out of range; surfaced only when non-empty. */
   readonly notes: string[];
 }
@@ -297,6 +298,11 @@ function evaluateExpression(
       return expression.value;
     case "variable":
       return getVariableWorld(state.world, expression.variableId);
+    case "parameter": {
+      const value = state.parameterFrames.at(-1)?.get(expression.parameterId);
+      if (value === undefined) throw new RuntimeExecutionError(path, expression.parameterId);
+      return value;
+    }
     case "add":
       return normalizeRuntimeNumber(
         coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) +
@@ -583,7 +589,14 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
         addNote(state, `callProcedure: stopped at depth ${PROCEDURE_MAX_CALL_DEPTH}`);
         throw new ExecutionHalt("budget-exceeded");
       }
+      const values = (statement.args ?? []).map((arg, index) =>
+        coerceNumber(evaluateExpression(arg, `${path}.args[${index}]`, state)),
+      );
+      const frame = new Map(
+        procedure.parameters?.map((parameter, index) => [parameter.id, values[index]!]) ?? [],
+      );
       state.callDepth += 1;
+      state.parameterFrames.push(frame);
       try {
         executeStatements(
           procedure.body,
@@ -591,6 +604,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
           state,
         );
       } finally {
+        state.parameterFrames.pop();
         state.callDepth -= 1;
       }
       break;
@@ -731,6 +745,7 @@ export function runProgram(
     virtualSeconds: 0,
     scriptIndex: 0,
     callDepth: 0,
+    parameterFrames: [],
     notes: [],
   };
 

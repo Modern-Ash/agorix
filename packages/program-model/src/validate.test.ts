@@ -427,6 +427,7 @@ describe("procedures", () => {
   const withScript = (script: Record<string, unknown>) =>
     ({
       schema: SCHEMA_VERSION,
+      variables: script.variables,
       scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [], ...script }],
     }) as never;
   const proc = (extra: Record<string, unknown> = {}) => ({
@@ -459,6 +460,67 @@ describe("procedures", () => {
     expect(() =>
       validateProgram(
         withScript({ statements: [{ type: "callProcedure", procedureId: "proc-9" }] }),
+      ),
+    ).toThrow(ProgramValidationError);
+  });
+
+  it("keeps numeric parameters scoped to their custom block and checks call arity", () => {
+    const parameter = { id: "distance", name: "Distancia" };
+    const body = [
+      {
+        type: "changeVariable",
+        variableId: "n",
+        delta: { type: "parameter", parameterId: "distance" },
+      },
+    ];
+    const variables = [{ id: "n", name: "n", initialValue: 0, visible: true }];
+    expect(() =>
+      validateProgram(
+        withScript({
+          procedures: [proc({ parameters: [parameter], body })],
+          variables,
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc-1",
+              args: [{ type: "numericLiteral", value: 12 }],
+            },
+          ],
+        }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateProgram(
+        withScript({
+          variables,
+          procedures: [proc({ parameters: [parameter], body })],
+          statements: [{ type: "callProcedure", procedureId: "proc-1" }],
+        }),
+      ),
+    ).toThrow(ProgramValidationError);
+    expect(() =>
+      validateProgram(
+        withScript({
+          variables,
+          procedures: [proc({ parameters: [parameter], body })],
+          statements: [
+            {
+              type: "changeVariable",
+              variableId: "n",
+              delta: { type: "parameter", parameterId: "distance" },
+            },
+          ],
+        }),
+      ),
+    ).toThrow(ProgramValidationError);
+    expect(() =>
+      validateProgram(
+        withScript({
+          variables,
+          procedures: [
+            proc({ parameters: [parameter, { id: "distance-2", name: "distancia" }], body }),
+          ],
+        }),
       ),
     ).toThrow(ProgramValidationError);
   });

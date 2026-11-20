@@ -29,6 +29,7 @@ interface Writer {
   variableNames: ReadonlyMap<string, string>;
   listNames: ReadonlyMap<string, string>;
   procedureNames?: ReadonlyMap<string, string>;
+  parameterNames?: ReadonlyMap<string, string> | undefined;
 }
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
@@ -85,10 +86,19 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     procedures.forEach((procedure, procedureIndex) => {
       const procedureId = scriptId + "/procedures[" + procedureIndex + "]";
       const start = writer.text.length;
-      writer.text += "def " + names[procedureIndex] + "():\n";
+      writer.parameterNames = new Map(
+        procedure.parameters?.map((parameter, index) => [parameter.id, `arg${index + 1}`]) ?? [],
+      );
+      writer.text +=
+        "def " +
+        names[procedureIndex] +
+        "(" +
+        [...writer.parameterNames.values()].join(", ") +
+        "):\n";
       procedure.body.forEach((statement, index) =>
         writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
       );
+      writer.parameterNames = undefined;
       addRange(writer, procedureId, start, writer.text.length);
       writer.text += "\n";
     });
@@ -231,7 +241,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + (writer.procedureNames?.get(statement.procedureId) ?? "my_block") + "()\n",
+        indent +
+          (writer.procedureNames?.get(statement.procedureId) ?? "my_block") +
+          "(" +
+          (statement.args ?? [])
+            .map((arg, index) => expressionText(writer, arg, nodeId + "/args[" + index + "]"))
+            .join(", ") +
+          ")\n",
       );
       return;
     case "bounceOnEdge":
@@ -460,6 +476,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return formatNumber(expression.value);
     case "variable":
       return variableIdentifier(writer, expression.variableId);
+    case "parameter":
+      return writer.parameterNames?.get(expression.parameterId) ?? "arg";
     case "add":
       return (
         "(" +

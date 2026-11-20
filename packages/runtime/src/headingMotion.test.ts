@@ -435,6 +435,42 @@ describe("procedures", () => {
   });
   const call = { type: "callProcedure", procedureId: "proc-1" } as const;
 
+  it("evaluates each argument at call time and restores the caller frame", () => {
+    const result = runProgram(
+      withProcs(
+        [
+          {
+            id: "proc-1",
+            name: "Avanzar",
+            parameters: [{ id: "distance", name: "Distancia" }],
+            body: [
+              {
+                type: "changeVariable",
+                variableId: "n",
+                delta: { type: "parameter", parameterId: "distance" },
+              },
+            ],
+          },
+        ],
+        [
+          {
+            type: "callProcedure",
+            procedureId: "proc-1",
+            args: [{ type: "numericLiteral", value: 5 }],
+          },
+          {
+            type: "callProcedure",
+            procedureId: "proc-1",
+            args: [{ type: "numericLiteral", value: 7 }],
+          },
+        ],
+      ),
+      createWorldState(),
+    );
+    expect(result.outcome).toBe("completed");
+    expect(result.world.variables.n?.value).toBe(12);
+  });
+
   it("runs the body at the call and reports inner steps under the procedure path", () => {
     const result = runProgram(
       withProcs(
