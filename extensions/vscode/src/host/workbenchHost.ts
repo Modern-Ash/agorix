@@ -252,6 +252,9 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
   return (
     intent.intent.type === "createProcedure" ||
     intent.intent.type === "renameProcedure" ||
+    intent.intent.type === "addProcedureParameter" ||
+    intent.intent.type === "removeProcedureParameter" ||
+    intent.intent.type === "setProcedureArgument" ||
     intent.intent.type === "deleteProcedure" ||
     intent.intent.type === "insertBlock" ||
     intent.intent.type === "moveBlock" ||
@@ -487,6 +490,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         if (
           intent.type === "createProcedure" ||
           intent.type === "renameProcedure" ||
+          intent.type === "addProcedureParameter" ||
+          intent.type === "removeProcedureParameter" ||
           intent.type === "deleteProcedure"
         ) {
           try {
@@ -497,11 +502,16 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
               ...program.scripts.flatMap((script) =>
                 (script.procedures ?? []).map((procedure) => procedure.id),
               ),
+              ...program.scripts.flatMap((script) =>
+                (script.procedures ?? []).flatMap((procedure) =>
+                  (procedure.parameters ?? []).map((parameter) => parameter.id),
+                ),
+              ),
             ]);
             let procedureId = "";
-            if (intent.type === "createProcedure") {
+            if (intent.type === "createProcedure" || intent.type === "addProcedureParameter") {
               for (let attempt = 0; attempt < 100; attempt += 1) {
-                const candidate = `proc:${newBlockId()}`;
+                const candidate = `${intent.type === "createProcedure" ? "proc" : "param"}:${newBlockId()}`;
                 if (!existingIds.has(candidate)) {
                   procedureId = candidate;
                   break;
@@ -515,7 +525,11 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
                 ? { ...intent, type: "create", id: procedureId }
                 : intent.type === "renameProcedure"
                   ? { ...intent, type: "rename" }
-                  : { ...intent, type: "delete" },
+                  : intent.type === "addProcedureParameter"
+                    ? { ...intent, type: "addParameter", id: procedureId }
+                    : intent.type === "removeProcedureParameter"
+                      ? { ...intent, type: "removeParameter" }
+                      : { ...intent, type: "delete" },
             );
             await port.commit(next, `Workbench: ${intent.type}`);
             edits += 1;

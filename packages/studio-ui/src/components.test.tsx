@@ -105,6 +105,62 @@ describe("studio-ui", () => {
     expect(html).toContain("Wave");
     expect(html).toContain("Delete block");
   });
+  it("shows parameter controls and each call argument in the visual workspace", () => {
+    const parameterWorkspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc:count",
+              args: [{ type: "numericLiteral", value: 7 }],
+            },
+          ],
+          procedures: [
+            {
+              id: "proc:count",
+              name: "Count",
+              parameters: [{ id: "param:times", name: "Times" }],
+              body: [
+                {
+                  type: "changeVariable",
+                  variableId: "n",
+                  delta: { type: "parameter", parameterId: "param:times" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const tools = renderToStaticMarkup(
+      <ProcedureTools
+        workspace={parameterWorkspace}
+        scriptIndex={0}
+        copy={copyFor("en")}
+        onIntent={() => undefined}
+      />,
+    );
+    expect(tools).toContain("Add number parameter");
+    expect(tools).toContain("Remove parameter: Times");
+    const canvas = renderToStaticMarkup(
+      <Canvas workspace={parameterWorkspace} onIntent={() => undefined} />,
+    );
+    expect(canvas).toContain("Arguments: Times");
+    expect(canvas).toContain('value="7"');
+    const bodyCanvas = renderToStaticMarkup(
+      <Canvas
+        workspace={parameterWorkspace}
+        activeProcedureId="proc:count"
+        onIntent={() => undefined}
+      />,
+    );
+    expect(bodyCanvas).toContain('value="parameter"');
+  });
   it("renders bounded pre-play finding cards with inspect and Ori actions", () => {
     const copy = copyFor("en");
     const markup = renderToStaticMarkup(

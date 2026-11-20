@@ -17,6 +17,55 @@ const base: ProjectProgram = {
 };
 
 describe("canonical custom-block authoring", () => {
+  it("adds and removes a parameter with every call in one validated edit", () => {
+    const created = editProgramProcedure(base, {
+      type: "create",
+      scriptIndex: 0,
+      name: "Wave",
+      count: 1,
+      id: "proc:wave",
+    });
+    const added = editProgramProcedure(created, {
+      type: "addParameter",
+      scriptIndex: 0,
+      procedureId: "proc:wave",
+      id: "param:steps",
+      name: "Steps",
+    });
+    expect(added.scripts[0]?.procedures?.[0]?.parameters).toEqual([
+      { id: "param:steps", name: "Steps" },
+    ]);
+    expect(added.scripts[0]?.statements[1]).toEqual({
+      type: "callProcedure",
+      procedureId: "proc:wave",
+      args: [{ type: "numericLiteral", value: 0 }],
+    });
+    expect(
+      editProgramProcedure(added, {
+        type: "removeParameter",
+        scriptIndex: 0,
+        procedureId: "proc:wave",
+        parameterId: "param:steps",
+      }).scripts[0]?.statements[1],
+    ).toEqual({ type: "callProcedure", procedureId: "proc:wave", args: [] });
+    expect(() =>
+      editProgramProcedure(added, {
+        type: "addParameter",
+        scriptIndex: 0,
+        procedureId: "proc:wave",
+        id: "param:other",
+        name: "steps",
+      }),
+    ).toThrow();
+    expect(() =>
+      editProgramProcedure(added, {
+        type: "removeParameter",
+        scriptIndex: 0,
+        procedureId: "proc:wave",
+        parameterId: "missing",
+      }),
+    ).toThrow();
+  });
   it("extracts the last blocks atomically, renames and inlines calls", () => {
     const created = editProgramProcedure(base, {
       type: "create",

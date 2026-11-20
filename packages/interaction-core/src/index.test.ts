@@ -21,6 +21,86 @@ let n = 0;
 const newId = () => `block:t_${(n += 1)}`;
 
 describe("interaction-core", () => {
+  it("places a declared parameter only inside its own custom block body", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc:count",
+              args: [{ type: "numericLiteral", value: 3 }],
+            },
+          ],
+          procedures: [
+            {
+              id: "proc:count",
+              name: "Count",
+              parameters: [{ id: "param:times", name: "Times" }],
+              body: [
+                {
+                  type: "changeVariable",
+                  variableId: "n",
+                  delta: { type: "numericLiteral", value: 1 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const location = {
+      container: { kind: "procedure" as const, scriptIndex: 0, procedureIndex: 0 },
+      index: 0,
+    };
+    const edit = intentToChange(
+      {
+        type: "setNumericInput",
+        location,
+        input: "delta",
+        reporter: "parameter",
+        referenceId: "param:times",
+      },
+      newId,
+      workspace,
+    );
+    expect(
+      applyWorkspaceChange(workspace, edit!).program.scripts[0]?.procedures?.[0]?.body[0],
+    ).toMatchObject({
+      type: "changeVariable",
+      delta: { type: "parameter", parameterId: "param:times" },
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setNumericInput",
+          location,
+          input: "delta",
+          reporter: "parameter",
+          referenceId: "missing",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        {
+          type: "setNumericInput",
+          location: { container: script, index: 0 },
+          input: "delta",
+          reporter: "parameter",
+          referenceId: "param:times",
+        },
+        newId,
+        workspace,
+      ),
+    ).toBeUndefined();
+  });
   it("validates anchors", () => {
     expect(createAnchorRef("node", "node:a")).toEqual({ kind: "node", id: "node:a" });
     expect(() => createAnchorRef("node", "/etc/passwd")).toThrow(RangeError);

@@ -623,43 +623,47 @@ export function Canvas({
               const operand = block[input];
               if (operand === undefined) return null;
               const reporter =
-                operand.type === "variables_value"
-                  ? "variable"
-                  : operand.type === "lists_length"
-                    ? "listLength"
-                    : operand.type === "lists_item"
-                      ? "listItem"
-                      : operand.type === "literal_number"
-                        ? "number"
-                        : operand.type === "sensing_x_position"
-                          ? "xPosition"
-                          : operand.type === "sensing_y_position"
-                            ? "yPosition"
-                            : operand.type === "sensing_distance_to_actor"
-                              ? "distanceToActor"
-                              : operand.type === "operator_add"
-                                ? "add"
-                                : operand.type === "operator_subtract"
-                                  ? "subtract"
-                                  : operand.type === "operator_multiply"
-                                    ? "multiply"
-                                    : operand.type === "operator_divide"
-                                      ? "divide"
-                                      : operand.type === "operator_modulo"
-                                        ? "modulo"
-                                        : operand.type === "operator_random"
-                                          ? "random"
-                                          : operand.type === "operator_random_integer"
-                                            ? "randomInteger"
-                                            : operand.type === "operator_math_function"
-                                              ? "mathFunction"
-                                              : "other";
+                operand.type === "parameter_value"
+                  ? "parameter"
+                  : operand.type === "variables_value"
+                    ? "variable"
+                    : operand.type === "lists_length"
+                      ? "listLength"
+                      : operand.type === "lists_item"
+                        ? "listItem"
+                        : operand.type === "literal_number"
+                          ? "number"
+                          : operand.type === "sensing_x_position"
+                            ? "xPosition"
+                            : operand.type === "sensing_y_position"
+                              ? "yPosition"
+                              : operand.type === "sensing_distance_to_actor"
+                                ? "distanceToActor"
+                                : operand.type === "operator_add"
+                                  ? "add"
+                                  : operand.type === "operator_subtract"
+                                    ? "subtract"
+                                    : operand.type === "operator_multiply"
+                                      ? "multiply"
+                                      : operand.type === "operator_divide"
+                                        ? "divide"
+                                        : operand.type === "operator_modulo"
+                                          ? "modulo"
+                                          : operand.type === "operator_random"
+                                            ? "random"
+                                            : operand.type === "operator_random_integer"
+                                              ? "randomInteger"
+                                              : operand.type === "operator_math_function"
+                                                ? "mathFunction"
+                                                : "other";
               const referenceId =
                 reporter === "variable"
                   ? operand.fields?.variableId
-                  : reporter === "distanceToActor"
-                    ? operand.fields?.actorId
-                    : operand.fields?.listId;
+                  : reporter === "parameter"
+                    ? operand.fields?.parameterId
+                    : reporter === "distanceToActor"
+                      ? operand.fields?.actorId
+                      : operand.fields?.listId;
               const operandLabel =
                 input === "index"
                   ? copy.listIndex
@@ -672,6 +676,7 @@ export function Canvas({
                 nextReporter:
                   | "number"
                   | "variable"
+                  | "parameter"
                   | "listLength"
                   | "listItem"
                   | "xPosition"
@@ -702,11 +707,15 @@ export function Canvas({
                 const referenceId =
                   source === "variable"
                     ? workspace.variables?.[0]?.id
-                    : source === "listLength" || source === "listItem"
-                      ? workspace.lists?.[0]?.id
-                      : source === "distanceToActor"
-                        ? actors[0]?.id
-                        : undefined;
+                    : source === "parameter" && block.location.container.kind === "procedure"
+                      ? workspace.scripts[block.location.container.scriptIndex]?.procedures?.[
+                          block.location.container.procedureIndex
+                        ]?.parameters?.[0]?.id
+                      : source === "listLength" || source === "listItem"
+                        ? workspace.lists?.[0]?.id
+                        : source === "distanceToActor"
+                          ? actors[0]?.id
+                          : undefined;
                 if (
                   ((source === "variable" || source === "listLength" || source === "listItem") &&
                     referenceId === undefined) ||
@@ -723,6 +732,11 @@ export function Canvas({
               const selectedSourceAvailable =
                 selectedSource !== undefined &&
                 (selectedSource !== "variable" || (workspace.variables?.length ?? 0) > 0) &&
+                (selectedSource !== "parameter" ||
+                  (block.location.container.kind === "procedure" &&
+                    (workspace.scripts[block.location.container.scriptIndex]?.procedures?.[
+                      block.location.container.procedureIndex
+                    ]?.parameters?.length ?? 0) > 0)) &&
                 ((selectedSource !== "listLength" && selectedSource !== "listItem") ||
                   (workspace.lists?.length ?? 0) > 0) &&
                 (selectedSource !== "distanceToActor" || actors.length > 0);
@@ -747,6 +761,7 @@ export function Canvas({
                         const next = event.currentTarget.value as
                           | "number"
                           | "variable"
+                          | "parameter"
                           | "listLength"
                           | "listItem"
                           | "xPosition"
@@ -764,11 +779,15 @@ export function Canvas({
                           next,
                           next === "variable"
                             ? workspace.variables?.[0]?.id
-                            : next === "listLength" || next === "listItem"
-                              ? workspace.lists?.[0]?.id
-                              : next === "distanceToActor"
-                                ? actors[0]?.id
-                                : undefined,
+                            : next === "parameter" && block.location.container.kind === "procedure"
+                              ? workspace.scripts[block.location.container.scriptIndex]
+                                  ?.procedures?.[block.location.container.procedureIndex]
+                                  ?.parameters?.[0]?.id
+                              : next === "listLength" || next === "listItem"
+                                ? workspace.lists?.[0]?.id
+                                : next === "distanceToActor"
+                                  ? actors[0]?.id
+                                  : undefined,
                         );
                       }}
                       onKeyDown={(event) => event.stopPropagation()}
@@ -794,6 +813,12 @@ export function Canvas({
                       ) : null}
                       {(workspace.variables?.length ?? 0) > 0 ? (
                         <option value="variable">{copy.variableValue}</option>
+                      ) : null}
+                      {block.location.container.kind === "procedure" &&
+                      (workspace.scripts[block.location.container.scriptIndex]?.procedures?.[
+                        block.location.container.procedureIndex
+                      ]?.parameters?.length ?? 0) > 0 ? (
+                        <option value="parameter">{copy.customBlockParameter}</option>
                       ) : null}
                       {(workspace.lists?.length ?? 0) > 0 ? (
                         <option value="listLength">{copy.listLength}</option>
@@ -1338,11 +1363,18 @@ export function Canvas({
                       </select>
                     </label>
                   ) : null}
-                  {reporter === "variable" ||
+                  {reporter === "parameter" ||
+                  reporter === "variable" ||
                   reporter === "listLength" ||
                   reporter === "listItem" ? (
                     <label>
-                      <span>{reporter === "variable" ? copy.variables : copy.lists}</span>
+                      <span>
+                        {reporter === "parameter"
+                          ? copy.customBlockParameter
+                          : reporter === "variable"
+                            ? copy.variables
+                            : copy.lists}
+                      </span>
                       <select
                         aria-label={`${label}: ${operandLabel} ${copy.numericReference}`}
                         value={String(referenceId ?? "")}
@@ -1357,9 +1389,13 @@ export function Canvas({
                         }
                         onKeyDown={(event) => event.stopPropagation()}
                       >
-                        {(reporter === "variable"
-                          ? (workspace.variables ?? [])
-                          : (workspace.lists ?? [])
+                        {(reporter === "parameter" && block.location.container.kind === "procedure"
+                          ? (workspace.scripts[block.location.container.scriptIndex]?.procedures?.[
+                              block.location.container.procedureIndex
+                            ]?.parameters ?? [])
+                          : reporter === "variable"
+                            ? (workspace.variables ?? [])
+                            : (workspace.lists ?? [])
                         ).map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.name}
@@ -1938,37 +1974,79 @@ export function Canvas({
                 </label>
               ))}
             {block.type === "procedures_call" ? (
-              <label className="block-field">
-                <span>{copy.customBlock}</span>
-                <select
-                  aria-label={`${label}: ${copy.customBlock}`}
-                  value={String(block.fields?.procedureId ?? "")}
-                  onChange={(event) =>
-                    onIntent({
-                      type: "setTextField",
-                      location: block.location,
-                      field: "procedureId",
-                      value: event.currentTarget.value,
-                    })
-                  }
-                  onKeyDown={(event) => event.stopPropagation()}
-                >
-                  {workspace.scripts[block.location.container.scriptIndex]?.procedures?.some(
-                    (procedure) => procedure.id === block.fields?.procedureId,
-                  ) ? null : (
-                    <option value={String(block.fields?.procedureId ?? "")}>
-                      {String(block.fields?.procedureId ?? "")}
-                    </option>
-                  )}
-                  {workspace.scripts[block.location.container.scriptIndex]?.procedures?.map(
-                    (procedure) => (
-                      <option key={procedure.id} value={procedure.id}>
-                        {procedure.name}
+              <div className="block-field">
+                <label>
+                  <span>{copy.customBlock}</span>
+                  <select
+                    aria-label={`${label}: ${copy.customBlock}`}
+                    value={String(block.fields?.procedureId ?? "")}
+                    onChange={(event) =>
+                      onIntent({
+                        type: "setTextField",
+                        location: block.location,
+                        field: "procedureId",
+                        value: event.currentTarget.value,
+                      })
+                    }
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    {workspace.scripts[block.location.container.scriptIndex]?.procedures?.some(
+                      (procedure) => procedure.id === block.fields?.procedureId,
+                    ) ? null : (
+                      <option value={String(block.fields?.procedureId ?? "")}>
+                        {String(block.fields?.procedureId ?? "")}
                       </option>
-                    ),
-                  )}
-                </select>
-              </label>
+                    )}
+                    {workspace.scripts[block.location.container.scriptIndex]?.procedures?.map(
+                      (procedure) => (
+                        <option key={procedure.id} value={procedure.id}>
+                          {procedure.name}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                {workspace.scripts[block.location.container.scriptIndex]?.procedures
+                  ?.find((procedure) => procedure.id === block.fields?.procedureId)
+                  ?.parameters?.map((parameter, argumentIndex) => {
+                    const argument = block.args?.[argumentIndex];
+                    return (
+                      <label key={parameter.id}>
+                        <span>{parameter.name}</span>
+                        {argument?.type === "literal_number" ? (
+                          <input
+                            type="number"
+                            aria-label={`${copy.customBlockArguments}: ${parameter.name}`}
+                            key={`${block.id}:${parameter.id}:${argument.fields?.value}`}
+                            defaultValue={Number(argument.fields?.value ?? 0)}
+                            onKeyDown={(event) => {
+                              event.stopPropagation();
+                              if (event.key === "Enter") event.currentTarget.blur();
+                            }}
+                            onBlur={(event) => {
+                              const raw = event.currentTarget.value.trim();
+                              const value = Number(raw);
+                              if (
+                                raw !== "" &&
+                                Number.isFinite(value) &&
+                                value !== argument.fields?.value
+                              )
+                                onIntent({
+                                  type: "setProcedureArgument",
+                                  location: block.location,
+                                  argumentIndex,
+                                  value,
+                                });
+                              event.currentTarget.value = String(argument.fields?.value ?? 0);
+                            }}
+                          />
+                        ) : (
+                          <span>{argument?.type ?? "?"}</span>
+                        )}
+                      </label>
+                    );
+                  })}
+              </div>
             ) : null}
             {block.type === "looks_go_to_layer" ? (
               <label className="block-field">

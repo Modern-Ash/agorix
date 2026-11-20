@@ -1,4 +1,8 @@
-import { PROCEDURE_BODY_MAX, PROCEDURES_MAX_PER_SCRIPT } from "./limits.js";
+import {
+  PROCEDURE_BODY_MAX,
+  PROCEDURE_PARAMETERS_MAX,
+  PROCEDURES_MAX_PER_SCRIPT,
+} from "./limits.js";
 import type { ProjectProgram, Statement } from "./schema.js";
 import { validateProgram } from "./validate.js";
 
@@ -23,7 +27,42 @@ export type ProcedureEdit =
       readonly scriptIndex: number;
       readonly procedureId: string;
       readonly inlineCalls: boolean;
+    }
+  | {
+      readonly type: "addParameter";
+      readonly scriptIndex: number;
+      readonly procedureId: string;
+      readonly id: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: "removeParameter";
+      readonly scriptIndex: number;
+      readonly procedureId: string;
+      readonly parameterId: string;
     };
+
+function mapCalls(
+  statements: readonly Statement[],
+  procedureId: string,
+  transform: (call: Extract<Statement, { type: "callProcedure" }>) => Statement,
+): Statement[] {
+  return statements.map((statement) => {
+    if (statement.type === "callProcedure" && statement.procedureId === procedureId)
+      return transform(statement);
+    if (statement.type === "repeat" || statement.type === "repeatUntil")
+      return { ...statement, body: mapCalls(statement.body, procedureId, transform) };
+    if (statement.type === "if")
+      return {
+        ...statement,
+        then: mapCalls(statement.then, procedureId, transform),
+        ...(statement.else === undefined
+          ? {}
+          : { else: mapCalls(statement.else, procedureId, transform) }),
+      };
+    return statement;
+  });
+}
 
 function containsCall(statements: readonly Statement[], procedureId: string): boolean {
   return statements.some((statement) => {
@@ -96,6 +135,53 @@ export function editProgramProcedure(program: ProjectProgram, edit: ProcedureEdi
   }
   const procedure = procedures.find((item) => item.id === edit.procedureId);
   if (procedure === undefined) throw new RangeError("unknown custom block");
+  if (edit.type === "addParameter" || edit.type === "removeParameter") {
+    const parameters = procedure.parameters ?? [];
+    if (
+      edit.type === "addParameter" &&
+      (parameters.length >= PROCEDURE_PARAMETERS_MAX ||
+        !NAME.test(edit.name) ||
+        parameters.some((item) => item.name.toLowerCase() === edit.name.toLowerCase()))
+    )
+      throw new RangeError("invalid parameter");
+    const index =
+      edit.type === "removeParameter"
+        ? parameters.findIndex((item) => item.id === edit.parameterId)
+        : -1;
+    if (edit.type === "removeParameter" && index < 0) throw new RangeError("unknown parameter");
+    const nextProcedures = procedures.map((item) =>
+      item.id === procedure.id
+        ? {
+            ...item,
+            parameters:
+              edit.type === "addParameter"
+                ? [...parameters, { id: edit.id, name: edit.name }]
+                : parameters.filter((_, position) => position !== index),
+          }
+        : item,
+    );
+    const transform = (call: Extract<Statement, { type: "callProcedure" }>): Statement => ({
+      ...call,
+      args:
+        edit.type === "addParameter"
+          ? [...(call.args ?? []), { type: "numericLiteral", value: 0 }]
+          : (call.args ?? []).filter((_, position) => position !== index),
+    });
+    const candidate = {
+      ...script,
+      statements: mapCalls(script.statements, procedure.id, transform),
+      procedures: nextProcedures.map((item) => ({
+        ...item,
+        body: mapCalls(item.body, procedure.id, transform),
+      })),
+    };
+    return validateProgram({
+      ...program,
+      scripts: program.scripts.map((item, position) =>
+        position === edit.scriptIndex ? candidate : item,
+      ),
+    });
+  }
   if (edit.type === "rename") {
     if (
       !NAME.test(edit.name) ||
