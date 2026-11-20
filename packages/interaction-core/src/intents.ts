@@ -223,8 +223,18 @@ export type Intent =
         | "subtract"
         | "multiply"
         | "divide"
-        | "modulo";
+        | "modulo"
+        | "random"
+        | "randomInteger"
+        | "mathFunction"
+        | "listItem";
       readonly referenceId?: string;
+    }
+  | {
+      readonly type: "setProcedureArgumentMathFunction";
+      readonly location: StatementLocation;
+      readonly argumentIndex: number;
+      readonly function: "abs" | "round" | "floor" | "ceiling";
     }
   | {
       readonly type: "deleteProcedure";
@@ -827,6 +837,38 @@ export function intentToChange(
             },
           };
           break;
+        case "random":
+        case "randomInteger":
+          replacement = {
+            id: current.id,
+            type: intent.reporter === "random" ? "operator_random" : "operator_random_integer",
+            inputs: {
+              min: { id: `${current.id}:min`, type: "literal_number", fields: { value: 0 } },
+              max: { id: `${current.id}:max`, type: "literal_number", fields: { value: 10 } },
+            },
+          };
+          break;
+        case "mathFunction":
+          replacement = {
+            id: current.id,
+            type: "operator_math_function",
+            fields: { function: "abs" },
+            inputs: {
+              value: { id: `${current.id}:value`, type: "literal_number", fields: { value: 0 } },
+            },
+          };
+          break;
+        case "listItem":
+          if (!workspace.lists?.some((item) => item.id === intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "lists_item",
+            fields: { listId: intent.referenceId },
+            inputs: {
+              index: { id: `${current.id}:index`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
+          break;
       }
       return {
         type: "editBlock",
@@ -838,6 +880,24 @@ export function intentToChange(
             args: args.map((arg, index) => (index === intent.argumentIndex ? replacement : arg)),
           },
         },
+      };
+    }
+    case "setProcedureArgumentMathFunction": {
+      if (
+        workspace === undefined ||
+        !(["abs", "round", "floor", "ceiling"] as readonly string[]).includes(intent.function)
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const root = arithmeticRootOf(block, "value", intent.argumentIndex, {});
+      if (block === undefined || root?.type !== "operator_math_function") return undefined;
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: withArithmeticRoot(block, "value", intent.argumentIndex, {
+          ...root,
+          fields: { ...root.fields, function: intent.function },
+        }),
       };
     }
     case "setExpressionNumber": {

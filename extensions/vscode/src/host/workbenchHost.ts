@@ -256,6 +256,7 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
     intent.intent.type === "removeProcedureParameter" ||
     intent.intent.type === "setProcedureArgument" ||
     intent.intent.type === "setProcedureArgumentSource" ||
+    intent.intent.type === "setProcedureArgumentMathFunction" ||
     intent.intent.type === "deleteProcedure" ||
     intent.intent.type === "insertBlock" ||
     intent.intent.type === "moveBlock" ||

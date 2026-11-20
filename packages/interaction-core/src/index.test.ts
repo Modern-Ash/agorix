@@ -217,6 +217,120 @@ describe("interaction-core", () => {
     for (const intent of bad)
       expect(intentToChange(intent, newId, built.workspace)).toBeUndefined();
   });
+  it("builds random, math-function and list-item call arguments and edits them in place", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 2, visible: true }],
+      lists: [{ id: "l", name: "l", initialItems: [1, 2], visible: false }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc:count",
+              args: [{ type: "numericLiteral", value: 3 }],
+            },
+          ],
+          procedures: [
+            {
+              id: "proc:count",
+              name: "Count",
+              parameters: [{ id: "param:a", name: "A" }],
+              body: [{ type: "move", steps: 1 }],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const location = { container: script, index: 0 };
+    const apply = (ws: typeof workspace, intent: Parameters<typeof intentToChange>[0]) => {
+      const change = intentToChange(intent, newId, ws);
+      expect(change).toBeDefined();
+      return applyWorkspaceChange(ws, change!);
+    };
+    const arg = (result: ReturnType<typeof apply>) => {
+      const call = result.program.scripts[0]?.statements[0];
+      return call?.type === "callProcedure" ? call.args?.[0] : undefined;
+    };
+    const random = apply(workspace, {
+      type: "setProcedureArgumentSource",
+      location,
+      argumentIndex: 0,
+      reporter: "randomInteger",
+    });
+    expect(arg(random)).toMatchObject({
+      type: "randomInteger",
+      min: { type: "numericLiteral", value: 0 },
+      max: { type: "numericLiteral", value: 10 },
+    });
+    const widened = apply(random.workspace, {
+      type: "setArithmeticOperand",
+      location,
+      argumentIndex: 0,
+      input: "value",
+      side: "max",
+      value: 20,
+    });
+    expect(arg(widened)).toMatchObject({ max: { value: 20 } });
+    const math = apply(workspace, {
+      type: "setProcedureArgumentSource",
+      location,
+      argumentIndex: 0,
+      reporter: "mathFunction",
+    });
+    const rounded = apply(math.workspace, {
+      type: "setProcedureArgumentMathFunction",
+      location,
+      argumentIndex: 0,
+      function: "round",
+    });
+    expect(arg(rounded)).toMatchObject({ type: "mathFunction", function: "round" });
+    const item = apply(workspace, {
+      type: "setProcedureArgumentSource",
+      location,
+      argumentIndex: 0,
+      reporter: "listItem",
+      referenceId: "l",
+    });
+    const second = apply(item.workspace, {
+      type: "setArithmeticOperand",
+      location,
+      argumentIndex: 0,
+      input: "value",
+      side: "index",
+      value: 2,
+    });
+    expect(arg(second)).toMatchObject({
+      type: "listItem",
+      listId: "l",
+      index: { type: "numericLiteral", value: 2 },
+    });
+    const bad = [
+      {
+        type: "setProcedureArgumentSource" as const,
+        location,
+        argumentIndex: 0,
+        reporter: "listItem" as const,
+        referenceId: "missing",
+      },
+      {
+        type: "setProcedureArgumentMathFunction" as const,
+        location,
+        argumentIndex: 0,
+        function: "round" as const,
+      },
+      {
+        type: "setProcedureArgumentMathFunction" as const,
+        location,
+        argumentIndex: 3,
+        function: "round" as const,
+      },
+    ];
+    // The first call-argument is still a plain number, so the math-function edit is refused.
+    for (const intent of bad) expect(intentToChange(intent, newId, workspace)).toBeUndefined();
+  });
   it("places a declared parameter only inside its own custom block body", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",

@@ -78,6 +78,25 @@ describe("studio-protocol", () => {
         reporter: "add",
       },
       {
+        type: "setProcedureArgumentSource",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        reporter: "listItem",
+        referenceId: "l",
+      },
+      {
+        type: "setProcedureArgumentSource",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        reporter: "randomInteger",
+      },
+      {
+        type: "setProcedureArgumentMathFunction",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        function: "floor",
+      },
+      {
         type: "setArithmeticOperand",
         location: { container: script, index: 0 },
         argumentIndex: 1,
@@ -119,6 +138,31 @@ describe("studio-protocol", () => {
         location: { container: script, index: 0 },
         argumentIndex: 4,
         reporter: "number",
+      },
+      {
+        type: "setProcedureArgumentSource",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        reporter: "listItem",
+      },
+      {
+        type: "setProcedureArgumentSource",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        reporter: "random",
+        referenceId: "n",
+      },
+      {
+        type: "setProcedureArgumentMathFunction",
+        location: { container: script, index: 0 },
+        argumentIndex: 1,
+        function: "sqrt",
+      },
+      {
+        type: "setProcedureArgumentMathFunction",
+        location: { container: script, index: 0 },
+        argumentIndex: 9,
+        function: "abs",
       },
       {
         type: "setArithmeticOperand",
