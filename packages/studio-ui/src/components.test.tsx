@@ -152,6 +152,8 @@ describe("studio-ui", () => {
     );
     expect(canvas).toContain("Arguments: Times");
     expect(canvas).toContain('value="7"');
+    expect(canvas).toContain('value="variable"');
+    expect(canvas).toContain('value="xPosition"');
     const bodyCanvas = renderToStaticMarkup(
       <Canvas
         workspace={parameterWorkspace}

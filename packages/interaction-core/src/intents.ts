@@ -209,6 +209,14 @@ export type Intent =
       readonly value: number;
     }
   | {
+      readonly type: "setProcedureArgumentSource";
+      readonly location: StatementLocation;
+      readonly argumentIndex: number;
+      readonly reporter:
+        "number" | "variable" | "parameter" | "listLength" | "xPosition" | "yPosition";
+      readonly referenceId?: string;
+    }
+  | {
       readonly type: "deleteProcedure";
       readonly scriptIndex: number;
       readonly procedureId: string;
@@ -685,6 +693,77 @@ export function intentToChange(
         type: "editBlock",
         location: intent.location,
         block: { ...block, inputs: { ...block.inputs, args: nextArgs } },
+      };
+    }
+    case "setProcedureArgumentSource": {
+      if (
+        workspace === undefined ||
+        !Number.isInteger(intent.argumentIndex) ||
+        intent.argumentIndex < 0
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const args = block?.inputs?.args;
+      if (
+        block?.type !== "procedures_call" ||
+        !Array.isArray(args) ||
+        args[intent.argumentIndex] === undefined
+      )
+        return undefined;
+      const current = args[intent.argumentIndex]!;
+      let replacement: BlockNode;
+      switch (intent.reporter) {
+        case "number":
+          replacement = { id: current.id, type: "literal_number", fields: { value: 0 } };
+          break;
+        case "variable":
+          if (!workspace.variables?.some((item) => item.id === intent.referenceId))
+            return undefined;
+          replacement = {
+            id: current.id,
+            type: "variables_value",
+            fields: { variableId: intent.referenceId },
+          };
+          break;
+        case "parameter":
+          if (
+            intent.location.container.kind !== "procedure" ||
+            !workspace.scripts[intent.location.container.scriptIndex]?.procedures?.[
+              intent.location.container.procedureIndex
+            ]?.parameters?.some((item) => item.id === intent.referenceId)
+          )
+            return undefined;
+          replacement = {
+            id: current.id,
+            type: "parameter_value",
+            fields: { parameterId: intent.referenceId },
+          };
+          break;
+        case "listLength":
+          if (!workspace.lists?.some((item) => item.id === intent.referenceId)) return undefined;
+          replacement = {
+            id: current.id,
+            type: "lists_length",
+            fields: { listId: intent.referenceId },
+          };
+          break;
+        case "xPosition":
+          replacement = { id: current.id, type: "sensing_x_position" };
+          break;
+        case "yPosition":
+          replacement = { id: current.id, type: "sensing_y_position" };
+          break;
+      }
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            args: args.map((arg, index) => (index === intent.argumentIndex ? replacement : arg)),
+          },
+        },
       };
     }
     case "setExpressionNumber": {
