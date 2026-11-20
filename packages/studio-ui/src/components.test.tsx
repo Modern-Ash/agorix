@@ -163,7 +163,7 @@ describe("studio-ui", () => {
     );
     expect(bodyCanvas).toContain('value="parameter"');
   });
-  it("shows editable arithmetic operands for a custom block call", () => {
+  it("shows editable operands for a compound call argument", () => {
     const workspace = programToWorkspace({
       schema: "agorix/program/v1",
       scripts: [
@@ -176,9 +176,9 @@ describe("studio-ui", () => {
               procedureId: "proc:count",
               args: [
                 {
-                  type: "add",
-                  left: { type: "numericLiteral", value: 2 },
-                  right: { type: "numericLiteral", value: 3 },
+                  type: "multiply",
+                  left: { type: "numericLiteral", value: 4 },
+                  right: { type: "numericLiteral", value: 6 },
                 },
               ],
             },
@@ -194,11 +194,68 @@ describe("studio-ui", () => {
         },
       ],
     }).workspace;
-    const html = renderToStaticMarkup(<Canvas workspace={workspace} onIntent={() => undefined} />);
-    expect(html).toContain('value="add"');
-    expect(html).toContain('value="2"');
-    expect(html).toContain('value="3"');
-    expect(html).toContain("Arguments: Times left");
+    const canvas = renderToStaticMarkup(
+      <Canvas workspace={workspace} onIntent={() => undefined} />,
+    );
+    expect(canvas).toContain('<option value="multiply" selected="">');
+    expect(canvas).toContain('value="4"');
+    expect(canvas).toContain('value="6"');
+    expect(canvas).not.toContain('<option value="other"');
+  });
+  it("shows editable operands for random, math-function and list-item call arguments", () => {
+    const render = (arg: unknown) =>
+      renderToStaticMarkup(
+        <Canvas
+          workspace={
+            programToWorkspace({
+              schema: "agorix/program/v1",
+              lists: [{ id: "l", name: "Scores", initialItems: [1], visible: false }],
+              scripts: [
+                {
+                  id: "main",
+                  trigger: { type: "onStart" },
+                  statements: [{ type: "callProcedure", procedureId: "proc:count", args: [arg] }],
+                  procedures: [
+                    {
+                      id: "proc:count",
+                      name: "Count",
+                      parameters: [{ id: "param:times", name: "Times" }],
+                      body: [{ type: "move", steps: 1 }],
+                    },
+                  ],
+                },
+              ],
+            } as never).workspace
+          }
+          onIntent={() => undefined}
+        />,
+      );
+    const random = render({
+      type: "randomInteger",
+      min: { type: "numericLiteral", value: 2 },
+      max: { type: "numericLiteral", value: 9 },
+    });
+    expect(random).toContain('<option value="randomInteger" selected="">');
+    expect(random).toContain('value="2"');
+    expect(random).toContain('value="9"');
+    const math = render({
+      type: "mathFunction",
+      function: "floor",
+      value: { type: "numericLiteral", value: 5 },
+    });
+    expect(math).toContain('<option value="mathFunction" selected="">');
+    expect(math).toContain('<option value="floor" selected="">');
+    expect(math).toContain('value="5"');
+    const item = render({
+      type: "listItem",
+      listId: "l",
+      index: { type: "numericLiteral", value: 4 },
+    });
+    expect(item).toContain('<option value="listItem" selected="">');
+    expect(item).toContain("Scores");
+    expect(item).toContain('value="4"');
+    for (const markup of [random, math, item])
+      expect(markup).not.toContain('<option value="other"');
   });
   it("renders bounded pre-play finding cards with inspect and Ori actions", () => {
     const copy = copyFor("en");

@@ -1211,46 +1211,38 @@ function parseIntent(value: unknown): Intent | undefined {
           "multiply",
           "divide",
           "modulo",
+          "random",
+          "randomInteger",
+          "mathFunction",
+          "listItem",
         ].includes(String(reporter)) &&
-        (referenceId === undefined || isSafeId(referenceId))
+        (reporter === "variable" ||
+        reporter === "parameter" ||
+        reporter === "listLength" ||
+        reporter === "listItem"
+          ? isSafeId(referenceId)
+          : referenceId === undefined)
         ? {
             type: "setProcedureArgumentSource",
             location,
             argumentIndex,
-            reporter: reporter as
-              | "number"
-              | "variable"
-              | "parameter"
-              | "listLength"
-              | "xPosition"
-              | "yPosition"
-              | "add"
-              | "subtract"
-              | "multiply"
-              | "divide"
-              | "modulo",
-            ...(referenceId === undefined ? {} : { referenceId }),
+            reporter: reporter as Extract<
+              Intent,
+              { type: "setProcedureArgumentSource" }
+            >["reporter"],
+            ...(typeof referenceId === "string" ? { referenceId } : {}),
           }
         : undefined;
     }
-    case "setProcedureArgumentOperand": {
+    case "setProcedureArgumentMathFunction": {
       const location = parseLocation(value["location"]);
       const argumentIndex = value["argumentIndex"];
-      const side = value["side"];
-      const operandValue = value["value"];
+      const fn = value["function"];
       return location !== undefined &&
         isIndex(argumentIndex) &&
         argumentIndex < PROCEDURE_PARAMETERS_MAX &&
-        (side === "left" || side === "right") &&
-        typeof operandValue === "number" &&
-        Number.isFinite(operandValue)
-        ? {
-            type: "setProcedureArgumentOperand",
-            location,
-            argumentIndex,
-            side,
-            value: operandValue,
-          }
+        (fn === "abs" || fn === "round" || fn === "floor" || fn === "ceiling")
+        ? { type: "setProcedureArgumentMathFunction", location, argumentIndex, function: fn }
         : undefined;
     }
     case "deleteProcedure": {
@@ -1741,10 +1733,13 @@ function parseIntent(value: unknown): Intent | undefined {
     case "setArithmeticOperand": {
       const location = parseLocation(value["location"]);
       const path = value["path"];
+      const argumentIndex = value["argumentIndex"];
       return location !== undefined &&
         (value["input"] === "value" || value["input"] === "delta" || value["input"] === "index") &&
         (["left", "right", "min", "max", "value", "index"] as unknown[]).includes(value["side"]) &&
         isFiniteNumber(value["value"]) &&
+        (argumentIndex === undefined ||
+          (isIndex(argumentIndex) && argumentIndex < PROCEDURE_PARAMETERS_MAX)) &&
         (path === undefined ||
           (Array.isArray(path) &&
             path.length >= 1 &&
@@ -1756,6 +1751,7 @@ function parseIntent(value: unknown): Intent | undefined {
             input: value["input"],
             side: value["side"] as "left" | "right" | "min" | "max" | "value" | "index",
             value: value["value"],
+            ...(argumentIndex === undefined ? {} : { argumentIndex }),
             ...(path === undefined
               ? {}
               : {
@@ -1769,10 +1765,15 @@ function parseIntent(value: unknown): Intent | undefined {
       const input = value["input"];
       const side = value["side"];
       const path = value["path"];
+      const argumentIndex = value["argumentIndex"];
       const reporter = value["reporter"];
       const referenceId = value["referenceId"];
       if (
         location === undefined ||
+        !(
+          argumentIndex === undefined ||
+          (isIndex(argumentIndex) && argumentIndex < PROCEDURE_PARAMETERS_MAX)
+        ) ||
         (input !== "value" && input !== "delta" && input !== "index") ||
         (side !== "left" &&
           side !== "right" &&
@@ -1821,6 +1822,7 @@ function parseIntent(value: unknown): Intent | undefined {
           ? {}
           : { path: path as ("left" | "right" | "min" | "max" | "value" | "index")[] }),
         reporter,
+        ...(argumentIndex === undefined ? {} : { argumentIndex }),
         ...(typeof referenceId === "string" ? { referenceId } : {}),
       };
     }
@@ -1829,8 +1831,11 @@ function parseIntent(value: unknown): Intent | undefined {
       const input = value["input"];
       const side = value["side"];
       const path = value["path"];
+      const argumentIndex = value["argumentIndex"];
       const fn = value["function"];
       return location !== undefined &&
+        (argumentIndex === undefined ||
+          (isIndex(argumentIndex) && argumentIndex < PROCEDURE_PARAMETERS_MAX)) &&
         (input === "value" || input === "delta" || input === "index") &&
         (side === "left" ||
           side === "right" ||
@@ -1858,6 +1863,7 @@ function parseIntent(value: unknown): Intent | undefined {
             input,
             side,
             function: fn,
+            ...(argumentIndex === undefined ? {} : { argumentIndex }),
             ...(path === undefined
               ? {}
               : {

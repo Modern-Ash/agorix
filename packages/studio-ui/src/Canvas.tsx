@@ -66,6 +66,19 @@ function Slot({
   );
 }
 
+/** Compound numeric sources a custom block call argument can be built from, and their operand sides. */
+const CALL_ARGUMENT_COMPOUND = [
+  { reporter: "add", type: "operator_add", sides: ["left", "right"] },
+  { reporter: "subtract", type: "operator_subtract", sides: ["left", "right"] },
+  { reporter: "multiply", type: "operator_multiply", sides: ["left", "right"] },
+  { reporter: "divide", type: "operator_divide", sides: ["left", "right"] },
+  { reporter: "modulo", type: "operator_modulo", sides: ["left", "right"] },
+  { reporter: "random", type: "operator_random", sides: ["min", "max"] },
+  { reporter: "randomInteger", type: "operator_random_integer", sides: ["min", "max"] },
+  { reporter: "mathFunction", type: "operator_math_function", sides: ["value"] },
+  { reporter: "listItem", type: "lists_item", sides: ["index"] },
+] as const;
+
 export function AgentZone({
   verb,
   label,
@@ -2028,17 +2041,9 @@ export function Canvas({
                                       ? "xPosition"
                                       : argument?.type === "sensing_y_position"
                                         ? "yPosition"
-                                        : argument?.type === "operator_add"
-                                          ? "add"
-                                          : argument?.type === "operator_subtract"
-                                            ? "subtract"
-                                            : argument?.type === "operator_multiply"
-                                              ? "multiply"
-                                              : argument?.type === "operator_divide"
-                                                ? "divide"
-                                                : argument?.type === "operator_modulo"
-                                                  ? "modulo"
-                                                  : "other"
+                                        : (CALL_ARGUMENT_COMPOUND.find(
+                                            (entry) => argument?.type === entry.type,
+                                          )?.reporter ?? "other")
                           }
                           onChange={(event) => {
                             const reporter = event.currentTarget.value as
@@ -2048,15 +2053,11 @@ export function Canvas({
                               | "listLength"
                               | "xPosition"
                               | "yPosition"
-                              | "add"
-                              | "subtract"
-                              | "multiply"
-                              | "divide"
-                              | "modulo";
+                              | (typeof CALL_ARGUMENT_COMPOUND)[number]["reporter"];
                             const referenceId =
                               reporter === "variable"
                                 ? workspace.variables?.[0]?.id
-                                : reporter === "listLength"
+                                : reporter === "listLength" || reporter === "listItem"
                                   ? workspace.lists?.[0]?.id
                                   : reporter === "parameter" &&
                                       block.location.container.kind === "procedure"
@@ -2094,6 +2095,12 @@ export function Canvas({
                           <option value="multiply">{copy.operatorMultiply}</option>
                           <option value="divide">{copy.operatorDivide}</option>
                           <option value="modulo">{copy.operatorModulo}</option>
+                          <option value="random">{copy.operatorRandom}</option>
+                          <option value="randomInteger">{copy.operatorRandomInteger}</option>
+                          <option value="mathFunction">{copy.operatorMathFunction}</option>
+                          {(workspace.lists?.length ?? 0) > 0 ? (
+                            <option value="listItem">{copy.listItem}</option>
+                          ) : null}
                           {argument !== undefined &&
                           ![
                             "literal_number",
@@ -2102,11 +2109,7 @@ export function Canvas({
                             "lists_length",
                             "sensing_x_position",
                             "sensing_y_position",
-                            "operator_add",
-                            "operator_subtract",
-                            "operator_multiply",
-                            "operator_divide",
-                            "operator_modulo",
+                            ...CALL_ARGUMENT_COMPOUND.map((entry) => entry.type),
                           ].includes(argument.type) ? (
                             <option value="other">
                               {getBlockDefinition(argument.type)?.label ?? argument.type}
@@ -2115,6 +2118,7 @@ export function Canvas({
                         </select>
                         {argument?.type === "variables_value" ||
                         argument?.type === "lists_length" ||
+                        argument?.type === "lists_item" ||
                         argument?.type === "parameter_value" ? (
                           <select
                             aria-label={`${copy.customBlockArguments}: ${parameter.name} ${copy.numericReference}`}
@@ -2134,7 +2138,9 @@ export function Canvas({
                                     ? "variable"
                                     : argument.type === "lists_length"
                                       ? "listLength"
-                                      : "parameter",
+                                      : argument.type === "lists_item"
+                                        ? "listItem"
+                                        : "parameter",
                                 referenceId: event.currentTarget.value,
                               })
                             }
@@ -2142,7 +2148,7 @@ export function Canvas({
                           >
                             {(argument.type === "variables_value"
                               ? (workspace.variables ?? [])
-                              : argument.type === "lists_length"
+                              : argument.type === "lists_length" || argument.type === "lists_item"
                                 ? (workspace.lists ?? [])
                                 : block.location.container.kind === "procedure"
                                   ? (workspace.scripts[block.location.container.scriptIndex]
@@ -2156,6 +2162,62 @@ export function Canvas({
                             ))}
                           </select>
                         ) : null}
+                        {argument?.type === "operator_math_function" ? (
+                          <select
+                            aria-label={`${copy.customBlockArguments}: ${parameter.name} ${copy.mathFunction}`}
+                            value={String(argument.fields?.function ?? "abs")}
+                            onChange={(event) =>
+                              onIntent({
+                                type: "setProcedureArgumentMathFunction",
+                                location: block.location,
+                                argumentIndex,
+                                function: event.currentTarget.value as
+                                  "abs" | "round" | "floor" | "ceiling",
+                              })
+                            }
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            <option value="abs">{copy.mathAbs}</option>
+                            <option value="round">{copy.mathRound}</option>
+                            <option value="floor">{copy.mathFloor}</option>
+                            <option value="ceiling">{copy.mathCeiling}</option>
+                          </select>
+                        ) : null}
+                        {argument !== undefined
+                          ? (
+                              CALL_ARGUMENT_COMPOUND.find((entry) => entry.type === argument.type)
+                                ?.sides ?? []
+                            ).map((nestedSide) => (
+                              <NestedNumericSocket
+                                key={nestedSide}
+                                node={argument.inputs?.[nestedSide]}
+                                side={nestedSide}
+                                path={[]}
+                                location={block.location}
+                                input="value"
+                                label={copy.customBlockArguments}
+                                operandLabel={parameter.name}
+                                rootSideLabel={
+                                  nestedSide === "left"
+                                    ? copy.conditionLeft
+                                    : nestedSide === "right"
+                                      ? copy.conditionRight
+                                      : nestedSide === "min"
+                                        ? copy.rangeMin
+                                        : nestedSide === "max"
+                                          ? copy.rangeMax
+                                          : nestedSide === "index"
+                                            ? copy.listIndex
+                                            : copy.numericLiteral
+                                }
+                                copy={copy}
+                                workspace={workspace}
+                                actors={actors}
+                                argumentIndex={argumentIndex}
+                                onIntent={onIntent}
+                              />
+                            ))
+                          : null}
                         {argument?.type === "literal_number" ? (
                           <input
                             type="number"
@@ -2190,74 +2252,11 @@ export function Canvas({
                             "lists_length",
                             "sensing_x_position",
                             "sensing_y_position",
-                            "operator_add",
-                            "operator_subtract",
-                            "operator_multiply",
-                            "operator_divide",
-                            "operator_modulo",
                           ].includes(argument.type) ? (
                           <span>
                             {argument === undefined
                               ? "?"
                               : (getBlockDefinition(argument.type)?.label ?? argument.type)}
-                          </span>
-                        ) : null}
-                        {argument !== undefined &&
-                        [
-                          "operator_add",
-                          "operator_subtract",
-                          "operator_multiply",
-                          "operator_divide",
-                          "operator_modulo",
-                        ].includes(argument.type) ? (
-                          <span className="math-function-fields">
-                            {(["left", "right"] as const).map((side) => {
-                              const operand = argument.inputs?.[side];
-                              return (
-                                <label key={side}>
-                                  <span>
-                                    {side === "left" ? copy.customBlockLeft : copy.customBlockRight}
-                                  </span>
-                                  {operand?.type === "literal_number" ? (
-                                    <input
-                                      type="number"
-                                      aria-label={`${copy.customBlockArguments}: ${parameter.name} ${side}`}
-                                      key={`${block.id}:${parameter.id}:${side}:${operand.fields?.value}`}
-                                      defaultValue={Number(operand.fields?.value ?? 0)}
-                                      onKeyDown={(event) => {
-                                        event.stopPropagation();
-                                        if (event.key === "Enter") event.currentTarget.blur();
-                                      }}
-                                      onBlur={(event) => {
-                                        const raw = event.currentTarget.value.trim();
-                                        const value = Number(raw);
-                                        if (
-                                          raw !== "" &&
-                                          Number.isFinite(value) &&
-                                          value !== operand.fields?.value
-                                        )
-                                          onIntent({
-                                            type: "setProcedureArgumentOperand",
-                                            location: block.location,
-                                            argumentIndex,
-                                            side,
-                                            value,
-                                          });
-                                        event.currentTarget.value = String(
-                                          operand.fields?.value ?? 0,
-                                        );
-                                      }}
-                                    />
-                                  ) : (
-                                    <span>
-                                      {operand === undefined
-                                        ? "?"
-                                        : (getBlockDefinition(operand.type)?.label ?? operand.type)}
-                                    </span>
-                                  )}
-                                </label>
-                              );
-                            })}
                           </span>
                         ) : null}
                       </div>
