@@ -1199,17 +1199,57 @@ function parseIntent(value: unknown): Intent | undefined {
       return location !== undefined &&
         isIndex(argumentIndex) &&
         argumentIndex < PROCEDURE_PARAMETERS_MAX &&
-        ["number", "variable", "parameter", "listLength", "xPosition", "yPosition"].includes(
-          String(reporter),
-        ) &&
+        [
+          "number",
+          "variable",
+          "parameter",
+          "listLength",
+          "xPosition",
+          "yPosition",
+          "add",
+          "subtract",
+          "multiply",
+          "divide",
+          "modulo",
+        ].includes(String(reporter)) &&
         (referenceId === undefined || isSafeId(referenceId))
         ? {
             type: "setProcedureArgumentSource",
             location,
             argumentIndex,
             reporter: reporter as
-              "number" | "variable" | "parameter" | "listLength" | "xPosition" | "yPosition",
+              | "number"
+              | "variable"
+              | "parameter"
+              | "listLength"
+              | "xPosition"
+              | "yPosition"
+              | "add"
+              | "subtract"
+              | "multiply"
+              | "divide"
+              | "modulo",
             ...(referenceId === undefined ? {} : { referenceId }),
+          }
+        : undefined;
+    }
+    case "setProcedureArgumentOperand": {
+      const location = parseLocation(value["location"]);
+      const argumentIndex = value["argumentIndex"];
+      const side = value["side"];
+      const operandValue = value["value"];
+      return location !== undefined &&
+        isIndex(argumentIndex) &&
+        argumentIndex < PROCEDURE_PARAMETERS_MAX &&
+        (side === "left" || side === "right") &&
+        typeof operandValue === "number" &&
+        Number.isFinite(operandValue)
+        ? {
+            type: "setProcedureArgumentOperand",
+            location,
+            argumentIndex,
+            side,
+            value: operandValue,
           }
         : undefined;
     }

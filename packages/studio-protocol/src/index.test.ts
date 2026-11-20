@@ -71,6 +71,13 @@ describe("studio-protocol", () => {
         reporter: "variable",
         referenceId: "n",
       },
+      {
+        type: "setProcedureArgumentOperand",
+        location: { container: script, index: 0 },
+        argumentIndex: 0,
+        side: "left",
+        value: 4,
+      },
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toMatchObject({ intent });
     for (const intent of [
@@ -89,6 +96,13 @@ describe("studio-protocol", () => {
         location: { container: script, index: 0 },
         argumentIndex: 4,
         reporter: "number",
+      },
+      {
+        type: "setProcedureArgumentOperand",
+        location: { container: script, index: 0 },
+        argumentIndex: 0,
+        side: "middle",
+        value: 4,
       },
     ])
       expect(parseUiMessage({ schema, type: "intent", intent })).toBeUndefined();

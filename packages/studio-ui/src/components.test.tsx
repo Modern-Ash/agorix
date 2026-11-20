@@ -163,6 +163,43 @@ describe("studio-ui", () => {
     );
     expect(bodyCanvas).toContain('value="parameter"');
   });
+  it("shows editable arithmetic operands for a custom block call", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc:count",
+              args: [
+                {
+                  type: "add",
+                  left: { type: "numericLiteral", value: 2 },
+                  right: { type: "numericLiteral", value: 3 },
+                },
+              ],
+            },
+          ],
+          procedures: [
+            {
+              id: "proc:count",
+              name: "Count",
+              parameters: [{ id: "param:times", name: "Times" }],
+              body: [{ type: "move", steps: 1 }],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const html = renderToStaticMarkup(<Canvas workspace={workspace} onIntent={() => undefined} />);
+    expect(html).toContain('value="add"');
+    expect(html).toContain('value="2"');
+    expect(html).toContain('value="3"');
+    expect(html).toContain("Arguments: Times left");
+  });
   it("renders bounded pre-play finding cards with inspect and Ori actions", () => {
     const copy = copyFor("en");
     const markup = renderToStaticMarkup(

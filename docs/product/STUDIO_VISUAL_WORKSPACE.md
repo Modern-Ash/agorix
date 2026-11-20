@@ -54,6 +54,12 @@ These captures use a local synthetic host with a sample canonical program, two a
 
 ## Packaged VSIX verification
 
+The [Studio README](../../extensions/vscode/README.md#see-studio) curates installed-VSIX screenshots and a 20-second silent MP4 montage. The video is assembled from the checked-in captures listed in `assets/studio-visual-tour.ffconcat`; it is not a recording of live interaction. To regenerate it after refreshing those captures, run from the repository root:
+
+```sh
+ffmpeg -f concat -safe 0 -i docs/product/assets/studio-visual-tour.ffconcat -t 20 -vf 'fps=24,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=0x17191c,format=yuv420p' -c:v libx264 -preset medium -crf 27 -movflags +faststart -y docs/product/assets/studio-visual-tour.mp4
+```
+
 The packaged VSIX was also opened in an isolated VS Code profile with a portable `.agorix` fixture containing two actors, costumes, a backdrop, a variable, nested control flow, and an actor-click event. These are captures of the actual extension webview, rather than the synthetic host above:
 
 | 900 × 700                                                    | 1440 × 900                                                     |

@@ -2028,7 +2028,17 @@ export function Canvas({
                                       ? "xPosition"
                                       : argument?.type === "sensing_y_position"
                                         ? "yPosition"
-                                        : "other"
+                                        : argument?.type === "operator_add"
+                                          ? "add"
+                                          : argument?.type === "operator_subtract"
+                                            ? "subtract"
+                                            : argument?.type === "operator_multiply"
+                                              ? "multiply"
+                                              : argument?.type === "operator_divide"
+                                                ? "divide"
+                                                : argument?.type === "operator_modulo"
+                                                  ? "modulo"
+                                                  : "other"
                           }
                           onChange={(event) => {
                             const reporter = event.currentTarget.value as
@@ -2037,7 +2047,12 @@ export function Canvas({
                               | "parameter"
                               | "listLength"
                               | "xPosition"
-                              | "yPosition";
+                              | "yPosition"
+                              | "add"
+                              | "subtract"
+                              | "multiply"
+                              | "divide"
+                              | "modulo";
                             const referenceId =
                               reporter === "variable"
                                 ? workspace.variables?.[0]?.id
@@ -2074,6 +2089,11 @@ export function Canvas({
                           ) : null}
                           <option value="xPosition">{copy.positionX}</option>
                           <option value="yPosition">{copy.positionY}</option>
+                          <option value="add">{copy.operatorAdd}</option>
+                          <option value="subtract">{copy.operatorSubtract}</option>
+                          <option value="multiply">{copy.operatorMultiply}</option>
+                          <option value="divide">{copy.operatorDivide}</option>
+                          <option value="modulo">{copy.operatorModulo}</option>
                           {argument !== undefined &&
                           ![
                             "literal_number",
@@ -2082,6 +2102,11 @@ export function Canvas({
                             "lists_length",
                             "sensing_x_position",
                             "sensing_y_position",
+                            "operator_add",
+                            "operator_subtract",
+                            "operator_multiply",
+                            "operator_divide",
+                            "operator_modulo",
                           ].includes(argument.type) ? (
                             <option value="other">
                               {getBlockDefinition(argument.type)?.label ?? argument.type}
@@ -2165,11 +2190,74 @@ export function Canvas({
                             "lists_length",
                             "sensing_x_position",
                             "sensing_y_position",
+                            "operator_add",
+                            "operator_subtract",
+                            "operator_multiply",
+                            "operator_divide",
+                            "operator_modulo",
                           ].includes(argument.type) ? (
                           <span>
                             {argument === undefined
                               ? "?"
                               : (getBlockDefinition(argument.type)?.label ?? argument.type)}
+                          </span>
+                        ) : null}
+                        {argument !== undefined &&
+                        [
+                          "operator_add",
+                          "operator_subtract",
+                          "operator_multiply",
+                          "operator_divide",
+                          "operator_modulo",
+                        ].includes(argument.type) ? (
+                          <span className="math-function-fields">
+                            {(["left", "right"] as const).map((side) => {
+                              const operand = argument.inputs?.[side];
+                              return (
+                                <label key={side}>
+                                  <span>
+                                    {side === "left" ? copy.customBlockLeft : copy.customBlockRight}
+                                  </span>
+                                  {operand?.type === "literal_number" ? (
+                                    <input
+                                      type="number"
+                                      aria-label={`${copy.customBlockArguments}: ${parameter.name} ${side}`}
+                                      key={`${block.id}:${parameter.id}:${side}:${operand.fields?.value}`}
+                                      defaultValue={Number(operand.fields?.value ?? 0)}
+                                      onKeyDown={(event) => {
+                                        event.stopPropagation();
+                                        if (event.key === "Enter") event.currentTarget.blur();
+                                      }}
+                                      onBlur={(event) => {
+                                        const raw = event.currentTarget.value.trim();
+                                        const value = Number(raw);
+                                        if (
+                                          raw !== "" &&
+                                          Number.isFinite(value) &&
+                                          value !== operand.fields?.value
+                                        )
+                                          onIntent({
+                                            type: "setProcedureArgumentOperand",
+                                            location: block.location,
+                                            argumentIndex,
+                                            side,
+                                            value,
+                                          });
+                                        event.currentTarget.value = String(
+                                          operand.fields?.value ?? 0,
+                                        );
+                                      }}
+                                    />
+                                  ) : (
+                                    <span>
+                                      {operand === undefined
+                                        ? "?"
+                                        : (getBlockDefinition(operand.type)?.label ?? operand.type)}
+                                    </span>
+                                  )}
+                                </label>
+                              );
+                            })}
                           </span>
                         ) : null}
                       </div>

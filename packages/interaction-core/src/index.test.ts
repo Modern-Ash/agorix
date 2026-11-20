@@ -63,6 +63,50 @@ describe("interaction-core", () => {
       type: "callProcedure",
       args: [{ type: "variable", variableId: "n" }],
     });
+    const arithmetic = applyWorkspaceChange(
+      workspace,
+      intentToChange(
+        { type: "setProcedureArgumentSource", location, argumentIndex: 0, reporter: "multiply" },
+        newId,
+        workspace,
+      )!,
+    );
+    expect(arithmetic.program.scripts[0]?.statements[0]).toMatchObject({
+      type: "callProcedure",
+      args: [{ type: "multiply", left: { value: 0 }, right: { value: 1 } }],
+    });
+    const changed = applyWorkspaceChange(
+      arithmetic.workspace,
+      intentToChange(
+        { type: "setProcedureArgumentOperand", location, argumentIndex: 0, side: "left", value: 6 },
+        newId,
+        arithmetic.workspace,
+      )!,
+    );
+    expect(changed.program.scripts[0]?.statements[0]).toMatchObject({
+      type: "callProcedure",
+      args: [{ type: "multiply", left: { value: 6 }, right: { value: 1 } }],
+    });
+    expect(
+      intentToChange(
+        {
+          type: "setProcedureArgumentOperand",
+          location,
+          argumentIndex: 0,
+          side: "left",
+          value: Infinity,
+        },
+        newId,
+        arithmetic.workspace,
+      ),
+    ).toBeUndefined();
+    expect(
+      intentToChange(
+        { type: "setProcedureArgumentOperand", location, argumentIndex: 1, side: "left", value: 6 },
+        newId,
+        arithmetic.workspace,
+      ),
+    ).toBeUndefined();
     expect(
       intentToChange(
         {

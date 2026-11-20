@@ -213,8 +213,25 @@ export type Intent =
       readonly location: StatementLocation;
       readonly argumentIndex: number;
       readonly reporter:
-        "number" | "variable" | "parameter" | "listLength" | "xPosition" | "yPosition";
+        | "number"
+        | "variable"
+        | "parameter"
+        | "listLength"
+        | "xPosition"
+        | "yPosition"
+        | "add"
+        | "subtract"
+        | "multiply"
+        | "divide"
+        | "modulo";
       readonly referenceId?: string;
+    }
+  | {
+      readonly type: "setProcedureArgumentOperand";
+      readonly location: StatementLocation;
+      readonly argumentIndex: number;
+      readonly side: "left" | "right";
+      readonly value: number;
     }
   | {
       readonly type: "deleteProcedure";
@@ -753,7 +770,66 @@ export function intentToChange(
         case "yPosition":
           replacement = { id: current.id, type: "sensing_y_position" };
           break;
+        case "add":
+        case "subtract":
+        case "multiply":
+        case "divide":
+        case "modulo":
+          replacement = {
+            id: current.id,
+            type: `operator_${intent.reporter}`,
+            inputs: {
+              left: { id: `${current.id}:left`, type: "literal_number", fields: { value: 0 } },
+              right: { id: `${current.id}:right`, type: "literal_number", fields: { value: 1 } },
+            },
+          };
+          break;
       }
+      return {
+        type: "editBlock",
+        location: intent.location,
+        block: {
+          ...block,
+          inputs: {
+            ...block.inputs,
+            args: args.map((arg, index) => (index === intent.argumentIndex ? replacement : arg)),
+          },
+        },
+      };
+    }
+    case "setProcedureArgumentOperand": {
+      if (
+        workspace === undefined ||
+        !Number.isInteger(intent.argumentIndex) ||
+        intent.argumentIndex < 0 ||
+        !Number.isFinite(intent.value)
+      )
+        return undefined;
+      const block = statementsAt(workspace, intent.location.container)?.[intent.location.index];
+      const args = block?.inputs?.args;
+      if (block?.type !== "procedures_call" || !Array.isArray(args)) return undefined;
+      const argument = args[intent.argumentIndex];
+      if (
+        argument === undefined ||
+        ![
+          "operator_add",
+          "operator_subtract",
+          "operator_multiply",
+          "operator_divide",
+          "operator_modulo",
+        ].includes(argument.type)
+      )
+        return undefined;
+      const operand = argument.inputs?.[intent.side];
+      if (operand === undefined || Array.isArray(operand) || operand.type !== "literal_number")
+        return undefined;
+      const replacement = {
+        ...argument,
+        inputs: {
+          ...argument.inputs,
+          [intent.side]: { ...operand, fields: { ...operand.fields, value: intent.value } },
+        },
+      };
       return {
         type: "editBlock",
         location: intent.location,
