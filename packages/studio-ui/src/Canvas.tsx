@@ -66,6 +66,9 @@ function Slot({
   );
 }
 
+/** Arithmetic roots a custom block call argument can be built from. */
+const CALL_ARGUMENT_OPERATORS = ["add", "subtract", "multiply", "divide", "modulo"] as const;
+
 export function AgentZone({
   verb,
   label,
@@ -2028,7 +2031,9 @@ export function Canvas({
                                       ? "xPosition"
                                       : argument?.type === "sensing_y_position"
                                         ? "yPosition"
-                                        : "other"
+                                        : (CALL_ARGUMENT_OPERATORS.find(
+                                            (operator) => argument?.type === `operator_${operator}`,
+                                          ) ?? "other")
                           }
                           onChange={(event) => {
                             const reporter = event.currentTarget.value as
@@ -2037,7 +2042,8 @@ export function Canvas({
                               | "parameter"
                               | "listLength"
                               | "xPosition"
-                              | "yPosition";
+                              | "yPosition"
+                              | (typeof CALL_ARGUMENT_OPERATORS)[number];
                             const referenceId =
                               reporter === "variable"
                                 ? workspace.variables?.[0]?.id
@@ -2074,6 +2080,11 @@ export function Canvas({
                           ) : null}
                           <option value="xPosition">{copy.positionX}</option>
                           <option value="yPosition">{copy.positionY}</option>
+                          <option value="add">{copy.operatorAdd}</option>
+                          <option value="subtract">{copy.operatorSubtract}</option>
+                          <option value="multiply">{copy.operatorMultiply}</option>
+                          <option value="divide">{copy.operatorDivide}</option>
+                          <option value="modulo">{copy.operatorModulo}</option>
                           {argument !== undefined &&
                           ![
                             "literal_number",
@@ -2082,6 +2093,7 @@ export function Canvas({
                             "lists_length",
                             "sensing_x_position",
                             "sensing_y_position",
+                            ...CALL_ARGUMENT_OPERATORS.map((operator) => `operator_${operator}`),
                           ].includes(argument.type) ? (
                             <option value="other">
                               {getBlockDefinition(argument.type)?.label ?? argument.type}
@@ -2131,6 +2143,31 @@ export function Canvas({
                             ))}
                           </select>
                         ) : null}
+                        {argument !== undefined &&
+                        CALL_ARGUMENT_OPERATORS.some(
+                          (operator) => argument.type === `operator_${operator}`,
+                        )
+                          ? (["left", "right"] as const).map((nestedSide) => (
+                              <NestedNumericSocket
+                                key={nestedSide}
+                                node={argument.inputs?.[nestedSide]}
+                                side={nestedSide}
+                                path={[]}
+                                location={block.location}
+                                input="value"
+                                label={copy.customBlockArguments}
+                                operandLabel={parameter.name}
+                                rootSideLabel={
+                                  nestedSide === "left" ? copy.conditionLeft : copy.conditionRight
+                                }
+                                copy={copy}
+                                workspace={workspace}
+                                actors={actors}
+                                argumentIndex={argumentIndex}
+                                onIntent={onIntent}
+                              />
+                            ))
+                          : null}
                         {argument?.type === "literal_number" ? (
                           <input
                             type="number"

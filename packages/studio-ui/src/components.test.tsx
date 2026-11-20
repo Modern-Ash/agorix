@@ -163,6 +163,45 @@ describe("studio-ui", () => {
     );
     expect(bodyCanvas).toContain('value="parameter"');
   });
+  it("shows editable operands for a compound call argument", () => {
+    const workspace = programToWorkspace({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "callProcedure",
+              procedureId: "proc:count",
+              args: [
+                {
+                  type: "multiply",
+                  left: { type: "numericLiteral", value: 4 },
+                  right: { type: "numericLiteral", value: 6 },
+                },
+              ],
+            },
+          ],
+          procedures: [
+            {
+              id: "proc:count",
+              name: "Count",
+              parameters: [{ id: "param:times", name: "Times" }],
+              body: [{ type: "move", steps: 1 }],
+            },
+          ],
+        },
+      ],
+    }).workspace;
+    const canvas = renderToStaticMarkup(
+      <Canvas workspace={workspace} onIntent={() => undefined} />,
+    );
+    expect(canvas).toContain('<option value="multiply" selected="">');
+    expect(canvas).toContain('value="4"');
+    expect(canvas).toContain('value="6"');
+    expect(canvas).not.toContain('<option value="other"');
+  });
   it("renders bounded pre-play finding cards with inspect and Ori actions", () => {
     const copy = copyFor("en");
     const markup = renderToStaticMarkup(
