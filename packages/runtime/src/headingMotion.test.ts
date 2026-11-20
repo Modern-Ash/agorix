@@ -468,7 +468,7 @@ describe("procedures", () => {
       createWorldState(),
     );
     expect(result.outcome).toBe("completed");
-    expect(result.world.variables.n?.value).toBe(12);
+    expect(result.world.variables?.n?.value).toBe(12);
   });
 
   it("runs the body at the call and reports inner steps under the procedure path", () => {
